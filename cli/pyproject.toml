@@ -4,8 +4,11 @@ version = "0.1.0"
 description = "Fetches Norwegian job ads and matches them against a candidate profile"
 requires-python = ">=3.12"
 dependencies = [
+    "anthropic>=1.12,<2",
     "defusedxml>=0.7.1",
     "httpx>=0.27",
+    "keyring>=25.7,<26",
+    "openai>=3.26,<4",
     "platformdirs>=4.12,<5",
     "pydantic>=2.14,<3",
     "ruamel.yaml>=0.19.1,<0.20",
@@ -35,6 +38,8 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "S", "T20", "PT", "RET", "SIM", "P
 "src/jobranger/storage/migrations.py" = ["S608"]
 "src/jobranger/matching/classify.py" = ["PLR0913", "PLR0917"]
 "src/jobranger/pipeline.py" = ["PLR0913", "N818"]
+"src/jobranger/providers/prices.py" = ["PLR0913"]
+"src/jobranger/providers/openai_compat.py" = ["PLR0913", "PLR0917"]
 "src/jobranger/sources/base.py" = ["N818"]
 
 [tool.mypy]

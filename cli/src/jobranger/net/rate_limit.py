@@ -87,7 +87,11 @@ def event_hooks(limiter: HostLimiter) -> dict[str, list[Callable[..., None]]]:
 
 
 def retry_after_seconds(response: httpx.Response) -> float | None:
-    value = response.headers.get("Retry-After", "").strip()
+    return parse_retry_after(response.headers.get("Retry-After"))
+
+
+def parse_retry_after(header: str | None) -> float | None:
+    value = (header or "").strip()
     if not value:
         return None
     if value.isascii() and value.isdigit():

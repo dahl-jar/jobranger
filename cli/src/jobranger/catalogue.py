@@ -24,7 +24,18 @@ type RoleId = Literal[
     "embedded",
     "game",
 ]
-type RoleType = RoleId | Literal["general_software"]
+type RoleType = Literal[
+    "backend",
+    "frontend",
+    "fullstack",
+    "mobile",
+    "data_engineering",
+    "devops_platform",
+    "ml_ai",
+    "embedded",
+    "game",
+    "general_software",
+]
 type Level = Literal["junior", "mid", "senior", "lead", "none"]
 type YearBand = Literal["0-1", "1-3", "3-6", "6+"]
 

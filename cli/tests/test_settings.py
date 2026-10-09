@@ -10,6 +10,7 @@ from jobranger.catalogue import default_employer_feeds
 from jobranger.settings import (
     ConfigInvalidError,
     ConfigMissingError,
+    ModelConfig,
     ProfileRef,
     ScheduleConfig,
     SourcesConfig,
@@ -64,6 +65,19 @@ def test_should_write_config_with_owner_only_permissions(config_path: Path) -> N
 def test_should_reject_run_times_less_than_two_hours_apart() -> None:
     with pytest.raises(ValidationError, match="2 hours"):
         ScheduleConfig(times=("23:30", "01:00"))
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"monthly_limit_usd": -1},
+        {"price": {"input_per_mtok": -1, "output_per_mtok": 10}},
+        {"price": {"input_per_mtok": 2, "output_per_mtok": -1}},
+    ],
+)
+def test_should_reject_negative_model_amount(fields: dict[str, object]) -> None:
+    with pytest.raises(ValidationError, match="greater than or equal to 0"):
+        ModelConfig.model_validate(fields)
 
 
 def test_should_reject_unknown_config_key(config_path: Path) -> None:

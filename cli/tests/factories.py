@@ -4,8 +4,14 @@ import base64
 import json
 import threading
 from pathlib import Path
+from typing import TYPE_CHECKING
 
+import anthropic
 import httpx
+import httpx2
+import openai
+from keyring.backend import KeyringBackend
+from keyring.errors import PasswordDeleteError
 
 from jobranger.ads.models import Ad
 from jobranger.catalogue import EmployerFeed, source_plan
@@ -22,6 +28,9 @@ from jobranger.providers.base import (
 )
 from jobranger.settings import Limits, Targets
 from jobranger.sources.base import FetchContext
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 FIXTURES = Path(__file__).parent / "fixtures"
 FAKE_VERSION = "test-version"
@@ -191,6 +200,84 @@ class FakeProvider:
         if isinstance(reply, StopKind):
             return ProviderResult("", None, CALL_USAGE, reply)
         return ProviderResult(reply.model_dump_json(), reply, CALL_USAGE, StopKind.done)
+
+
+class MemoryKeyring(KeyringBackend):
+    priority = 0
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.passwords: dict[tuple[str, str], str] = {}
+
+    def get_password(self, service: str, username: str) -> str | None:
+        return self.passwords.get((service, username))
+
+    def set_password(self, service: str, username: str, password: str) -> None:
+        self.passwords[(service, username)] = password
+
+    def delete_password(self, service: str, username: str) -> None:
+        if self.passwords.pop((service, username), None) is None:
+            raise PasswordDeleteError(username)
+
+
+def anthropic_client(
+    handler: Callable[[httpx2.Request], httpx2.Response],
+) -> anthropic.Anthropic:
+    transport = httpx2.MockTransport(handler)
+    return anthropic.Anthropic(
+        api_key="sk-ant-test",
+        max_retries=0,
+        http_client=httpx2.Client(transport=transport),
+    )
+
+
+def anthropic_message(
+    text: str, stop_reason: str = "end_turn", **usage: object
+) -> dict[str, object]:
+    message = json.loads((FIXTURES / "anthropic_message.json").read_text())
+    message["content"][0]["text"] = text
+    message["stop_reason"] = stop_reason
+    message["usage"].update(usage)
+    return message
+
+
+def openai_client(
+    handler: Callable[[httpx2.Request], httpx2.Response],
+    base_url: str = "https://api.openai.com/v1",
+) -> openai.OpenAI:
+    return openai.OpenAI(
+        api_key="sk-test",
+        base_url=base_url,
+        max_retries=0,
+        http_client=httpx2.Client(transport=httpx2.MockTransport(handler)),
+    )
+
+
+def openai_completion(
+    fixture: str, content: str, **choice: object
+) -> dict[str, object]:
+    body = json.loads((FIXTURES / fixture).read_text())
+    body["choices"][0]["message"]["content"] = content
+    body["choices"][0].update(choice)
+    return body
+
+
+PROMPT = ClassifyPrompt(system="rules and profile", user="ad text")
+
+
+class Recorder:
+    def __init__(self, status: int, body: object, **headers: str) -> None:
+        self.status = status
+        self.body = body
+        self.headers = headers
+        self.requests: list[httpx2.Request] = []
+
+    def __call__(self, request: httpx2.Request) -> httpx2.Response:
+        self.requests.append(request)
+        return httpx2.Response(self.status, json=self.body, headers=self.headers)
+
+    def sent(self) -> dict[str, object]:
+        return json.loads(self.requests[-1].content)
 
 
 class ListSink:

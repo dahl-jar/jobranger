@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import io
 import itertools
-import os
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Literal
 from pydantic import (
     BaseModel,
     ConfigDict,
+    NonNegativeFloat,
     ValidationError,
     field_serializer,
     field_validator,
@@ -36,11 +37,9 @@ MIN_RUN_GAP_MINUTES = 120
 MINUTES_PER_HOUR = 60
 MINUTES_PER_DAY = 24 * MINUTES_PER_HOUR
 RUN_TIME_PATTERN = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
-FILE_MODE = 0o600
-DIR_MODE = 0o700
-TEMP_SUFFIX = ".yaml.tmp"
 HOME_PREFIX = "~"
 LOCATION_SEPARATOR = "."
+DEFAULT_OLLAMA_URL = "http://localhost:11434"
 
 
 class ConfigMissingError(Exception):
@@ -115,11 +114,21 @@ class ScheduleConfig(BaseModel):
         return times
 
 
+class PriceOverride(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    input_per_mtok: NonNegativeFloat
+    output_per_mtok: NonNegativeFloat
+
+
 class ModelConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     provider: ProviderName | None = None
     model: str | None = None
+    ollama_url: str = DEFAULT_OLLAMA_URL
+    monthly_limit_usd: NonNegativeFloat | None = None
+    price: PriceOverride | None = None
 
 
 class EmailConfig(BaseModel):
@@ -198,13 +207,9 @@ def read_yaml(path: Path) -> object:
 
 
 def write_yaml(path: Path, data: object) -> None:
-    path.parent.mkdir(mode=DIR_MODE, parents=True, exist_ok=True)
-    temp = path.with_suffix(TEMP_SUFFIX)
-    descriptor = os.open(temp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, FILE_MODE)
-    os.fchmod(descriptor, FILE_MODE)
-    with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-        YAML().dump(data, handle)
-    os.replace(temp, path)
+    buffer = io.StringIO()
+    YAML().dump(data, buffer)
+    paths.write_private(path, buffer.getvalue())
 
 
 def validation_errors(error: ValidationError) -> list[str]:
