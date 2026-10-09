@@ -12,7 +12,7 @@ uv run ruff check
 uv run ruff format --check
 uv run mypy
 uv run pytest
-uv run mutmut run
+uv run python scripts/mutate.py
 ```
 
 ## relay
@@ -52,7 +52,7 @@ git diff --exit-code
 
 ## Mutation runs
 
-`mutmut`, `dotnet stryker` and `pnpm mutate` run locally only. `dotnet stryker` needs at least one relay test.
+`scripts/mutate.py`, `dotnet stryker` and `pnpm mutate` run locally only. `dotnet stryker` needs at least one relay test.
 
 ## Commits
 

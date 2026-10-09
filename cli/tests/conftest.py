@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 
 import pytest
-from factories import FIXTURES
+from factories import FIXTURES, ListSink
 
-from jobranger import exclusions
+from jobranger.matching.profile import Profile, load_profile
 from jobranger.net import retry
 
 
@@ -25,10 +25,15 @@ def nav_entry() -> dict[str, object]:
 
 
 @pytest.fixture
-def excluded_company(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(exclusions, "EXCLUDED_COMPANIES", ("Vestland Bootcamp",))
+def fake_profile() -> Profile:
+    return load_profile(FIXTURES / "profile_user.yaml")
 
 
 @pytest.fixture
 def no_retry_wait(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(retry.time, "sleep", lambda seconds: None)
+
+
+@pytest.fixture
+def sink() -> ListSink:
+    return ListSink()

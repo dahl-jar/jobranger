@@ -1,0 +1,368 @@
+{
+  "base": {
+    "label": "Software",
+    "linkedin_keywords": [
+      "Software Engineer",
+      "Utvikler",
+      "Systemutvikler",
+      "Developer",
+      "Graduate Software Engineer",
+      "Software Engineer Trainee",
+      "Software Engineering Intern",
+      "Sommerjobb utvikler"
+    ],
+    "nav_styrk": [
+      "2511",
+      "2512",
+      "2514",
+      "2519"
+    ],
+    "nav_categories": [
+      [
+        "it",
+        "utvikling"
+      ]
+    ],
+    "finn_occupations": [
+      "0.23"
+    ],
+    "title_words": [
+      "utvikl",
+      "develop",
+      "software",
+      "programvare",
+      "programm",
+      "engineer",
+      "ingeniør",
+      "system",
+      "kode",
+      "koding",
+      "tech",
+      "teknolog",
+      "konsulent",
+      "consultant",
+      "integrasjon",
+      "integration",
+      "graduate",
+      "trainee",
+      "nyutdann",
+      "junior",
+      "intern",
+      "internship",
+      "praktikant",
+      "sommerjobb",
+      "sommerstudent",
+      "traineeprogram",
+      "academy",
+      "akademi"
+    ]
+  },
+  "roles": {
+    "backend": {
+      "label": "Backend",
+      "linkedin_keywords": [
+        "Backend Developer",
+        "Backendutvikler",
+        "Java Developer",
+        ".NET Developer",
+        "Graduate Backend Developer",
+        "Backend Intern"
+      ],
+      "nav_styrk": [
+        "2512",
+        "2514"
+      ],
+      "nav_categories": [],
+      "finn_occupations": [
+        "0.23"
+      ],
+      "title_words": [
+        "backend",
+        "java",
+        "kotlin",
+        ".net",
+        "c#",
+        "python",
+        "golang",
+        "api"
+      ]
+    },
+    "frontend": {
+      "label": "Frontend",
+      "linkedin_keywords": [
+        "Frontend Developer",
+        "Frontendutvikler",
+        "React Developer",
+        "Graduate Frontend Developer",
+        "Frontend Intern"
+      ],
+      "nav_styrk": [
+        "2513"
+      ],
+      "nav_categories": [],
+      "finn_occupations": [
+        "0.23"
+      ],
+      "title_words": [
+        "frontend",
+        "front-end",
+        "react",
+        "angular",
+        "vue",
+        "typescript",
+        "web"
+      ]
+    },
+    "fullstack": {
+      "label": "Fullstack",
+      "linkedin_keywords": [
+        "Fullstack Developer",
+        "Full Stack Developer",
+        "Fullstackutvikler",
+        "Graduate Fullstack Developer"
+      ],
+      "nav_styrk": [
+        "2512",
+        "2513"
+      ],
+      "nav_categories": [],
+      "finn_occupations": [
+        "0.23"
+      ],
+      "title_words": [
+        "fullstack",
+        "full-stack",
+        "full stack"
+      ]
+    },
+    "mobile": {
+      "label": "Mobile",
+      "linkedin_keywords": [
+        "iOS Developer",
+        "Android Developer",
+        "Mobile Developer",
+        "Apputvikler",
+        "Graduate Mobile Developer"
+      ],
+      "nav_styrk": [
+        "2514"
+      ],
+      "nav_categories": [],
+      "finn_occupations": [
+        "0.23"
+      ],
+      "title_words": [
+        "ios",
+        "android",
+        "mobil",
+        "mobile",
+        "app",
+        "swift",
+        "flutter",
+        "react native"
+      ]
+    },
+    "data_engineering": {
+      "label": "Data engineering",
+      "linkedin_keywords": [
+        "Data Engineer",
+        "Dataingeniør",
+        "Analytics Engineer",
+        "Graduate Data Engineer",
+        "Data Engineer Intern"
+      ],
+      "nav_styrk": [
+        "2511",
+        "2521"
+      ],
+      "nav_categories": [],
+      "finn_occupations": [
+        "0.23"
+      ],
+      "title_words": [
+        "data engineer",
+        "dataingeniør",
+        "data",
+        "etl",
+        "analytics engineer",
+        "dataplattform"
+      ]
+    },
+    "devops_platform": {
+      "label": "DevOps and platform",
+      "linkedin_keywords": [
+        "DevOps Engineer",
+        "Platform Engineer",
+        "Plattformutvikler",
+        "Site Reliability Engineer",
+        "Cloud Engineer",
+        "Graduate Platform Engineer"
+      ],
+      "nav_styrk": [
+        "2522"
+      ],
+      "nav_categories": [],
+      "finn_occupations": [
+        "0.23"
+      ],
+      "title_words": [
+        "devops",
+        "platform",
+        "plattform",
+        "sre",
+        "cloud",
+        "sky",
+        "kubernetes",
+        "infrastructure",
+        "infrastruktur"
+      ]
+    },
+    "ml_ai": {
+      "label": "ML and AI",
+      "linkedin_keywords": [
+        "Machine Learning Engineer",
+        "AI Engineer",
+        "ML Engineer",
+        "Graduate Machine Learning Engineer",
+        "AI Intern"
+      ],
+      "nav_styrk": [
+        "2512",
+        "2519"
+      ],
+      "nav_categories": [],
+      "finn_occupations": [
+        "0.23"
+      ],
+      "title_words": [
+        "machine learning",
+        "maskinlæring",
+        "ml",
+        "data scientist",
+        "llm",
+        "kunstig intelligens"
+      ]
+    },
+    "embedded": {
+      "label": "Embedded",
+      "linkedin_keywords": [
+        "Embedded Software Engineer",
+        "Embedded Developer",
+        "Firmware Engineer",
+        "Graduate Embedded Engineer"
+      ],
+      "nav_styrk": [
+        "2512",
+        "2152"
+      ],
+      "nav_categories": [],
+      "finn_occupations": [
+        "0.23"
+      ],
+      "title_words": [
+        "embedded",
+        "innebygd",
+        "firmware",
+        "c++",
+        "rust"
+      ]
+    },
+    "game": {
+      "label": "Game",
+      "linkedin_keywords": [
+        "Game Developer",
+        "Spillutvikler",
+        "Unity Developer",
+        "Graduate Game Developer"
+      ],
+      "nav_styrk": [
+        "2513"
+      ],
+      "nav_categories": [],
+      "finn_occupations": [
+        "0.23"
+      ],
+      "title_words": [
+        "game",
+        "spill",
+        "unity",
+        "unreal",
+        "gameplay"
+      ]
+    }
+  },
+  "acronyms": [
+    "IT",
+    "IKT",
+    "AI",
+    "KI"
+  ],
+  "employers": [
+    {
+      "kind": "teamtailor",
+      "key": "aidn",
+      "company": "Aidn",
+      "board": "https://aidn.teamtailor.com/jobs.rss?per_page=200"
+    },
+    {
+      "kind": "teamtailor",
+      "key": "ardoq",
+      "company": "Ardoq",
+      "board": "https://ardoq.teamtailor.com/jobs.rss?per_page=200"
+    },
+    {
+      "kind": "teamtailor",
+      "key": "attensi",
+      "company": "Attensi",
+      "board": "https://careers.attensi.com/jobs.rss?per_page=200"
+    },
+    {
+      "kind": "teamtailor",
+      "key": "bredvid",
+      "company": "Bredvid",
+      "board": "https://bredvid.teamtailor.com/jobs.rss?per_page=200"
+    },
+    {
+      "kind": "teamtailor",
+      "key": "computas",
+      "company": "Computas",
+      "board": "https://computas.teamtailor.com/jobs.rss?per_page=200"
+    },
+    {
+      "kind": "teamtailor",
+      "key": "neat",
+      "company": "Neat",
+      "board": "https://careers.neat.no/jobs.rss?per_page=200"
+    },
+    {
+      "kind": "teamtailor",
+      "key": "norkart",
+      "company": "Norkart",
+      "board": "https://norkart.teamtailor.com/jobs.rss?per_page=200"
+    },
+    {
+      "kind": "teamtailor",
+      "key": "oda",
+      "company": "Oda",
+      "board": "https://careers.oda.com/jobs.rss?per_page=200"
+    },
+    {
+      "kind": "teamtailor",
+      "key": "spond",
+      "company": "Spond",
+      "board": "https://spond.teamtailor.com/jobs.rss?per_page=200"
+    },
+    {
+      "kind": "teamtailor",
+      "key": "twoday-norway",
+      "company": "Twoday Norway",
+      "board": "https://twodaynorway.teamtailor.com/jobs.rss?per_page=200"
+    },
+    {
+      "kind": "ashby",
+      "key": "sanity",
+      "company": "Sanity",
+      "board": "sanity"
+    }
+  ]
+}

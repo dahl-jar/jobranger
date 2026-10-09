@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC
 from email.utils import parsedate_to_datetime
+from typing import TYPE_CHECKING
 from xml.etree.ElementTree import Element, ParseError
 
 import httpx
@@ -10,21 +12,30 @@ from defusedxml.common import DefusedXmlException
 
 from jobranger.ads.models import Ad, SourceSnapshot, strip_html
 from jobranger.net.retry import get_with_retry
-from jobranger.sources.registry import TeamtailorFeed
+from jobranger.sources.base import (
+    NORWAY_NAMES,
+    FetchContext,
+    SourceBatch,
+    SourceError,
+    feed_batch,
+)
 
-NORWAY_NAMES = frozenset({"norway", "norge"})
+if TYPE_CHECKING:
+    from jobranger.catalogue import EmployerFeed
+
+logger = logging.getLogger(__name__)
 
 
 class TeamtailorParseError(ValueError):
     pass
 
 
-def fetch_feed(client: httpx.Client, feed: TeamtailorFeed) -> SourceSnapshot:
-    response = get_with_retry(client, feed.url)
+def fetch_feed(client: httpx.Client, feed: EmployerFeed) -> SourceSnapshot:
+    response = get_with_retry(client, feed.board)
     return parse_feed(response.text, feed)
 
 
-def parse_feed(xml_text: str, feed: TeamtailorFeed) -> SourceSnapshot:
+def parse_feed(xml_text: str, feed: EmployerFeed) -> SourceSnapshot:
     try:
         root = ElementTree.fromstring(xml_text)
     except (ParseError, DefusedXmlException) as error:
@@ -40,7 +51,7 @@ def parse_feed(xml_text: str, feed: TeamtailorFeed) -> SourceSnapshot:
     return SourceSnapshot(ads=ads, active_ids=frozenset(ad.id for ad in ads))
 
 
-def _parse_item(item: Element, feed: TeamtailorFeed) -> Ad | None:
+def _parse_item(item: Element, feed: EmployerFeed) -> Ad | None:
     source_id = _required_child_text(item, "guid")
     title = _required_child_text(item, "title")
     url = _required_child_text(item, "link")
@@ -107,3 +118,13 @@ def _child_text(element: Element, name: str) -> str | None:
 
 def _local_name(tag: str) -> str:
     return tag.rsplit("}", maxsplit=1)[-1]
+
+
+def pull_feed(ctx: FetchContext, feed: EmployerFeed) -> SourceBatch:
+    try:
+        snapshot = fetch_feed(ctx.http, feed)
+    except (httpx.HTTPError, TeamtailorParseError) as error:
+        logger.exception("teamtailor.feed.failed key=%s", feed.key)
+        raise SourceError(f"{feed.source} failed") from error
+    logger.info("teamtailor.feed.done key=%s active=%d", feed.key, len(snapshot.ads))
+    return feed_batch(feed.source, snapshot)

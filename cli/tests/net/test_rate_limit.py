@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+import threading
 from typing import TYPE_CHECKING
 
 import httpx
@@ -16,7 +18,7 @@ from jobranger.net.rate_limit import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
 
 HOST = "www.example.test"
 OTHER = "api.example.test"
@@ -176,3 +178,91 @@ def test_should_ignore_unparseable_retry_after(header: str) -> None:
 
 def test_should_return_none_without_retry_after_header() -> None:
     assert retry_after_seconds(httpx.Response(429)) is None
+
+
+CONCURRENT_THREADS = 32
+TINY_SWITCH_INTERVAL = 1e-6
+
+
+@pytest.fixture
+def fast_thread_switching() -> Iterator[None]:
+    previous = sys.getswitchinterval()
+    sys.setswitchinterval(TINY_SWITCH_INTERVAL)
+    yield
+    sys.setswitchinterval(previous)
+
+
+@pytest.mark.usefixtures("fast_thread_switching")
+def test_should_hand_out_distinct_slots_to_concurrent_acquires() -> None:
+    rule = HostRule(rate=1.0, burst=1)
+    booked: list[float] = []
+    booked_lock = threading.Lock()
+
+    def record_sleep(seconds: float) -> None:
+        with booked_lock:
+            booked.append(seconds)
+
+    limiter = HostLimiter({}, rule, clock=lambda: 0.0, sleep=record_sleep)
+    start = threading.Barrier(CONCURRENT_THREADS)
+
+    def acquire() -> None:
+        start.wait()
+        limiter.acquire(HOST)
+
+    threads = [threading.Thread(target=acquire) for _ in range(CONCURRENT_THREADS)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert sorted(booked) == [float(slot) for slot in range(1, CONCURRENT_THREADS)]
+
+
+def test_should_not_block_other_host_while_one_host_waits() -> None:
+    rule = HostRule(rate=0.5, burst=1)
+    waiting = threading.Event()
+    release = threading.Event()
+
+    def blocking_sleep(seconds: float) -> None:
+        waiting.set()
+        release.wait()
+
+    limiter = HostLimiter({}, rule, clock=lambda: 0.0, sleep=blocking_sleep)
+    limiter.acquire(HOST)
+    sleeper = threading.Thread(target=limiter.acquire, args=(HOST,))
+    sleeper.start()
+    waiting.wait()
+    other = threading.Thread(target=limiter.acquire, args=(OTHER,))
+
+    other.start()
+    other.join(timeout=1.0)
+    finished = not other.is_alive()
+    release.set()
+    sleeper.join()
+
+    assert finished
+
+
+def test_should_push_back_with_host_rule_tolerance() -> None:
+    clock = FakeClock()
+    limiter = HostLimiter(
+        {HOST: HostRule(rate=1.0, burst=3)},
+        HostRule(rate=1.0, burst=1),
+        clock=clock,
+        sleep=clock.sleep,
+    )
+
+    limiter.penalize(HOST, 10.0)
+    limiter.acquire(HOST)
+
+    assert clock.sleeps == [pytest.approx(10.0)]
+
+
+def test_should_keep_later_booked_slot_when_penalty_is_shorter() -> None:
+    limiter, clock = _limiter(HostRule(rate=0.1, burst=1))
+    limiter.acquire(HOST)
+
+    limiter.penalize(HOST, 1.0)
+    limiter.acquire(HOST)
+
+    assert clock.sleeps == [pytest.approx(10.0)]

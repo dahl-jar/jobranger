@@ -1,23 +1,35 @@
 from __future__ import annotations
 
+import logging
+from typing import TYPE_CHECKING
 from urllib.parse import quote
 
 import httpx
 
 from jobranger.ads.models import Ad, SourceSnapshot, strip_html
 from jobranger.net.retry import get_with_retry
-from jobranger.sources.registry import AshbyBoard
+from jobranger.sources.base import (
+    NORWAY_NAMES,
+    FetchContext,
+    SourceBatch,
+    SourceError,
+    feed_batch,
+)
+
+if TYPE_CHECKING:
+    from jobranger.catalogue import EmployerFeed
+
+logger = logging.getLogger(__name__)
 
 ASHBY_BOARD_URL = "https://api.ashbyhq.com/posting-api/job-board"
-NORWAY_NAMES = frozenset({"norway", "norge"})
 
 
 class AshbyParseError(ValueError):
     pass
 
 
-def fetch_board(client: httpx.Client, board: AshbyBoard) -> SourceSnapshot:
-    board_name = quote(board.board_name, safe="")
+def fetch_board(client: httpx.Client, board: EmployerFeed) -> SourceSnapshot:
+    board_name = quote(board.board, safe="")
     response = get_with_retry(client, f"{ASHBY_BOARD_URL}/{board_name}")
     try:
         payload = response.json()
@@ -26,7 +38,7 @@ def fetch_board(client: httpx.Client, board: AshbyBoard) -> SourceSnapshot:
     return parse_board(payload, board)
 
 
-def parse_board(payload: object, board: AshbyBoard) -> SourceSnapshot:
+def parse_board(payload: object, board: EmployerFeed) -> SourceSnapshot:
     if not isinstance(payload, dict) or not isinstance(payload.get("jobs"), list):
         raise AshbyParseError("Ashby payload is missing its jobs list")
     ads: list[Ad] = []
@@ -37,7 +49,7 @@ def parse_board(payload: object, board: AshbyBoard) -> SourceSnapshot:
     return SourceSnapshot(ads=ads, active_ids=frozenset(ad.id for ad in ads))
 
 
-def _parse_job(value: object, board: AshbyBoard) -> Ad | None:
+def _parse_job(value: object, board: EmployerFeed) -> Ad | None:
     if not isinstance(value, dict):
         raise AshbyParseError("Ashby job is not an object")
     source_id = _required_text(value, "id")
@@ -119,3 +131,13 @@ def _address_locality(address_value: object) -> str:
         return ""
     locality = postal.get("addressLocality")
     return locality.strip() if isinstance(locality, str) else ""
+
+
+def pull_feed(ctx: FetchContext, feed: EmployerFeed) -> SourceBatch:
+    try:
+        snapshot = fetch_board(ctx.http, feed)
+    except (httpx.HTTPError, AshbyParseError) as error:
+        logger.exception("ashby.board.failed key=%s", feed.key)
+        raise SourceError(f"{feed.source} failed") from error
+    logger.info("ashby.board.done key=%s active=%d", feed.key, len(snapshot.ads))
+    return feed_batch(feed.source, snapshot)

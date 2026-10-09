@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import threading
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -51,20 +52,23 @@ class HostLimiter:
         self._clock = clock
         self._sleep = sleep
         self._arrivals: dict[str, float] = {}
+        self._lock = threading.Lock()
 
     def acquire(self, host: str) -> None:
         rule = self._rules.get(host, self._default)
-        now = self._clock()
-        arrival = max(self._arrivals.get(host, now), now)
-        wait = max(0.0, arrival - rule.tolerance - now)
-        self._arrivals[host] = arrival + rule.interval
+        with self._lock:
+            now = self._clock()
+            arrival = max(self._arrivals.get(host, now), now)
+            wait = max(0.0, arrival - rule.tolerance - now)
+            self._arrivals[host] = arrival + rule.interval
         if wait > 0:
             self._sleep(wait)
 
     def penalize(self, host: str, retry_after: float) -> None:
         rule = self._rules.get(host, self._default)
-        pushed = self._clock() + retry_after + rule.tolerance
-        self._arrivals[host] = max(self._arrivals.get(host, pushed), pushed)
+        with self._lock:
+            pushed = self._clock() + retry_after + rule.tolerance
+            self._arrivals[host] = max(self._arrivals.get(host, pushed), pushed)
 
 
 def event_hooks(limiter: HostLimiter) -> dict[str, list[Callable[..., None]]]:

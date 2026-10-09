@@ -4,9 +4,11 @@ import json
 
 import httpx
 import pytest
-from factories import ASHBY_BOARD, FIXTURES
+from factories import ASHBY_BOARD, FIXTURES, fetch_context
 
+from jobranger.sources import ashby
 from jobranger.sources.ashby import AshbyParseError, fetch_board, parse_board
+from jobranger.sources.base import SourceError
 
 BOARD = ASHBY_BOARD
 
@@ -85,3 +87,33 @@ def test_should_retry_ashby_board_once_on_503() -> None:
         "ashby:example-one:ash-2",
     ]
     assert len(attempts) == 2
+
+
+def test_should_list_board_ids_for_active_sync() -> None:
+    payload = (FIXTURES / "ashby_board.json").read_text()
+    client = httpx.Client(
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, text=payload))
+    )
+
+    batch = ashby.pull_feed(fetch_context(client), BOARD)
+
+    assert (
+        batch.source,
+        [ad.id for ad in batch.ads],
+        batch.read,
+        batch.listed_ids,
+    ) == (
+        "ashby:example-one",
+        ["ashby:example-one:ash-1", "ashby:example-one:ash-2"],
+        2,
+        frozenset({"ashby:example-one:ash-1", "ashby:example-one:ash-2"}),
+    )
+
+
+def test_should_raise_source_error_when_board_fails() -> None:
+    client = httpx.Client(
+        transport=httpx.MockTransport(lambda request: httpx.Response(200, text="{}"))
+    )
+
+    with pytest.raises(SourceError, match="ashby:example-one"):
+        ashby.pull_feed(fetch_context(client), BOARD)

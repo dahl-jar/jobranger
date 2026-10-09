@@ -1,88 +1,160 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
+from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, cast
 
+from jobranger.ads.apply_link import STATUS_EXPIRED
 from jobranger.ads.models import Ad, dedup_key
+from jobranger.catalogue import GENERAL_SOFTWARE
 from jobranger.matching.rules import (
-    PROFILE_VERSION,
+    LEVELS_FROM_LABEL,
     decode_match,
     encode_match,
     is_reportable,
 )
+from jobranger.providers.base import Usage
+from jobranger.storage.migrations import SCHEMA_VERSION_KEY, migrate
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from jobranger.matching.classify import Classification
+    from jobranger.settings import Targets
+
+type Action = Literal["applied", "skipped", "not_for_me", "show_anyway"]
+type ApplicationStatus = Literal[
+    "waiting", "interview", "offer", "accepted", "rejected"
+]
+type ClosedWhy = Literal["deadline", "removed", "filled"]
+type StoredRunStatus = Literal["running", "completed", "cancelled", "failed"]
 
 DESCRIPTION_MAX_ATTEMPTS = 3
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS ads (
-    id TEXT PRIMARY KEY,
-    source TEXT NOT NULL,
-    source_id TEXT NOT NULL,
-    title TEXT NOT NULL,
-    company TEXT NOT NULL,
-    location TEXT NOT NULL DEFAULT '',
-    published TEXT,
-    deadline TEXT,
-    url TEXT NOT NULL,
-    description TEXT,
-    label TEXT,
-    summary TEXT,
-    requires_master INTEGER NOT NULL DEFAULT 0,
-    label_attempts INTEGER NOT NULL DEFAULT 0,
-    description_attempts INTEGER NOT NULL DEFAULT 0,
-    active INTEGER NOT NULL DEFAULT 1,
-    is_programming_job INTEGER,
-    display_title TEXT,
-    role_type TEXT,
-    technologies TEXT,
-    requirements TEXT,
-    assessment TEXT,
-    assessment_version TEXT,
-    classified_at TEXT,
-    apply_url TEXT,
-    apply_status TEXT,
-    apply_checked_at TEXT,
-    republished INTEGER NOT NULL DEFAULT 0,
-    reported_at TEXT,
-    category_listed INTEGER NOT NULL DEFAULT 1,
-    dedup_key TEXT NOT NULL,
-    first_seen TEXT NOT NULL
-);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_ads_source_source_id ON ads (source, source_id);
-CREATE INDEX IF NOT EXISTS ix_ads_dedup_key ON ads (dedup_key);
-CREATE TABLE IF NOT EXISTS state (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-);
-"""
+CLOSED_KEEP_DAYS = 30
+BUSY_TIMEOUT_MS = 5000
+DB_FILE_MODE = 0o600
+DB_DIR_MODE = 0o700
+EXCLUSIVE_ACTIONS: tuple[Action, ...] = ("applied", "skipped", "not_for_me")
+APPLIED_EVENT = "Applied"
+STATUS_EVENT = "Status: {status}"
+CLOSE_COLUMNS = (
+    "active = 0, closed_at = COALESCE(closed_at, ?), "
+    "closed_reason = COALESCE(closed_reason, 'removed')"
+)
+REOPEN_COLUMNS = "active = 1, closed_at = NULL, closed_reason = NULL"
 
-AD_COLUMNS = (
+SHARED_COLUMNS = (
     "id, source, source_id, title, company, location, "
     "published, deadline, url, description, label, summary, requires_master, "
     "is_programming_job, display_title, role_type, technologies, requirements, "
     "assessment, apply_url, apply_status, apply_checked_at, republished"
 )
-AD_COLUMN_COUNT = len(AD_COLUMNS.split(","))
-INSERT_EXTRA_COLUMNS = ("assessment_version", "dedup_key", "first_seen")
-
+AD_COLUMNS = f"{SHARED_COLUMNS}, first_seen, closed_at"
+INSERT_COLUMNS = f"{SHARED_COLUMNS}, assessment_version, dedup_key, first_seen"
 INSERT_AD_SQL = (
-    f"INSERT INTO ads ({AD_COLUMNS}, {', '.join(INSERT_EXTRA_COLUMNS)}) "
-    f"VALUES ({', '.join('?' * (AD_COLUMN_COUNT + len(INSERT_EXTRA_COLUMNS)))}) "
+    f"INSERT INTO ads ({INSERT_COLUMNS}) "
+    f"VALUES ({', '.join('?' * len(INSERT_COLUMNS.split(',')))}) "
     "ON CONFLICT (source, source_id) DO NOTHING"
 )
+APPLICATION_COLUMNS = (
+    "id, ad_id, company, role, place, deadline, status, note, applied_at, "
+    "cv_name, removed_at"
+)
+
+
+@dataclass(frozen=True)
+class ClosedAd:
+    ad: Ad
+    closed_on: str
+    why: ClosedWhy
+    you: Action | None
+
+
+@dataclass(frozen=True)
+class NewApplication:
+    company: str
+    role: str
+    place: str
+    deadline: str | None
+    note: str
+    applied_at: str
+    cv_name: str | None
+    ad_id: str | None
+
+
+@dataclass(frozen=True)
+class ApplicationChange:
+    status: ApplicationStatus | None = None
+    note: str | None = None
+
+
+@dataclass(frozen=True)
+class ApplicationEvent:
+    at: str
+    text: str
+
+
+@dataclass(frozen=True)
+class Application:
+    id: int
+    ad_id: str | None
+    company: str
+    role: str
+    place: str
+    deadline: str | None
+    status: ApplicationStatus
+    note: str
+    applied_at: str
+    cv_name: str | None
+    removed_at: str | None
+    events: tuple[ApplicationEvent, ...]
+
+
+@dataclass(frozen=True)
+class RunSummary:
+    finished_at: str
+    status: StoredRunStatus
+    ads_read: int
+    new_ads: int
+    matches: int
+    hidden: int
+    failed_sources: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class RunRow:
+    id: int
+    started_at: str
+    finished_at: str | None
+    status: StoredRunStatus
+    ads_read: int
+    new_ads: int
+    matches: int
+    hidden: int
+    failed_sources: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class UsageDay:
+    day: str
+    calls: int
+    input_tokens: int
+    output_tokens: int
+    cost_usd: float
+    ads_read: int
+    ads_checked: int
 
 
 class Store:
     def __init__(self, db_path: Path) -> None:
+        _create_private(db_path)
         self._conn = sqlite3.connect(db_path)
-        self._conn.executescript(SCHEMA)
-        self._add_missing_columns()
+        self._conn.execute("PRAGMA foreign_keys = ON")
+        self._conn.execute(f"PRAGMA busy_timeout = {BUSY_TIMEOUT_MS}")
+        migrate(self._conn)
 
     def upsert_ad(self, ad: Ad) -> bool:
         cursor = self._conn.execute(
@@ -101,11 +173,7 @@ class Store:
                 ad.label,
                 ad.summary,
                 int(ad.requires_master),
-                (
-                    int(ad.is_programming_job)
-                    if ad.is_programming_job is not None
-                    else None
-                ),
+                _optional_int(ad.is_programming_job),
                 ad.display_title,
                 ad.role_type,
                 json.dumps(ad.technologies, ensure_ascii=False),
@@ -117,18 +185,18 @@ class Store:
                 int(ad.republished),
                 ad.match.version if ad.match else None,
                 dedup_key(ad.company, ad.title),
-                datetime.now(tz=UTC).isoformat(),
+                _now(),
             ),
         )
         self._conn.commit()
         return cursor.rowcount == 1
 
-    def pending_description(self) -> list[Ad]:
+    def pending_description(self, skip_labels: frozenset[str]) -> list[Ad]:
         return self._select(
             "description IS NULL AND active = 1 "
-            "AND (label IS NULL OR label != 'senior') "
+            "AND (label IS NULL OR label NOT IN (SELECT value FROM json_each(?))) "
             "AND description_attempts < ?",
-            (DESCRIPTION_MAX_ATTEMPTS,),
+            (_json_list(skip_labels), DESCRIPTION_MAX_ATTEMPTS),
         )
 
     def bump_description_attempts(self, ad_id: str) -> None:
@@ -148,46 +216,54 @@ class Store:
         self._conn.commit()
 
     def set_apply_status(self, ad_id: str, status: str, checked_at: str) -> None:
-        self._conn.execute(
-            "UPDATE ads SET apply_status = ?, apply_checked_at = ? WHERE id = ?",
-            (status, checked_at, ad_id),
-        )
+        if status == STATUS_EXPIRED:
+            self._conn.execute(
+                "UPDATE ads SET apply_status = ?, apply_checked_at = ?, "
+                "closed_at = COALESCE(closed_at, ?), "
+                "closed_reason = COALESCE(closed_reason, 'filled') WHERE id = ?",
+                (status, checked_at, checked_at, ad_id),
+            )
+        else:
+            self._conn.execute(
+                "UPDATE ads SET apply_status = ?, apply_checked_at = ? WHERE id = ?",
+                (status, checked_at, ad_id),
+            )
         self._conn.commit()
 
-    def pending_apply_url(self, source: str, limit: int) -> list[Ad]:
+    def pending_apply_url(self, source: str, limit: int, targets: Targets) -> list[Ad]:
+        where, params = _target_filter(targets)
         return self._select(
-            "source = ? AND active = 1 AND is_programming_job = 1 "
-            "AND requires_master = 0 AND (label IS NULL OR label != 'senior') "
+            f"source = ? AND active = 1 AND {where} "
             "AND description IS NOT NULL AND apply_url IS NULL "
             "AND apply_status IS NULL AND description_attempts < ?",
-            (source, DESCRIPTION_MAX_ATTEMPTS),
+            (source, *params, DESCRIPTION_MAX_ATTEMPTS),
             ordering="first_seen DESC",
             limit=limit,
         )
 
     def pending_apply_check(
-        self, as_of_date: str, recheck_before: str, limit: int
+        self, as_of_date: str, recheck_before: str, limit: int, targets: Targets
     ) -> list[Ad]:
+        where, params = _target_filter(targets)
         return self._select(
-            "active = 1 AND is_programming_job = 1 AND requires_master = 0 "
-            "AND (label IS NULL OR label != 'senior') AND apply_url IS NOT NULL "
+            f"active = 1 AND {where} AND apply_url IS NOT NULL "
             "AND (deadline IS NULL OR date(deadline) IS NULL "
             "OR date(deadline) >= date(?)) "
             "AND (apply_checked_at IS NULL OR apply_checked_at < ?) "
             "AND (apply_status IS NULL OR apply_status NOT IN ('expired', 'skipped'))",
-            (as_of_date, recheck_before),
+            (*params, as_of_date, recheck_before),
             ordering="apply_checked_at IS NOT NULL, first_seen DESC",
             limit=limit,
         )
 
-    def pending_classification(self, max_attempts: int = 3) -> list[Ad]:
+    def pending_classification(self, max_attempts: int) -> list[Ad]:
         return self._select(
             "description IS NOT NULL AND active = 1 AND label IS NULL "
             "AND label_attempts < ?",
             (max_attempts,),
         )
 
-    def exhausted_classification(self, max_attempts: int = 3) -> list[Ad]:
+    def exhausted_classification(self, max_attempts: int) -> list[Ad]:
         return self._select(
             "description IS NOT NULL AND active = 1 AND label IS NULL "
             "AND label_attempts >= ?",
@@ -201,7 +277,9 @@ class Store:
         )
         self._conn.commit()
 
-    def set_classification(self, ad_id: str, classification: Classification) -> None:
+    def set_classification(
+        self, ad_id: str, classification: Classification, version: str
+    ) -> None:
         self._conn.execute(
             "UPDATE ads SET label = ?, summary = ?, requires_master = ?, "
             "is_programming_job = ?, display_title = ?, role_type = ?, "
@@ -216,9 +294,9 @@ class Store:
                 classification.role_type,
                 json.dumps(classification.technologies, ensure_ascii=False),
                 json.dumps(classification.requirements, ensure_ascii=False),
-                encode_match(classification.match),
-                PROFILE_VERSION,
-                datetime.now(tz=UTC).isoformat(),
+                encode_match(classification.match, classification.checks),
+                version,
+                _now(),
                 ad_id,
             ),
         )
@@ -232,16 +310,24 @@ class Store:
         )
         self._conn.commit()
 
-    def known_ids(self) -> set[str]:
+    def known_ids(self) -> frozenset[str]:
         rows = self._conn.execute("SELECT id FROM ads").fetchall()
-        return {row[0] for row in rows}
+        return frozenset(row[0] for row in rows)
+
+    def cursors(self) -> dict[str, str]:
+        rows = self._conn.execute(
+            "SELECT key, value FROM state WHERE key != ?", (SCHEMA_VERSION_KEY,)
+        ).fetchall()
+        return {str(key): str(value) for key, value in rows}
 
     def new_since(self, iso_ts: str) -> list[Ad]:
         return self._select("first_seen >= ?", (iso_ts,))
 
-    def reportable_ads(self, as_of_date: str, since: str | None = None) -> list[Ad]:
+    def reportable_ads(
+        self, as_of_date: str, since: str | None, version: str, targets: Targets
+    ) -> list[Ad]:
         where = (
-            "active = 1 AND is_programming_job = 1 AND requires_master = 0 AND "
+            "active = 1 AND "
             "(deadline IS NULL OR date(deadline) IS NULL OR date(deadline) >= date(?)) "
             "AND (apply_status IS NULL OR apply_status != 'expired')"
         )
@@ -251,7 +337,16 @@ class Store:
                 " AND (first_seen >= ? OR (classified_at >= ? AND reported_at IS NULL))"
             )
             params.extend((since, since))
-        return [ad for ad in self._select(where, tuple(params)) if is_reportable(ad)]
+        shown = {
+            ad_id
+            for ad_id, actions in self.ad_actions().items()
+            if "show_anyway" in actions
+        }
+        return [
+            ad
+            for ad in self._select(where, tuple(params))
+            if ad.id in shown or is_reportable(ad, version, targets)
+        ]
 
     def reported_ads(self, since: str) -> list[Ad]:
         return self._select("reported_at >= ?", (since,))
@@ -263,40 +358,47 @@ class Store:
         )
         self._conn.commit()
 
-    def expired_ads(self, as_of_date: str) -> list[Ad]:
-        return self._select(
-            "active = 1 AND is_programming_job = 1 AND (apply_status = 'expired' "
-            "OR (deadline IS NOT NULL AND date(deadline) IS NOT NULL "
-            "AND date(deadline) < date(?)))",
-            (as_of_date,),
-        )
-
     def active_ads(self) -> list[Ad]:
         return self._select("active = 1")
 
-    def reset_classifications(self) -> None:
-        self._reset_assessments("active = 1")
-
-    def refresh_assessments(self) -> bool:
-        return (
-            self._reset_assessments(
-                "active = 1 AND assessment_version IS NOT ?", (PROFILE_VERSION,)
-            )
-            > 0
+    def ads_by_id(self, ad_ids: list[str]) -> list[Ad]:
+        return self._select(
+            "id IN (SELECT value FROM json_each(?))", (_json_list(ad_ids),)
         )
+
+    def refresh_assessments(self, version: str) -> bool:
+        cursor = self._conn.execute(
+            "UPDATE ads SET label = NULL, summary = NULL, requires_master = 0, "
+            "is_programming_job = NULL, display_title = NULL, role_type = NULL, "
+            "technologies = NULL, requirements = NULL, label_attempts = 0, "
+            "assessment = NULL, assessment_version = ?, classified_at = NULL "
+            "WHERE active = 1 AND assessment_version IS NOT ?",
+            (version, version),
+        )
+        self._conn.commit()
+        return cursor.rowcount > 0
 
     def set_active(self, ad_id: str, active: bool) -> None:
-        self._conn.execute(
-            "UPDATE ads SET active = ? WHERE id = ?", (int(active), ad_id)
-        )
+        if active:
+            self._conn.execute(
+                f"UPDATE ads SET {REOPEN_COLUMNS} WHERE id = ? AND active = 0",
+                (ad_id,),
+            )
+        else:
+            self._conn.execute(
+                f"UPDATE ads SET {CLOSE_COLUMNS} WHERE id = ? AND active = 1",
+                (_now(), ad_id),
+            )
         self._conn.commit()
 
     def sync_source_active(self, source: str, active_ids: frozenset[str]) -> None:
-        self._conn.execute("UPDATE ads SET active = 0 WHERE source = ?", (source,))
-        self._conn.executemany(
-            "UPDATE ads SET active = 1 WHERE id = ?",
-            [(ad_id,) for ad_id in active_ids],
+        listed = _json_list(active_ids)
+        self._conn.execute(
+            f"UPDATE ads SET {CLOSE_COLUMNS} WHERE source = ? AND active = 1 "
+            "AND id NOT IN (SELECT value FROM json_each(?))",
+            (_now(), source, listed),
         )
+        self._reopen(listed)
         self._conn.commit()
 
     def mark_category_unlisted(self, ad_ids: list[str]) -> None:
@@ -316,22 +418,219 @@ class Store:
             "UPDATE ads SET category_listed = 1 WHERE id = ?",
             [(ad_id,) for ad_id in category_ids],
         )
+        listed = _json_list(category_ids | recent_ids)
         self._conn.execute(
-            "UPDATE ads SET active = 0 WHERE source = 'finn' AND "
-            "(category_listed = 1 OR (? IS NOT NULL AND published >= ?))",
-            (window_start, window_start),
+            f"UPDATE ads SET {CLOSE_COLUMNS} WHERE source = 'finn' AND active = 1 "
+            "AND (category_listed = 1 OR (? IS NOT NULL AND published >= ?)) "
+            "AND id NOT IN (SELECT value FROM json_each(?))",
+            (_now(), window_start, window_start, listed),
         )
-        self._conn.executemany(
-            "UPDATE ads SET active = 1 WHERE id = ?",
-            [(ad_id,) for ad_id in category_ids | recent_ids],
-        )
+        self._reopen(listed)
         self._conn.commit()
 
-    def get_state(self, key: str) -> str | None:
+    def close_past_deadline(self, as_of_date: str) -> int:
+        cursor = self._conn.execute(
+            "UPDATE ads SET closed_at = ?, closed_reason = 'deadline' "
+            "WHERE active = 1 AND closed_at IS NULL AND deadline IS NOT NULL "
+            "AND date(deadline) IS NOT NULL AND date(deadline) < date(?)",
+            (as_of_date, as_of_date),
+        )
+        self._conn.commit()
+        return cursor.rowcount
+
+    def closed_ads(
+        self, as_of_date: str, keep_days: int = CLOSED_KEEP_DAYS
+    ) -> list[ClosedAd]:
+        rows = self._conn.execute(
+            "SELECT id, closed_at, closed_reason FROM ads WHERE closed_at IS NOT NULL "
+            "AND date(closed_at) >= date(?, ?) ORDER BY closed_at DESC, id",
+            (as_of_date, f"-{keep_days} days"),
+        ).fetchall()
+        ads = {ad.id: ad for ad in self.ads_by_id([str(row[0]) for row in rows])}
+        actions = self.ad_actions()
+        return [
+            ClosedAd(
+                ad=ads[str(ad_id)],
+                closed_on=str(closed_at)[:10],
+                why=cast("ClosedWhy", reason),
+                you=_your_action(actions.get(str(ad_id), frozenset())),
+            )
+            for ad_id, closed_at, reason in rows
+        ]
+
+    def closed_since(self, since: str) -> int:
         row = self._conn.execute(
-            "SELECT value FROM state WHERE key = ?", (key,)
+            "SELECT COUNT(*) FROM ads WHERE closed_at >= ?", (since,)
         ).fetchone()
-        return row[0] if row else None
+        return int(row[0])
+
+    def mark_ad(
+        self, ad_id: str, action: Action, at: str, cv_name: str | None = None
+    ) -> None:
+        with self._conn:
+            if action in EXCLUSIVE_ACTIONS:
+                for other in EXCLUSIVE_ACTIONS:
+                    if other != action:
+                        self._delete_action(ad_id, other, at)
+            self._conn.execute(
+                "INSERT INTO ad_actions (ad_id, action, at) VALUES (?, ?, ?) "
+                "ON CONFLICT (ad_id, action) DO UPDATE SET at = excluded.at",
+                (ad_id, action, at),
+            )
+            if action == "applied":
+                self._apply_for(ad_id, at, cv_name)
+
+    def unmark_ad(self, ad_id: str, action: Action, at: str) -> None:
+        with self._conn:
+            self._delete_action(ad_id, action, at)
+
+    def ad_actions(self) -> dict[str, frozenset[Action]]:
+        found: dict[str, set[Action]] = {}
+        for ad_id, action in self._conn.execute(
+            "SELECT ad_id, action FROM ad_actions"
+        ).fetchall():
+            found.setdefault(str(ad_id), set()).add(cast("Action", action))
+        return {ad_id: frozenset(actions) for ad_id, actions in found.items()}
+
+    def create_application(self, new: NewApplication) -> int:
+        with self._conn:
+            return self._insert_application(new)
+
+    def update_application(
+        self, app_id: int, change: ApplicationChange, at: str
+    ) -> None:
+        with self._conn:
+            if change.status is not None:
+                self._conn.execute(
+                    "UPDATE applications SET status = ? WHERE id = ?",
+                    (change.status, app_id),
+                )
+                self._add_event(
+                    app_id, at, STATUS_EVENT.format(status=change.status.capitalize())
+                )
+            if change.note is not None:
+                self._conn.execute(
+                    "UPDATE applications SET note = ? WHERE id = ?",
+                    (change.note, app_id),
+                )
+
+    def remove_application(self, app_id: int, at: str) -> None:
+        with self._conn:
+            self._conn.execute(
+                "UPDATE applications SET removed_at = ? WHERE id = ?", (at, app_id)
+            )
+
+    def restore_application(self, app_id: int) -> None:
+        with self._conn:
+            self._conn.execute(
+                "UPDATE applications SET removed_at = NULL WHERE id = ?", (app_id,)
+            )
+
+    def add_application_event(self, app_id: int, at: str, text: str) -> None:
+        with self._conn:
+            self._add_event(app_id, at, text)
+
+    def applications(self, include_removed: bool = False) -> list[Application]:
+        where = "" if include_removed else " WHERE removed_at IS NULL"
+        rows = self._conn.execute(
+            f"SELECT {APPLICATION_COLUMNS} FROM applications{where} "
+            "ORDER BY applied_at DESC, id DESC"
+        ).fetchall()
+        events: dict[int, list[ApplicationEvent]] = {}
+        for app_id, at, text in self._conn.execute(
+            "SELECT application_id, at, text FROM application_events ORDER BY at, id"
+        ).fetchall():
+            events.setdefault(int(app_id), []).append(
+                ApplicationEvent(str(at), str(text))
+            )
+        return [_row_to_application(row, events.get(int(row[0]), [])) for row in rows]
+
+    def start_run(self, started_at: str) -> int:
+        with self._conn:
+            self._conn.execute(
+                "UPDATE runs SET status = 'failed', finished_at = ? "
+                "WHERE status = 'running'",
+                (started_at,),
+            )
+            cursor = self._conn.execute(
+                "INSERT INTO runs (started_at, status) VALUES (?, 'running')",
+                (started_at,),
+            )
+        return int(cursor.lastrowid or 0)
+
+    def finish_run(self, run_id: int, summary: RunSummary) -> None:
+        with self._conn:
+            self._conn.execute(
+                "UPDATE runs SET finished_at = ?, status = ?, ads_read = ?, "
+                "new_ads = ?, matches = ?, hidden = ?, failed_sources = ? "
+                "WHERE id = ?",
+                (
+                    summary.finished_at,
+                    summary.status,
+                    summary.ads_read,
+                    summary.new_ads,
+                    summary.matches,
+                    summary.hidden,
+                    json.dumps(list(summary.failed_sources)),
+                    run_id,
+                ),
+            )
+
+    def last_run(self) -> RunRow | None:
+        rows = self.runs(limit=1)
+        return rows[0] if rows else None
+
+    def runs(self, limit: int) -> list[RunRow]:
+        rows = self._conn.execute(
+            "SELECT id, started_at, finished_at, status, ads_read, new_ads, matches, "
+            "hidden, failed_sources FROM runs ORDER BY started_at DESC, id DESC "
+            "LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [_row_to_run(row) for row in rows]
+
+    def add_usage(
+        self, day: str, usage: Usage, ads_read: int = 0, ads_checked: int = 0
+    ) -> None:
+        with self._conn:
+            self._conn.execute(
+                "INSERT INTO usage_days (day, calls, input_tokens, output_tokens, "
+                "cost_usd, ads_read, ads_checked) VALUES (?, ?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT (day) DO UPDATE SET calls = calls + excluded.calls, "
+                "input_tokens = input_tokens + excluded.input_tokens, "
+                "output_tokens = output_tokens + excluded.output_tokens, "
+                "cost_usd = cost_usd + excluded.cost_usd, "
+                "ads_read = ads_read + excluded.ads_read, "
+                "ads_checked = ads_checked + excluded.ads_checked",
+                (
+                    day,
+                    usage.calls,
+                    usage.prompt_tokens,
+                    usage.output_tokens,
+                    usage.cost_usd,
+                    ads_read,
+                    ads_checked,
+                ),
+            )
+
+    def usage_days(self, since: str) -> list[UsageDay]:
+        rows = self._conn.execute(
+            "SELECT day, calls, input_tokens, output_tokens, cost_usd, ads_read, "
+            "ads_checked FROM usage_days WHERE day >= ? ORDER BY day",
+            (since,),
+        ).fetchall()
+        return [
+            UsageDay(
+                str(day),
+                int(calls),
+                int(input_tokens),
+                int(output_tokens),
+                float(cost),
+                int(read),
+                int(checked),
+            )
+            for day, calls, input_tokens, output_tokens, cost, read, checked in rows
+        ]
 
     def set_state(self, key: str, value: str) -> None:
         self._conn.execute(
@@ -341,61 +640,73 @@ class Store:
         )
         self._conn.commit()
 
-    def _add_missing_columns(self) -> None:
-        columns = {
-            row[1] for row in self._conn.execute("PRAGMA table_info(ads)").fetchall()
-        }
-        added = {
-            "summary": "ALTER TABLE ads ADD COLUMN summary TEXT",
-            "requires_master": (
-                "ALTER TABLE ads ADD COLUMN requires_master INTEGER NOT NULL DEFAULT 0"
-            ),
-            "active": "ALTER TABLE ads ADD COLUMN active INTEGER NOT NULL DEFAULT 1",
-            "is_programming_job": (
-                "ALTER TABLE ads ADD COLUMN is_programming_job INTEGER"
-            ),
-            "display_title": "ALTER TABLE ads ADD COLUMN display_title TEXT",
-            "role_type": "ALTER TABLE ads ADD COLUMN role_type TEXT",
-            "technologies": "ALTER TABLE ads ADD COLUMN technologies TEXT",
-            "requirements": "ALTER TABLE ads ADD COLUMN requirements TEXT",
-            "assessment": "ALTER TABLE ads ADD COLUMN assessment TEXT",
-            "assessment_version": "ALTER TABLE ads ADD COLUMN assessment_version TEXT",
-            "classified_at": "ALTER TABLE ads ADD COLUMN classified_at TEXT",
-            "apply_url": "ALTER TABLE ads ADD COLUMN apply_url TEXT",
-            "apply_status": "ALTER TABLE ads ADD COLUMN apply_status TEXT",
-            "apply_checked_at": "ALTER TABLE ads ADD COLUMN apply_checked_at TEXT",
-            "republished": (
-                "ALTER TABLE ads ADD COLUMN republished INTEGER NOT NULL DEFAULT 0"
-            ),
-            "category_listed": (
-                "ALTER TABLE ads ADD COLUMN category_listed INTEGER NOT NULL DEFAULT 1"
-            ),
-            "description_attempts": (
-                "ALTER TABLE ads ADD COLUMN description_attempts "
-                "INTEGER NOT NULL DEFAULT 0"
-            ),
-        }
-        for name, ddl in added.items():
-            if name not in columns:
-                self._conn.execute(ddl)
-        if "reported_at" not in columns:
-            self._conn.execute("ALTER TABLE ads ADD COLUMN reported_at TEXT")
-            self._conn.execute(
-                "UPDATE ads SET reported_at = first_seen WHERE is_programming_job = 1"
-            )
-        self._conn.commit()
-
-    def _reset_assessments(self, where: str, params: tuple[object, ...] = ()) -> int:
-        query = (
-            "UPDATE ads SET label = NULL, summary = NULL, requires_master = 0, "
-            "is_programming_job = NULL, display_title = NULL, role_type = NULL, "
-            "technologies = NULL, requirements = NULL, label_attempts = 0, "
-            "assessment = NULL, assessment_version = ?, classified_at = NULL "
-            f"WHERE {where}"
+    def _reopen(self, listed: str) -> None:
+        self._conn.execute(
+            f"UPDATE ads SET {REOPEN_COLUMNS} WHERE active = 0 "
+            "AND id IN (SELECT value FROM json_each(?))",
+            (listed,),
         )
-        cursor = self._conn.execute(query, (PROFILE_VERSION, *params))
-        self._conn.commit()
-        return cursor.rowcount
+
+    def _delete_action(self, ad_id: str, action: Action, at: str) -> None:
+        cursor = self._conn.execute(
+            "DELETE FROM ad_actions WHERE ad_id = ? AND action = ?", (ad_id, action)
+        )
+        if action == "applied" and cursor.rowcount:
+            self._conn.execute(
+                "UPDATE applications SET removed_at = ? "
+                "WHERE ad_id = ? AND removed_at IS NULL",
+                (at, ad_id),
+            )
+
+    def _apply_for(self, ad_id: str, at: str, cv_name: str | None) -> None:
+        existing = self._conn.execute(
+            "SELECT id FROM applications WHERE ad_id = ?", (ad_id,)
+        ).fetchone()
+        if existing is not None:
+            self._conn.execute(
+                "UPDATE applications SET removed_at = NULL WHERE id = ?",
+                (existing[0],),
+            )
+            return
+        ad = self.ads_by_id([ad_id])[0]
+        self._insert_application(
+            NewApplication(
+                company=ad.company,
+                role=ad.display_title or ad.title,
+                place=ad.location,
+                deadline=ad.deadline,
+                note="",
+                applied_at=at,
+                cv_name=cv_name,
+                ad_id=ad_id,
+            )
+        )
+
+    def _insert_application(self, new: NewApplication) -> int:
+        cursor = self._conn.execute(
+            "INSERT INTO applications (ad_id, company, role, place, deadline, note, "
+            "applied_at, cv_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                new.ad_id,
+                new.company,
+                new.role,
+                new.place,
+                new.deadline,
+                new.note,
+                new.applied_at,
+                new.cv_name,
+            ),
+        )
+        app_id = int(cursor.lastrowid or 0)
+        self._add_event(app_id, new.applied_at, APPLIED_EVENT)
+        return app_id
+
+    def _add_event(self, app_id: int, at: str, text: str) -> None:
+        self._conn.execute(
+            "INSERT INTO application_events (application_id, at, text) "
+            "VALUES (?, ?, ?)",
+            (app_id, at, text),
+        )
 
     def _select(
         self,
@@ -413,6 +724,48 @@ class Store:
         return [_row_to_ad(row) for row in rows]
 
 
+def _create_private(db_path: Path) -> None:
+    db_path.parent.mkdir(mode=DB_DIR_MODE, parents=True, exist_ok=True)
+    os.close(os.open(db_path, os.O_RDWR | os.O_CREAT, DB_FILE_MODE))
+
+
+def _target_filter(targets: Targets) -> tuple[str, tuple[object, ...]]:
+    labels = [
+        label
+        for label, level in LEVELS_FROM_LABEL.items()
+        if level in targets.limits.levels
+    ]
+    roles = [GENERAL_SOFTWARE, *targets.subfields]
+    where = (
+        "is_programming_job = 1 "
+        "AND (label IS NULL OR label IN (SELECT value FROM json_each(?))) "
+        "AND role_type IN (SELECT value FROM json_each(?))"
+    )
+    if targets.limits.hide_masters:
+        where += " AND requires_master = 0"
+    return where, (_json_list(labels), _json_list(roles))
+
+
+def _your_action(actions: frozenset[Action]) -> Action | None:
+    return next((action for action in EXCLUSIVE_ACTIONS if action in actions), None)
+
+
+def _json_list(values: frozenset[str] | list[str]) -> str:
+    return json.dumps(sorted(values))
+
+
+def _now() -> str:
+    return datetime.now(tz=UTC).isoformat()
+
+
+def _optional_int(value: bool | None) -> int | None:
+    return int(value) if value is not None else None
+
+
+def _optional_str(value: object) -> str | None:
+    return str(value) if value is not None else None
+
+
 def _row_to_ad(row: tuple[object, ...]) -> Ad:
     return Ad(
         id=str(row[0]),
@@ -421,23 +774,58 @@ def _row_to_ad(row: tuple[object, ...]) -> Ad:
         title=str(row[3]),
         company=str(row[4]),
         location=str(row[5]),
-        published=str(row[6]) if row[6] is not None else None,
-        deadline=str(row[7]) if row[7] is not None else None,
+        published=_optional_str(row[6]),
+        deadline=_optional_str(row[7]),
         url=str(row[8]),
-        description=str(row[9]) if row[9] is not None else None,
-        label=str(row[10]) if row[10] is not None else None,
-        summary=str(row[11]) if row[11] is not None else None,
+        description=_optional_str(row[9]),
+        label=_optional_str(row[10]),
+        summary=_optional_str(row[11]),
         requires_master=bool(row[12]),
         is_programming_job=(bool(row[13]) if row[13] is not None else None),
-        display_title=str(row[14]) if row[14] is not None else None,
-        role_type=str(row[15]) if row[15] is not None else None,
+        display_title=_optional_str(row[14]),
+        role_type=_optional_str(row[15]),
         technologies=_json_tuple(row[16]),
         requirements=_json_tuple(row[17]),
         match=decode_match(row[18]),
-        apply_url=str(row[19]) if row[19] is not None else None,
-        apply_status=str(row[20]) if row[20] is not None else None,
-        apply_checked_at=str(row[21]) if row[21] is not None else None,
+        apply_url=_optional_str(row[19]),
+        apply_status=_optional_str(row[20]),
+        apply_checked_at=_optional_str(row[21]),
         republished=bool(row[22]),
+        first_seen=_optional_str(row[23]),
+        closed_at=_optional_str(row[24]),
+    )
+
+
+def _row_to_application(
+    row: tuple[object, ...], events: list[ApplicationEvent]
+) -> Application:
+    return Application(
+        id=int(cast("int", row[0])),
+        ad_id=_optional_str(row[1]),
+        company=str(row[2]),
+        role=str(row[3]),
+        place=str(row[4]),
+        deadline=_optional_str(row[5]),
+        status=cast("ApplicationStatus", row[6]),
+        note=str(row[7]),
+        applied_at=str(row[8]),
+        cv_name=_optional_str(row[9]),
+        removed_at=_optional_str(row[10]),
+        events=tuple(events),
+    )
+
+
+def _row_to_run(row: tuple[object, ...]) -> RunRow:
+    return RunRow(
+        id=int(cast("int", row[0])),
+        started_at=str(row[1]),
+        finished_at=_optional_str(row[2]),
+        status=cast("StoredRunStatus", row[3]),
+        ads_read=int(cast("int", row[4])),
+        new_ads=int(cast("int", row[5])),
+        matches=int(cast("int", row[6])),
+        hidden=int(cast("int", row[7])),
+        failed_sources=_json_tuple(row[8]),
     )
 
 

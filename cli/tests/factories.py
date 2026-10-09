@@ -2,25 +2,67 @@ from __future__ import annotations
 
 import base64
 import json
+import threading
 from pathlib import Path
 
+import httpx
+
 from jobranger.ads.models import Ad
+from jobranger.catalogue import EmployerFeed, source_plan
+from jobranger.events import CancelToken, RunEvent
+from jobranger.matching.assessment import AdAssessment
 from jobranger.matching.classify import Classification
-from jobranger.matching.rules import PROFILE_VERSION, Match
-from jobranger.sources.registry import AshbyBoard, TeamtailorFeed
+from jobranger.matching.rules import Match
+from jobranger.providers.base import (
+    ClassifyPrompt,
+    ProviderError,
+    ProviderResult,
+    StopKind,
+    Usage,
+)
+from jobranger.settings import Limits, Targets
+from jobranger.sources.base import FetchContext
 
 FIXTURES = Path(__file__).parent / "fixtures"
-ASHBY_BOARD = AshbyBoard(
-    key="example-one", company="Org One AS", board_name="Org One AS"
+FAKE_VERSION = "test-version"
+ALL_ROLES = (
+    "backend",
+    "frontend",
+    "fullstack",
+    "mobile",
+    "data_engineering",
+    "devops_platform",
+    "ml_ai",
+    "embedded",
+    "game",
 )
-TEAMTAILOR_FEED = TeamtailorFeed(
+FAKE_LIMITS = Limits(
+    levels=frozenset({"junior", "mid", "none"}),
+    years=frozenset({"0-1"}),
+    hide_masters=True,
+)
+CALL_USAGE = Usage(calls=1, input_tokens=100, output_tokens=20, cost_usd=0.01)
+ASHBY_BOARD = EmployerFeed(
+    kind="ashby", key="example-one", company="Org One AS", board="Org One AS"
+)
+TEAMTAILOR_FEED = EmployerFeed(
+    kind="teamtailor",
     key="example",
     company="Example AS",
-    url="https://careers.example.test/jobs.rss?per_page=200",
+    board="https://careers.example.test/jobs.rss?per_page=200",
 )
-OTHER_TEAMTAILOR_FEED = TeamtailorFeed(
-    "org-two", "Org Two AS", "https://careers.example.test/rss"
+OTHER_TEAMTAILOR_FEED = EmployerFeed(
+    kind="teamtailor",
+    key="org-two",
+    company="Org Two AS",
+    board="https://careers.example.test/rss",
 )
+
+
+def targets(**overrides: object) -> Targets:
+    base: dict[str, object] = {"subfields": ALL_ROLES, "limits": FAKE_LIMITS}
+    base.update(overrides)
+    return Targets.model_validate(base)
 
 
 def classification_payload(**overrides: object) -> dict[str, object]:
@@ -29,27 +71,12 @@ def classification_payload(**overrides: object) -> dict[str, object]:
     return payload
 
 
-def cli_output(result: str, cost_usd: float = 0.0, **tokens: int) -> str:
-    usage = {
-        "input_tokens": 0,
-        "cache_creation_input_tokens": 0,
-        "cache_read_input_tokens": 0,
-        "output_tokens": 0,
-    }
-    usage.update(tokens)
-    return json.dumps(
-        {
-            "type": "result",
-            "is_error": False,
-            "result": result,
-            "total_cost_usd": cost_usd,
-            "usage": usage,
-        }
-    )
+def make_assessment(**overrides: object) -> AdAssessment:
+    return AdAssessment.model_validate(classification_payload(**overrides))
 
 
 def make_match(**overrides: object) -> Match:
-    base = dict(classification_payload()["match"], version=PROFILE_VERSION)
+    base = dict(classification_payload()["match"], version=FAKE_VERSION)
     for name in ("evidence", "gaps", "blockers"):
         base[name] = tuple(base[name])
     base.update(overrides)
@@ -61,6 +88,7 @@ def make_classification(**overrides: object) -> Classification:
     for name in ("technologies", "requirements"):
         base[name] = tuple(base[name])
     base["match"] = make_match()
+    base["checks"] = ()
     base.update(overrides)
     return Classification(**base)
 
@@ -136,3 +164,56 @@ class FakeClock:
     def sleep(self, seconds: float) -> None:
         self.sleeps.append(seconds)
         self.now += seconds
+
+
+type Reply = (
+    AdAssessment | ProviderError | StopKind | Exception | tuple[StopKind, AdAssessment]
+)
+
+
+class FakeProvider:
+    def __init__(self, replies: list[Reply] | None = None) -> None:
+        self.replies = list(replies or [])
+        self.prompts: list[ClassifyPrompt] = []
+        self.schemas: list[type] = []
+
+    def classify[SchemaT](
+        self, prompt: ClassifyPrompt, schema: type[SchemaT]
+    ) -> ProviderResult[SchemaT]:
+        self.prompts.append(prompt)
+        self.schemas.append(schema)
+        reply = self.replies.pop(0) if self.replies else make_assessment()
+        if isinstance(reply, tuple):
+            stop, body = reply
+            return ProviderResult(body.model_dump_json(), body, CALL_USAGE, stop)
+        if isinstance(reply, Exception):
+            raise reply
+        if isinstance(reply, StopKind):
+            return ProviderResult("", None, CALL_USAGE, reply)
+        return ProviderResult(reply.model_dump_json(), reply, CALL_USAGE, StopKind.done)
+
+
+class ListSink:
+    def __init__(self) -> None:
+        self.events: list[RunEvent] = []
+        self._lock = threading.Lock()
+
+    def emit(self, event: RunEvent) -> None:
+        with self._lock:
+            self.events.append(event)
+
+
+RUN_STARTED = "2026-10-07T03:00:00+00:00"
+
+
+def fetch_context(http: httpx.Client, **overrides: object) -> FetchContext:
+    base: dict[str, object] = {
+        "http": http,
+        "plan": source_plan(targets()),
+        "run_started": RUN_STARTED,
+        "known_ids": frozenset(),
+        "cursors": {},
+        "cancel": CancelToken(),
+    }
+    base.update(overrides)
+    return FetchContext(**base)

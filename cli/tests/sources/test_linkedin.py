@@ -4,9 +4,12 @@ from typing import TYPE_CHECKING
 
 import httpx
 import pytest
-from factories import FIXTURES
+from factories import FIXTURES, fetch_context, targets
 
+from jobranger.catalogue import source_plan
+from jobranger.events import CancelToken
 from jobranger.sources import linkedin
+from jobranger.sources.base import SourceCancelled, SourceError
 from jobranger.sources.linkedin import (
     LinkedInCard,
     LinkedInParseError,
@@ -23,6 +26,7 @@ SEARCH_HTML = (FIXTURES / "linkedin_search.html").read_text()
 POSTING_HTML = (FIXTURES / "linkedin_posting.html").read_text()
 EMPTY_PAGE = "<!DOCTYPE html>\n\n<!---->  "
 WEEK_SECONDS = 604_800
+PLAN = source_plan(targets(subfields=("frontend",)))
 
 
 pytestmark = pytest.mark.usefixtures("no_retry_wait")
@@ -77,7 +81,7 @@ def test_should_raise_parse_error_for_posting_without_description() -> None:
 def test_should_build_ads_for_new_developer_cards() -> None:
     client, _ = _serve(_one_page, lambda job_id: POSTING_HTML)
 
-    ads = fetch_new_ads(client, set(), WEEK_SECONDS)
+    ads = fetch_new_ads(client, set(), WEEK_SECONDS, PLAN)
 
     assert [ad.id for ad in ads] == ["linkedin:4000000001", "linkedin:4000000003"]
     first = ads[0]
@@ -95,14 +99,14 @@ def test_should_build_ads_for_new_developer_cards() -> None:
 def test_should_send_search_filters_for_every_keyword() -> None:
     client, requests = _serve(_one_page, lambda job_id: POSTING_HTML)
 
-    fetch_new_ads(client, set(), 172_800)
+    fetch_new_ads(client, set(), 172_800, PLAN)
 
     searches = [r for r in requests if r.url.path.endswith("/search")]
     first = searches[0].url.params
     assert first["geoId"] == "103819153"
     assert first["f_TPR"] == "r172800"
     assert first["start"] == "0"
-    assert {r.url.params["keywords"] for r in searches} == set(linkedin.SEARCH_KEYWORDS)
+    assert {r.url.params["keywords"] for r in searches} == set(PLAN.linkedin_keywords)
 
 
 def test_should_stop_keyword_at_empty_page() -> None:
@@ -111,9 +115,9 @@ def test_should_stop_keyword_at_empty_page() -> None:
         lambda job_id: POSTING_HTML,
     )
 
-    fetch_new_ads(client, set(), WEEK_SECONDS)
+    fetch_new_ads(client, set(), WEEK_SECONDS, PLAN)
 
-    keyword = linkedin.SEARCH_KEYWORDS[0]
+    keyword = PLAN.linkedin_keywords[0]
     starts = [
         r.url.params["start"]
         for r in requests
@@ -127,9 +131,9 @@ def test_should_stop_keyword_at_page_cap(caplog: pytest.LogCaptureFixture) -> No
         lambda keyword, start: SEARCH_HTML, lambda job_id: POSTING_HTML
     )
 
-    fetch_new_ads(client, set(), WEEK_SECONDS)
+    fetch_new_ads(client, set(), WEEK_SECONDS, PLAN)
 
-    keyword = linkedin.SEARCH_KEYWORDS[0]
+    keyword = PLAN.linkedin_keywords[0]
     pages = [
         r
         for r in requests
@@ -142,7 +146,7 @@ def test_should_stop_keyword_at_page_cap(caplog: pytest.LogCaptureFixture) -> No
 def test_should_skip_posting_fetch_when_id_is_known() -> None:
     client, requests = _serve(_one_page, lambda job_id: POSTING_HTML)
 
-    ads = fetch_new_ads(client, {"linkedin:4000000001"}, WEEK_SECONDS)
+    ads = fetch_new_ads(client, {"linkedin:4000000001"}, WEEK_SECONDS, PLAN)
 
     assert [ad.id for ad in ads] == ["linkedin:4000000003"]
     assert "4000000001" not in _posting_ids(requests)
@@ -151,7 +155,7 @@ def test_should_skip_posting_fetch_when_id_is_known() -> None:
 def test_should_skip_posting_fetch_when_title_is_not_developer() -> None:
     client, requests = _serve(_one_page, lambda job_id: POSTING_HTML)
 
-    fetch_new_ads(client, set(), WEEK_SECONDS)
+    fetch_new_ads(client, set(), WEEK_SECONDS, PLAN)
 
     assert "4000000002" not in _posting_ids(requests)
 
@@ -163,7 +167,7 @@ def test_should_skip_posting_fetch_when_title_is_senior() -> None:
         lambda job_id: POSTING_HTML,
     )
 
-    fetch_new_ads(client, set(), WEEK_SECONDS)
+    fetch_new_ads(client, set(), WEEK_SECONDS, PLAN)
 
     assert "4000000003" not in _posting_ids(requests)
 
@@ -172,7 +176,7 @@ def test_should_drop_posting_when_employment_type_is_contract() -> None:
     posting = POSTING_HTML.replace("Full-time", "Contract")
     client, _ = _serve(_one_page, lambda job_id: posting)
 
-    ads = fetch_new_ads(client, set(), WEEK_SECONDS)
+    ads = fetch_new_ads(client, set(), WEEK_SECONDS, PLAN)
 
     assert ads == []
 
@@ -181,7 +185,7 @@ def test_should_keep_posting_without_employment_type() -> None:
     posting = POSTING_HTML.replace("Employment type", "Job function")
     client, _ = _serve(_one_page, lambda job_id: posting)
 
-    ads = fetch_new_ads(client, set(), WEEK_SECONDS)
+    ads = fetch_new_ads(client, set(), WEEK_SECONDS, PLAN)
 
     assert len(ads) == 2
 
@@ -192,7 +196,7 @@ def test_should_skip_posting_when_fetch_returns_404() -> None:
 
     client, _ = _serve(_one_page, respond)
 
-    ads = fetch_new_ads(client, set(), WEEK_SECONDS)
+    ads = fetch_new_ads(client, set(), WEEK_SECONDS, PLAN)
 
     assert [ad.id for ad in ads] == ["linkedin:4000000003"]
 
@@ -200,7 +204,7 @@ def test_should_skip_posting_when_fetch_returns_404() -> None:
 def test_should_send_browser_user_agent() -> None:
     client, requests = _serve(_one_page, lambda job_id: POSTING_HTML)
 
-    fetch_new_ads(client, set(), WEEK_SECONDS)
+    fetch_new_ads(client, set(), WEEK_SECONDS, PLAN)
 
     assert all("Mozilla" in r.headers["User-Agent"] for r in requests)
 
@@ -215,7 +219,7 @@ def test_should_skip_posting_when_page_has_no_description() -> None:
 
     client, _ = _serve(_one_page, respond)
 
-    ads = fetch_new_ads(client, set(), WEEK_SECONDS)
+    ads = fetch_new_ads(client, set(), WEEK_SECONDS, PLAN)
 
     assert [ad.id for ad in ads] == ["linkedin:4000000003"]
 
@@ -224,7 +228,7 @@ def test_should_fail_search_when_posting_is_rate_limited() -> None:
     client, _ = _serve(_one_page, lambda job_id: 429)
 
     with pytest.raises(httpx.HTTPStatusError):
-        fetch_new_ads(client, set(), WEEK_SECONDS)
+        fetch_new_ads(client, set(), WEEK_SECONDS, PLAN)
 
 
 def _one_page(keyword: str, start: int) -> str:
@@ -256,3 +260,54 @@ def _serve(
         return httpx.Response(200, text=result)
 
     return httpx.Client(transport=httpx.MockTransport(respond)), requests
+
+
+@pytest.mark.parametrize(
+    ("cursors", "expected_window"),
+    [
+        ({}, 7 * 86_400),
+        ({linkedin.LINKEDIN_SINCE_KEY: "2026-10-05T03:00:00+00:00"}, 2 * 86_400),
+    ],
+    ids=["first run", "later run"],
+)
+def test_should_search_linkedin_since_stored_cursor(
+    cursors: dict[str, str], expected_window: int
+) -> None:
+    client, requests = _serve(lambda keyword, start: EMPTY_PAGE, lambda job_id: "")
+
+    batch = linkedin.pull(fetch_context(client, cursors=cursors))
+
+    assert requests[0].url.params["f_TPR"] == f"r{expected_window}"
+    assert batch.cursors == {linkedin.LINKEDIN_SINCE_KEY: "2026-10-06T03:00:00+00:00"}
+
+
+def test_should_raise_source_error_without_cursor_when_search_fails() -> None:
+    client, _ = _serve(_one_page, lambda job_id: 429)
+
+    with pytest.raises(SourceError) as raised:
+        linkedin.pull(fetch_context(client))
+
+    assert raised.value.partial is None
+
+
+def test_should_return_linkedin_ads_in_batch() -> None:
+    client, _ = _serve(_one_page, lambda job_id: POSTING_HTML)
+
+    batch = linkedin.pull(fetch_context(client))
+
+    assert (batch.source, [ad.id for ad in batch.ads], batch.read) == (
+        "linkedin",
+        ["linkedin:4000000001", "linkedin:4000000003"],
+        2,
+    )
+
+
+def test_should_send_no_request_when_cancelled() -> None:
+    client, requests = _serve(_one_page, lambda job_id: POSTING_HTML)
+    cancel = CancelToken()
+    cancel.cancel()
+
+    with pytest.raises(SourceCancelled):
+        linkedin.pull(fetch_context(client, cancel=cancel))
+
+    assert requests == []

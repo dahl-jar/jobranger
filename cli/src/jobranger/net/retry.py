@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 import httpx
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ def get_with_retry(
     client: httpx.Client,
     url: str,
     *,
-    params: Mapping[str, str | int] | None = None,
+    params: Mapping[str, str | int | Sequence[str]] | None = None,
     headers: Mapping[str, str] | None = None,
     delays: tuple[float, ...] = DEFAULT_DELAYS,
 ) -> httpx.Response:

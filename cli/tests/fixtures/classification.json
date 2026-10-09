@@ -1,16 +1,29 @@
 {
-  "label": "open",
+  "label": "none",
   "summary": "Build Java services. A bachelor's degree is accepted.",
   "requires_master": false,
   "is_programming_job": true,
   "display_title": "Backend Developer",
   "role_type": "backend",
-  "technologies": ["Java", "Spring Boot"],
-  "requirements": ["Bachelor's degree"],
+  "technologies": [
+    "Java",
+    "Spring Boot"
+  ],
+  "requirements": [
+    "Bachelor's degree"
+  ],
+  "checks": [
+    {
+      "text": "Java and Spring Boot services",
+      "state": "met"
+    }
+  ],
   "match": {
     "status": "strong",
     "reason": "Java project demonstrates Java and Spring Boot service development.",
-    "evidence": ["java_project"],
+    "evidence": [
+      "java_project"
+    ],
     "gaps": [],
     "blockers": [],
     "is_low_code": false,

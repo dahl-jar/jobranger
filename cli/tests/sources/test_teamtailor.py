@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import httpx
 import pytest
-from factories import FIXTURES, TEAMTAILOR_FEED
+from factories import FIXTURES, TEAMTAILOR_FEED, fetch_context
 
+from jobranger.sources import teamtailor
 from jobranger.sources.teamtailor import TeamtailorParseError, fetch_feed, parse_feed
 
 FEED = TEAMTAILOR_FEED
@@ -73,3 +74,20 @@ def test_should_retry_teamtailor_feed_once_on_503() -> None:
     snapshot = fetch_feed(client, FEED)
 
     assert [ad.id for ad in snapshot.ads] == ["teamtailor:example:100"]
+
+
+def test_should_list_feed_ids_for_active_sync() -> None:
+    client = httpx.Client(
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(
+                200, text=(FIXTURES / "teamtailor_jobs.xml").read_text()
+            )
+        )
+    )
+
+    batch = teamtailor.pull_feed(fetch_context(client), FEED)
+
+    assert (batch.source, batch.listed_ids) == (
+        "teamtailor:example",
+        frozenset({"teamtailor:example:100"}),
+    )

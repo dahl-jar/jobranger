@@ -3,39 +3,43 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
+from datetime import datetime
+from typing import TYPE_CHECKING
 
 import httpx
 
 from jobranger.ads.models import Ad, strip_html
-from jobranger.ads.titles import looks_like_developer, title_is_senior
+from jobranger.ads.titles import title_level
 from jobranger.net.headers import BROWSER_HEADERS
 from jobranger.net.retry import get_with_retry
+from jobranger.sources.base import (
+    FetchContext,
+    SourceBatch,
+    SourceError,
+    advanced_cursor,
+    checkpoint,
+    cursor_start,
+    no_checkpoint,
+)
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable
+
+    from jobranger.catalogue import SourcePlan
 
 logger = logging.getLogger(__name__)
 
 SEARCH_URL = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
 POSTING_URL = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}"
 VIEW_URL = "https://www.linkedin.com/jobs/view/{job_id}"
-SEARCH_KEYWORDS = (
-    "Software Engineer",
-    "Junior Software Engineer",
-    "Graduate Software Engineer",
-    "Platform Engineer",
-    "DevOps Engineer",
-    "Utvikler",
-    "Systemutvikler",
-    "Frontend",
-    "Fullstack",
-    "Backend",
-    "Data Engineer",
-    "Plattformutvikler",
-)
 NORWAY_GEO_ID = "103819153"
 PAGE_SIZE = 10
 MAX_PAGES = 10
 RETRY_DELAYS = (10.0, 30.0, 60.0)
 KEPT_EMPLOYMENT_TYPES = frozenset({"Full-time"})
 SOURCE = "linkedin"
+LINKEDIN_SINCE_KEY = "linkedin_since"
+SECONDS_PER_HOUR = 3600
 
 CARD_PATTERN = re.compile(
     r'data-entity-urn="urn:li:jobPosting:(\d+)"(.*?)(?=data-entity-urn=|\Z)', re.S
@@ -95,19 +99,23 @@ def parse_posting(page: str) -> LinkedInPosting:
 
 def fetch_new_ads(
     client: httpx.Client,
-    known_ids: set[str],
+    known_ids: Iterable[str],
     window_seconds: int,
+    plan: SourcePlan,
+    before_request: Callable[[], None] = no_checkpoint,
 ) -> list[Ad]:
-    cards = _search_all(client, window_seconds)
+    known = frozenset(known_ids)
+    cards = _search_all(client, window_seconds, plan, before_request)
     ads: list[Ad] = []
     for card in cards:
         ad_id = f"{SOURCE}:{card.job_id}"
         if (
-            ad_id in known_ids
-            or not looks_like_developer(card.title)
-            or title_is_senior(card.title)
+            ad_id in known
+            or not plan.title_matches(card.title)
+            or title_level(card.title) in plan.skip_title_levels
         ):
             continue
+        before_request()
         posting = _fetch_posting(client, card.job_id)
         if posting is None:
             continue
@@ -124,10 +132,16 @@ def fetch_new_ads(
     return ads
 
 
-def _search_all(client: httpx.Client, window_seconds: int) -> list[LinkedInCard]:
+def _search_all(
+    client: httpx.Client,
+    window_seconds: int,
+    plan: SourcePlan,
+    before_request: Callable[[], None],
+) -> list[LinkedInCard]:
     cards: dict[str, LinkedInCard] = {}
-    for keyword in SEARCH_KEYWORDS:
+    for keyword in plan.linkedin_keywords:
         for page_number in range(MAX_PAGES):
+            before_request()
             found = _search_page(
                 client, keyword, page_number * PAGE_SIZE, window_seconds
             )
@@ -215,3 +229,23 @@ def _ad(card: LinkedInCard, posting: LinkedInPosting) -> Ad:
 def _field(pattern: re.Pattern[str], body: str) -> str:
     match = pattern.search(body)
     return strip_html(match.group(1)) if match else ""
+
+
+def pull(ctx: FetchContext) -> SourceBatch:
+    started = datetime.fromisoformat(ctx.run_started)
+    window_start = cursor_start(ctx.cursors, LINKEDIN_SINCE_KEY, started)
+    window = int((started - window_start).total_seconds())
+    try:
+        ads = fetch_new_ads(ctx.http, ctx.known_ids, window, ctx.plan, checkpoint(ctx))
+    except (httpx.HTTPError, LinkedInParseError) as error:
+        logger.exception("linkedin.failed search failed")
+        raise SourceError("linkedin search failed") from error
+    logger.info(
+        "linkedin.done new=%d window_hours=%d", len(ads), window // SECONDS_PER_HOUR
+    )
+    return SourceBatch(
+        source=SOURCE,
+        ads=tuple(ads),
+        read=len(ads),
+        cursors={LINKEDIN_SINCE_KEY: advanced_cursor(started)},
+    )

@@ -36,6 +36,8 @@ class Ad:
     apply_status: str | None = None
     apply_checked_at: str | None = None
     republished: bool = False
+    first_seen: str | None = None
+    closed_at: str | None = None
 
 
 @dataclass(frozen=True)

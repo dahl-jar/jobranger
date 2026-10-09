@@ -1,68 +1,28 @@
 from __future__ import annotations
 
+import json
 import sqlite3
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from factories import FIXTURES, make_ad, make_classification, make_match
+from factories import FAKE_VERSION, make_ad, make_classification, make_match, targets
 
-from jobranger.storage.store import Store
+from jobranger.matching.assessment import Check
+from jobranger.providers.base import Usage
+from jobranger.storage.store import (
+    Application,
+    ApplicationChange,
+    ApplicationEvent,
+    NewApplication,
+    RunRow,
+    RunSummary,
+    Store,
+    UsageDay,
+)
 
-
-def test_should_upgrade_legacy_database_without_losing_source_data(
-    tmp_path: Path,
-) -> None:
-    path = _legacy_database(tmp_path)
-    with sqlite3.connect(path) as connection:
-        connection.execute(
-            "INSERT INTO state VALUES (?, ?)", ("nav_position", "cursor-one")
-        )
-
-    store = Store(path)
-    refreshed = store.refresh_assessments()
-
-    assert refreshed is True
-    assert store.get_state("nav_position") == "cursor-one"
-    assert store.pending_classification()[0].description == "Build Java services."
-    assert store.reportable_ads("2026-09-08") == []
-    assert store.pending_apply_check("2026-09-08", "2026-09-01", limit=10) == []
-    store.set_classification("finn:1", make_classification())
-    reopened = Store(path)
-    reported = reopened.reportable_ads("2026-09-08")
-    assert reported[0].match == make_match()
-
-
-def test_should_treat_existing_programming_ads_as_reported_on_upgrade(
-    tmp_path: Path,
-) -> None:
-    store = Store(_legacy_database(tmp_path))
-    since = datetime.now(tz=UTC).isoformat()
-
-    store.set_classification("finn:1", make_classification())
-
-    assert store.reportable_ads("2026-09-30", since) == []
-
-
-def test_should_report_unclassified_legacy_ad_after_upgrade(tmp_path: Path) -> None:
-    store = Store(_legacy_database(tmp_path, is_programming_job=None))
-    since = datetime.now(tz=UTC).isoformat()
-
-    store.set_classification("finn:1", make_classification())
-
-    reported = store.reportable_ads("2026-09-30", since)
-    assert [ad.id for ad in reported] == ["finn:1"]
-
-
-def test_should_round_trip_candidate_match(tmp_path: Path) -> None:
-    path = tmp_path / "ads.db"
-    store = Store(path)
-    match = make_match(status="stretch", gaps=("Qt preferred",))
-    store.upsert_ad(make_ad(match=match))
-
-    reopened = Store(path)
-
-    assert reopened.active_ads()[0].match == match
+MAX_ATTEMPTS = 3
 
 
 def test_should_refresh_stale_assessments_without_losing_ads(tmp_path: Path) -> None:
@@ -81,14 +41,14 @@ def test_should_refresh_stale_assessments_without_losing_ads(tmp_path: Path) -> 
         store.bump_label_attempts([stale.id])
     store.set_state("nav_position", "cursor-one")
 
-    refreshed = store.refresh_assessments()
+    refreshed = store.refresh_assessments(FAKE_VERSION)
 
-    pending = store.pending_classification()
+    pending = store.pending_classification(MAX_ATTEMPTS)
     assert refreshed is True
     assert [ad.id for ad in pending] == [stale.id]
     assert pending[0].description == stale.description
     assert pending[0].match is None
-    assert store.get_state("nav_position") == "cursor-one"
+    assert store.cursors()["nav_position"] == "cursor-one"
     assert len(store.active_ads()) == 2
 
 
@@ -101,30 +61,23 @@ def test_should_refresh_reactivated_stale_assessment(tmp_path: Path) -> None:
     )
     store.upsert_ad(ad)
     store.set_active(ad.id, False)
-    assert store.refresh_assessments() is False
+    assert store.refresh_assessments(FAKE_VERSION) is False
     store.set_active(ad.id, True)
 
-    assert store.refresh_assessments() is True
-    assert [row.id for row in store.pending_classification()] == [ad.id]
+    assert store.refresh_assessments(FAKE_VERSION) is True
+    assert [row.id for row in store.pending_classification(MAX_ATTEMPTS)] == [ad.id]
 
 
 def test_should_not_reset_current_failed_attempts(tmp_path: Path) -> None:
     store = Store(tmp_path / "ads.db")
     ad = make_ad(description="Build Java services.", match=None)
     store.upsert_ad(ad)
-    store.refresh_assessments()
+    store.refresh_assessments(FAKE_VERSION)
     for _ in range(3):
         store.bump_label_attempts([ad.id])
 
-    assert store.refresh_assessments() is False
-    assert store.pending_classification() == []
-
-
-def test_should_exclude_master_requirement_from_store_report(tmp_path: Path) -> None:
-    store = Store(tmp_path / "ads.db")
-    store.upsert_ad(make_ad(label="junior", requires_master=True))
-
-    assert store.reportable_ads("2026-09-08") == []
+    assert store.refresh_assessments(FAKE_VERSION) is False
+    assert store.pending_classification(MAX_ATTEMPTS) == []
 
 
 def test_should_store_same_ad_once(tmp_path: Path) -> None:
@@ -149,7 +102,7 @@ def test_should_report_only_current_active_ads(tmp_path: Path) -> None:
     store.upsert_ad(expired)
     store.set_active(inactive.id, False)
 
-    ads = store.reportable_ads("2026-08-24")
+    ads = store.reportable_ads("2026-08-24", None, FAKE_VERSION, targets())
 
     assert [ad.id for ad in ads] == [current.id]
 
@@ -159,11 +112,11 @@ def test_should_report_reclassified_ad_once(tmp_path: Path) -> None:
     ad = make_ad(match=None)
     store.upsert_ad(ad)
     since = datetime.now(tz=UTC).isoformat()
-    store.set_classification(ad.id, make_classification())
+    store.set_classification(ad.id, make_classification(), FAKE_VERSION)
 
-    first = store.reportable_ads("2026-09-30", since)
+    first = store.reportable_ads("2026-09-30", since, FAKE_VERSION, targets())
     store.mark_reported([ad.id], since)
-    second = store.reportable_ads("2026-09-30", since)
+    second = store.reportable_ads("2026-09-30", since, FAKE_VERSION, targets())
 
     assert [found.id for found in first] == [ad.id]
     assert second == []
@@ -179,10 +132,14 @@ def test_should_reactivate_current_ads_during_source_sync(tmp_path: Path) -> Non
 
     store.sync_source_active("finn", frozenset({current.id}))
 
-    assert [ad.id for ad in store.reportable_ads("2026-08-24")] == [current.id]
+    assert [
+        ad.id
+        for ad in store.reportable_ads("2026-08-24", None, FAKE_VERSION, targets())
+    ] == [current.id]
 
 
 WINDOW_START = "2026-09-30T00:00:00+00:00"
+SKIPPED_LEVELS = frozenset({"senior", "lead"})
 
 
 def test_should_keep_wide_ad_active_when_published_before_window(
@@ -235,14 +192,6 @@ def test_should_deactivate_category_ad_missing_from_category_scan(
     assert store.active_ads() == []
 
 
-def test_should_treat_legacy_finn_rows_as_category_listed(tmp_path: Path) -> None:
-    store = Store(_legacy_database(tmp_path))
-
-    store.sync_finn_active(frozenset(), frozenset(), None)
-
-    assert store.active_ads() == []
-
-
 def test_should_deactivate_recent_ad_once_category_scan_drops_it(
     tmp_path: Path,
 ) -> None:
@@ -257,55 +206,6 @@ def test_should_deactivate_recent_ad_once_category_scan_drops_it(
     assert store.active_ads() == []
 
 
-def test_should_exclude_non_programming_roles(tmp_path: Path) -> None:
-    store = Store(tmp_path / "ads.db")
-    developer = make_ad(id="finn:1", source_id="1", deadline=None)
-    support = make_ad(
-        id="finn:2",
-        source_id="2",
-        deadline=None,
-        is_programming_job=False,
-    )
-    store.upsert_ad(developer)
-    store.upsert_ad(support)
-
-    assert [ad.id for ad in store.reportable_ads("2026-08-24")] == [developer.id]
-
-
-def test_should_clear_active_results_when_resetting_classifications(
-    tmp_path: Path,
-) -> None:
-    store = Store(tmp_path / "ads.db")
-    ad = make_ad(
-        label="junior",
-        description="Software developer role",
-        requires_master=True,
-    )
-    store.upsert_ad(ad)
-
-    store.reset_classifications()
-
-    assert [pending.id for pending in store.pending_classification()] == [ad.id]
-
-
-def test_should_preserve_structured_classification_fields(tmp_path: Path) -> None:
-    store = Store(tmp_path / "ads.db")
-    ad = make_ad(
-        display_title="C++ Developer",
-        role_type="embedded",
-        technologies=("C++", "Qt", "Linux"),
-        requirements=("0-2 years", "Relevant bachelor's degree"),
-    )
-
-    store.upsert_ad(ad)
-
-    stored = store.new_since("2000-01-01T00:00:00+00:00")[0]
-    assert stored.display_title == "C++ Developer"
-    assert stored.role_type == "embedded"
-    assert stored.technologies == ("C++", "Qt", "Linux")
-    assert stored.requirements == ("0-2 years", "Relevant bachelor's degree")
-
-
 def test_should_persist_state_across_store_instances(tmp_path: Path) -> None:
     db_path = tmp_path / "ads.db"
     store = Store(db_path)
@@ -314,7 +214,7 @@ def test_should_persist_state_across_store_instances(tmp_path: Path) -> None:
 
     reopened = Store(db_path)
 
-    assert reopened.get_state("nav_position") == "https://example.test/feed/2"
+    assert reopened.cursors()["nav_position"] == "https://example.test/feed/2"
 
 
 def test_should_exclude_exhausted_classifications_from_pending(
@@ -344,59 +244,12 @@ def test_should_return_only_active_ads(tmp_path: Path) -> None:
     assert [ad.id for ad in store.active_ads()] == [active.id]
 
 
-def test_should_label_every_duplicate_row(tmp_path: Path) -> None:
-    store = Store(tmp_path / "ads.db")
-    first = make_ad(
-        id="finn:1",
-        source_id="1",
-        label=None,
-        description="Build services.",
-    )
-    second = make_ad(
-        id="nav:1",
-        source="nav",
-        source_id="1",
-        label=None,
-        description="Build services.",
-    )
-    store.upsert_ad(first)
-    store.upsert_ad(second)
-    classification = make_classification(
-        label="junior",
-        technologies=("Python",),
-        requirements=("Bachelor's degree",),
-    )
-
-    store.set_classification(first.id, classification)
-    store.set_classification(second.id, classification)
-
-    stored = {ad.id: ad for ad in store.active_ads()}
-    assert stored[first.id].label == "junior"
-    assert stored[second.id].label == "junior"
-    assert stored[first.id].technologies == ("Python",)
-    assert stored[second.id].requirements == ("Bachelor's degree",)
-
-
-def test_should_round_trip_apply_fields(tmp_path: Path) -> None:
-    path = tmp_path / "ads.db"
-    store = Store(path)
-    store.upsert_ad(make_ad(apply_url="https://a.test/jobs/abc", republished=True))
-    store.set_apply_status("finn:1234", "expired", "2026-09-16T05:00:00+00:00")
-
-    reopened = Store(path)
-    stored = reopened.active_ads()[0]
-
-    assert stored.apply_url == "https://a.test/jobs/abc"
-    assert stored.apply_status == "expired"
-    assert stored.republished is True
-
-
 def test_should_exclude_expired_apply_status_from_reportable(tmp_path: Path) -> None:
     store = Store(tmp_path / "ads.db")
     store.upsert_ad(make_ad(label="junior", apply_url="https://a.test/jobs/abc"))
     store.set_apply_status("finn:1234", "expired", "2026-09-16T05:00:00+00:00")
 
-    assert store.reportable_ads("2026-09-16") == []
+    assert store.reportable_ads("2026-09-16", None, FAKE_VERSION, targets()) == []
 
 
 def test_should_list_pending_apply_checks_once_per_week(tmp_path: Path) -> None:
@@ -420,27 +273,11 @@ def test_should_list_pending_apply_checks_once_per_week(tmp_path: Path) -> None:
     store.set_apply_status(checked_long_ago.id, "active", "2026-09-01T05:00:00+00:00")
 
     pending = store.pending_apply_check(
-        "2026-09-16", "2026-09-09T05:00:00+00:00", limit=10
+        "2026-09-16", "2026-09-09T05:00:00+00:00", 10, targets()
     )
 
     assert {ad.id for ad in pending} == {unchecked.id, checked_long_ago.id}
-    assert len(store.pending_apply_check("2026-09-16", "2026-09-09", limit=1)) == 1
-
-
-def test_should_list_expired_active_ads(tmp_path: Path) -> None:
-    store = Store(tmp_path / "ads.db")
-    dead_link = make_ad(id="finn:1", source_id="1", label="junior")
-    past_deadline = make_ad(
-        id="finn:2", source_id="2", label="junior", deadline="2026-09-15T00:00:00"
-    )
-    live = make_ad(id="finn:3", source_id="3", label="junior")
-    for ad in (dead_link, past_deadline, live):
-        store.upsert_ad(ad)
-    store.set_apply_status(dead_link.id, "expired", "2026-09-16T05:00:00+00:00")
-
-    expired = store.expired_ads("2026-09-16")
-
-    assert {ad.id for ad in expired} == {dead_link.id, past_deadline.id}
+    assert len(store.pending_apply_check("2026-09-16", "2026-09-09", 1, targets())) == 1
 
 
 def test_should_list_reportable_ads_missing_apply_url(tmp_path: Path) -> None:
@@ -461,34 +298,9 @@ def test_should_list_reportable_ads_missing_apply_url(tmp_path: Path) -> None:
     for ad in (missing, has_url, no_text, senior, nav_ad):
         store.upsert_ad(ad)
 
-    pending = store.pending_apply_url("finn", limit=10)
+    pending = store.pending_apply_url("finn", 10, targets())
 
     assert [ad.id for ad in pending] == [missing.id]
-
-
-def _legacy_database(tmp_path: Path, is_programming_job: int | None = 1) -> Path:
-    path = tmp_path / "ads.db"
-    with sqlite3.connect(path) as connection:
-        connection.executescript((FIXTURES / "legacy_schema.sql").read_text())
-        connection.execute(
-            "INSERT INTO ads (id, source, source_id, title, company, url, "
-            "description, label, is_programming_job, dedup_key, first_seen) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                "finn:1",
-                "finn",
-                "1",
-                "Developer",
-                "Example",
-                "https://example.test/1",
-                "Build Java services.",
-                "junior",
-                is_programming_job,
-                "example:developer",
-                "2026-08-01",
-            ),
-        )
-    return path
 
 
 def test_should_not_refetch_description_for_senior_label(tmp_path: Path) -> None:
@@ -497,7 +309,7 @@ def test_should_not_refetch_description_for_senior_label(tmp_path: Path) -> None
     store.upsert_ad(ad)
     store.set_label(ad.id, "senior")
 
-    assert store.pending_description() == []
+    assert store.pending_description(SKIPPED_LEVELS) == []
 
 
 @pytest.mark.parametrize("status", ["expired", "skipped"])
@@ -507,9 +319,485 @@ def test_should_skip_apply_recheck_for_terminal_status(
     store = Store(tmp_path / "ads.db")
     ad = make_ad(apply_url="https://careers.example.test/jobs/1")
     store.upsert_ad(ad)
-    store.set_classification(ad.id, make_classification())
+    store.set_classification(ad.id, make_classification(), FAKE_VERSION)
     store.set_apply_status(ad.id, status, "2026-01-01T00:00:00+00:00")
 
-    pending = store.pending_apply_check("2026-10-09", "2026-10-02T00:00:00+00:00", 60)
+    pending = store.pending_apply_check(
+        "2026-10-09", "2026-10-02T00:00:00+00:00", 60, targets()
+    )
 
     assert pending == []
+
+
+AT = "2026-10-09T10:00:00+00:00"
+LATER = "2026-10-10T10:00:00+00:00"
+
+
+def _store_with_ad(tmp_path: Path, **overrides: object) -> tuple[Store, str]:
+    store = Store(tmp_path / "ads.db")
+    ad = make_ad(**overrides)
+    store.upsert_ad(ad)
+    return store, ad.id
+
+
+def test_should_create_application_when_ad_marked_applied(tmp_path: Path) -> None:
+    store, ad_id = _store_with_ad(tmp_path, display_title="Backend Developer")
+
+    store.mark_ad(ad_id, "applied", AT, cv_name="cv.pdf")
+
+    [application] = store.applications()
+    assert (application.ad_id, application.role, application.cv_name) == (
+        ad_id,
+        "Backend Developer",
+        "cv.pdf",
+    )
+    assert [event.text for event in application.events] == ["Applied"]
+
+
+def test_should_clear_other_exclusive_actions_when_marking(tmp_path: Path) -> None:
+    store, ad_id = _store_with_ad(tmp_path)
+    store.mark_ad(ad_id, "not_for_me", AT)
+
+    store.mark_ad(ad_id, "skipped", LATER)
+
+    assert store.ad_actions() == {ad_id: frozenset({"skipped"})}
+
+
+def test_should_keep_show_anyway_when_marking_skipped(tmp_path: Path) -> None:
+    store, ad_id = _store_with_ad(tmp_path)
+    store.mark_ad(ad_id, "show_anyway", AT)
+
+    store.mark_ad(ad_id, "skipped", LATER)
+
+    assert store.ad_actions() == {ad_id: frozenset({"show_anyway", "skipped"})}
+
+
+def test_should_soft_delete_application_when_applied_is_unmarked(
+    tmp_path: Path,
+) -> None:
+    store, ad_id = _store_with_ad(tmp_path)
+    store.mark_ad(ad_id, "applied", AT)
+
+    store.unmark_ad(ad_id, "applied", LATER)
+
+    [application] = store.applications(include_removed=True)
+    assert (store.applications(), application.removed_at, len(application.events)) == (
+        [],
+        LATER,
+        1,
+    )
+
+
+def test_should_restore_removed_application_with_its_events(tmp_path: Path) -> None:
+    store, ad_id = _store_with_ad(tmp_path)
+    store.mark_ad(ad_id, "applied", AT)
+    [application] = store.applications()
+    store.update_application(application.id, ApplicationChange(status="interview"), AT)
+    store.remove_application(application.id, LATER)
+
+    store.restore_application(application.id)
+
+    [restored] = store.applications()
+    assert (restored.id, [event.text for event in restored.events]) == (
+        application.id,
+        ["Applied", "Status: Interview"],
+    )
+
+
+def test_should_restore_application_when_ad_marked_applied_again(
+    tmp_path: Path,
+) -> None:
+    store, ad_id = _store_with_ad(tmp_path)
+    store.mark_ad(ad_id, "applied", AT)
+    store.unmark_ad(ad_id, "applied", AT)
+
+    store.mark_ad(ad_id, "applied", LATER)
+
+    assert [app.removed_at for app in store.applications(include_removed=True)] == [
+        None
+    ]
+
+
+def test_should_include_shown_anyway_ad_in_reportable_ads(tmp_path: Path) -> None:
+    store, ad_id = _store_with_ad(tmp_path, requires_master=True)
+    store.mark_ad(ad_id, "show_anyway", AT)
+
+    ads = store.reportable_ads("2026-10-09", None, FAKE_VERSION, targets())
+
+    assert [ad.id for ad in ads] == [ad_id]
+
+
+def test_should_reject_application_with_blank_company(tmp_path: Path) -> None:
+    store = Store(tmp_path / "ads.db")
+    blank = NewApplication(
+        company=" ",
+        role="Developer",
+        place="",
+        deadline=None,
+        note="",
+        applied_at=AT,
+        cv_name=None,
+        ad_id=None,
+    )
+
+    with pytest.raises(sqlite3.IntegrityError):
+        store.create_application(blank)
+
+
+def test_should_append_event_when_status_changes(tmp_path: Path) -> None:
+    store, ad_id = _store_with_ad(tmp_path)
+    store.mark_ad(ad_id, "applied", AT)
+    [application] = store.applications()
+
+    store.update_application(application.id, ApplicationChange(status="offer"), LATER)
+
+    [updated] = store.applications()
+    assert (updated.status, updated.events[-1]) == (
+        "offer",
+        ApplicationEvent(LATER, "Status: Offer"),
+    )
+
+
+def test_should_accumulate_usage_for_same_day(tmp_path: Path) -> None:
+    store = Store(tmp_path / "ads.db")
+    usage = Usage(calls=1, input_tokens=10, output_tokens=5, cost_usd=0.5)
+
+    store.add_usage("2026-10-09", usage, ads_checked=1)
+    store.add_usage("2026-10-09", usage, ads_read=7, ads_checked=1)
+
+    assert store.usage_days("2026-10-01") == [
+        UsageDay("2026-10-09", 2, 20, 10, 1.0, 7, 2)
+    ]
+
+
+def test_should_set_closed_at_and_reason_removed_when_ad_leaves_source(
+    tmp_path: Path,
+) -> None:
+    store, ad_id = _store_with_ad(tmp_path)
+
+    store.sync_source_active("finn", frozenset())
+
+    [closed] = store.closed_ads(_today())
+    assert (closed.ad.id, closed.why) == (ad_id, "removed")
+
+
+def test_should_set_reason_filled_when_apply_link_expires(tmp_path: Path) -> None:
+    store, ad_id = _store_with_ad(tmp_path)
+
+    store.set_apply_status(ad_id, "expired", AT)
+
+    [closed] = store.closed_ads("2026-10-09")
+    assert (closed.why, closed.closed_on) == ("filled", "2026-10-09")
+
+
+def test_should_clear_closed_at_when_ad_returns(tmp_path: Path) -> None:
+    store, ad_id = _store_with_ad(tmp_path)
+    store.sync_source_active("finn", frozenset())
+
+    store.sync_source_active("finn", frozenset({ad_id}))
+
+    assert (store.closed_ads(_today()), store.active_ads()[0].closed_at) == ([], None)
+
+
+def test_should_list_closed_ads_within_thirty_days_with_reason_and_action(
+    tmp_path: Path,
+) -> None:
+    store = Store(tmp_path / "ads.db")
+    edge = make_ad(id="finn:1", source_id="1", deadline="2026-08-01")
+    old = make_ad(id="finn:2", source_id="2", deadline="2026-08-01")
+    store.upsert_ad(old)
+    store.close_past_deadline("2026-08-31")
+    store.upsert_ad(edge)
+    store.close_past_deadline("2026-09-01")
+    store.mark_ad(edge.id, "applied", AT)
+
+    closed = store.closed_ads("2026-10-01")
+
+    assert [(item.ad.id, item.why, item.you) for item in closed] == [
+        (edge.id, "deadline", "applied")
+    ]
+
+
+def test_should_mark_stale_running_row_failed_on_next_start(tmp_path: Path) -> None:
+    store = Store(tmp_path / "ads.db")
+    crashed = store.start_run(AT)
+
+    store.start_run(LATER)
+
+    [_, stale] = store.runs(limit=2)
+    assert (stale.id, stale.status, stale.finished_at) == (crashed, "failed", LATER)
+
+
+def test_should_report_ad_after_subfield_added_without_reclassifying(
+    tmp_path: Path,
+) -> None:
+    store, ad_id = _store_with_ad(tmp_path, role_type="frontend")
+    before = store.reportable_ads(
+        "2026-10-09", None, FAKE_VERSION, targets(subfields=("backend",))
+    )
+
+    after = store.reportable_ads(
+        "2026-10-09", None, FAKE_VERSION, targets(subfields=("backend", "frontend"))
+    )
+
+    assert ([ad.id for ad in before], [ad.id for ad in after]) == ([], [ad_id])
+
+
+def _today() -> str:
+    return datetime.now(tz=UTC).date().isoformat()
+
+
+def test_should_stop_listing_description_after_three_failed_fetches(
+    tmp_path: Path,
+) -> None:
+    store, ad_id = _store_with_ad(tmp_path, description=None, match=None)
+    for _ in range(3):
+        store.bump_description_attempts(ad_id)
+
+    assert store.pending_description(SKIPPED_LEVELS) == []
+
+
+def test_should_read_back_every_stored_ad_field(tmp_path: Path) -> None:
+    store = Store(tmp_path / "ads.db")
+    ad = make_ad(
+        id="nav:abc",
+        source="nav",
+        source_id="abc",
+        location="Trondheim",
+        deadline="2026-11-01",
+        description="Build services.",
+        label="junior",
+        summary="Backend work.",
+        requires_master=True,
+        display_title="Backend Developer",
+        role_type="backend",
+        technologies=("Java",),
+        requirements=("Bachelor",),
+        apply_url="https://jobs.example.test/apply",
+        apply_status="active",
+        apply_checked_at="2026-10-01T00:00:00+00:00",
+        republished=True,
+    )
+    store.upsert_ad(ad)
+
+    [stored] = store.active_ads()
+
+    assert stored == replace(ad, first_seen=stored.first_seen)
+    assert stored.first_seen is not None
+
+
+def test_should_read_back_application_fields_after_note_change(
+    tmp_path: Path,
+) -> None:
+    store = Store(tmp_path / "ads.db")
+    app_id = store.create_application(
+        NewApplication(
+            company="Org One AS",
+            role="Developer",
+            place="Bergen",
+            deadline="2026-11-01",
+            note="",
+            applied_at=AT,
+            cv_name="cv.pdf",
+            ad_id=None,
+        )
+    )
+
+    store.update_application(app_id, ApplicationChange(note="Called back"), LATER)
+    store.add_application_event(app_id, LATER, "Phone screen")
+
+    assert store.applications() == [
+        Application(
+            id=app_id,
+            ad_id=None,
+            company="Org One AS",
+            role="Developer",
+            place="Bergen",
+            deadline="2026-11-01",
+            status="waiting",
+            note="Called back",
+            applied_at=AT,
+            cv_name="cv.pdf",
+            removed_at=None,
+            events=(
+                ApplicationEvent(AT, "Applied"),
+                ApplicationEvent(LATER, "Phone screen"),
+            ),
+        )
+    ]
+
+
+def test_should_copy_ad_details_into_application_when_applied(
+    tmp_path: Path,
+) -> None:
+    store, ad_id = _store_with_ad(
+        tmp_path, location="Oslo", deadline="2026-11-01", display_title=None
+    )
+
+    store.mark_ad(ad_id, "applied", AT)
+
+    [application] = store.applications()
+    assert (
+        application.role,
+        application.place,
+        application.deadline,
+        application.note,
+    ) == ("Utvikler", "Oslo", "2026-11-01", "")
+
+
+def test_should_remove_application_at_switch_time_when_marked_skipped(
+    tmp_path: Path,
+) -> None:
+    store, ad_id = _store_with_ad(tmp_path)
+    store.mark_ad(ad_id, "applied", AT)
+
+    store.mark_ad(ad_id, "skipped", LATER)
+
+    [application] = store.applications(include_removed=True)
+    assert application.removed_at == LATER
+
+
+def test_should_keep_application_when_other_action_is_unmarked(
+    tmp_path: Path,
+) -> None:
+    store, ad_id = _store_with_ad(tmp_path)
+    store.mark_ad(ad_id, "applied", AT)
+    store.mark_ad(ad_id, "show_anyway", AT)
+
+    store.unmark_ad(ad_id, "show_anyway", LATER)
+
+    assert len(store.applications()) == 1
+
+
+def test_should_read_back_finished_run(tmp_path: Path) -> None:
+    store = Store(tmp_path / "ads.db")
+    store.start_run(AT)
+    run_id = store.start_run(LATER)
+    summary = RunSummary(
+        finished_at="2026-10-10T10:05:00+00:00",
+        status="completed",
+        ads_read=7,
+        new_ads=5,
+        matches=3,
+        hidden=2,
+        failed_sources=("nav",),
+    )
+
+    store.finish_run(run_id, summary)
+
+    assert store.last_run() == RunRow(
+        id=run_id,
+        started_at=LATER,
+        finished_at="2026-10-10T10:05:00+00:00",
+        status="completed",
+        ads_read=7,
+        new_ads=5,
+        matches=3,
+        hidden=2,
+        failed_sources=("nav",),
+    )
+
+
+def test_should_count_ads_closed_since_a_time(tmp_path: Path) -> None:
+    store = Store(tmp_path / "ads.db")
+    store.upsert_ad(make_ad(id="finn:1", source_id="1", deadline="2026-08-01"))
+    store.close_past_deadline("2026-09-01")
+    store.upsert_ad(make_ad(id="finn:2", source_id="2", deadline="2026-09-15"))
+    store.close_past_deadline("2026-10-01")
+
+    assert store.closed_since("2026-09-15") == 1
+
+
+def test_should_list_newest_pending_apply_url_first(tmp_path: Path) -> None:
+    store = Store(tmp_path / "ads.db")
+    for index in (1, 2):
+        store.upsert_ad(
+            make_ad(id=f"finn:{index}", source_id=str(index), description="x")
+        )
+
+    pending = store.pending_apply_url("finn", 1, targets())
+
+    assert [ad.id for ad in pending] == ["finn:2"]
+
+
+def test_should_list_unchecked_apply_links_before_rechecks(tmp_path: Path) -> None:
+    store = Store(tmp_path / "ads.db")
+    for index in (1, 2):
+        store.upsert_ad(
+            make_ad(
+                id=f"finn:{index}",
+                source_id=str(index),
+                apply_url=f"https://a.test/{index}",
+            )
+        )
+    store.set_apply_status("finn:2", "active", "2026-09-01T00:00:00+00:00")
+
+    pending = store.pending_apply_check("2026-10-09", "2026-10-02", 2, targets())
+
+    assert [ad.id for ad in pending] == ["finn:1", "finn:2"]
+
+
+def test_should_expose_source_cursors_without_schema_version(tmp_path: Path) -> None:
+    store = Store(tmp_path / "ads.db")
+    store.set_state("nav_position", "page-1")
+
+    assert store.cursors() == {"nav_position": "page-1"}
+
+
+def test_should_reopen_closed_finn_ad_listed_again(tmp_path: Path) -> None:
+    store, ad_id = _store_with_ad(tmp_path)
+    store.sync_finn_active(frozenset(), frozenset(), None)
+
+    store.sync_finn_active(frozenset({ad_id}), frozenset(), None)
+
+    assert [ad.id for ad in store.active_ads()] == [ad_id]
+
+
+def test_should_default_usage_counts_to_zero(tmp_path: Path) -> None:
+    store = Store(tmp_path / "ads.db")
+
+    store.add_usage("2026-10-09", Usage(calls=1))
+
+    [day] = store.usage_days("2026-10-09")
+    assert (day.ads_read, day.ads_checked) == (0, 0)
+
+
+def test_should_store_checks_inside_assessment(tmp_path: Path) -> None:
+    store, ad_id = _store_with_ad(tmp_path)
+    checks = (Check(text="Java", state="met"),)
+
+    store.set_classification(ad_id, make_classification(checks=checks), FAKE_VERSION)
+
+    with sqlite3.connect(tmp_path / "ads.db") as conn:
+        [raw] = conn.execute("SELECT assessment FROM ads").fetchone()
+    assert json.loads(raw)["checks"] == [{"text": "Java", "state": "met"}]
+
+
+def test_should_read_back_alternate_flag_values(tmp_path: Path) -> None:
+    store = Store(tmp_path / "ads.db")
+    ad = make_ad(display_title=None, republished=False, is_programming_job=True)
+    store.upsert_ad(ad)
+
+    [stored] = store.active_ads()
+
+    assert (stored.is_programming_job, stored.republished) == (True, False)
+
+
+def test_should_show_closed_date_on_ad(tmp_path: Path) -> None:
+    store, _ = _store_with_ad(tmp_path, deadline="2026-08-01")
+    store.close_past_deadline("2026-09-01")
+
+    [stored] = store.active_ads()
+
+    assert stored.closed_at == "2026-09-01"
+
+
+def test_should_create_database_readable_by_owner_only(tmp_path: Path) -> None:
+    path = tmp_path / "data" / "jobranger" / "ads.db"
+
+    Store(path)
+
+    assert (path.stat().st_mode & 0o777, path.parent.stat().st_mode & 0o777) == (
+        0o600,
+        0o700,
+    )

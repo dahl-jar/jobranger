@@ -8,13 +8,29 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
+import httpx
+
 from jobranger.ads.models import Ad, strip_html
-from jobranger.ads.titles import looks_like_developer, title_is_senior
+from jobranger.ads.titles import title_level
 from jobranger.net.headers import BROWSER_HEADERS
 from jobranger.net.retry import get_with_retry
+from jobranger.sources.base import (
+    FetchContext,
+    FinnSync,
+    PageResult,
+    SourceBatch,
+    SourceError,
+    advanced_cursor,
+    check_cancel,
+    checkpoint,
+    cursor_start,
+    no_checkpoint,
+)
 
 if TYPE_CHECKING:
-    import httpx
+    from collections.abc import Callable, Iterable, Mapping, Sequence
+
+    from jobranger.catalogue import SourcePlan
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +40,8 @@ MAX_PAGES = 20
 RECENT_MAX_PAGES = 50
 RECENT_SORT = "PUBLISHED_DESC"
 REPUBLISHED_ID_GAP = 2_000_000
+SOURCE = "finn"
+FINN_RECENT_KEY = "finn_recent_since"
 
 APPLY_URL_PATTERN = re.compile(r'\\"applicationUrl\\",\\"(https?://[^\\"]+)')
 STATE_TAG_PATTERN = re.compile(
@@ -100,20 +118,28 @@ def _search_page_from(data: dict[str, Any]) -> FinnSearchPage:
 
 
 def fetch_new_ads(
-    client: httpx.Client, occupations: str, known_ids: set[str]
+    client: httpx.Client,
+    occupations: Sequence[str],
+    known_ids: Iterable[str],
+    before_request: Callable[[], None] = no_checkpoint,
 ) -> FinnSearchResult:
+    known = frozenset(known_ids)
     new_ads: dict[str, Ad] = {}
     active_ids: set[str] = set()
     complete = False
     for page_number in range(1, MAX_PAGES + 1):
+        before_request()
         page = _fetch_search_page(
-            client, {"occupation": occupations, "page": page_number}
+            client, {"occupation": list(occupations), "page": page_number}
         )
         active_ids.update(ad.id for ad in page.docs)
         for ad in page.docs:
-            if ad.id not in known_ids:
+            if ad.id not in known:
                 new_ads[ad.id] = ad
-        if page_number * DOCS_PER_PAGE >= page.match_count:
+        if (
+            page_number * DOCS_PER_PAGE >= page.match_count
+            or page_number >= page.last_page
+        ):
             complete = True
             break
     logger.info(
@@ -130,11 +156,16 @@ def fetch_new_ads(
 
 
 def fetch_recent_ads(
-    client: httpx.Client, known_ids: set[str], since: str
+    client: httpx.Client,
+    known_ids: Iterable[str],
+    since: str,
+    plan: SourcePlan,
+    before_request: Callable[[], None] = no_checkpoint,
 ) -> FinnRecentResult:
     ads: list[Ad] = []
     job_titles: dict[str, str] = {}
     for page_number in range(1, RECENT_MAX_PAGES + 1):
+        before_request()
         page = _fetch_search_page(client, {"sort": RECENT_SORT, "page": page_number})
         ads.extend(page.docs)
         job_titles.update(page.job_titles)
@@ -144,7 +175,7 @@ def fetch_recent_ads(
     else:
         logger.warning("finn.recent.capped pages=%d since=%s", RECENT_MAX_PAGES, since)
     seen_ids = {ad.id for ad in ads}
-    new_ads = _developer_ads(ads, job_titles, known_ids)
+    new_ads = _developer_ads(ads, job_titles, frozenset(known_ids), plan)
     logger.info("finn.recent.done new=%d seen=%d", len(new_ads), len(seen_ids))
     return FinnRecentResult(
         new_ads=_flag_republished(new_ads, seen_ids),
@@ -158,19 +189,22 @@ def _oldest_published(ads: list[Ad]) -> str | None:
 
 
 def _developer_ads(
-    ads: list[Ad], job_titles: dict[str, str], known_ids: set[str]
+    ads: list[Ad],
+    job_titles: dict[str, str],
+    known_ids: frozenset[str],
+    plan: SourcePlan,
 ) -> list[Ad]:
     unseen = {ad.id: ad for ad in ads if ad.id not in known_ids}
     return [
         ad
         for ad in unseen.values()
-        if looks_like_developer(ad.title, job_titles[ad.id])
-        and not title_is_senior(ad.title)
+        if plan.title_matches(ad.title, job_titles[ad.id])
+        and title_level(ad.title) not in plan.skip_title_levels
     ]
 
 
 def _fetch_search_page(
-    client: httpx.Client, params: dict[str, str | int]
+    client: httpx.Client, params: Mapping[str, str | int | Sequence[str]]
 ) -> FinnSearchPage:
     response = get_with_retry(
         client, SEARCH_URL, params=params, headers=BROWSER_HEADERS
@@ -246,3 +280,80 @@ def _epoch_ms_to_iso(epoch_ms: object) -> str | None:
     if not isinstance(epoch_ms, (int, float)):
         return None
     return datetime.fromtimestamp(epoch_ms / 1000, tz=UTC).isoformat()
+
+
+def pull(ctx: FetchContext) -> SourceBatch:
+    started = datetime.fromisoformat(ctx.run_started)
+    since = cursor_start(ctx.cursors, FINN_RECENT_KEY, started).isoformat()
+    check = checkpoint(ctx)
+    recent: FinnRecentResult | None
+    try:
+        recent = fetch_recent_ads(ctx.http, ctx.known_ids, since, ctx.plan, check)
+    except (httpx.HTTPError, FinnParseError):
+        logger.exception("finn.recent.failed recent scan failed")
+        recent = None
+    recent_ads = recent.new_ads if recent else []
+    cursors = {FINN_RECENT_KEY: advanced_cursor(started)} if recent else {}
+    known = ctx.known_ids | {ad.id for ad in recent_ads}
+    try:
+        search = fetch_new_ads(ctx.http, ctx.plan.finn_occupations, known, check)
+    except (httpx.HTTPError, FinnParseError) as error:
+        logger.exception("finn.search.failed category scan failed")
+        partial = _batch(ctx, recent, recent_ads, cursors, None)
+        raise SourceError("finn category scan failed", partial) from error
+    if search.complete and not search.active_ids:
+        logger.warning(
+            "finn.search.empty complete scan returned no ads, active status unchanged"
+        )
+        partial = _batch(ctx, recent, recent_ads, cursors, None)
+        raise SourceError("finn category scan returned no ads", partial)
+    if not search.complete:
+        logger.warning("finn.search.incomplete active status unchanged")
+    batch = _batch(ctx, recent, [*recent_ads, *search.new_ads], cursors, search)
+    if recent is None:
+        raise SourceError("finn recent scan failed", batch)
+    return batch
+
+
+def _batch(
+    ctx: FetchContext,
+    recent: FinnRecentResult | None,
+    ads: list[Ad],
+    cursors: dict[str, str],
+    search: FinnSearchResult | None,
+) -> SourceBatch:
+    recent_ids = recent.seen_ids if recent else frozenset()
+    sync = FinnSync(
+        category_ids=search.active_ids if search else frozenset(),
+        recent_ids=recent_ids,
+        window_start=recent.window_start if recent else None,
+        unlisted_ids=tuple(ad.id for ad in (recent.new_ads if recent else [])),
+        complete=search is not None and search.complete,
+    )
+    page_ads = {ad.id: ad for ad in [*ctx.pending_pages, *ads] if ad.source == SOURCE}
+    return SourceBatch(
+        source=SOURCE,
+        ads=tuple(ads),
+        read=len(recent_ids) + len(search.active_ids if search else ()),
+        cursors=cursors,
+        finn_sync=sync,
+        pages=_fetch_pages(ctx, list(page_ads.values())),
+    )
+
+
+def _fetch_pages(ctx: FetchContext, ads: list[Ad]) -> tuple[PageResult, ...]:
+    pages: list[PageResult] = []
+    for ad in ads:
+        level = title_level(ad.title)
+        if level in ctx.plan.skip_title_levels:
+            pages.append(PageResult(ad.id, None, None, level))
+            continue
+        check_cancel(ctx)
+        try:
+            page = fetch_ad_page(ctx.http, ad.url)
+        except (httpx.HTTPError, FinnParseError):
+            logger.warning("finn.ad_text.failed id=%s", ad.id)
+            pages.append(PageResult(ad.id, None, None))
+            continue
+        pages.append(PageResult(ad.id, page.description, page.apply_url))
+    return tuple(pages)

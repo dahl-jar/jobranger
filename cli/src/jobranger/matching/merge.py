@@ -7,11 +7,13 @@ from jobranger.ads.apply_link import STATUS_EXPIRED
 from jobranger.ads.duplicates import is_direct_source
 from jobranger.matching.rules import has_current_match
 
+TITLE_LEVEL_PRECEDENCE = ("lead", "senior")
+
 if TYPE_CHECKING:
     from jobranger.ads.models import Ad
 
 
-def preferred_ad(group: list[Ad]) -> Ad:
+def preferred_ad(group: list[Ad], version: str) -> Ad:
     selected = max(
         group,
         key=lambda ad: (
@@ -22,7 +24,7 @@ def preferred_ad(group: list[Ad]) -> Ad:
     classified = max(
         group,
         key=lambda ad: (
-            has_current_match(ad),
+            has_current_match(ad, version),
             _has_blocked_match(ad),
             len(ad.technologies) + len(ad.requirements),
             bool(ad.display_title),
@@ -30,7 +32,7 @@ def preferred_ad(group: list[Ad]) -> Ad:
         ),
     )
     content = max(group, key=lambda ad: len(ad.description or ""))
-    label = "senior" if any(ad.label == "senior" for ad in group) else classified.label
+    label = _title_level_label(group, classified.label)
     merged = replace(
         selected,
         description=content.description,
@@ -57,6 +59,13 @@ def _merge_source_fields(ad: Ad, group: list[Ad]) -> Ad:
         apply_status=STATUS_EXPIRED if expired else ad.apply_status,
         apply_url=ad.apply_url or _first([member.apply_url for member in group]),
     )
+
+
+def _title_level_label(group: list[Ad], fallback: str | None) -> str | None:
+    for level in TITLE_LEVEL_PRECEDENCE:
+        if any(ad.label == level for ad in group):
+            return level
+    return fallback
 
 
 def _earliest(values: list[str | None]) -> str | None:

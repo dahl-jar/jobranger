@@ -3,7 +3,13 @@ name = "jobranger"
 version = "0.1.0"
 description = "Fetches Norwegian job ads and matches them against a candidate profile"
 requires-python = ">=3.12"
-dependencies = ["defusedxml>=0.7.1", "httpx>=0.27"]
+dependencies = [
+    "defusedxml>=0.7.1",
+    "httpx>=0.27",
+    "platformdirs>=4.12,<5",
+    "pydantic>=2.14,<3",
+    "ruamel.yaml>=0.19.1,<0.20",
+]
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.11", "types-defusedxml", "mutmut"]
@@ -24,8 +30,12 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "S", "T20", "PT", "RET", "SIM", "P
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101", "PLR2004", "S105"]
-"src/jobranger/matching/classify.py" = ["S603"]
+"scripts/*" = ["S603", "T20"]
 "src/jobranger/storage/store.py" = ["S608"]
+"src/jobranger/storage/migrations.py" = ["S608"]
+"src/jobranger/matching/classify.py" = ["PLR0913", "PLR0917"]
+"src/jobranger/pipeline.py" = ["PLR0913", "N818"]
+"src/jobranger/sources/base.py" = ["N818"]
 
 [tool.mypy]
 strict = true
@@ -34,8 +44,8 @@ files = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = ["--import-mode=importlib"]
-pythonpath = ["tests"]
+pythonpath = ["tests", "scripts"]
 
 [tool.mutmut]
 source_paths = ["src/jobranger/"]
-also_copy = ["tests/"]
+also_copy = ["tests/", "scripts/"]
