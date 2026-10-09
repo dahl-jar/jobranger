@@ -1,0 +1,4 @@
+* text=auto eol=lf
+
+cli/src/jobranger/link/contracts/** linguist-generated=true -diff -merge
+web/src/types/contracts/** linguist-generated=true -diff -merge

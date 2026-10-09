@@ -1,0 +1,8 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "plugins": ["@stryker-mutator/vitest-runner"],
+  "testRunner": "vitest",
+  "mutate": ["src/**/*.ts?(x)", "!src/**/*.test.ts?(x)"],
+  "reporters": ["html", "progress"],
+  "allowEmpty": true
+}

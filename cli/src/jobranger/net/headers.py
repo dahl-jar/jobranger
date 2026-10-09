@@ -1,0 +1,7 @@
+from __future__ import annotations
+
+USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36"
+)
+BROWSER_HEADERS = {"User-Agent": USER_AGENT}

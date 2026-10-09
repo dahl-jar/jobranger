@@ -1,0 +1,41 @@
+[project]
+name = "jobranger"
+version = "0.1.0"
+description = "Fetches Norwegian job ads and matches them against a candidate profile"
+requires-python = ">=3.12"
+dependencies = ["defusedxml>=0.7.1", "httpx>=0.27"]
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.11", "types-defusedxml", "mutmut"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/jobranger"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "S", "T20", "PT", "RET", "SIM", "PL"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "PLR2004", "S105"]
+"src/jobranger/matching/classify.py" = ["S603"]
+"src/jobranger/storage/store.py" = ["S608"]
+
+[tool.mypy]
+strict = true
+files = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--import-mode=importlib"]
+pythonpath = ["tests"]
+
+[tool.mutmut]
+source_paths = ["src/jobranger/"]
+also_copy = ["tests/"]
