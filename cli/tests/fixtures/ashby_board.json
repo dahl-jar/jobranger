@@ -1,0 +1,90 @@
+{
+  "jobs": [
+    {
+      "id": "ash-1",
+      "title": "Software Engineer",
+      "department": "Engineering",
+      "team": "Platform",
+      "employmentType": "FullTime",
+      "location": "Oslo, Norway",
+      "secondaryLocations": [],
+      "publishedAt": "2026-08-20T10:00:00.000Z",
+      "isListed": true,
+      "isRemote": false,
+      "workplaceType": "OnSite",
+      "address": {
+        "postalAddress": {
+          "addressCountry": "Norway",
+          "addressLocality": "Oslo"
+        }
+      },
+      "jobUrl": "https://jobs.ashbyhq.com/example-one/ash-1",
+      "applyUrl": "https://jobs.ashbyhq.com/example-one/ash-1/application",
+      "descriptionHtml": "<p>Build <strong>Python</strong> services.</p>"
+    },
+    {
+      "id": "ash-2",
+      "title": "Backend Engineer",
+      "department": "Engineering",
+      "team": "Data",
+      "employmentType": "FullTime",
+      "location": "Stockholm or Bergen",
+      "secondaryLocations": [
+        {
+          "location": "Bergen, Norway",
+          "address": {
+            "postalAddress": {
+              "addressCountry": "Norge",
+              "addressLocality": "Bergen"
+            }
+          }
+        }
+      ],
+      "publishedAt": "2026-08-21T12:00:00.000Z",
+      "isListed": true,
+      "isRemote": true,
+      "workplaceType": "Hybrid",
+      "address": {
+        "postalAddress": {
+          "addressCountry": "Sweden",
+          "addressLocality": "Stockholm"
+        }
+      },
+      "jobUrl": "https://jobs.ashbyhq.com/example-one/ash-2",
+      "applyUrl": "https://jobs.ashbyhq.com/example-one/ash-2/application",
+      "descriptionHtml": "<p>Develop data APIs.</p>"
+    },
+    {
+      "id": "ash-3",
+      "title": "Engineer Sweden",
+      "location": "Stockholm, Sweden",
+      "secondaryLocations": [],
+      "publishedAt": "2026-08-22T12:00:00.000Z",
+      "isListed": true,
+      "address": {
+        "postalAddress": {
+          "addressCountry": "Sweden",
+          "addressLocality": "Stockholm"
+        }
+      },
+      "jobUrl": "https://jobs.ashbyhq.com/example-one/ash-3",
+      "descriptionHtml": "<p>Foreign role.</p>"
+    },
+    {
+      "id": "ash-4",
+      "title": "Unlisted Engineer",
+      "location": "Oslo, Norway",
+      "secondaryLocations": [],
+      "publishedAt": "2026-08-23T12:00:00.000Z",
+      "isListed": false,
+      "address": {
+        "postalAddress": {
+          "addressCountry": "Norway",
+          "addressLocality": "Oslo"
+        }
+      },
+      "jobUrl": "https://jobs.ashbyhq.com/example-one/ash-4",
+      "descriptionHtml": "<p>Hidden role.</p>"
+    }
+  ]
+}
