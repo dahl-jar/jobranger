@@ -32,7 +32,7 @@ def test_should_price_sonnet_cache_reads_at_five_percent_of_input() -> None:
     assert _cost(_sonnet(), cache_read=MTOK) == pytest.approx(0.10)
 
 
-def test_should_halve_cost_when_batch_is_true() -> None:
+def test_should_halve_cost_for_batch_requests() -> None:
     assert _cost(_sonnet(), output_tokens=MTOK, batch=True) == pytest.approx(5.0)
 
 
@@ -40,7 +40,7 @@ def test_should_price_one_hour_cache_writes_at_double_input() -> None:
     assert _cost(_sonnet(), cache_write_1h=MTOK) == pytest.approx(4.0)
 
 
-def test_should_return_none_spec_for_unknown_model_without_override() -> None:
+def test_should_leave_unknown_model_unpriced_without_override() -> None:
     assert spec_for("openrouter", UNKNOWN_MODEL, None) is None
 
 
@@ -82,3 +82,10 @@ def test_should_price_ollama_models_at_zero() -> None:
 
     assert spec is not None
     assert _cost(spec, input_tokens=MTOK, output_tokens=MTOK) == 0.0
+
+
+def test_should_price_dated_model_id_from_undated_entry() -> None:
+    spec = spec_for("anthropic", "claude-haiku-4-5-20251001", None)
+
+    assert spec is not None
+    assert (spec.input, spec.output) == (1.0, 5.0)

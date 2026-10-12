@@ -31,6 +31,7 @@ from jobranger.providers.base import (
     rejected_key,
 )
 from jobranger.providers.prices import cost_usd
+from jobranger.providers.urls import OLLAMA_API_PATH, ollama_root
 
 if TYPE_CHECKING:
     from openai.types.chat import ChatCompletion
@@ -42,7 +43,6 @@ BASE_URLS: dict[ProviderName, str] = {
     "openai": "https://api.openai.com/v1",
     "openrouter": "https://openrouter.ai/api/v1",
 }
-OLLAMA_API_PATH = "/v1"
 OLLAMA_TAGS_PATH = "/api/tags"
 OLLAMA_API_KEY = "ollama"
 OLLAMA_DEFAULT_TAG = ":latest"
@@ -125,7 +125,7 @@ class OllamaTags(BaseModel):
 
 def base_url_for(kind: ProviderName, ollama_url: str) -> str:
     if kind == "ollama":
-        return f"{ollama_url.rstrip('/')}{OLLAMA_API_PATH}"
+        return f"{ollama_root(ollama_url)}{OLLAMA_API_PATH}"
     return BASE_URLS[kind]
 
 

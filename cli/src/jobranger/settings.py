@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
+import httpx
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -26,6 +27,7 @@ from jobranger.catalogue import (
     default_employer_feeds,
 )
 from jobranger.providers.base import ProviderName
+from jobranger.providers.urls import ollama_root
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -40,6 +42,8 @@ RUN_TIME_PATTERN = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 HOME_PREFIX = "~"
 LOCATION_SEPARATOR = "."
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
+OLLAMA_URL_SCHEMES = frozenset({"http", "https"})
+INVALID_OLLAMA_URL = "ollama_url {url!r} is not an http or https URL with a host"
 
 
 class ConfigMissingError(Exception):
@@ -129,6 +133,14 @@ class ModelConfig(BaseModel):
     ollama_url: str = DEFAULT_OLLAMA_URL
     monthly_limit_usd: NonNegativeFloat | None = None
     price: PriceOverride | None = None
+
+    @field_validator("ollama_url")
+    @classmethod
+    def _valid_ollama_url(cls, url: str) -> str:
+        root = ollama_root(url)
+        if not is_ollama_url(root):
+            raise ValueError(INVALID_OLLAMA_URL.format(url=url))
+        return root
 
 
 class EmailConfig(BaseModel):
@@ -256,6 +268,14 @@ def _sequence(values: list[object]) -> CommentedSeq:
     if not any(isinstance(item, CommentedMap) for item in items):
         sequence.fa.set_flow_style()
     return sequence
+
+
+def is_ollama_url(url: str) -> bool:
+    try:
+        parsed = httpx.URL(url)
+    except httpx.InvalidURL:
+        return False
+    return parsed.scheme in OLLAMA_URL_SCHEMES and bool(parsed.host)
 
 
 def _minutes(time: str) -> int:

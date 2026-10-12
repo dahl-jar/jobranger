@@ -33,6 +33,9 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 FIXTURES = Path(__file__).parent / "fixtures"
+OLLAMA_URL = "http://box:11434"
+INVALID_URL = "http://[::1"
+ROUTER_MODEL = "vendor/model-one"
 FAKE_VERSION = "test-version"
 OUTDATED_VERSION = "old"
 ALL_ROLES = (

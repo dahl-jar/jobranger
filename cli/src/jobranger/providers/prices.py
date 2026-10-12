@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+import re
 from importlib import resources
 from typing import TYPE_CHECKING
 
@@ -12,6 +13,7 @@ if TYPE_CHECKING:
 
 PRICES_FILE = "prices.json"
 KEY_SEPARATOR = ":"
+DATE_SUFFIX = re.compile(r"-\d{8}$")
 TOKENS_PER_MTOK = 1_000_000
 BATCH_MULTIPLIER = 0.5
 DEFAULT_CACHE_READ_RATIO = 0.1
@@ -51,7 +53,7 @@ def spec_for(
 ) -> ModelSpec | None:
     if provider == "ollama":
         return FREE
-    table = load_specs().get(f"{provider}{KEY_SEPARATOR}{model_id}")
+    table = _table_spec(provider, model_id)
     if override is None:
         return table
     if table is None:
@@ -73,6 +75,14 @@ def spec_for(
             "cache_write_1h": table.cache_write_1h * scale,
         }
     )
+
+
+def _table_spec(provider: ProviderName, model_id: str) -> ModelSpec | None:
+    specs = load_specs()
+    exact = specs.get(f"{provider}{KEY_SEPARATOR}{model_id}")
+    if exact is not None:
+        return exact
+    return specs.get(f"{provider}{KEY_SEPARATOR}{DATE_SUFFIX.sub('', model_id)}")
 
 
 def cost_usd(

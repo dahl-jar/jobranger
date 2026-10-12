@@ -5,7 +5,9 @@ from typing import TYPE_CHECKING
 import httpx2
 import pytest
 from factories import (
+    OLLAMA_URL,
     PROMPT,
+    ROUTER_MODEL,
     Recorder,
     make_assessment,
     openai_client,
@@ -28,9 +30,7 @@ if TYPE_CHECKING:
     from jobranger.providers.base import ProviderName
 
 GPT_MINI = "gpt-5-mini"
-ROUTER_MODEL = "vendor/model-one"
 OLLAMA_MODEL = "llama3.2"
-OLLAMA_URL = "http://box:11434"
 OPENAI_ONLY_FIELDS = ("prompt_cache_key", "reasoning_effort", "temperature")
 FIXTURE_FOR: dict[ProviderName, str] = {
     "openai": "openai_completion.json",

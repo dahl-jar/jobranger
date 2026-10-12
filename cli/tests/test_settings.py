@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import importlib
 import stat
+import sys
 from typing import TYPE_CHECKING
 
 import pytest
+from factories import INVALID_URL, OLLAMA_URL
 from pydantic import ValidationError
 
 from jobranger.catalogue import default_employer_feeds
 from jobranger.settings import (
+    DEFAULT_OLLAMA_URL,
     ConfigInvalidError,
     ConfigMissingError,
     ModelConfig,
@@ -21,8 +25,10 @@ from jobranger.settings import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from pathlib import Path
 
+PROVIDER_SDKS = frozenset({"openai", "anthropic"})
 OWNER_READ_WRITE = 0o600
 OWNER_ONLY_DIR = 0o700
 COMMENT = "# chosen during setup"
@@ -112,6 +118,32 @@ def test_should_report_dotted_location_for_invalid_value(config_path: Path) -> N
     )
 
 
+@pytest.mark.parametrize("url", ["ftp://box:11434", "http://", INVALID_URL])
+def test_should_reject_invalid_ollama_url(config_path: Path, url: str) -> None:
+    text = config_path.read_text().replace(DEFAULT_OLLAMA_URL, url)
+    config_path.write_text(text)
+
+    with pytest.raises(ConfigInvalidError) as raised:
+        load_config(config_path)
+
+    assert any(error.startswith("model.ollama_url") for error in raised.value.errors)
+
+
+@pytest.mark.parametrize(
+    "url", [f"{OLLAMA_URL}/v1", f"{OLLAMA_URL}/v1/", f"{OLLAMA_URL}//v1"]
+)
+def test_should_store_ollama_url_without_api_path(url: str) -> None:
+    config = ModelConfig(ollama_url=url)
+
+    assert config.ollama_url == OLLAMA_URL
+
+
+def test_should_accept_https_ollama_url() -> None:
+    config = ModelConfig(ollama_url="https://box:11434")
+
+    assert config.ollama_url == "https://box:11434"
+
+
 def test_should_name_missing_config_path(tmp_path: Path) -> None:
     missing = tmp_path / "absent.yaml"
 
@@ -183,3 +215,25 @@ def test_should_replace_leftover_temp_file_when_saving(tmp_path: Path) -> None:
     save_config(path, default_config())
 
     assert load_config(path) == default_config()
+
+
+@pytest.fixture
+def isolated_modules() -> Iterator[None]:
+    saved = dict(sys.modules)
+    for name in list(sys.modules):
+        if _root(name) in PROVIDER_SDKS | {"jobranger"}:
+            del sys.modules[name]
+    yield
+    sys.modules.clear()
+    sys.modules.update(saved)
+
+
+def _root(module_name: str) -> str:
+    return module_name.partition(".")[0]
+
+
+@pytest.mark.usefixtures("isolated_modules")
+def test_should_load_settings_without_provider_sdks() -> None:
+    importlib.import_module("jobranger.settings")
+
+    assert {_root(name) for name in sys.modules} & PROVIDER_SDKS == set()

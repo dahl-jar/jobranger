@@ -92,6 +92,11 @@ KEY_CHECK_MESSAGES = {
 }
 
 
+def saved_key(key: str | None) -> str | None:
+    stripped = key.strip() if key else ""
+    return stripped or None
+
+
 def retry_after_seconds(kind: ProviderErrorKind, header: str | None) -> float | None:
     return parse_retry_after(header) if kind in PAUSING_KINDS else None
 
