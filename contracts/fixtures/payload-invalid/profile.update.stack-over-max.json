@@ -1,0 +1,59 @@
+{
+  "type": "profile.update",
+  "v": 1,
+  "id": "00000000-0000-4000-8000-000000000013",
+  "summary": "Two years of backend work in Python and C#.",
+  "stack": [
+    "tool-0",
+    "tool-1",
+    "tool-2",
+    "tool-3",
+    "tool-4",
+    "tool-5",
+    "tool-6",
+    "tool-7",
+    "tool-8",
+    "tool-9",
+    "tool-10",
+    "tool-11",
+    "tool-12",
+    "tool-13",
+    "tool-14",
+    "tool-15",
+    "tool-16",
+    "tool-17",
+    "tool-18",
+    "tool-19",
+    "tool-20",
+    "tool-21",
+    "tool-22",
+    "tool-23",
+    "tool-24",
+    "tool-25",
+    "tool-26",
+    "tool-27",
+    "tool-28",
+    "tool-29",
+    "tool-30",
+    "tool-31",
+    "tool-32",
+    "tool-33",
+    "tool-34",
+    "tool-35",
+    "tool-36",
+    "tool-37",
+    "tool-38",
+    "tool-39",
+    "tool-40"
+  ],
+  "projects": [
+    {
+      "id": "p1",
+      "name": "Job scraper"
+    },
+    {
+      "id": null,
+      "name": "Relay"
+    }
+  ]
+}

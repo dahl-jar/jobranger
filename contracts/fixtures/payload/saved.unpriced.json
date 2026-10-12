@@ -1,0 +1,10 @@
+{
+  "type": "saved",
+  "v": 1,
+  "ref": "00000000-0000-4000-8000-000000000014",
+  "applies_from": "next_run",
+  "recheck": {
+    "ads": 37,
+    "cost_usd": null
+  }
+}

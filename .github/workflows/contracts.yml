@@ -38,3 +38,4 @@ jobs:
 
       - run: bash contracts/generate.sh
       - run: git diff --exit-code
+      - run: uv --directory cli run --locked pytest tests/contract

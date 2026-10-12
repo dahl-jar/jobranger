@@ -1,0 +1,15 @@
+{
+  "type": "run.finished",
+  "v": 1,
+  "run_id": 42,
+  "finished_at": "2026-10-12T13:06:00Z",
+  "ads_read": 812,
+  "new_ads": 37,
+  "matches": 6,
+  "hidden": 31,
+  "cost_usd": 0.41,
+  "failed_sources": [
+    "linkedin"
+  ],
+  "budget_paused": false
+}

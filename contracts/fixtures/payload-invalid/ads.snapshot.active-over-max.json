@@ -1,0 +1,2790 @@
+{
+  "type": "ads.snapshot",
+  "v": 1,
+  "generated_at": "2026-10-12T03:05:00Z",
+  "as_of": "2026-10-12",
+  "active": [
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    },
+    {
+      "id": "finn-401234567",
+      "company": "Havbris Data AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "strong",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": false
+    }
+  ],
+  "active_total": 120,
+  "hidden": [
+    {
+      "id": "teamtailor-5521",
+      "company": "Nordvik Systemer",
+      "title": "Senior Backend Engineer",
+      "place": "Oslo",
+      "role_type": "backend",
+      "source": "teamtailor",
+      "url": "https://jobs.example.test/ad/5521",
+      "found_at": "2026-10-11T03:02:00Z",
+      "today": false,
+      "kind": "years",
+      "reason": "Requires 5 years",
+      "shown_anyway": false
+    },
+    {
+      "id": "nav-9911",
+      "company": "Driftsparken",
+      "title": "IT-driftstekniker",
+      "place": "Bergen",
+      "role_type": null,
+      "source": "nav",
+      "url": "https://jobs.example.test/ad/9911",
+      "found_at": "2026-10-12T03:01:00Z",
+      "today": true,
+      "kind": "other",
+      "reason": "Other area: IT operations",
+      "shown_anyway": false
+    }
+  ],
+  "hidden_total": 41,
+  "closed": [
+    {
+      "id": "finn-398877665",
+      "closed_on": "2026-10-08",
+      "company": "Bølge Consulting",
+      "title": "Software Engineer",
+      "source": "finn",
+      "reason": "removed",
+      "mark": "none"
+    }
+  ],
+  "closed_total": 9
+}

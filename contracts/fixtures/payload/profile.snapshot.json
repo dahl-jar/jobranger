@@ -1,0 +1,23 @@
+{
+  "type": "profile.snapshot",
+  "v": 1,
+  "cv_name": "cv.pdf",
+  "cv_read_at": "2026-10-10T18:20:00Z",
+  "summary": "Two years of backend work in Python and C#.",
+  "education": "BSc Computer Science",
+  "languages": [
+    "Norwegian",
+    "English"
+  ],
+  "stack": [
+    "Python",
+    "TypeScript",
+    "C#"
+  ],
+  "projects": [
+    {
+      "id": "p1",
+      "name": "Job scraper"
+    }
+  ]
+}

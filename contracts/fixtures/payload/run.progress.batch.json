@@ -1,0 +1,26 @@
+{
+  "type": "run.progress",
+  "v": 1,
+  "run_id": 42,
+  "mode": "manual",
+  "started_at": "2026-10-12T13:00:00Z",
+  "percent": 70,
+  "sources": [
+    {
+      "source": "nav",
+      "state": "done",
+      "found_new": 12
+    },
+    {
+      "source": "finn",
+      "state": "failed",
+      "found_new": null
+    }
+  ],
+  "model": {
+    "state": "active",
+    "checked": 10,
+    "total": 37,
+    "results_by": "2026-10-12T13:20:00Z"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "type": "learning.snapshot",
+  "v": 1,
+  "state": "unavailable",
+  "unavailable_reason": "No onnxruntime build for this machine",
+  "decision_count": 0,
+  "cold_start_threshold": 20,
+  "examples": [],
+  "examples_total": 0
+}

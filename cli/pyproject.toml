@@ -16,7 +16,14 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.11", "types-defusedxml", "mutmut"]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "types-defusedxml",
+    "mutmut",
+    "jsonschema[format-nongpl]==4.26.0",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -51,6 +58,7 @@ files = ["src"]
 testpaths = ["tests"]
 addopts = ["--import-mode=importlib"]
 pythonpath = ["tests", "scripts"]
+empty_parameter_set_mark = "fail_at_collect"
 
 [tool.mutmut]
 source_paths = ["src/jobranger/"]

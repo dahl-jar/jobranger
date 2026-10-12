@@ -1,0 +1,67 @@
+{
+  "type": "applications.snapshot",
+  "v": 1,
+  "generated_at": "2026-10-12T07:45:01Z",
+  "applications": [
+    {
+      "id": 3,
+      "ad_id": "nav-7f3c2a",
+      "company": "Bryggen Software",
+      "title": "Fullstack Developer",
+      "place": "",
+      "role_type": "general_software",
+      "source": "nav",
+      "url": "https://jobs.example.test/ad/7f3c2a",
+      "deadline": "2026-10-25",
+      "fit": "partial",
+      "status": "waiting",
+      "note": "",
+      "applied_at": "2026-10-12T07:45:00Z",
+      "found_at": "2026-10-12T03:01:00Z",
+      "cv_name": "cv.pdf",
+      "checks": [
+        {
+          "text": "React",
+          "state": "met"
+        }
+      ],
+      "history": [
+        {
+          "at": "2026-10-12T03:01:00Z",
+          "text": "Found by jobranger"
+        },
+        {
+          "at": "2026-10-12T07:45:00Z",
+          "text": "Applied"
+        }
+      ],
+      "removed": false
+    },
+    {
+      "id": 2,
+      "ad_id": null,
+      "company": "Tindedata",
+      "title": "",
+      "place": "",
+      "role_type": null,
+      "source": null,
+      "url": null,
+      "deadline": null,
+      "fit": null,
+      "status": "interview",
+      "note": "Second round on Friday",
+      "applied_at": "2026-10-01T10:00:00Z",
+      "found_at": null,
+      "cv_name": null,
+      "checks": [],
+      "history": [
+        {
+          "at": "2026-10-01T10:00:00Z",
+          "text": "Added by hand"
+        }
+      ],
+      "removed": true
+    }
+  ],
+  "applications_total": 212
+}

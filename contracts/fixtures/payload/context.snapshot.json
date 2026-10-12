@@ -1,0 +1,15 @@
+{
+  "type": "context.snapshot",
+  "v": 1,
+  "about": "Moving to Bergen in January.",
+  "about_limit": 4000,
+  "docs": [
+    {
+      "id": "doc_portfolio",
+      "name": "portfolio.md",
+      "chars": 2400,
+      "added_at": "2026-10-10"
+    }
+  ],
+  "docs_limit": 10
+}

@@ -1,0 +1,9 @@
+{
+  "type": "saved",
+  "v": 1,
+  "applies_from": "next_run",
+  "recheck": {
+    "ads": 37,
+    "cost_usd": 0.12
+  }
+}

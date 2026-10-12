@@ -1,0 +1,8 @@
+{
+  "type": "error",
+  "v": 1,
+  "ref": "00000000-0000-4000-8000-000000000009",
+  "code": "invalid_payload",
+  "message": "Run times must be at least 2 hours apart",
+  "field": "patch.schedule.times"
+}

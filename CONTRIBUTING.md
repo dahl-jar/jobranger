@@ -50,6 +50,15 @@ bash contracts/generate.sh
 git diff --exit-code
 ```
 
+The fixture check runs with the CLI tests. Every golden in `contracts/fixtures/envelope` and `contracts/fixtures/payload` must pass its schema, and every file in `envelope-invalid` and `payload-invalid` must fail.
+
+```bash
+# from cli/
+uv run pytest tests/contract
+```
+
+Every schema guard needs one invalid fixture in `contracts/fixtures/payload-invalid` or `contracts/fixtures/envelope-invalid`. The fixture changes one leaf of its golden, so the guard is the only reason it fails. Name it `<type>.<rule>.json`.
+
 ## Mutation runs
 
 `scripts/mutate.py`, `dotnet stryker` and `pnpm mutate` run locally only. `dotnet stryker` needs at least one relay test.

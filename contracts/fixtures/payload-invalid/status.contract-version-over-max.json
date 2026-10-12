@@ -1,0 +1,23 @@
+{
+  "type": "status",
+  "v": 1,
+  "cli_version": "0.1.0",
+  "contract_version": 9007199254740992,
+  "machine": "laptop",
+  "paired_at": "2026-10-09T08:12:00Z",
+  "last_run": {
+    "run_id": 41,
+    "finished_at": "2026-10-12T03:04:00Z",
+    "ads_read": 812,
+    "matches": 6,
+    "cost_usd": 0.41
+  },
+  "next_run_at": "2026-10-12T13:00:00Z",
+  "running": {
+    "run_id": 42,
+    "mode": "scheduled",
+    "started_at": "2026-10-12T13:00:00Z",
+    "results_by": "2026-10-12T13:20:00Z"
+  },
+  "budget_paused": false
+}

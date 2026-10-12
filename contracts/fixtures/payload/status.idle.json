@@ -1,0 +1,12 @@
+{
+  "type": "status",
+  "v": 1,
+  "cli_version": "0.1.0",
+  "contract_version": 1,
+  "machine": "laptop",
+  "paired_at": "2026-10-09T08:12:00Z",
+  "last_run": null,
+  "next_run_at": null,
+  "running": null,
+  "budget_paused": false
+}

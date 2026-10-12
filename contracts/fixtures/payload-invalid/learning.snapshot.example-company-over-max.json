@@ -1,0 +1,19 @@
+{
+  "type": "learning.snapshot",
+  "v": 1,
+  "state": "collecting",
+  "unavailable_reason": null,
+  "decision_count": 7,
+  "cold_start_threshold": 20,
+  "examples": [
+    {
+      "decision_id": 12,
+      "ad_id": "finn-398877665",
+      "company": "Havbris Data AS Havbris Data AS Havbris Data AS Havbris Data AS Havbris Data AS Havbris Data AS Havbris Data AS Havbris Data AS Havbris Data AS Havbris Data AS Havbris Data AS Havbris Data AS Havbris x",
+      "title": "Software Engineer",
+      "decision": "not_for_me",
+      "at": "2026-10-08T19:10:00Z"
+    }
+  ],
+  "examples_total": 7
+}

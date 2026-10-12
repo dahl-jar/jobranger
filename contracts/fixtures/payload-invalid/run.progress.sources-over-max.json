@@ -1,0 +1,46 @@
+{
+  "type": "run.progress",
+  "v": 1,
+  "run_id": 42,
+  "mode": "manual",
+  "started_at": "2026-10-12T13:00:00Z",
+  "percent": 40,
+  "sources": [
+    {
+      "source": "nav",
+      "state": "done",
+      "found_new": 12
+    },
+    {
+      "source": "nav",
+      "state": "done",
+      "found_new": 12
+    },
+    {
+      "source": "nav",
+      "state": "done",
+      "found_new": 12
+    },
+    {
+      "source": "nav",
+      "state": "done",
+      "found_new": 12
+    },
+    {
+      "source": "nav",
+      "state": "done",
+      "found_new": 12
+    },
+    {
+      "source": "nav",
+      "state": "done",
+      "found_new": 12
+    }
+  ],
+  "model": {
+    "state": "pending",
+    "checked": 0,
+    "total": 0,
+    "results_by": null
+  }
+}
