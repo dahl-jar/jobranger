@@ -70,7 +70,7 @@ Every schema guard needs one invalid fixture in `contracts/fixtures/payload-inva
 
 ## Mutation runs
 
-`scripts/mutate.py`, `dotnet stryker` and `pnpm mutate` run locally only. `dotnet stryker` needs at least one relay test.
+`scripts/mutate.py`, `dotnet stryker` and `pnpm mutate` run locally only.
 
 ## Commits
 
