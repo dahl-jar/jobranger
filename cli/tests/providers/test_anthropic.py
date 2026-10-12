@@ -1,41 +1,76 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import anthropic
+import httpx2
 import pytest
 from factories import (
+    ANTHROPIC_TEST_KEY,
+    BLANK_KEY_IDS,
+    BLANK_KEYS,
+    NON_ASCII_KEY_IDS,
+    NON_ASCII_KEYS,
     PROMPT,
+    SHORT_RETRY_AFTER,
     Recorder,
     anthropic_client,
     anthropic_message,
     make_assessment,
+    route_sdk_network,
 )
 
 from jobranger.matching.assessment import AdAssessment
 from jobranger.providers.anthropic import AnthropicProvider
 from jobranger.providers.base import (
+    DETAIL_MAX_CHARS,
+    KEY_CHECK_MESSAGES,
+    KEY_FRAGMENT_CHARS,
+    KeyCheck,
     ProviderError,
     ProviderErrorKind,
     StopKind,
 )
 from jobranger.providers.prices import spec_for
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 SONNET = "claude-sonnet-5-5"
 HAIKU_4_5 = "claude-haiku-4-5"
 UNLISTED = "claude-unlisted"
 MTOK = 1_000_000
+FULLWIDTH_OFFSET = 0xFEE0
+KEY_GROUP_CHARS = 10
 ERROR_BODY = {"type": "error", "error": {"type": "error", "message": "failed"}}
+UNSCOPED_KEY_MESSAGE = (
+    "This API key is not scoped to a workspace, so this request must include "
+    "the anthropic-workspace-id header"
+)
+BAD_REQUEST_CHECK = KEY_CHECK_MESSAGES[ProviderErrorKind.bad_request].format(
+    provider="Anthropic", model=SONNET
+)
+
+
+def _bad_request(message: str) -> dict[str, object]:
+    return {
+        "type": "error",
+        "error": {"type": "invalid_request_error", "message": message},
+    }
 
 
 def _reply(**overrides: object) -> dict[str, object]:
     return anthropic_message(make_assessment().model_dump_json(), **overrides)
 
 
-def _provider(recorder: Recorder, model: str = SONNET) -> AnthropicProvider:
+def _provider(
+    handler: Callable[[httpx2.Request], httpx2.Response], model: str = SONNET
+) -> AnthropicProvider:
     return AnthropicProvider(
-        api_key="sk-ant-test",
+        api_key=ANTHROPIC_TEST_KEY,
         model=model,
         spec=spec_for("anthropic", model, None),
-        client=anthropic_client(recorder),
+        client=anthropic_client(handler),
     )
 
 
@@ -61,6 +96,10 @@ def test_should_send_system_prompt_as_cached_block() -> None:
     assert sent["system"] == [
         {"type": "text", "text": PROMPT.system, "cache_control": {"type": "ephemeral"}}
     ]
+
+
+def test_should_send_chosen_model() -> None:
+    assert _sent()["model"] == SONNET
 
 
 def test_should_send_ad_as_user_message() -> None:
@@ -133,7 +172,48 @@ def test_should_mark_usage_unpriced_without_spec() -> None:
 
     result = provider.classify(PROMPT, AdAssessment)
 
-    assert result.usage.priced is False
+    assert (result.usage.priced, result.usage.cost_usd) == (False, 0.0)
+
+
+@pytest.mark.parametrize(
+    ("cache_fields", "expected"),
+    [
+        (
+            {
+                "cache_creation_input_tokens": 300,
+                "cache_creation": {
+                    "ephemeral_5m_input_tokens": 200,
+                    "ephemeral_1h_input_tokens": 100,
+                },
+                "cache_read_input_tokens": 2500,
+            },
+            (1, 500, 300, 2500, 400),
+        ),
+        (
+            {
+                "cache_creation_input_tokens": None,
+                "cache_creation": None,
+                "cache_read_input_tokens": None,
+            },
+            (1, 500, 0, 0, 400),
+        ),
+    ],
+    ids=["cache breakdown", "no cache fields"],
+)
+def test_should_count_tokens_from_reply(
+    cache_fields: dict[str, object], expected: tuple[int, ...]
+) -> None:
+    provider = _provider(Recorder(200, _reply(**cache_fields)))
+
+    usage = provider.classify(PROMPT, AdAssessment).usage
+
+    assert (
+        usage.calls,
+        usage.input_tokens,
+        usage.cache_write_tokens,
+        usage.cache_read_tokens,
+        usage.output_tokens,
+    ) == expected
 
 
 def test_should_return_refusal_stop_without_parsed_output() -> None:
@@ -144,6 +224,15 @@ def test_should_return_refusal_stop_without_parsed_output() -> None:
     result = provider.classify(PROMPT, AdAssessment)
 
     assert (result.stop, result.parsed) == (StopKind.refusal, None)
+
+
+def test_should_keep_usage_when_model_refuses() -> None:
+    body = _reply(stop_reason="refusal")
+    provider = _provider(Recorder(200, body))
+
+    result = provider.classify(PROMPT, AdAssessment)
+
+    assert result.usage.output_tokens == 400
 
 
 def test_should_return_truncated_stop_when_output_hits_max_tokens() -> None:
@@ -184,18 +273,66 @@ def test_should_read_retry_after_on_rate_limit(
 
 
 @pytest.mark.parametrize(
-    ("status", "ok"),
-    [(200, True), (401, False), (404, False)],
+    ("status", "expected"),
+    [
+        (200, KeyCheck(ok=True, message="Key works")),
+        (401, KeyCheck(ok=False, message="Anthropic rejected the key")),
+        (404, KeyCheck(ok=False, message=f"Anthropic has no model named {SONNET}")),
+    ],
     ids=["key works", "rejected key", "unknown model"],
 )
-def test_should_check_key_against_chosen_model(status: int, ok: bool) -> None:
-    body = {"id": SONNET, "type": "model"} if ok else ERROR_BODY
+def test_should_check_key_against_chosen_model(status: int, expected: KeyCheck) -> None:
+    body = {"id": SONNET, "type": "model"} if expected.ok else ERROR_BODY
     recorder = Recorder(status, body)
     provider = _provider(recorder)
 
     check = provider.check_key()
 
-    assert (check.ok, recorder.requests[-1].url.path) == (ok, f"/v1/models/{SONNET}")
+    assert (check, recorder.requests[-1].url.path) == (
+        expected,
+        f"/v1/models/{SONNET}",
+    )
+
+
+def test_should_send_saved_key_with_request_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    recorder = Recorder(200, {"id": SONNET, "type": "model"})
+    route_sdk_network(monkeypatch, recorder)
+    provider = AnthropicProvider(api_key=ANTHROPIC_TEST_KEY, model=SONNET, spec=None)
+
+    provider.check_key()
+
+    request = recorder.requests[-1]
+    assert (request.headers.get("x-api-key"), request.extensions["timeout"]) == (
+        ANTHROPIC_TEST_KEY,
+        {"connect": 120, "read": 120, "write": 120, "pool": 120},
+    )
+
+
+def test_should_send_key_without_surrounding_whitespace(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    recorder = Recorder(200, {"id": SONNET, "type": "model"})
+    route_sdk_network(monkeypatch, recorder)
+    provider = AnthropicProvider(
+        api_key=f"  {ANTHROPIC_TEST_KEY}\n", model=SONNET, spec=None
+    )
+
+    provider.check_key()
+
+    assert recorder.requests[-1].headers.get("x-api-key") == ANTHROPIC_TEST_KEY
+
+
+def test_should_retry_failed_call_four_times(monkeypatch: pytest.MonkeyPatch) -> None:
+    recorder = Recorder(500, ERROR_BODY, **SHORT_RETRY_AFTER)
+    route_sdk_network(monkeypatch, recorder)
+    provider = AnthropicProvider(api_key=ANTHROPIC_TEST_KEY, model=SONNET, spec=None)
+
+    with pytest.raises(ProviderError):
+        provider.check_key()
+
+    assert len(recorder.requests) == 5
 
 
 def test_should_raise_provider_error_when_key_check_hits_server_error() -> None:
@@ -205,3 +342,127 @@ def test_should_raise_provider_error_when_key_check_hits_server_error() -> None:
         provider.check_key()
 
     assert raised.value.kind == ProviderErrorKind.server
+
+
+def test_should_reject_key_when_not_scoped_to_workspace() -> None:
+    provider = _provider(Recorder(400, _bad_request(UNSCOPED_KEY_MESSAGE)))
+
+    check = provider.check_key()
+
+    assert check == KeyCheck(
+        ok=False,
+        message=f"{BAD_REQUEST_CHECK}. Anthropic said: {UNSCOPED_KEY_MESSAGE}",
+    )
+
+
+@pytest.mark.parametrize(
+    "shown_key",
+    [
+        ANTHROPIC_TEST_KEY,
+        ANTHROPIC_TEST_KEY.upper(),
+        ANTHROPIC_TEST_KEY.replace("-", "%2D"),
+        f"{'a' * (DETAIL_MAX_CHARS - 3)}{ANTHROPIC_TEST_KEY}",
+        " ".join(
+            ANTHROPIC_TEST_KEY[start : start + KEY_GROUP_CHARS]
+            for start in range(0, len(ANTHROPIC_TEST_KEY), KEY_GROUP_CHARS)
+        ),
+        ANTHROPIC_TEST_KEY[-KEY_FRAGMENT_CHARS:],
+        ANTHROPIC_TEST_KEY.replace("-", "%252D"),
+        "".join(chr(ord(char) + FULLWIDTH_OFFSET) for char in ANTHROPIC_TEST_KEY),
+        ANTHROPIC_TEST_KEY.replace("-", "&#45;"),
+    ],
+    ids=[
+        "exact",
+        "uppercased",
+        "url-encoded",
+        "across the cut",
+        "spaced every 10 chars",
+        "last 12 chars",
+        "double url-encoded",
+        "fullwidth",
+        "html entity dash",
+    ],
+)
+def test_should_leave_provider_detail_out_when_it_contains_the_key(
+    shown_key: str,
+) -> None:
+    provider = _provider(Recorder(400, _bad_request(shown_key)))
+
+    check = provider.check_key()
+
+    assert check == KeyCheck(ok=False, message=BAD_REQUEST_CHECK)
+
+
+def test_should_leave_provider_detail_out_when_it_is_empty() -> None:
+    provider = _provider(Recorder(400, _bad_request(" \n ")))
+
+    check = provider.check_key()
+
+    assert check == KeyCheck(ok=False, message=BAD_REQUEST_CHECK)
+
+
+def test_should_keep_provider_detail_when_key_fragment_is_too_short() -> None:
+    fragment = ANTHROPIC_TEST_KEY[-(KEY_FRAGMENT_CHARS - 1) :]
+    provider = _provider(Recorder(400, _bad_request(fragment)))
+
+    check = provider.check_key()
+
+    assert check.message == f"{BAD_REQUEST_CHECK}. Anthropic said: {fragment}"
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        {"text": "Bad Request"},
+        {"json": {"type": "error", "error": {"type": "invalid_request_error"}}},
+        {"json": {"error": {"message": 123}}},
+    ],
+    ids=["plain text", "no message", "non-string message"],
+)
+def test_should_leave_provider_detail_out_when_body_has_no_message(
+    reply: dict[str, object],
+) -> None:
+    provider = _provider(lambda request: httpx2.Response(400, **reply))
+
+    check = provider.check_key()
+
+    assert check == KeyCheck(ok=False, message=BAD_REQUEST_CHECK)
+
+
+def test_should_strip_control_characters_from_provider_detail() -> None:
+    message = "bad\x1b[31m request\x07 here\u202e"
+    provider = _provider(Recorder(400, _bad_request(message)))
+
+    check = provider.check_key()
+
+    assert check.message == f"{BAD_REQUEST_CHECK}. Anthropic said: bad[31m request here"
+
+
+def test_should_cut_provider_detail_to_limit() -> None:
+    provider = _provider(Recorder(400, _bad_request("a" * (DETAIL_MAX_CHARS + 1))))
+
+    check = provider.check_key()
+
+    assert check.message == f"{BAD_REQUEST_CHECK}. Anthropic said: {'a' * 300}"
+
+
+@pytest.mark.parametrize("api_key", BLANK_KEYS, ids=BLANK_KEY_IDS)
+def test_should_refuse_empty_api_key(api_key: str) -> None:
+    with pytest.raises(ValueError, match="^Anthropic needs an API key$"):
+        AnthropicProvider(
+            api_key=api_key,
+            model=SONNET,
+            spec=None,
+            client=anthropic_client(Recorder(200, {})),
+        )
+
+
+@pytest.mark.parametrize("api_key", NON_ASCII_KEYS, ids=NON_ASCII_KEY_IDS)
+def test_should_refuse_non_ascii_api_key(api_key: str) -> None:
+    with pytest.raises(ValueError, match="^Anthropic API key must be printable ASCII$"):
+        AnthropicProvider(
+            api_key=api_key,
+            model=SONNET,
+            spec=None,
+            client=anthropic_client(Recorder(200, {})),
+        )

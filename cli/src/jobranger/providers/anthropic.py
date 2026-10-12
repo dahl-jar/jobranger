@@ -26,6 +26,7 @@ from jobranger.providers.base import (
     finish_result,
     provider_error,
     rejected_key,
+    require_key,
 )
 from jobranger.providers.prices import cost_usd
 
@@ -60,10 +61,11 @@ class AnthropicProvider:
         spec: ModelSpec | None,
         client: anthropic.Anthropic | None = None,
     ) -> None:
+        key = require_key("anthropic", api_key)
         self._model = model
         self._spec = spec
         self._client = client or anthropic.Anthropic(
-            api_key=api_key,
+            api_key=key,
             max_retries=SDK_MAX_RETRIES,
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
@@ -105,6 +107,8 @@ class AnthropicProvider:
                 error_kind(error, ERROR_KINDS),
                 PROVIDER_LABELS["anthropic"],
                 self._model,
+                error.body,
+                self._client.api_key,
             )
             if rejected is None:
                 raise _provider_error(error) from error

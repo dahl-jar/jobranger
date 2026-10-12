@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
+from http import HTTPStatus
 from typing import TYPE_CHECKING, Literal
 
 import openai
@@ -29,6 +30,7 @@ from jobranger.providers.base import (
     finish_result,
     provider_error,
     rejected_key,
+    require_key,
 )
 from jobranger.providers.prices import cost_usd
 from jobranger.providers.urls import OLLAMA_API_PATH, ollama_root
@@ -139,13 +141,14 @@ class OpenAICompatProvider:
         spec: ModelSpec | None,
         client: openai.OpenAI | None = None,
     ) -> None:
+        key = require_key(kind, api_key)
         self._kind = kind
         self._rules = KIND_RULES[kind]
         self._model = model
         self._base_url = base_url
         self._spec = spec
         self._client = client or openai.OpenAI(
-            api_key=api_key,
+            api_key=key,
             base_url=base_url,
             max_retries=SDK_MAX_RETRIES,
             timeout=REQUEST_TIMEOUT_SECONDS,
@@ -191,7 +194,11 @@ class OpenAICompatProvider:
                 self._client.models.retrieve(self._model)
         except openai.APIError as error:
             rejected = rejected_key(
-                error_kind(error, ERROR_KINDS), PROVIDER_LABELS[self._kind], self._model
+                _error_kind(error),
+                PROVIDER_LABELS[self._kind],
+                self._model,
+                error.body,
+                self._client.api_key,
             )
             if rejected is None:
                 raise _provider_error(error) from error
@@ -293,4 +300,13 @@ def _provider_error(error: openai.APIError) -> ProviderError:
         if isinstance(error, openai.APIStatusError)
         else None
     )
-    return provider_error(error_kind(error, ERROR_KINDS), error.message, header)
+    return provider_error(_error_kind(error), error.message, header)
+
+
+def _error_kind(error: openai.APIError) -> ProviderErrorKind:
+    if (
+        isinstance(error, openai.APIStatusError)
+        and error.status_code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE
+    ):
+        return ProviderErrorKind.bad_request
+    return error_kind(error, ERROR_KINDS)

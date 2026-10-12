@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import html
+import unicodedata
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING, Final, Literal, Protocol
+from urllib.parse import unquote
 
 from pydantic import TypeAdapter, ValidationError
 
@@ -20,6 +23,11 @@ SDK_MAX_RETRIES = 4
 REQUEST_TIMEOUT_SECONDS = 120
 RETRY_AFTER_HEADER = "retry-after"
 KEY_WORKS = "Key works"
+DETAIL_MAX_CHARS = 300
+KEY_FRAGMENT_CHARS = 12
+MAX_DECODE_ROUNDS = 3
+KEY_CHAR_MIN = 0x21
+KEY_CHAR_MAX = 0x7E
 PROVIDER_LABELS: dict[ProviderName, str] = {
     "anthropic": "Anthropic",
     "openai": "OpenAI",
@@ -89,12 +97,28 @@ PAUSING_KINDS = frozenset({ProviderErrorKind.rate_limit, ProviderErrorKind.overl
 KEY_CHECK_MESSAGES = {
     ProviderErrorKind.auth: "{provider} rejected the key",
     ProviderErrorKind.not_found: "{provider} has no model named {model}",
+    ProviderErrorKind.bad_request: (
+        "{provider} refused the key check. "
+        "Check the key and its workspace or project settings"
+    ),
 }
 
 
 def saved_key(key: str | None) -> str | None:
     stripped = key.strip() if key else ""
     return stripped or None
+
+
+def require_key(provider: ProviderName, api_key: str) -> str:
+    key = api_key.strip()
+    label = PROVIDER_LABELS[provider]
+    if not key:
+        msg = f"{label} needs an API key"
+        raise ValueError(msg)
+    if not all(KEY_CHAR_MIN <= ord(char) <= KEY_CHAR_MAX for char in key):
+        msg = f"{label} API key must be printable ASCII"
+        raise ValueError(msg)
+    return key
 
 
 def retry_after_seconds(kind: ProviderErrorKind, header: str | None) -> float | None:
@@ -174,11 +198,53 @@ def provider_error(
     return ProviderError(kind, message, retry_after_seconds(kind, header))
 
 
-def rejected_key(kind: ProviderErrorKind, provider: str, model: str) -> KeyCheck | None:
+def rejected_key(
+    kind: ProviderErrorKind,
+    provider: str,
+    model: str,
+    body: object,
+    api_key: str | None,
+) -> KeyCheck | None:
     template = KEY_CHECK_MESSAGES.get(kind)
     if template is None:
         return None
-    return KeyCheck(ok=False, message=template.format(provider=provider, model=model))
+    message = template.format(provider=provider, model=model)
+    detail = (
+        _error_detail(body, api_key) if kind is ProviderErrorKind.bad_request else None
+    )
+    if detail is not None:
+        message = f"{message}. {provider} said: {detail}"
+    return KeyCheck(ok=False, message=message)
+
+
+def _error_detail(body: object, api_key: str | None) -> str | None:
+    error = body.get("error", body) if isinstance(body, dict) else None
+    text = error.get("message") if isinstance(error, dict) else None
+    if not isinstance(text, str):
+        return None
+    printable = "".join(char for char in text if char.isprintable() or char.isspace())
+    if api_key and _shows_key(printable, api_key):
+        return None
+    text = " ".join(printable.split())
+    if not text:
+        return None
+    return text[:DETAIL_MAX_CHARS]
+
+
+def _shows_key(text: str, api_key: str) -> bool:
+    plain = _normalize(text)
+    key = api_key.lower()
+    starts = range(max(len(key) - KEY_FRAGMENT_CHARS + 1, 1))
+    return any(key[start : start + KEY_FRAGMENT_CHARS] in plain for start in starts)
+
+
+def _normalize(text: str) -> str:
+    decoded = text
+    for _ in range(MAX_DECODE_ROUNDS):
+        decoded = unicodedata.normalize("NFKC", html.unescape(unquote(decoded)))
+    return "".join(
+        char for char in decoded.lower() if char.isprintable() and not char.isspace()
+    )
 
 
 def finish_result[SchemaT](

@@ -32,12 +32,22 @@ from jobranger.sources.base import FetchContext
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    import pytest
+
 FIXTURES = Path(__file__).parent / "fixtures"
 OLLAMA_URL = "http://box:11434"
 INVALID_URL = "http://[::1"
 ROUTER_MODEL = "vendor/model-one"
 FAKE_VERSION = "test-version"
 OUTDATED_VERSION = "old"
+ANTHROPIC_TEST_KEY = "Fake-Anthropic-Key-For-Unit-Tests"
+OPENAI_TEST_KEY = "fake-key"
+BLANK_KEYS = ("", "   ")
+BLANK_KEY_IDS = ("empty", "spaces")
+NON_ASCII_KEYS = ("fake\u00a0key", "fake\u200bkey", "fak\u00eb-key")
+NON_ASCII_KEY_IDS = ("nbsp", "zero-width space", "accented letter")
+SDK_ENV_VARIABLES = ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENAI_BASE_URL")
+SHORT_RETRY_AFTER = {"retry-after-ms": "1"}
 ALL_ROLES = (
     "backend",
     "frontend",
@@ -229,7 +239,7 @@ def anthropic_client(
 ) -> anthropic.Anthropic:
     transport = httpx2.MockTransport(handler)
     return anthropic.Anthropic(
-        api_key="sk-ant-test",
+        api_key=ANTHROPIC_TEST_KEY,
         max_retries=0,
         http_client=httpx2.Client(transport=transport),
     )
@@ -250,7 +260,7 @@ def openai_client(
     base_url: str = "https://api.openai.com/v1",
 ) -> openai.OpenAI:
     return openai.OpenAI(
-        api_key="sk-test",
+        api_key=OPENAI_TEST_KEY,
         base_url=base_url,
         max_retries=0,
         http_client=httpx2.Client(transport=httpx2.MockTransport(handler)),
@@ -282,6 +292,17 @@ class Recorder:
 
     def sent(self) -> dict[str, object]:
         return json.loads(self.requests[-1].content)
+
+
+def route_sdk_network(monkeypatch: pytest.MonkeyPatch, recorder: Recorder) -> None:
+    for name in SDK_ENV_VARIABLES:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("NO_PROXY", "*")
+    monkeypatch.setattr(
+        httpx2.HTTPTransport,
+        "handle_request",
+        lambda _transport, request: recorder(request),
+    )
 
 
 class ListSink:
