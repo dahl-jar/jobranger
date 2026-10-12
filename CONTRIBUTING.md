@@ -30,15 +30,24 @@ dotnet stryker
 
 ## web
 
-Needs Node 24 and pnpm.
+Needs Node 24 and pnpm. The font commands also need uv.
 
 ```bash
 pnpm install --frozen-lockfile
+pnpm fonts --check
 pnpm typecheck
 pnpm lint
 pnpm test
 pnpm build
 pnpm mutate
+```
+
+```bash
+# dev server with hot reload
+pnpm dev
+
+# rebuild the subset fonts in public/fonts from the pinned Nerd Fonts release
+pnpm fonts
 ```
 
 ## contracts

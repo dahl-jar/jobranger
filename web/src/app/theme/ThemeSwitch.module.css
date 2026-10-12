@@ -1,0 +1,47 @@
+.group {
+  display: inline-flex;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius);
+}
+
+.option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--ink2);
+  font: inherit;
+  cursor: pointer;
+}
+
+.option:first-child {
+  border-radius: var(--radius-inner) 0 0 var(--radius-inner);
+}
+
+.option:last-child {
+  border-radius: 0 var(--radius-inner) var(--radius-inner) 0;
+}
+
+.option[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.option:focus-visible {
+  position: relative;
+  z-index: 1;
+  outline-color: var(--ink);
+}
+
+.icon {
+  min-width: 40px;
+  min-height: 40px;
+}
+
+.labeled {
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 12px;
+  font-size: 13px;
+}

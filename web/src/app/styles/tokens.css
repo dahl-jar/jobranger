@@ -1,0 +1,60 @@
+:root,
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #1c1a17;
+  --ink: #ece5d8;
+  --ink2: #c7bdac;
+  --muted: #a39886;
+  --faint: #8c8273;
+  --rule: #3a342d;
+  --rule-soft: #2f2a25;
+  --divider: #4e473f;
+  --go: #4fcb7f;
+  --ok: #74b898;
+  --part: #d9a35a;
+  --miss: #e58572;
+  --wait: #6e655a;
+  --accepted: #93cbaf;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f5f3ef;
+  --ink: #1e1b17;
+  --ink2: #46413a;
+  --muted: #68625a;
+  --faint: #78716a;
+  --rule: #ded8ce;
+  --rule-soft: #eae6df;
+  --divider: #cec7bb;
+  --go: #167c40;
+  --ok: #24774f;
+  --part: #92600b;
+  --miss: #b23f2d;
+  --wait: #b3ab9e;
+  --accepted: #1c6844;
+}
+
+:root {
+  --term-bg: #12110f;
+  --term-border: #3a342d;
+  --term-rule: #2f2a25;
+  --term-ink: #ece5d8;
+  --term-ink2: #c7bdac;
+  --term-dim: #8c8273;
+  --term-ok: #74b898;
+  --term-part: #d9a35a;
+
+  --font-mono: 'JetBrainsMono Nerd Font', 'JetBrains Mono', ui-monospace, monospace;
+  --radius: 3px;
+  --radius-inner: 2px;
+  --content-max: 1160px;
+  --content-max-wide: 1240px;
+  --gutter: 32px;
+}
+
+@media (max-width: 640px) {
+  :root {
+    --gutter: 16px;
+  }
+}
