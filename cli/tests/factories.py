@@ -34,6 +34,7 @@ if TYPE_CHECKING:
 
 FIXTURES = Path(__file__).parent / "fixtures"
 FAKE_VERSION = "test-version"
+OUTDATED_VERSION = "old"
 ALL_ROLES = (
     "backend",
     "frontend",

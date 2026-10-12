@@ -45,6 +45,7 @@ CLOSE_COLUMNS = (
     "closed_reason = COALESCE(closed_reason, 'removed')"
 )
 REOPEN_COLUMNS = "active = 1, closed_at = NULL, closed_reason = NULL"
+OUTDATED_WHERE = "active = 1 AND assessment_version IS NOT ?"
 
 SHARED_COLUMNS = (
     "id, source, source_id, title, company, location, "
@@ -372,11 +373,18 @@ class Store:
             "is_programming_job = NULL, display_title = NULL, role_type = NULL, "
             "technologies = NULL, requirements = NULL, label_attempts = 0, "
             "assessment = NULL, assessment_version = ?, classified_at = NULL "
-            "WHERE active = 1 AND assessment_version IS NOT ?",
+            f"WHERE {OUTDATED_WHERE}",
             (version, version),
         )
         self._conn.commit()
         return cursor.rowcount > 0
+
+    def count_outdated(self, version: str) -> int:
+        row = self._conn.execute(
+            f"SELECT COUNT(*) FROM ads WHERE {OUTDATED_WHERE}",
+            (version,),
+        ).fetchone()
+        return int(row[0])
 
     def set_active(self, ad_id: str, active: bool) -> None:
         if active:

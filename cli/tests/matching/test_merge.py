@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import pytest
-from factories import FAKE_VERSION, make_ad, make_match
+from factories import FAKE_VERSION, OUTDATED_VERSION, make_ad, make_match
 
 from jobranger.matching.merge import preferred_ad
 
-STALE = make_match(version="old")
+STALE = make_match(version=OUTDATED_VERSION)
 
 
 def test_should_merge_group_fields_from_best_sources() -> None:

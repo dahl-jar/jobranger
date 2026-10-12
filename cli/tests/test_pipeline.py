@@ -12,6 +12,7 @@ from factories import (
     CALL_USAGE,
     FIXTURES,
     OTHER_TEAMTAILOR_FEED,
+    OUTDATED_VERSION,
     FakeClock,
     FakeProvider,
     ListSink,
@@ -632,7 +633,7 @@ def test_should_expire_import_missing_from_employer_feed(
 @pytest.mark.parametrize(
     "stored",
     [
-        {"label": "junior", "match": make_match(version="old")},
+        {"label": "junior", "match": make_match(version=OUTDATED_VERSION)},
         {"label": "error", "is_programming_job": False},
     ],
     ids=["stale match", "error label"],

@@ -7,7 +7,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from factories import FAKE_VERSION, make_ad, make_classification, make_match, targets
+from factories import (
+    FAKE_VERSION,
+    OUTDATED_VERSION,
+    make_ad,
+    make_classification,
+    make_match,
+    targets,
+)
 
 from jobranger.matching.assessment import Check
 from jobranger.providers.base import Usage
@@ -30,7 +37,7 @@ def test_should_refresh_stale_assessments_without_losing_ads(tmp_path: Path) -> 
     stale = make_ad(
         label="junior",
         description="Build Java services.",
-        match=make_match(version="old"),
+        match=make_match(version=OUTDATED_VERSION),
     )
     fresh = make_ad(
         id="finn:2", source_id="2", label="open", description="Build software."
@@ -57,7 +64,7 @@ def test_should_refresh_reactivated_stale_assessment(tmp_path: Path) -> None:
     ad = make_ad(
         label="junior",
         description="Build Java services.",
-        match=make_match(version="old"),
+        match=make_match(version=OUTDATED_VERSION),
     )
     store.upsert_ad(ad)
     store.set_active(ad.id, False)
@@ -242,6 +249,19 @@ def test_should_return_only_active_ads(tmp_path: Path) -> None:
     store.set_active(inactive.id, False)
 
     assert [ad.id for ad in store.active_ads()] == [active.id]
+
+
+def test_should_count_only_active_outdated_ads(tmp_path: Path) -> None:
+    store = Store(tmp_path / "ads.db")
+    outdated = make_match(version=OUTDATED_VERSION)
+    store.upsert_ad(make_ad(id="finn:1", source_id="1", match=outdated))
+    store.upsert_ad(make_ad(id="finn:2", source_id="2", match=None))
+    store.upsert_ad(make_ad(id="finn:3", source_id="3"))
+    inactive = make_ad(id="finn:4", source_id="4", match=outdated)
+    store.upsert_ad(inactive)
+    store.set_active(inactive.id, False)
+
+    assert store.count_outdated(FAKE_VERSION) == 2
 
 
 def test_should_exclude_expired_apply_status_from_reportable(tmp_path: Path) -> None:
