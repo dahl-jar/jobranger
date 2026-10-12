@@ -5,7 +5,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 python_out="$root/cli/src/jobranger/link/contracts"
 typescript_out="$root/web/src/types/contracts"
 
-for name in payload envelope; do
+for name in payload; do
   schema="$root/contracts/$name.schema.json"
   if [[ ! -f "$schema" ]]; then
     continue
