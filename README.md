@@ -13,4 +13,4 @@ Development setup and checks are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+[PolyForm Noncommercial 1.0.0](LICENSE). Anyone can run, change and share jobranger for free for personal and other noncommercial use, including using it in their own job search. Selling it, or running it as a paid service, is not allowed.

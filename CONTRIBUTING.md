@@ -57,3 +57,7 @@ git diff --exit-code
 ## Commits
 
 One change per commit, with a short subject line and no body.
+
+## License of contributions
+
+jobranger is licensed under [PolyForm Noncommercial 1.0.0](LICENSE). By sending a contribution, you license it to the copyright holder, Nanthawat Dahl, under the MIT license, so it can ship in jobranger under its current license and any later one.
