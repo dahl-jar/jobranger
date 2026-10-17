@@ -18,6 +18,7 @@ from factories import (
 
 from jobranger.matching.assessment import Check
 from jobranger.providers.base import Usage
+from jobranger.settings import MAX_AMOUNT_USD
 from jobranger.storage.store import (
     Application,
     ApplicationChange,
@@ -147,6 +148,8 @@ def test_should_reactivate_current_ads_during_source_sync(tmp_path: Path) -> Non
 
 WINDOW_START = "2026-09-30T00:00:00+00:00"
 SKIPPED_LEVELS = frozenset({"senior", "lead"})
+NON_ASCII_LIST = ("Søk",)
+NON_ASCII_JSON = '["Søk"]'
 
 
 def test_should_keep_wide_ad_active_when_published_before_window(
@@ -490,6 +493,76 @@ def test_should_accumulate_usage_for_same_day(tmp_path: Path) -> None:
     ]
 
 
+def test_should_sum_spend_within_day_range(store: Store) -> None:
+    for day, cost in (
+        ("2026-09-30", 4.0),
+        ("2026-10-01", 0.5),
+        ("2026-10-09", 1.0),
+        ("2026-11-01", 2.0),
+    ):
+        store.add_usage(day, Usage(calls=1, cost_usd=cost))
+
+    assert store.spend_between("2026-10-01", "2026-11-01") == 1.5
+
+
+def test_should_report_zero_spend_without_usage(store: Store) -> None:
+    assert store.spend_between("2026-10-01", "2026-11-01") == 0.0
+
+
+def _add_corrupt_cost(store: Store, tmp_path: Path, cost: object) -> None:
+    store.add_usage("2026-10-02", Usage(calls=1, cost_usd=0.5))
+    with sqlite3.connect(tmp_path / "ads.db") as conn:
+        conn.execute(
+            "INSERT INTO usage_days (day, cost_usd) VALUES (?, ?)", ("2026-10-03", cost)
+        )
+
+
+def test_should_count_negative_cost_row_as_zero_spend(
+    tmp_path: Path, store: Store
+) -> None:
+    _add_corrupt_cost(store, tmp_path, -1.0)
+
+    assert store.spend_between("2026-10-01", "2026-11-01") == 0.5
+
+
+def test_should_read_text_cost_row_as_zero(tmp_path: Path, store: Store) -> None:
+    _add_corrupt_cost(store, tmp_path, "abc")
+
+    assert [day.cost_usd for day in store.usage_days("2026-10-01")] == [0.5, 0.0]
+
+
+def test_should_cap_huge_cost_row_at_max_amount(tmp_path: Path, store: Store) -> None:
+    _add_corrupt_cost(store, tmp_path, 1e308)
+
+    costs = [day.cost_usd for day in store.usage_days("2026-10-01")]
+
+    assert costs == [0.5, MAX_AMOUNT_USD]
+
+
+@pytest.mark.parametrize("count", ["x", -5, b"\x00\xff"])
+def test_should_read_corrupt_usage_counts_as_zero(
+    tmp_path: Path, store: Store, count: object
+) -> None:
+    with sqlite3.connect(tmp_path / "ads.db") as conn:
+        conn.execute(
+            "INSERT INTO usage_days (day, calls, input_tokens, output_tokens, "
+            "cost_usd, ads_read, ads_checked) VALUES (?, ?, ?, ?, 0.5, ?, ?)",
+            ("2026-10-03", count, count, count, count, count),
+        )
+
+    days = store.usage_days("2026-10-01")
+
+    assert days == [UsageDay("2026-10-03", 0, 0, 0, 0.5, 0, 0)]
+
+
+@pytest.mark.parametrize("cost", [float("inf"), float("nan"), -0.01])
+def test_should_reject_non_finite_or_negative_usage_cost(
+    store: Store, cost: float
+) -> None:
+    with pytest.raises(ValueError, match="cost_usd"):
+        store.add_usage("2026-10-01", Usage(calls=1, cost_usd=cost))
+
+
 def test_should_set_closed_at_and_reason_removed_when_ad_leaves_source(
     tmp_path: Path,
 ) -> None:
@@ -647,6 +720,29 @@ def test_should_read_back_application_fields_after_note_change(
     ]
 
 
+def test_should_read_application_without_events_as_empty(
+    tmp_path: Path, store: Store
+) -> None:
+    store.create_application(
+        NewApplication(
+            company="Org One AS",
+            role="Developer",
+            place="Bergen",
+            deadline=None,
+            note="",
+            applied_at=AT,
+            cv_name=None,
+            ad_id=None,
+        )
+    )
+    with sqlite3.connect(tmp_path / "ads.db") as conn:
+        conn.execute("DELETE FROM application_events")
+
+    [application] = store.applications()
+
+    assert application.events == ()
+
+
 def test_should_copy_ad_details_into_application_when_applied(
     tmp_path: Path,
 ) -> None:
@@ -740,9 +836,10 @@ def test_should_list_newest_pending_apply_url_first(tmp_path: Path) -> None:
     assert [ad.id for ad in pending] == ["finn:2"]
 
 
-def test_should_list_unchecked_apply_links_before_rechecks(tmp_path: Path) -> None:
-    store = Store(tmp_path / "ads.db")
-    for index in (1, 2):
+def test_should_list_unchecked_apply_links_first_then_newest_first(
+    tmp_path: Path, store: Store
+) -> None:
+    for index, first_seen in ((1, "2026-09-03"), (2, "2026-09-01"), (3, "2026-09-02")):
         store.upsert_ad(
             make_ad(
                 id=f"finn:{index}",
@@ -750,11 +847,49 @@ def test_should_list_unchecked_apply_links_before_rechecks(tmp_path: Path) -> No
                 apply_url=f"https://a.test/{index}",
             )
         )
-    store.set_apply_status("finn:2", "active", "2026-09-01T00:00:00+00:00")
+        with sqlite3.connect(tmp_path / "ads.db") as conn:
+            conn.execute(
+                "UPDATE ads SET first_seen = ? WHERE id = ?",
+                (f"{first_seen}T00:00:00+00:00", f"finn:{index}"),
+            )
+    store.set_apply_status("finn:1", "active", "2026-09-01T00:00:00+00:00")
 
-    pending = store.pending_apply_check("2026-10-09", "2026-10-02", 2, targets())
+    pending = store.pending_apply_check("2026-10-09", "2026-10-02", 3, targets())
 
-    assert [ad.id for ad in pending] == ["finn:1", "finn:2"]
+    assert [ad.id for ad in pending] == ["finn:3", "finn:2", "finn:1"]
+
+
+def _stored_lists(tmp_path: Path, ad_id: str) -> tuple[str, str]:
+    with sqlite3.connect(tmp_path / "ads.db") as conn:
+        return conn.execute(
+            "SELECT technologies, requirements FROM ads WHERE id = ?", (ad_id,)
+        ).fetchone()
+
+
+def test_should_store_new_ad_lists_as_unescaped_json(
+    tmp_path: Path, store: Store
+) -> None:
+    ad = make_ad(technologies=NON_ASCII_LIST, requirements=NON_ASCII_LIST)
+    store.upsert_ad(ad)
+
+    stored = _stored_lists(tmp_path, ad.id)
+
+    assert stored == (NON_ASCII_JSON, NON_ASCII_JSON)
+
+
+def test_should_store_classified_lists_as_unescaped_json(
+    tmp_path: Path, store: Store
+) -> None:
+    ad = make_ad()
+    store.upsert_ad(ad)
+    classification = make_classification(
+        technologies=NON_ASCII_LIST, requirements=NON_ASCII_LIST
+    )
+    store.set_classification(ad.id, classification, FAKE_VERSION)
+
+    stored = _stored_lists(tmp_path, ad.id)
+
+    assert stored == (NON_ASCII_JSON, NON_ASCII_JSON)
 
 
 def test_should_expose_source_cursors_without_schema_version(tmp_path: Path) -> None:

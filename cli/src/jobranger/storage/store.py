@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import sqlite3
 from dataclasses import dataclass
@@ -17,6 +18,7 @@ from jobranger.matching.rules import (
     is_reportable,
 )
 from jobranger.providers.base import Usage
+from jobranger.settings import MAX_AMOUNT_USD
 from jobranger.storage.migrations import SCHEMA_VERSION_KEY, migrate
 
 if TYPE_CHECKING:
@@ -46,6 +48,9 @@ CLOSE_COLUMNS = (
 )
 REOPEN_COLUMNS = "active = 1, closed_at = NULL, closed_reason = NULL"
 OUTDATED_WHERE = "active = 1 AND assessment_version IS NOT ?"
+COST_SQL = f"MIN(MAX(CAST(cost_usd AS REAL), 0), {MAX_AMOUNT_USD})"
+COUNT_COLUMNS = ("calls", "input_tokens", "output_tokens", "ads_read", "ads_checked")
+COUNTS_SQL = ", ".join(f"MAX(CAST({column} AS INTEGER), 0)" for column in COUNT_COLUMNS)
 
 SHARED_COLUMNS = (
     "id, source, source_id, title, company, location, "
@@ -600,6 +605,11 @@ class Store:
     def add_usage(
         self, day: str, usage: Usage, ads_read: int = 0, ads_checked: int = 0
     ) -> None:
+        if not math.isfinite(usage.cost_usd) or usage.cost_usd < 0:
+            msg = (
+                f"cost_usd must be a finite amount of at least 0, got {usage.cost_usd}"
+            )
+            raise ValueError(msg)
         with self._conn:
             self._conn.execute(
                 "INSERT INTO usage_days (day, calls, input_tokens, output_tokens, "
@@ -623,8 +633,8 @@ class Store:
 
     def usage_days(self, since: str) -> list[UsageDay]:
         rows = self._conn.execute(
-            "SELECT day, calls, input_tokens, output_tokens, cost_usd, ads_read, "
-            "ads_checked FROM usage_days WHERE day >= ? ORDER BY day",
+            f"SELECT day, {COST_SQL}, {COUNTS_SQL} FROM usage_days "
+            "WHERE day >= ? ORDER BY day",
             (since,),
         ).fetchall()
         return [
@@ -637,8 +647,16 @@ class Store:
                 int(read),
                 int(checked),
             )
-            for day, calls, input_tokens, output_tokens, cost, read, checked in rows
+            for day, cost, calls, input_tokens, output_tokens, read, checked in rows
         ]
+
+    def spend_between(self, start: str, end: str) -> float:
+        row = self._conn.execute(
+            f"SELECT COALESCE(SUM({COST_SQL}), 0) FROM usage_days "
+            "WHERE day >= ? AND day < ?",
+            (start, end),
+        ).fetchone()
+        return float(row[0])
 
     def set_state(self, key: str, value: str) -> None:
         self._conn.execute(

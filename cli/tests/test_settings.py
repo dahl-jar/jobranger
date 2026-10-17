@@ -73,6 +73,11 @@ def test_should_reject_run_times_less_than_two_hours_apart() -> None:
         ScheduleConfig(times=("23:30", "01:00"))
 
 
+def test_should_reject_run_time_not_in_hh_mm_format() -> None:
+    with pytest.raises(ValidationError, match="is not HH:MM"):
+        ScheduleConfig(times=("25:00",))
+
+
 @pytest.mark.parametrize(
     "fields",
     [
@@ -86,6 +91,34 @@ def test_should_reject_negative_model_amount(fields: dict[str, object]) -> None:
         ModelConfig.model_validate(fields)
 
 
+@pytest.mark.parametrize("value", [".nan", "1e303"])
+@pytest.mark.parametrize(
+    ("block", "location"),
+    [
+        ("  monthly_limit_usd: {value}\n", "model.monthly_limit_usd"),
+        (
+            "  price:\n    input_per_mtok: {value}\n    output_per_mtok: 1\n",
+            "model.price.input_per_mtok",
+        ),
+        (
+            "  price:\n    input_per_mtok: 1\n    output_per_mtok: {value}\n",
+            "model.price.output_per_mtok",
+        ),
+    ],
+)
+def test_should_reject_non_finite_or_huge_model_amount(
+    config_path: Path, value: str, block: str, location: str
+) -> None:
+    key = block.split(":", maxsplit=1)[0]
+    text = config_path.read_text().replace(f"{key}:\n", block.format(value=value))
+    config_path.write_text(text)
+
+    with pytest.raises(ConfigInvalidError) as raised:
+        load_config(config_path)
+
+    assert any(error.startswith(location) for error in raised.value.errors)
+
+
 def test_should_reject_unknown_config_key(config_path: Path) -> None:
     config_path.write_text(config_path.read_text() + "unknown_key: 1\n")
 
@@ -93,6 +126,16 @@ def test_should_reject_unknown_config_key(config_path: Path) -> None:
         load_config(config_path)
 
     assert raised.value.path == config_path
+
+
+def test_should_join_every_error_in_invalid_config_message(config_path: Path) -> None:
+    config_path.write_text(config_path.read_text() + "unknown_key: 1\nother_key: 2\n")
+
+    with pytest.raises(ConfigInvalidError) as raised:
+        load_config(config_path)
+
+    errors = "; ".join(raised.value.errors)
+    assert str(raised.value) == f"{config_path} is invalid: {errors}"
 
 
 def test_should_reject_unknown_role_in_subfields() -> None:
@@ -150,7 +193,10 @@ def test_should_name_missing_config_path(tmp_path: Path) -> None:
     with pytest.raises(ConfigMissingError) as raised:
         load_config(missing)
 
-    assert raised.value.path == missing
+    assert (raised.value.path, str(raised.value)) == (
+        missing,
+        f"file not found: {missing}",
+    )
 
 
 def test_should_create_private_parent_dirs_when_saving(tmp_path: Path) -> None:
@@ -161,8 +207,11 @@ def test_should_create_private_parent_dirs_when_saving(tmp_path: Path) -> None:
     assert stat.S_IMODE(path.parent.stat().st_mode) == OWNER_ONLY_DIR
 
 
-def test_should_write_scalar_lists_inline(config_path: Path) -> None:
-    assert "levels: [junior, mid, none]" in config_path.read_text()
+@pytest.mark.parametrize(
+    "line", ["levels: [junior, mid, none]", "times: [03:00, 15:00]"]
+)
+def test_should_write_scalar_lists_inline(config_path: Path, line: str) -> None:
+    assert line in config_path.read_text()
 
 
 def test_should_write_feed_list_as_blocks(config_path: Path) -> None:

@@ -4,13 +4,13 @@ import io
 import itertools
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 import httpx
 from pydantic import (
     BaseModel,
     ConfigDict,
-    NonNegativeFloat,
+    Field,
     ValidationError,
     field_serializer,
     field_validator,
@@ -118,11 +118,15 @@ class ScheduleConfig(BaseModel):
         return times
 
 
+MAX_AMOUNT_USD = 1_000_000
+Amount = Annotated[float, Field(ge=0, le=MAX_AMOUNT_USD, allow_inf_nan=False)]
+
+
 class PriceOverride(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    input_per_mtok: NonNegativeFloat
-    output_per_mtok: NonNegativeFloat
+    input_per_mtok: Amount
+    output_per_mtok: Amount
 
 
 class ModelConfig(BaseModel):
@@ -131,7 +135,7 @@ class ModelConfig(BaseModel):
     provider: ProviderName | None = None
     model: str | None = None
     ollama_url: str = DEFAULT_OLLAMA_URL
-    monthly_limit_usd: NonNegativeFloat | None = None
+    monthly_limit_usd: Amount | None = None
     price: PriceOverride | None = None
 
     @field_validator("ollama_url")

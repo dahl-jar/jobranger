@@ -79,11 +79,6 @@ def state_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return path
 
 
-@pytest.fixture
-def store(tmp_path: Path) -> Store:
-    return Store(tmp_path / "ads.db")
-
-
 def _offline_client() -> httpx.Client:
     return httpx.Client(
         transport=httpx.MockTransport(lambda request: httpx.Response(404))
