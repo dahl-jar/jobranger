@@ -14,15 +14,17 @@ from factories import (
 )
 
 from jobranger.matching.rules import (
-    BASE_RULES,
+    MASTER_RULE,
+    SENIOR_UNSUITABLE_RULE,
+    YEAR_CAP_RULE,
     band_of,
-    build_rules,
     decode_match,
     display_fit,
     encode_match,
     hidden_reason,
     is_reportable,
     is_stale,
+    limit_rules,
     max_years,
     parse_match,
 )
@@ -66,7 +68,6 @@ def _match_payload(**overrides: object) -> dict[str, object]:
         {"gaps": "none"},
         {"blockers": None},
         {"blockers": [42]},
-        {"blockers": [" "]},
         {"is_low_code": "false"},
         {"required_experience_years": "3"},
         {"required_experience_years": True},
@@ -114,27 +115,36 @@ def test_should_preserve_assessment_when_serializing() -> None:
     assert decode_match(encode_match(match)) == match
 
 
-@pytest.mark.parametrize(("length", "valid"), [(300, True), (301, False)])
+def test_should_store_match_text_without_unicode_escapes() -> None:
+    match = make_match(reason="Krever norsk på høyt nivå")
+
+    assert '"reason": "Krever norsk på høyt nivå"' in str(encode_match(match))
+
+
 @pytest.mark.parametrize("field", ["reason", "gaps"])
-def test_should_enforce_match_text_limit(field: str, length: int, valid: bool) -> None:
+def test_should_cut_match_text_over_limit_at_word(field: str) -> None:
+    long_text = "word " * 80
     payload = _match_payload(status="stretch")
-    payload[field] = "x" * length if field == "reason" else ["x" * length]
+    payload[field] = long_text if field == "reason" else [long_text]
 
-    assert (_parse(payload) is not None) is valid
+    result = _parse(payload)
+
+    texts = (result.reason,) if field == "reason" else getattr(result, field)
+    assert texts == (" ".join(["word"] * 59) + "…",)
 
 
-@pytest.mark.parametrize(("count", "valid"), [(5, True), (6, False)])
-def test_should_enforce_evidence_count_limit(count: int, valid: bool) -> None:
-    evidence = [
-        "java_project",
-        "cloud_project",
-        "django_project",
-        "android_project",
-        "cpp_project",
-        "work_data",
-    ]
+def test_should_drop_blank_match_items() -> None:
+    result = _parse(_match_payload(status="stretch", gaps=[" ", "Real item"]))
 
-    assert (_parse(_match_payload(evidence=evidence[:count])) is not None) is valid
+    assert result == make_match(status="stretch", gaps=("Real item",))
+
+
+def test_should_keep_first_five_match_items() -> None:
+    gaps = [f"Gap {index}" for index in range(6)]
+
+    result = _parse(_match_payload(status="stretch", gaps=gaps))
+
+    assert result == make_match(status="stretch", gaps=tuple(gaps[:5]))
 
 
 @pytest.mark.parametrize("version", ["", 1])
@@ -316,8 +326,8 @@ def test_should_render_no_year_cap_when_six_plus_selected() -> None:
 
 
 def test_should_name_senior_roles_unsuitable_only_when_senior_and_lead_off() -> None:
-    with_senior = build_rules(Limits(levels=frozenset({"junior", "senior"})))
-    without = build_rules(Limits(levels=frozenset({"junior", "mid"})))
+    with_senior = limit_rules(Limits(levels=frozenset({"junior", "senior"})))
+    without = limit_rules(Limits(levels=frozenset({"junior", "mid"})))
 
     assert (
         "Senior and lead roles are unsuitable" in with_senior,
@@ -326,30 +336,17 @@ def test_should_name_senior_roles_unsuitable_only_when_senior_and_lead_off() -> 
 
 
 def test_should_omit_master_rule_when_hide_masters_is_off() -> None:
-    rules = build_rules(Limits(hide_masters=False))
+    rules = limit_rules(Limits(hide_masters=False))
 
     assert "Mandatory completed master's" not in rules
 
 
-def test_should_not_list_unpaid_training_as_unsuitable_in_rules() -> None:
-    assert "unpaid training" not in build_rules(FAKE_LIMITS)
+def test_should_render_only_limit_lines() -> None:
+    rules = limit_rules(Limits(levels=frozenset({"junior"}), years=frozenset({"1-3"})))
 
-
-@pytest.mark.parametrize(
-    "phrase",
-    [
-        "observability",
-        "purchased",
-        "business development",
-        "significant, extensive",
-    ],
-)
-def test_should_name_required_rules_in_matching_rules(phrase: str) -> None:
-    assert phrase in BASE_RULES
-
-
-def test_should_render_year_cap_from_limits_in_rules() -> None:
-    assert "at most 3 years" in build_rules(Limits(years=frozenset({"1-3"})))
+    assert rules == "\n".join(
+        [YEAR_CAP_RULE.format(years=3), SENIOR_UNSUITABLE_RULE, MASTER_RULE]
+    )
 
 
 def test_should_hide_blocked_match_as_other_with_blocker_detail() -> None:
@@ -435,7 +432,7 @@ def test_should_cap_no_years_when_no_band_selected() -> None:
 
 
 def test_should_list_accepted_levels_in_rules_when_senior_selected() -> None:
-    rules = build_rules(Limits(levels=frozenset({"junior", "senior"})))
+    rules = limit_rules(Limits(levels=frozenset({"junior", "senior"})))
 
     assert "The search accepts these levels: Junior, Senior." in rules
 

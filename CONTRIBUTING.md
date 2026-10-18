@@ -15,6 +15,15 @@ uv run pytest
 uv run python scripts/mutate.py
 ```
 
+The default matching prompt is `PROMPT_HEADER` and `BASE_RULES` in `src/jobranger/matching/prompt.py`. The tests compare it byte for byte with `tests/fixtures/main_prompt_header.txt` and `tests/fixtures/main_base_rules.txt`, so a prompt change updates both fixtures in the same commit. Any prompt change also changes the assessment version, and every stored ad is checked again on the next run.
+
+After a prompt change, re-record the model replies in `tests/fixtures/matching_replies.json` that the matching-case tests read.
+
+```bash
+# one model call per case in tests/fixtures/matching_cases.json
+uv run python scripts/record_matching_replies.py claude -p --model claude-sonnet-5-5 --output-format json --tools ""
+```
+
 ## relay
 
 Needs the .NET 10 SDK.

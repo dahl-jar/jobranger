@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import fcntl
+import logging
 import os
 import threading
 from datetime import UTC, datetime, timedelta
@@ -11,6 +12,7 @@ import pytest
 from factories import (
     CALL_USAGE,
     FIXTURES,
+    GUIDANCE,
     OTHER_TEAMTAILOR_FEED,
     OUTDATED_VERSION,
     FakeClock,
@@ -28,9 +30,12 @@ from jobranger import paths, pipeline
 from jobranger.catalogue import EmployerFeed
 from jobranger.events import CancelToken, RunEvent, RunMode
 from jobranger.matching.classify import StopReason
-from jobranger.matching.profile import load_profile, profile_hash
-from jobranger.matching.rules import build_rules
+from jobranger.matching.guidance import DEFAULT_TEXT, guidance_path, save_guidance
+from jobranger.matching.profile import load_profile
+from jobranger.matching.prompt import assessment_version, build_system
+from jobranger.matching.rules import limit_rules
 from jobranger.net.rate_limit import HostLimiter, HostRule, event_hooks
+from jobranger.notify.digest import build_digest
 from jobranger.pipeline import RunResult, run_pass
 from jobranger.providers.base import ProviderError, ProviderErrorKind, StopKind
 from jobranger.settings import (
@@ -41,6 +46,7 @@ from jobranger.settings import (
     SourcesConfig,
 )
 from jobranger.sources.base import (
+    PageResult,
     Source,
     SourceBatch,
     SourceCancelled,
@@ -49,7 +55,7 @@ from jobranger.sources.base import (
 from jobranger.storage.store import Store
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
     from pathlib import Path
 
     from jobranger.ads.models import Ad
@@ -64,10 +70,14 @@ CONFIG = AppConfig(
 FINN_ONLY_CONFIG = CONFIG.model_copy(
     update={"sources": SourcesConfig(finn=True, nav=False, employers=False)}
 )
-VERSION = profile_hash(
-    load_profile(FIXTURES / "profile_user.yaml"), build_rules(CONFIG.targets.limits)
+DEFAULT_SYSTEM = build_system(
+    DEFAULT_TEXT,
+    limit_rules(CONFIG.targets.limits),
+    load_profile(FIXTURES / "profile_user.yaml"),
 )
+VERSION = assessment_version(DEFAULT_SYSTEM)
 BARRIER_TIMEOUT_SECONDS = 2.0
+MORE_SOURCES_THAN_DEFAULT_POOL = 33
 FEED_HOST_INTERVAL = 2.0
 TEAMTAILOR_XML = (FIXTURES / "teamtailor_jobs.xml").read_text()
 
@@ -77,6 +87,11 @@ def state_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     path = tmp_path / "state"
     monkeypatch.setenv("JOBRANGER_STATE_DIR", str(path))
     return path
+
+
+@pytest.fixture(autouse=True)
+def config_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("JOBRANGER_CONFIG_DIR", str(tmp_path / "config"))
 
 
 def _offline_client() -> httpx.Client:
@@ -150,15 +165,19 @@ def _stages(sink: ListSink, stage: str) -> list[RunEvent]:
     return [event for event in sink.events if event.stage == stage]
 
 
-def test_should_skip_run_when_lock_is_held(store: Store) -> None:
+@pytest.fixture
+def held_lock() -> Iterator[None]:
     lock_path = paths.run_lock_path()
     lock_path.parent.mkdir(parents=True)
     descriptor = os.open(lock_path, os.O_RDWR | os.O_CREAT)
     fcntl.flock(descriptor, fcntl.LOCK_EX)
-    try:
-        result = _run(store, mode=RunMode.scheduled)
-    finally:
-        os.close(descriptor)
+    yield
+    os.close(descriptor)
+
+
+@pytest.mark.usefixtures("held_lock")
+def test_should_skip_run_when_lock_is_held(store: Store) -> None:
+    result = _run(store, mode=RunMode.scheduled)
 
     assert (result.status, result.mode, store.last_run()) == (
         "locked",
@@ -287,6 +306,31 @@ def test_should_reclassify_after_limit_change(
     assert len(provider.prompts) == 2
 
 
+def test_should_reclassify_ads_after_guidance_edit(
+    store: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _use_sources(monkeypatch, [_source("fake", [_new_ad(1), _new_ad(2)])])
+    provider = FakeProvider()
+    _run(store, provider=provider)
+    save_guidance(guidance_path(), GUIDANCE)
+
+    _run(store, provider=provider)
+
+    assert len(provider.prompts) == 4
+
+
+def test_should_keep_run_version_in_digest_after_guidance_edit(
+    store: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _use_sources(monkeypatch, [_source("fake", [_new_ad(1)])])
+    result = _run(store)
+    save_guidance(guidance_path(), GUIDANCE)
+
+    digest = build_digest(store, result, CONFIG, datetime.now(tz=UTC).date())
+
+    assert [ad.id for ad in digest.new_today] == ["fake:1"]
+
+
 def test_should_close_run_row_with_counts(
     store: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -332,14 +376,15 @@ def test_should_mark_run_failed_when_profile_is_missing(
 def test_should_fetch_sources_concurrently(
     store: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    barrier = threading.Barrier(2, timeout=BARRIER_TIMEOUT_SECONDS)
+    count = MORE_SOURCES_THAN_DEFAULT_POOL
+    barrier = threading.Barrier(count, timeout=BARRIER_TIMEOUT_SECONDS)
 
     def meet() -> None:
         barrier.wait()
 
     _use_sources(
         monkeypatch,
-        [_source("one", [_new_ad(1)], meet), _source("two", [_new_ad(2)], meet)],
+        [_source(f"fake{index}", [_new_ad(index)], meet) for index in range(count)],
     )
 
     result = _run(store)
@@ -630,8 +675,23 @@ def test_should_expire_import_missing_from_employer_feed(
     [
         {"label": "junior", "match": make_match(version=OUTDATED_VERSION)},
         {"label": "error", "is_programming_job": False},
+        {
+            "label": "error",
+            "is_programming_job": False,
+            "match": make_match(version=VERSION),
+        },
+        {
+            "label": "junior",
+            "is_programming_job": None,
+            "match": make_match(version=VERSION),
+        },
     ],
-    ids=["stale match", "error label"],
+    ids=[
+        "stale match",
+        "error label",
+        "error label with current match",
+        "unknown programming flag",
+    ],
 )
 def test_should_not_reuse_unusable_duplicate_classification(
     store: Store, monkeypatch: pytest.MonkeyPatch, stored: dict[str, object]
@@ -1379,3 +1439,262 @@ def test_should_backfill_apply_url_for_stored_finn_ad(store: Store) -> None:
     _run(store, config, http=httpx.Client(transport=httpx.MockTransport(respond)))
 
     assert pages == ["/job/ad/1234"]
+
+
+@pytest.fixture
+def logs(caplog: pytest.LogCaptureFixture) -> pytest.LogCaptureFixture:
+    caplog.set_level(logging.INFO)
+    return caplog
+
+
+def _messages(caplog: pytest.LogCaptureFixture) -> list[str]:
+    return [record.getMessage() for record in caplog.records]
+
+
+def _seed_reportable(store: Store, index: int, apply_url: str) -> None:
+    store.upsert_ad(
+        make_ad(
+            id=f"finn:{index}",
+            source_id=str(index),
+            description="x",
+            apply_url=apply_url,
+            match=make_match(version=VERSION),
+        )
+    )
+
+
+def _page_source(pages: list[PageResult]) -> Source:
+    def fetch(ctx: FetchContext) -> SourceBatch:
+        return SourceBatch(source="fake", ads=(), read=0, pages=tuple(pages))
+
+    return Source("fake", fetch)
+
+
+def test_should_send_default_system_text_to_provider(
+    store: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _use_sources(monkeypatch, [_source("fake", [_new_ad(1)])])
+    provider = FakeProvider()
+
+    _run(store, provider=provider)
+
+    assert [prompt.system for prompt in provider.prompts] == [DEFAULT_SYSTEM]
+
+
+@pytest.mark.usefixtures("held_lock")
+def test_should_log_skipped_run_when_lock_is_held(
+    store: Store, logs: pytest.LogCaptureFixture
+) -> None:
+    _run(store)
+
+    assert _messages(logs) == ["run.locked another run holds the run lock"]
+
+
+def test_should_log_refresh_when_assessment_version_changes(
+    store: Store, logs: pytest.LogCaptureFixture
+) -> None:
+    store.upsert_ad(
+        make_ad(description="x", match=make_match(version=OUTDATED_VERSION))
+    )
+
+    _run(store)
+
+    assert (
+        f"classify.refreshed assessment version changed version={VERSION}"
+        in _messages(logs)
+    )
+
+
+def test_should_log_crashed_source_name(
+    store: Store, monkeypatch: pytest.MonkeyPatch, logs: pytest.LogCaptureFixture
+) -> None:
+    def crash(ctx: FetchContext) -> SourceBatch:
+        raise KeyError("boom")
+
+    _use_sources(monkeypatch, [Source("crashy", crash)])
+
+    _run(store)
+
+    assert "source.crashed source=crashy" in _messages(logs)
+
+
+def test_should_log_id_of_malformed_apply_url(
+    store: Store, logs: pytest.LogCaptureFixture
+) -> None:
+    _seed_reportable(store, 1, "http://[::1")
+
+    _run(store)
+
+    messages = _messages(logs)
+    assert "apply.check.malformed apply url could not be parsed id=finn:1" in messages
+
+
+def test_should_log_apply_check_counts(
+    store: Store, logs: pytest.LogCaptureFixture
+) -> None:
+    for index in (1, 2):
+        _seed_reportable(store, index, f"http://93.184.215.14/apply/{index}")
+    _seed_reportable(store, 3, "http://[::1")
+
+    _run(
+        store,
+        http=httpx.Client(
+            transport=httpx.MockTransport(lambda request: httpx.Response(404))
+        ),
+    )
+
+    assert (
+        "apply.check.done checked 3 apply links expired=2 unknown=0 skipped=1 blocked=0"
+    ) in _messages(logs)
+
+
+@pytest.mark.usefixtures("no_retry_wait")
+def test_should_log_vetoed_import(store: Store, logs: pytest.LogCaptureFixture) -> None:
+    feed = OTHER_TEAMTAILOR_FEED
+    store.upsert_ad(
+        make_ad(
+            id="finn:2",
+            source_id="2",
+            title="Data Engineer",
+            company="Org Two AS",
+            description="Build pipelines.",
+            match=make_match(version=VERSION),
+        )
+    )
+    http = httpx.Client(
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(200, text="<rss><channel/></rss>")
+        )
+    )
+    config = CONFIG.model_copy(
+        update={"sources": SourcesConfig(nav=False, employer_feeds=(feed,))}
+    )
+
+    _run(store, config, http=http)
+
+    assert (
+        f"apply.veto listing missing from employer feed id=finn:2 feed={feed.source}"
+        in _messages(logs)
+    )
+
+
+def test_should_store_run_version_on_reused_classification(
+    store: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store.upsert_ad(
+        make_ad(
+            id="finn:1",
+            title="Backend Developer",
+            label="junior",
+            description="Build Python services.",
+            match=make_match(version=VERSION),
+        )
+    )
+    pending = _new_ad(
+        1,
+        title="Backend Developer",
+        company="Org One AS",
+        description="Build Python services.",
+    )
+    _use_sources(monkeypatch, [_source("fake", [pending])])
+
+    _run(store)
+
+    assert store.count_outdated(VERSION) == 0
+
+
+def test_should_classify_pending_group_after_reused_group(
+    store: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store.upsert_ad(
+        make_ad(
+            id="aaa:1",
+            source="aaa",
+            title="Backend Developer",
+            label="junior",
+            description="Build Python services.",
+            match=make_match(version=VERSION),
+        )
+    )
+    reused = _new_ad(
+        1,
+        title="Backend Developer",
+        company="Org One AS",
+        description="Build Python services.",
+    )
+    fresh = _new_ad(9, title="Plattformutvikler")
+    _use_sources(monkeypatch, [_source("fake", [reused, fresh])])
+    provider = FakeProvider()
+
+    _run(store, provider=provider)
+
+    assert [fresh.id in prompt.user for prompt in provider.prompts] == [True]
+
+
+def test_should_store_label_from_source_page(
+    store: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store.upsert_ad(
+        make_ad(id="finn:1", description=None, match=make_match(version=VERSION))
+    )
+    _use_sources(
+        monkeypatch, [_page_source([PageResult("finn:1", None, None, "senior")])]
+    )
+
+    _run(store)
+
+    assert store.active_ads()[0].label == "senior"
+
+
+def test_should_stamp_skipped_apply_status_with_run_start(
+    store: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store.upsert_ad(make_ad(id="finn:1", description=None))
+    _use_sources(monkeypatch, [_page_source([PageResult("finn:1", "x", None)])])
+
+    _run(store)
+
+    last = store.last_run()
+    assert last is not None
+    assert store.active_ads()[0].apply_checked_at == last.started_at
+
+
+def test_should_send_at_most_sixty_apply_url_backfills_to_sources(
+    store: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for index in range(61):
+        store.upsert_ad(
+            make_ad(
+                id=f"finn:{index}",
+                source_id=str(index),
+                description="x",
+                match=make_match(version=VERSION),
+            )
+        )
+    seen: list[int] = []
+
+    def fetch(ctx: FetchContext) -> SourceBatch:
+        seen.append(len(ctx.pending_pages))
+        return SourceBatch(source="fake", ads=(), read=0)
+
+    _use_sources(monkeypatch, [Source("fake", fetch)])
+
+    _run(store)
+
+    assert seen == [60]
+
+
+def test_should_name_source_threads(
+    store: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    names: list[str] = []
+
+    def fetch(ctx: FetchContext) -> SourceBatch:
+        names.append(threading.current_thread().name)
+        return SourceBatch(source="fake", ads=(), read=0)
+
+    _use_sources(monkeypatch, [Source("fake", fetch)])
+
+    _run(store)
+
+    assert [name.startswith("source_") for name in names] == [True]

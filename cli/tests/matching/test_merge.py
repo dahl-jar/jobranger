@@ -160,8 +160,12 @@ def test_should_prefer_current_match_over_richer_stale_one() -> None:
 
 @pytest.mark.parametrize(
     "blocked",
-    [make_match(status="unsuitable"), make_match(is_low_code=True)],
-    ids=["unsuitable", "low code"],
+    [
+        make_match(status="unsuitable"),
+        make_match(status="stretch", blockers=("SAP required",)),
+        make_match(is_low_code=True),
+    ],
+    ids=["unsuitable", "blockers", "low code"],
 )
 def test_should_prefer_any_blocked_match(blocked: object) -> None:
     safe = make_ad(id="finn:1", technologies=("Java", "Kotlin"))

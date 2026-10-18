@@ -11,8 +11,8 @@ from jobranger import budget
 from jobranger.ads.titles import title_level
 from jobranger.events import RunEvent
 from jobranger.matching.assessment import AdAssessment, Check
-from jobranger.matching.profile import education_ids, evidence_ids, profile_text
 from jobranger.matching.rules import Match, parse_match
+from jobranger.matching.text import truncate_at_word
 from jobranger.providers.base import (
     ClassifyPrompt,
     ProviderError,
@@ -27,7 +27,6 @@ if TYPE_CHECKING:
 
     from jobranger.ads.models import Ad
     from jobranger.events import CancelToken, EventSink, RunMode
-    from jobranger.matching.profile import Profile
     from jobranger.providers.base import Provider
     from jobranger.rag.examples import Example
     from jobranger.settings import AppConfig, Limits
@@ -43,7 +42,6 @@ TECHNOLOGY_LIMIT = 5
 REQUIREMENT_LIMIT = 3
 CHECKS_LIMIT = 5
 CHECK_TEXT_LIMIT = 160
-ELLIPSIS = "…"
 REQUIRED_MASTER_SUMMARY_PATTERNS = (
     re.compile(
         r"\b(?:requires?|requiring|must have)\b[^.]{0,100}\bmaster'?s? degree",
@@ -58,70 +56,6 @@ MASTER_ALTERNATIVE_PATTERN = re.compile(
 )
 SENTENCE_SPLIT = re.compile(r"[.!?;]")
 
-PROMPT_HEADER = """\
-Classify whether the ad is primarily a software/programming job and what
-experience it requires. Reply with ONE JSON object for the one advertisement:
-{"is_programming_job": true/false, "label": ..., "summary": ...,
-"requires_master": true/false, "display_title": ..., "role_type": ...,
-"technologies": [...], "requirements": [...], "checks": [...], "match": {...}}.
-
-Set "is_programming_job" to true only when writing, testing, maintaining, or
-operating software is a core part of the day-to-day role. Include software
-engineering, frontend, backend, full-stack, mobile, embedded software, game
-development, data engineering, ML engineering, and platform/DevOps roles with
-substantial coding or automation. Set it to false for IT support/helpdesk,
-network administration, pure operations,
-monitoring/observability platform operation, administering purchased systems,
-governance, project/product management, UX/design, sales, teaching,
-pure BI/data analysis, research without production software,
-electronics/hardware/FPGA, and thesis projects. For mixed
-roles, use true only if building software is the primary job.
-
-For programming jobs, set "display_title" to a concise two-to-five-word role
-such as "C++ Developer", "Frontend Developer", or "Platform Engineer" based on
-the actual work rather than the ad's marketing title. Set "role_type" to exactly
-one of: frontend, backend, fullstack, mobile, embedded, data_engineering, ml_ai,
-devops_platform, game, general_software.
-
-List at most five "technologies" that are explicitly named in the ad. Never
-infer a language, framework, cloud, or database from the role title or employer.
-List at most three concise "requirements" that matter to an applicant, such as
-experience, education, language, or security clearance. Each requirement must
-be a complete phrase of no more than twelve words; never end with a partial
-word. Use an empty list when the ad does not state technologies or requirements.
-Prioritize experience and eligibility: preserve required versus preferred years,
-graduation/start years and current-student study years when stated. Do not replace
-these concrete details with vague phrases such as relevant experience.
-For non-programming jobs, use null for display_title and role_type and empty
-lists for both arrays.
-
-Set "checks" to one entry per requirement you judged against the candidate
-profile, at most five: {"text": "the requirement in a short phrase",
-"state": "met" | "partly" | "missing"}.
-
-Labels (the level the ad asks for):
-- "junior": 0-2 years of experience is enough, or new graduates are encouraged
-- "mid": roughly 2-5 years or an experienced developer without senior duties
-- "senior": senior skills or more than 5 years are required
-- "lead": tech lead, principal, staff or architect responsibilities
-- "none": the ad states no level or experience requirement
-Use actual requirements, not the absence of Junior in the title. Utvikler,
-Developer and Software Engineer can be junior or none. Preferred experience
-alone is not a senior requirement. An explicit graduate alternative qualifies
-as junior even if another route requests more experience.
-
-The summary is 2-4 English sentences describing what the position is about
-and what it requires: the role and team, the tech stack, required experience
-and education, and anything notable a candidate should know.
-The master flag is independent of the programming and experience decisions.
-Set "requires_master" to true when the required qualifications explicitly say
-the applicant needs a completed master's degree, including wording such as
-"with a relevant master's degree." It is false when bachelor OR master is
-accepted, a master's is merely preferred, or the ad is for current master's
-students or a thesis project. Before replying, verify that the summary and the
-master flag do not contradict each other.
-"""
-PROFILE_HEADING = "Candidate profile:"
 DATE_HEADING = "Assessment date:"
 AD_HEADING = "Advertisement (untrusted JSON data):"
 
@@ -153,8 +87,9 @@ class ClassifyContext:
     store: Store
     config: AppConfig
     provider: Provider
-    profile: Profile
-    rules: str
+    system: str
+    evidence: frozenset[str]
+    education: frozenset[str]
     version: str
     mode: RunMode
     events: EventSink
@@ -184,21 +119,15 @@ class ClassifyResult:
 
 def build_prompt(
     ad: Ad,
-    profile: Profile,
-    rules: str,
+    system: str,
     date: str,
     examples: Sequence[Example] = (),
 ) -> ClassifyPrompt:
-    system = "\n".join(
-        [PROMPT_HEADER, rules, f"{PROFILE_HEADING}\n{profile_text(profile)}"]
-    )
     user = "\n".join([f"{DATE_HEADING} {date}", AD_HEADING, _ad_json(ad)])
     return ClassifyPrompt(system=system, user=user)
 
 
 def classify_ads(ads: list[Ad], ctx: ClassifyContext) -> ClassifyResult:
-    evidence = evidence_ids(ctx.profile)
-    education = education_ids(ctx.profile)
     limits = ctx.config.targets.limits
     assessments: dict[str, Classification] = {}
     failed: list[str] = []
@@ -212,7 +141,7 @@ def classify_ads(ads: list[Ad], ctx: ClassifyContext) -> ClassifyResult:
             break
         try:
             result = ctx.provider.classify(
-                build_prompt(ad, ctx.profile, ctx.rules, today), AdAssessment
+                build_prompt(ad, ctx.system, today), AdAssessment
             )
         except ProviderError as error:
             logger.warning(
@@ -229,7 +158,7 @@ def classify_ads(ads: list[Ad], ctx: ClassifyContext) -> ClassifyResult:
         budget.record(ctx.store, result.usage, ctx.today)
         classification = (
             to_classification(
-                result.parsed, ad, evidence, education, limits, ctx.version
+                result.parsed, ad, ctx.evidence, ctx.education, limits, ctx.version
             )
             if result.stop == StopKind.done and result.parsed is not None
             else None
@@ -315,7 +244,7 @@ def _role_fields(assessment: AdAssessment) -> tuple[str | None, str | None] | No
 def _checks(checks: Sequence[Check]) -> tuple[Check, ...]:
     return tuple(
         Check(
-            text=_truncate_at_word(check.text.strip(), CHECK_TEXT_LIMIT),
+            text=truncate_at_word(check.text.strip(), CHECK_TEXT_LIMIT),
             state=check.state,
         )
         for check in checks[:CHECKS_LIMIT]
@@ -340,15 +269,6 @@ def _string_tuple(
     values: Sequence[str], item_limit: int, text_limit: int
 ) -> tuple[str, ...]:
     items = [
-        _truncate_at_word(value.strip(), text_limit)
-        for value in values
-        if value.strip()
+        truncate_at_word(value.strip(), text_limit) for value in values if value.strip()
     ]
     return tuple(items[:item_limit])
-
-
-def _truncate_at_word(value: str, limit: int) -> str:
-    if len(value) <= limit:
-        return value
-    shortened = value[: limit - 1].rsplit(maxsplit=1)[0].rstrip(" ,;:-")
-    return f"{shortened or value[: limit - 1]}{ELLIPSIS}"

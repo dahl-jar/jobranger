@@ -25,9 +25,9 @@ from jobranger.matching.classify import (
     with_title_level,
 )
 from jobranger.matching.merge import preferred_ad
-from jobranger.matching.profile import load_profile, profile_hash
+from jobranger.matching.profile import education_ids, evidence_ids, load_profile
+from jobranger.matching.prompt import assessment_version, system_for
 from jobranger.matching.rules import (
-    build_rules,
     has_current_match,
     hidden_reason,
     is_stale,
@@ -96,6 +96,7 @@ class RunResult:
     budget_paused: bool = False
     pending: int = 0
     model_stopped: StopReason | None = None
+    version: str | None = None
 
 
 @dataclass
@@ -186,9 +187,9 @@ def _locked_pass(state: _Pass) -> RunResult:
     status: StoredRunStatus = "failed"
     try:
         profile = load_profile(state.config.profile.path)
-        rules = build_rules(state.config.targets.limits)
-        version = profile_hash(profile, rules)
-        status = _stages(state, tally, profile, rules, version)
+        system = system_for(state.config, profile)
+        version = assessment_version(system)
+        status = _stages(state, tally, profile, system, version)
     finally:
         state.store.finish_run(
             run_id,
@@ -218,18 +219,19 @@ def _locked_pass(state: _Pass) -> RunResult:
         budget_paused=tally.model_stopped == StopReason.budget,
         pending=tally.pending,
         model_stopped=tally.model_stopped,
+        version=version,
     )
 
 
 def _stages(
-    state: _Pass, tally: _Tally, profile: Profile, rules: str, version: str
+    state: _Pass, tally: _Tally, profile: Profile, system: str, version: str
 ) -> StoredRunStatus:
     if not state.cancel.cancelled:
         _fetch_stage(state, tally)
     state.store.add_usage(state.today.isoformat(), Usage(), ads_read=tally.ads_read)
     if tally.cancelled or state.cancel.cancelled:
         return "cancelled"
-    _classify_stage(state, tally, profile, rules, version)
+    _classify_stage(state, tally, profile, system, version)
     if tally.model_stopped == StopReason.cancelled:
         return "cancelled"
     _report_stage(state, tally, version)
@@ -333,11 +335,11 @@ def _write_page(store: Store, page: PageResult, run_started: str) -> None:
 
 
 def _classify_stage(
-    state: _Pass, tally: _Tally, profile: Profile, rules: str, version: str
+    state: _Pass, tally: _Tally, profile: Profile, system: str, version: str
 ) -> None:
     store = state.store
     if store.refresh_assessments(version):
-        logger.info("classify.profile_refreshed version=%s", version)
+        logger.info("classify.refreshed assessment version changed version=%s", version)
     pending = store.pending_classification(LABEL_MAX_ATTEMPTS)
     representatives, groups = _prepare_classification(store, pending, version)
     if state.provider is None:
@@ -350,8 +352,9 @@ def _classify_stage(
                 store=store,
                 config=state.config,
                 provider=state.provider,
-                profile=profile,
-                rules=rules,
+                system=system,
+                evidence=evidence_ids(profile),
+                education=education_ids(profile),
                 version=version,
                 mode=state.mode,
                 events=state.events,

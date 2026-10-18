@@ -1,0 +1,2 @@
+The search accepts roles requiring any number of years.
+The search accepts these levels: Junior, Senior.

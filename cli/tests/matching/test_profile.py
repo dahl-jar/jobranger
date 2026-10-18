@@ -9,16 +9,12 @@ from jobranger.matching.profile import (
     Evidence,
     Profile,
     load_profile,
-    profile_hash,
     save_profile,
 )
 from jobranger.settings import ConfigInvalidError
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-RULES = "Assess roles."
-OTHER_RULES = "Assess roles requiring at most 3 years."
 
 
 def test_should_reject_duplicate_evidence_ids_across_lists(
@@ -33,18 +29,6 @@ def test_should_reject_duplicate_evidence_ids_across_lists(
                 "education": [*fake_profile.model_dump()["education"], duplicate],
             }
         )
-
-
-def test_should_change_profile_hash_when_rules_change(fake_profile: Profile) -> None:
-    assert profile_hash(fake_profile, RULES) != profile_hash(fake_profile, OTHER_RULES)
-
-
-def test_should_change_profile_hash_when_profile_stack_changes(
-    fake_profile: Profile,
-) -> None:
-    changed = fake_profile.model_copy(update={"stack": (*fake_profile.stack, "Rust")})
-
-    assert profile_hash(fake_profile, RULES) != profile_hash(changed, RULES)
 
 
 def test_should_load_saved_profile_unchanged(

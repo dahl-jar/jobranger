@@ -20,7 +20,6 @@ from factories import (
 from jobranger.events import CancelToken, RunMode
 from jobranger.matching.assessment import AdAssessment, Check
 from jobranger.matching.classify import (
-    PROMPT_HEADER,
     Classification,
     ClassifyContext,
     StopReason,
@@ -29,7 +28,6 @@ from jobranger.matching.classify import (
     to_classification,
 )
 from jobranger.matching.profile import Profile, education_ids, evidence_ids
-from jobranger.matching.rules import build_rules
 from jobranger.providers.base import ProviderError, ProviderErrorKind, StopKind
 from jobranger.settings import AppConfig, ProfileRef
 from jobranger.storage.store import Store
@@ -38,7 +36,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 TODAY = date(2026, 10, 9)
-RULES = build_rules(FAKE_LIMITS)
+SYSTEM = "Locked rules, guidance, limits and profile."
 
 
 def _context(
@@ -54,8 +52,9 @@ def _context(
         store=Store(tmp_path / "ads.db"),
         config=config,
         provider=provider,
-        profile=profile,
-        rules=RULES,
+        system=SYSTEM,
+        evidence=evidence_ids(profile),
+        education=education_ids(profile),
         version=FAKE_VERSION,
         mode=RunMode.manual,
         events=ListSink(),
@@ -97,25 +96,14 @@ def test_should_send_one_ad_per_provider_call(
     ] == [["finn:1"], ["finn:2"], ["finn:3"]]
 
 
-def test_should_share_identical_system_part_across_ads(fake_profile: Profile) -> None:
-    first, second = (
-        build_prompt(ad, fake_profile, RULES, TODAY.isoformat()) for ad in _ads(2)
-    )
+def test_should_send_context_system_text_with_every_ad(
+    tmp_path: Path, fake_profile: Profile
+) -> None:
+    provider = FakeProvider()
 
-    assert first.system == second.system
+    classify_ads(_ads(2), _context(tmp_path, provider, fake_profile))
 
-
-def test_should_put_date_and_ad_in_user_part_only(fake_profile: Profile) -> None:
-    ad = make_ad(title="Plattformutvikler")
-
-    prompt = build_prompt(ad, fake_profile, RULES, TODAY.isoformat())
-
-    assert (TODAY.isoformat() in prompt.system, ad.title in prompt.system) == (
-        False,
-        False,
-    )
-    assert TODAY.isoformat() in prompt.user
-    assert ad.title in prompt.user
+    assert [prompt.system for prompt in provider.prompts] == [SYSTEM, SYSTEM]
 
 
 def test_should_keep_ad_pending_when_provider_raises(
@@ -141,6 +129,18 @@ def test_should_stop_with_auth_reason_when_key_is_rejected(
     result = classify_ads(_ads(1), _context(tmp_path, provider, fake_profile))
 
     assert result.stopped == StopReason.auth
+
+
+def test_should_log_provider_failure_kind(
+    tmp_path: Path, fake_profile: Profile, caplog: pytest.LogCaptureFixture
+) -> None:
+    provider = FakeProvider([ProviderError(ProviderErrorKind.server, "down")])
+
+    classify_ads(_ads(1), _context(tmp_path, provider, fake_profile))
+
+    assert [record.getMessage() for record in caplog.records] == [
+        "classify.provider.failed model call stopped kind=server"
+    ]
 
 
 def test_should_fail_ad_without_second_call_when_reply_is_invalid(
@@ -179,19 +179,6 @@ def test_should_keep_checks_from_assessment_in_classification(
     result = _convert(fake_profile, checks=checks)
 
     assert result.checks == tuple(Check.model_validate(check) for check in checks)
-
-
-def test_should_keep_fixed_prompt_text_free_of_profile_names(
-    fake_profile: Profile,
-) -> None:
-    fixed = f"{PROMPT_HEADER}\n{RULES}"
-    entries = (
-        *fake_profile.education,
-        *fake_profile.experience,
-        *fake_profile.projects,
-    )
-
-    assert [entry.name for entry in entries if entry.name in fixed] == []
 
 
 def test_should_stop_classifying_when_cancelled(
@@ -260,10 +247,6 @@ def test_should_keep_unknown_fit_when_information_is_missing(
     result = _convert(fake_profile, match=unknown)
 
     assert result.match == make_match(status="unknown", evidence=())
-
-
-def test_should_list_monitoring_operations_as_non_programming_in_prompt() -> None:
-    assert "monitoring/observability platform operation" in PROMPT_HEADER
 
 
 def test_should_copy_assessment_fields_into_classification(
@@ -364,10 +347,10 @@ def test_should_fail_truncated_reply_even_with_parsed_body(
     assert result.failed == ("finn:1",)
 
 
-def test_should_send_ad_fields_as_json(fake_profile: Profile) -> None:
+def test_should_send_ad_fields_as_json() -> None:
     ad = make_ad(description=None)
 
-    prompt = build_prompt(ad, fake_profile, RULES, TODAY.isoformat())
+    prompt = build_prompt(ad, SYSTEM, TODAY.isoformat())
 
     assert json.loads(prompt.user.splitlines()[-1]) == {
         "id": ad.id,
@@ -378,12 +361,12 @@ def test_should_send_ad_fields_as_json(fake_profile: Profile) -> None:
     }
 
 
-def test_should_join_header_rules_and_profile_with_newlines(
-    fake_profile: Profile,
-) -> None:
-    prompt = build_prompt(make_ad(), fake_profile, RULES, TODAY.isoformat())
+def test_should_send_ad_text_without_unicode_escapes() -> None:
+    ad = make_ad(title="Utvikler i Bodø")
 
-    assert prompt.system.startswith(PROMPT_HEADER + "\n" + RULES + "\n")
+    prompt = build_prompt(ad, SYSTEM, TODAY.isoformat())
+
+    assert '"title": "Utvikler i Bodø"' in prompt.user
 
 
 def test_should_keep_usage_of_calls_made_before_outage(

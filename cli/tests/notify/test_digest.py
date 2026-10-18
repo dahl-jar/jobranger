@@ -7,8 +7,6 @@ import pytest
 from factories import FIXTURES, make_ad, make_match, targets
 
 from jobranger.events import RunMode
-from jobranger.matching.profile import load_profile, profile_hash
-from jobranger.matching.rules import build_rules
 from jobranger.notify.digest import DigestData, build_digest
 from jobranger.pipeline import RunResult
 from jobranger.settings import AppConfig, ProfileRef
@@ -23,9 +21,7 @@ TODAY = date(2026, 10, 9)
 CONFIG = AppConfig(
     profile=ProfileRef(path=FIXTURES / "profile_user.yaml"), targets=targets()
 )
-VERSION = profile_hash(
-    load_profile(FIXTURES / "profile_user.yaml"), build_rules(CONFIG.targets.limits)
-)
+VERSION = "run-version"
 
 
 def _ad(index: int, **overrides: object) -> Ad:
@@ -34,7 +30,7 @@ def _ad(index: int, **overrides: object) -> Ad:
         "source_id": str(index),
         "title": f"Developer {index}",
         "company": f"Org {index} AS",
-        "url": f"https://www.finn.no/job/ad/{index}",
+        "url": f"https://jobs.example.test/ad/{index}",
         "match": make_match(version=VERSION),
     }
     base.update(overrides)
@@ -53,6 +49,7 @@ def _digest(
         status="completed",
         mode=RunMode.manual,
         reported_ids=tuple(ad.id for ad in chosen),
+        version=VERSION,
     )
     return build_digest(store, result, CONFIG, TODAY)
 
@@ -111,7 +108,7 @@ def test_should_count_same_ad_from_two_sources_once(tmp_path: Path) -> None:
         source_id="aa-bb",
         title="Junior Utvikler",
         company="org one",
-        url="https://arbeidsplassen.nav.no/stillinger/stilling/aa-bb",
+        url="https://jobs.example.test/stilling/aa-bb",
     )
 
     data = _digest(tmp_path, [finn_ad, nav_ad])
@@ -126,7 +123,7 @@ def test_should_prefer_direct_employer_url_for_duplicate(tmp_path: Path) -> None
         source="nav",
         title="Graduate Developer",
         company="Org One AS",
-        url="https://arbeidsplassen.nav.no/stillinger/stilling/1",
+        url="https://jobs.example.test/stilling/1",
     )
     direct = _ad(
         2,
@@ -263,3 +260,19 @@ def test_should_order_new_matches_by_deadline_with_undated_last(
     data = _digest(tmp_path, [undated, far, near])
 
     assert _ids(data.new_today) == [near.id, far.id, undated.id]
+
+
+def test_should_report_duplicate_by_its_current_match(tmp_path: Path) -> None:
+    current = _ad(1, title="Backend Developer", company="Org One AS")
+    stale = _ad(
+        2,
+        id="nav:1",
+        source="nav",
+        title="Backend Developer",
+        company="Org One AS",
+        match=make_match(version="old-version", status="unsuitable"),
+    )
+
+    data = _digest(tmp_path, [current, stale])
+
+    assert _ids(data.new_today) == [current.id]

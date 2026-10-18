@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 from collections import Counter
 from typing import TYPE_CHECKING, Annotated
 
@@ -80,7 +79,3 @@ def education_ids(profile: Profile) -> frozenset[str]:
 
 def profile_text(profile: Profile) -> str:
     return profile.model_dump_json(indent=PROFILE_INDENT)
-
-
-def profile_hash(profile: Profile, rules: str) -> str:
-    return hashlib.sha256(f"{profile_text(profile)}\n{rules}".encode()).hexdigest()

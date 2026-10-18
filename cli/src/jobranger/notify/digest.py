@@ -7,9 +7,7 @@ from typing import TYPE_CHECKING
 from jobranger.ads.apply_link import STATUS_EXPIRED
 from jobranger.ads.duplicates import DIRECT_SOURCE_PREFIXES, group_duplicates
 from jobranger.matching.merge import preferred_ad
-from jobranger.matching.profile import load_profile, profile_hash
 from jobranger.matching.rules import (
-    build_rules,
     is_reportable,
     max_years,
     parse_date,
@@ -49,11 +47,12 @@ def build_digest(
     store: Store, result: RunResult, config: AppConfig, today: date
 ) -> DigestData:
     targets = config.targets
-    version = profile_hash(
-        load_profile(config.profile.path), build_rules(targets.limits)
-    )
-    wanted = _wanted_ads(
-        store.ads_by_id(list(result.reported_ids)), today, version, targets
+    wanted = (
+        []
+        if result.version is None
+        else _wanted_ads(
+            store.ads_by_id(list(result.reported_ids)), today, result.version, targets
+        )
     )
     apply_soon = sorted(
         (ad for ad in wanted if _due_soon(ad, today)), key=lambda ad: ad.deadline or ""
