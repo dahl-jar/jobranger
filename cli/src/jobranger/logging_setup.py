@@ -12,8 +12,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import TextIO, override
 
-from jobranger.paths import PRIVATE_DIR_MODE, PRIVATE_FILE_MODE
-
 LogValue = int | float | bool | str
 
 RUN_ID: ContextVar[str | None] = ContextVar("run_id", default=None)
@@ -25,6 +23,8 @@ EVENT_TRAILING_PUNCTUATION = ",:;"
 SURROGATES = re.compile("[\ud800-\udfff]")
 REPLACEMENT_CHAR = "\ufffd"
 LOG_SUFFIX = ".jsonl"
+LOG_FILE_MODE = 0o600
+LOG_DIR_MODE = 0o700
 QUIET_LOGGERS = ("httpx", "httpx2", "httpcore")
 ALLOWED_FIELDS = frozenset(
     {
@@ -69,6 +69,7 @@ ALLOWED_FIELDS = frozenset(
         "guidance_default",
         "about_chars",
         "doc_count",
+        "file",
     }
 )
 
@@ -121,8 +122,8 @@ def _safe_entry(record: logging.LogRecord) -> dict[str, object]:
 
 
 def configure_logging(log_dir: Path, console_level: int | None) -> logging.Handler:
-    log_dir.mkdir(mode=PRIVATE_DIR_MODE, parents=True, exist_ok=True)
-    log_dir.chmod(PRIVATE_DIR_MODE)
+    log_dir.mkdir(mode=LOG_DIR_MODE, parents=True, exist_ok=True)
+    log_dir.chmod(LOG_DIR_MODE)
     day = datetime.now().astimezone().date().isoformat()
     path = log_dir / f"{day}{LOG_SUFFIX}"
     _create_private(path)
@@ -196,8 +197,8 @@ def _printable(text: str) -> str:
 
 
 def _create_private(path: Path) -> None:
-    os.close(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, PRIVATE_FILE_MODE))
-    path.chmod(PRIVATE_FILE_MODE)
+    os.close(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, LOG_FILE_MODE))
+    path.chmod(LOG_FILE_MODE)
 
 
 def _remove_own_handlers(root: logging.Logger) -> None:

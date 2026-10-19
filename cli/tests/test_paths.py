@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import errno
+import os
+import threading
 from pathlib import Path
 
 import pytest
@@ -27,7 +30,16 @@ def test_should_use_xdg_config_home_when_set(
     assert paths.config_dir() == tmp_path / "jobranger"
 
 
-def test_should_default_config_dir_to_dot_config_whatever_the_platform_dir(
+def test_should_prefer_jobranger_config_dir_over_xdg_config_home(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    monkeypatch.setenv("JOBRANGER_CONFIG_DIR", str(tmp_path / "own"))
+
+    assert paths.config_dir() == tmp_path / "own"
+
+
+def test_should_default_config_dir_to_dot_config_on_every_platform(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.setattr(
@@ -70,3 +82,84 @@ def test_should_name_platform_dirs_after_app() -> None:
         "jobranger",
         "jobranger",
     )
+
+
+def test_should_keep_file_whole_when_written_concurrently(tmp_path: Path) -> None:
+    target = tmp_path / "config.yaml"
+    texts = [f"writer-{index}" * 512 for index in range(4)]
+    errors: list[OSError] = []
+
+    def write_repeatedly(text: str) -> None:
+        try:
+            for _ in range(100):
+                paths.write_private(target, text)
+        except OSError as error:
+            errors.append(error)
+
+    threads = [
+        threading.Thread(target=write_repeatedly, args=(text,)) for text in texts
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert (errors, target.read_text() in texts) == ([], True)
+    assert [entry.name for entry in tmp_path.iterdir()] == ["config.yaml"]
+
+
+def test_should_write_text_as_utf_8(tmp_path: Path) -> None:
+    target = tmp_path / "config.yaml"
+
+    paths.write_private(target, "name: æøå")
+
+    assert target.read_bytes() == "name: æøå".encode()
+
+
+def test_should_remove_temp_file_when_replace_fails(tmp_path: Path) -> None:
+    target = tmp_path / "config.yaml"
+    (target / "occupied").mkdir(parents=True)
+
+    with pytest.raises(OSError, match="config.yaml"):
+        paths.write_private(target, "text")
+
+    assert [entry.name for entry in tmp_path.iterdir()] == ["config.yaml"]
+
+
+def test_should_remove_temp_file_left_by_crashed_write(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = tmp_path / "config.yaml"
+    with monkeypatch.context() as patch:
+        patch.setattr(paths.os, "replace", lambda source, destination: None)
+        paths.write_private(target, "text")
+    leftovers = [entry.name for entry in tmp_path.iterdir()]
+
+    paths.remove_stale_temps(target)
+
+    assert (len(leftovers), list(tmp_path.iterdir())) == (1, [])
+
+
+def test_should_raise_replace_error_when_temp_file_already_vanished(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def vanish_then_fail(source: str, destination: Path) -> None:
+        Path(source).unlink()
+        raise OSError(errno.EXDEV, os.strerror(errno.EXDEV))
+
+    monkeypatch.setattr(paths.os, "replace", vanish_then_fail)
+
+    with pytest.raises(OSError, match=os.strerror(errno.EXDEV)):
+        paths.write_private(tmp_path / "config.yaml", "text")
+
+
+def test_should_skip_stale_temp_that_vanished_before_removal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = tmp_path / "config.yaml"
+    vanished = tmp_path / ".config.yaml.gone.tmp"
+    monkeypatch.setattr(paths.Path, "glob", lambda self, pattern: iter([vanished]))
+
+    paths.remove_stale_temps(target)
+
+    assert list(tmp_path.iterdir()) == []

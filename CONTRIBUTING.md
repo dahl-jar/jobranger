@@ -15,6 +15,8 @@ uv run pytest
 uv run python scripts/mutate.py
 ```
 
+The test suite points `HOME`, the `XDG_*` dirs and the `JOBRANGER_*` dirs at a temp folder and swaps the keyring for an in-memory one, so a test run leaves the real config and keychain alone.
+
 The default matching prompt is `PROMPT_HEADER` and `BASE_RULES` in `src/jobranger/matching/prompt.py`. The tests compare it byte for byte with `tests/fixtures/main_prompt_header.txt` and `tests/fixtures/main_base_rules.txt`, so a prompt change updates both fixtures in the same commit. Any prompt change also changes the assessment version, and every stored ad is checked again on the next run.
 
 After a prompt change, re-record the model replies in `tests/fixtures/matching_replies.json` that the matching-case tests read.
