@@ -26,6 +26,15 @@ After a prompt change, re-record the model replies in `tests/fixtures/matching_r
 uv run python scripts/record_matching_replies.py claude -p --model claude-sonnet-5-5 --output-format json --tools ""
 ```
 
+CV extraction parses PDF and DOCX files in a child process (`python -I -m jobranger.cv_worker`). The mutation run only sees code that runs inside pytest, so `tests/test_cv_worker.py` calls the worker logic in-process. `tests/test_cv.py` covers the child process path, with the stand-in workers in `tests/fake_cv_workers.py`.
+
+`tests/fixtures/cv/cv_user.pdf` is built from `cv_user.typ`. `cv_user_scan.pdf` is page 1 of it as a 40 ppi image with no text layer.
+
+```bash
+# from tests/fixtures/cv
+typst compile cv_user.typ cv_user.pdf
+```
+
 ## relay
 
 Needs the .NET 10 SDK.

@@ -13,6 +13,7 @@ dependencies = [
     "packaging>=24",
     "platformdirs>=4.12,<5",
     "pydantic>=2.14,<3",
+    "pypdf[crypto]>=6",
     "ruamel.yaml>=0.19.1,<0.20",
 ]
 
@@ -50,6 +51,7 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "S", "T20", "PT", "RET", "SIM", "P
 "src/jobranger/providers/prices.py" = ["PLR0913"]
 "src/jobranger/providers/openai_compat.py" = ["PLR0913", "PLR0917"]
 "src/jobranger/sources/base.py" = ["N818"]
+"src/jobranger/child_process.py" = ["S603"]
 
 [tool.mypy]
 strict = true
