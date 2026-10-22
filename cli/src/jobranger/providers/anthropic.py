@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 
 import anthropic
-from pydantic import TypeAdapter
+from pydantic import BaseModel, TypeAdapter
 
 from jobranger.providers.base import (
     EFFORT,
@@ -16,25 +17,29 @@ from jobranger.providers.base import (
     BatchClient,
     ClassifyPrompt,
     KeyCheck,
+    ModelReply,
     ProviderError,
     ProviderErrorKind,
     ProviderName,
     ProviderResult,
     StopKind,
     Usage,
-    error_kind,
     finish_result,
     provider_error,
+    read_reply,
     rejected_key,
     require_key,
+    status_message,
+    unreadable_reply,
 )
 from jobranger.providers.prices import cost_usd
 
 if TYPE_CHECKING:
-    from anthropic.types import Message, OutputConfigParam
+    from anthropic.types import OutputConfigParam
 
     from jobranger.providers.prices import ModelSpec
 
+ANTHROPIC_API_URL = "https://api.anthropic.com"
 STOP_KINDS = {
     "refusal": StopKind.refusal,
     "max_tokens": StopKind.truncated,
@@ -53,6 +58,30 @@ ERROR_KINDS: tuple[tuple[type[anthropic.APIError], ProviderErrorKind], ...] = (
 )
 
 
+class ContentBlock(BaseModel):
+    type: str
+    text: str = ""
+
+
+class CacheWrites(BaseModel):
+    ephemeral_5m_input_tokens: int
+    ephemeral_1h_input_tokens: int
+
+
+class MessageUsage(BaseModel):
+    input_tokens: int
+    output_tokens: int
+    cache_creation: CacheWrites | None = None
+    cache_creation_input_tokens: int | None = None
+    cache_read_input_tokens: int | None = None
+
+
+class MessageReply(BaseModel):
+    content: list[ContentBlock]
+    usage: MessageUsage
+    stop_reason: str | None = None
+
+
 class AnthropicProvider:
     def __init__(
         self,
@@ -64,11 +93,7 @@ class AnthropicProvider:
         key = require_key("anthropic", api_key)
         self._model = model
         self._spec = spec
-        self._client = client or anthropic.Anthropic(
-            api_key=key,
-            max_retries=SDK_MAX_RETRIES,
-            timeout=REQUEST_TIMEOUT_SECONDS,
-        )
+        self._client = client or new_client(key)
 
     @property
     def name(self) -> ProviderName:
@@ -96,31 +121,71 @@ class AnthropicProvider:
                 output_config=_output_config(schema, self._spec),
             )
         except anthropic.APIError as error:
-            raise _provider_error(error) from error
-        return _result(message, schema, self._spec)
+            raise as_provider_error(error, self._client) from None
+        except json.JSONDecodeError:
+            raise unreadable_reply("anthropic") from None
+        reply = read_reply(MessageReply, message, "anthropic")
+        return _result(reply, schema, self._spec)
 
     def check_key(self) -> KeyCheck:
         try:
-            self._client.models.retrieve(self._model)
+            model = self._client.models.retrieve(self._model)
+        except json.JSONDecodeError:
+            raise unreadable_reply("anthropic") from None
         except anthropic.APIError as error:
+            converted = as_provider_error(error, self._client)
             rejected = rejected_key(
-                error_kind(error, ERROR_KINDS),
+                converted.kind,
                 PROVIDER_LABELS["anthropic"],
                 self._model,
-                error.body,
+                _visible_body(error, self._client),
                 self._client.api_key,
             )
             if rejected is None:
-                raise _provider_error(error) from error
+                raise converted from None
             return rejected
+        read_reply(ModelReply, model, "anthropic")
         return KeyCheck(ok=True, message=KEY_WORKS)
 
     def batch_client(self) -> BatchClient | None:
         return None
 
 
+def new_client(key: str) -> anthropic.Anthropic:
+    client = anthropic.Anthropic(
+        api_key=key,
+        base_url=ANTHROPIC_API_URL,
+        max_retries=SDK_MAX_RETRIES,
+        timeout=REQUEST_TIMEOUT_SECONDS,
+    )
+    client._custom_headers = {}
+    return client
+
+
+def as_provider_error(
+    error: anthropic.APIError, client: anthropic.Anthropic
+) -> ProviderError:
+    kind = _error_kind(error)
+    if not isinstance(error, anthropic.APIStatusError):
+        return provider_error(kind, error.message, None)
+    body = _visible_body(error, client)
+    message = status_message(kind, error.status_code, body, client.api_key)
+    return provider_error(kind, message, error.response.headers.get(RETRY_AFTER_HEADER))
+
+
+def _error_kind(error: anthropic.APIError) -> ProviderErrorKind:
+    return next(
+        (kind for error_type, kind in ERROR_KINDS if isinstance(error, error_type)),
+        ProviderErrorKind.server,
+    )
+
+
+def _visible_body(error: anthropic.APIError, client: anthropic.Anthropic) -> object:
+    return error.body if str(client.base_url) == ANTHROPIC_API_URL else None
+
+
 def usage_from_anthropic(
-    raw: anthropic.types.Usage, spec: ModelSpec | None, batch: bool
+    raw: MessageUsage, spec: ModelSpec | None, batch: bool
 ) -> Usage:
     if raw.cache_creation is not None:
         write_5m = raw.cache_creation.ephemeral_5m_input_tokens
@@ -166,18 +231,9 @@ def _output_config(schema: type[object], spec: ModelSpec | None) -> OutputConfig
 
 
 def _result[SchemaT](
-    message: Message, schema: type[SchemaT], spec: ModelSpec | None
+    message: MessageReply, schema: type[SchemaT], spec: ModelSpec | None
 ) -> ProviderResult[SchemaT]:
     text = "".join(block.text for block in message.content if block.type == "text")
     usage = usage_from_anthropic(message.usage, spec, batch=False)
     stop = STOP_KINDS.get(message.stop_reason or "")
     return finish_result(text, usage, stop, schema)
-
-
-def _provider_error(error: anthropic.APIError) -> ProviderError:
-    header = (
-        error.response.headers.get(RETRY_AFTER_HEADER)
-        if isinstance(error, anthropic.APIStatusError)
-        else None
-    )
-    return provider_error(error_kind(error, ERROR_KINDS), error.message, header)

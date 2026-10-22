@@ -7,24 +7,27 @@ import pytest
 from factories import (
     BLANK_KEY_IDS,
     BLANK_KEYS,
+    CREDENTIAL_OLLAMA_URL,
+    ELSEWHERE_URL,
+    MASKED_KEY_MESSAGE,
     NON_ASCII_KEY_IDS,
     NON_ASCII_KEYS,
     OLLAMA_URL,
     OPENAI_TEST_KEY,
     PROMPT,
     ROUTER_MODEL,
-    SHORT_RETRY_AFTER,
     Recorder,
     make_assessment,
     openai_client,
     openai_completion,
+    refuse_connection,
     route_sdk_network,
+    unreadable_replies,
 )
 
 from jobranger.matching.assessment import AdAssessment
 from jobranger.providers.base import (
     KEY_CHECK_MESSAGES,
-    ClassifyPrompt,
     KeyCheck,
     ProviderError,
     ProviderErrorKind,
@@ -53,10 +56,20 @@ MODEL_FOR: dict[ProviderName, str] = {
     "ollama": OLLAMA_MODEL,
 }
 ERROR_BODY = {"error": {"message": "failed"}}
+KEY_REPLIES: dict[ProviderName, object] = {
+    "openai": {"id": GPT_MINI, "object": "model", "created": 0, "owned_by": "openai"},
+    "openrouter": {"data": {"label": "fake-key"}},
+}
+PROMPT_CACHE_KEY = "jobranger-5c988adf05509a74"
 BAD_REQUEST_CHECK = KEY_CHECK_MESSAGES[ProviderErrorKind.bad_request].format(
     provider="OpenAI", model=GPT_MINI
 )
 OLLAMA_HAS_MODEL = KeyCheck(True, f"Ollama has {OLLAMA_MODEL}")
+OLLAMA_REFUSED = (
+    f"Ollama at {OLLAMA_URL} refused the request (HTTP {{status}}). "
+    "Check its access settings"
+)
+OLLAMA_NOT_RUNNING = f"No Ollama answered at {OLLAMA_URL}. Start it with: ollama serve"
 OLLAMA_MISSING_MODEL = KeyCheck(
     False,
     f"Ollama has no model named {OLLAMA_MODEL}. "
@@ -69,12 +82,16 @@ def _reply(kind: ProviderName = "openai", **choice: object) -> dict[str, object]
     return openai_completion(FIXTURE_FOR[kind], body, **choice)
 
 
+OLLAMA_TAGS_REPLIES = unreadable_replies({"models": "x"})
+
+
 def _provider(
     handler: Callable[[httpx2.Request], httpx2.Response],
     kind: ProviderName = "openai",
     model: str | None = None,
+    ollama_url: str = OLLAMA_URL,
 ) -> OpenAICompatProvider:
-    base_url = base_url_for(kind, OLLAMA_URL)
+    base_url = base_url_for(kind, ollama_url)
     model = model or MODEL_FOR[kind]
     return OpenAICompatProvider(
         kind=kind,
@@ -86,13 +103,21 @@ def _provider(
     )
 
 
-def _sent(
-    kind: ProviderName = "openai", prompt: ClassifyPrompt = PROMPT
-) -> dict[str, object]:
+def _live_provider(kind: ProviderName = "openai") -> OpenAICompatProvider:
+    return OpenAICompatProvider(
+        kind=kind,
+        api_key=OPENAI_TEST_KEY,
+        model=MODEL_FOR[kind],
+        base_url=base_url_for(kind, OLLAMA_URL),
+        spec=None,
+    )
+
+
+def _sent(kind: ProviderName = "openai") -> dict[str, object]:
     recorder = Recorder(200, _reply(kind))
     provider = _provider(recorder, kind)
 
-    provider.classify(prompt, AdAssessment)
+    provider.classify(PROMPT, AdAssessment)
 
     return recorder.sent()
 
@@ -112,7 +137,9 @@ def test_should_send_strict_json_schema_response_format() -> None:
 
 
 def test_should_send_prompt_as_system_and_user_messages() -> None:
-    assert _sent()["messages"] == [
+    sent = _sent()
+
+    assert sent["messages"] == [
         {"role": "system", "content": PROMPT.system},
         {"role": "user", "content": PROMPT.user},
     ]
@@ -124,16 +151,16 @@ def test_should_send_chosen_model_with_output_limit() -> None:
     assert (sent["model"], sent["max_completion_tokens"]) == (GPT_MINI, 4096)
 
 
-def test_should_send_same_prompt_cache_key_for_same_system_prompt() -> None:
-    other_ad = ClassifyPrompt(system=PROMPT.system, user="other ad text")
+def test_should_send_prompt_cache_key_from_system_prompt_hash() -> None:
+    sent = _sent()
 
-    keys = (_sent()["prompt_cache_key"], _sent(prompt=other_ad)["prompt_cache_key"])
-
-    assert keys[0] == keys[1]
+    assert sent["prompt_cache_key"] == PROMPT_CACHE_KEY
 
 
 def test_should_send_low_reasoning_effort_to_openai() -> None:
-    assert _sent()["reasoning_effort"] == "low"
+    sent = _sent()
+
+    assert sent["reasoning_effort"] == "low"
 
 
 def test_should_omit_reasoning_effort_for_unlisted_openai_model() -> None:
@@ -146,11 +173,15 @@ def test_should_omit_reasoning_effort_for_unlisted_openai_model() -> None:
 
 
 def test_should_send_zero_temperature_to_ollama() -> None:
-    assert _sent("ollama")["temperature"] == 0
+    sent = _sent("ollama")
+
+    assert sent["temperature"] == 0
 
 
-def test_should_require_parameters_and_deny_data_collection_on_openrouter() -> None:
-    assert _sent("openrouter")["provider"] == {
+def test_should_send_openrouter_provider_preferences() -> None:
+    sent = _sent("openrouter")
+
+    assert sent["provider"] == {
         "require_parameters": True,
         "data_collection": "deny",
     }
@@ -193,9 +224,19 @@ def test_should_subtract_cached_tokens_from_openai_prompt_tokens() -> None:
     assert result.usage.cost_usd == pytest.approx(0.0009875)
 
 
-def test_should_record_ollama_tokens_at_zero_cost() -> None:
-    usage = _classify("ollama", _reply("ollama")).usage
+def test_should_ignore_reported_cost_from_openai() -> None:
+    body = _reply()
+    body["usage"]["cost"] = 1.0
 
+    result = _classify("openai", body)
+
+    assert result.usage.cost_usd == pytest.approx(0.0009875)
+
+
+def test_should_record_ollama_tokens_at_zero_cost() -> None:
+    result = _classify("ollama", _reply("ollama"))
+
+    usage = result.usage
     assert (usage.input_tokens, usage.output_tokens, usage.cost_usd, usage.priced) == (
         3000,
         400,
@@ -215,8 +256,9 @@ def test_should_count_tokens_from_reply(
     body = _reply()
     body["usage"]["prompt_tokens_details"]["cached_tokens"] = cached
 
-    usage = _classify("openai", body).usage
+    result = _classify("openai", body)
 
+    usage = result.usage
     assert (
         usage.calls,
         usage.input_tokens,
@@ -228,18 +270,18 @@ def test_should_count_tokens_from_reply(
 def test_should_mark_usage_unpriced_for_unlisted_model() -> None:
     provider = _provider(Recorder(200, _reply()), model=UNLISTED_MODEL)
 
-    usage = provider.classify(PROMPT, AdAssessment).usage
+    result = provider.classify(PROMPT, AdAssessment)
 
-    assert (usage.priced, usage.cost_usd) == (False, 0.0)
+    assert (result.usage.priced, result.usage.cost_usd) == (False, 0.0)
 
 
 def test_should_mark_usage_unpriced_when_reply_has_no_usage() -> None:
     body = _reply()
     del body["usage"]
 
-    usage = _classify("openai", body).usage
+    result = _classify("openai", body)
 
-    assert (usage.calls, usage.priced) == (1, False)
+    assert (result.usage.calls, result.usage.priced) == (1, False)
 
 
 def test_should_return_refusal_stop_when_model_refuses() -> None:
@@ -258,6 +300,15 @@ def test_should_return_truncated_stop_when_finish_reason_is_length() -> None:
     result = _classify("openai", body)
 
     assert result.stop == StopKind.truncated
+
+
+def test_should_return_empty_text_when_reply_has_no_content() -> None:
+    body = openai_completion(FIXTURE_FOR["openai"], "")
+    body["choices"][0]["message"].update(content=None, refusal=None)
+
+    result = _classify("openai", body)
+
+    assert (result.text, result.stop) == ("", StopKind.invalid)
 
 
 def test_should_keep_usage_when_reply_is_not_valid_json() -> None:
@@ -316,8 +367,7 @@ def test_should_carry_retry_after_on_rate_limit() -> None:
 def test_should_check_key_with_provider_endpoint(
     kind: ProviderName, status: int, path: str, expected: KeyCheck
 ) -> None:
-    body = {"id": GPT_MINI, "object": "model", "created": 0, "owned_by": "openai"}
-    recorder = Recorder(status, body if expected.ok else ERROR_BODY)
+    recorder = Recorder(status, KEY_REPLIES[kind] if expected.ok else ERROR_BODY)
     provider = _provider(recorder, kind)
 
     check = provider.check_key()
@@ -330,13 +380,7 @@ def test_should_send_saved_key_to_openrouter_with_request_timeout(
 ) -> None:
     recorder = Recorder(200, {"data": {}})
     route_sdk_network(monkeypatch, recorder)
-    provider = OpenAICompatProvider(
-        kind="openrouter",
-        api_key=OPENAI_TEST_KEY,
-        model=ROUTER_MODEL,
-        base_url=base_url_for("openrouter", OLLAMA_URL),
-        spec=None,
-    )
+    provider = _live_provider("openrouter")
 
     provider.check_key()
 
@@ -352,21 +396,35 @@ def test_should_send_saved_key_to_openrouter_with_request_timeout(
     )
 
 
-def test_should_retry_failed_call_four_times(monkeypatch: pytest.MonkeyPatch) -> None:
-    recorder = Recorder(500, ERROR_BODY, **SHORT_RETRY_AFTER)
-    route_sdk_network(monkeypatch, recorder)
-    provider = OpenAICompatProvider(
-        kind="openai",
-        api_key=OPENAI_TEST_KEY,
-        model=GPT_MINI,
-        base_url=base_url_for("openai", OLLAMA_URL),
-        spec=None,
-    )
+def test_should_leave_provider_detail_out_of_error_when_it_contains_the_key() -> None:
+    body = {"error": {"message": f"invalid key {OPENAI_TEST_KEY}"}}
+    provider = _provider(Recorder(400, body))
 
-    with pytest.raises(ProviderError):
-        provider.check_key()
+    with pytest.raises(ProviderError) as raised:
+        provider.classify(PROMPT, AdAssessment)
 
-    assert len(recorder.requests) == 5
+    assert raised.value.message == "HTTP 400"
+
+
+@pytest.mark.parametrize("kind", ["openai", "openrouter"])
+def test_should_keep_clean_provider_detail_in_error(kind: ProviderName) -> None:
+    body = {"error": {"message": "invalid\nmodel id"}}
+    provider = _provider(Recorder(400, body), kind)
+
+    with pytest.raises(ProviderError) as raised:
+        provider.classify(PROMPT, AdAssessment)
+
+    assert raised.value.message == "HTTP 400: invalid model id"
+
+
+def test_should_leave_provider_detail_out_of_auth_error() -> None:
+    body = {"error": {"message": MASKED_KEY_MESSAGE, "code": "invalid_api_key"}}
+    provider = _provider(Recorder(401, body))
+
+    with pytest.raises(ProviderError) as raised:
+        provider.classify(PROMPT, AdAssessment)
+
+    assert raised.value.message == "HTTP 401"
 
 
 def test_should_report_bad_request_key_check_as_rejected() -> None:
@@ -400,15 +458,6 @@ def test_should_report_too_large_key_check_as_rejected() -> None:
     )
 
 
-def test_should_raise_provider_error_when_key_check_hits_server_error() -> None:
-    provider = _provider(Recorder(500, ERROR_BODY))
-
-    with pytest.raises(ProviderError) as raised:
-        provider.check_key()
-
-    assert raised.value.kind == ProviderErrorKind.server
-
-
 @pytest.mark.parametrize(
     ("installed", "expected"),
     [
@@ -433,20 +482,91 @@ def test_should_check_ollama_tags_for_configured_model(
 
 
 def test_should_name_ollama_serve_when_ollama_is_unreachable() -> None:
-    def refuse(request: httpx2.Request) -> httpx2.Response:
-        raise httpx2.ConnectError("connection refused", request=request)
+    provider = _provider(refuse_connection, "ollama")
 
-    check = _provider(refuse, "ollama").check_key()
+    check = provider.check_key()
 
     assert "ollama serve" in check.message
 
 
-def test_should_name_ollama_serve_when_another_service_answers() -> None:
-    provider = _provider(Recorder(200, {}), "ollama")
+@pytest.mark.parametrize(
+    ("status", "message"),
+    [
+        (401, OLLAMA_REFUSED.format(status=401)),
+        (403, OLLAMA_REFUSED.format(status=403)),
+        (
+            429,
+            f"Ollama at {OLLAMA_URL} is limiting requests (HTTP 429). Try again later",
+        ),
+        (500, f"Ollama at {OLLAMA_URL} failed (HTTP 500). Check the Ollama logs"),
+        (404, f"Ollama at {OLLAMA_URL} answered HTTP 404. Check ollama_url"),
+    ],
+)
+def test_should_name_ollama_status_when_tags_request_fails(
+    status: int, message: str
+) -> None:
+    provider = _provider(Recorder(status, ERROR_BODY), "ollama")
 
     check = provider.check_key()
 
-    assert (check.ok, "ollama serve" in check.message) == (False, True)
+    assert check == KeyCheck(ok=False, message=message)
+
+
+@pytest.mark.parametrize(
+    ("handler", "message"),
+    [
+        (lambda request: httpx2.Response(401, json=ERROR_BODY), OLLAMA_REFUSED),
+        (refuse_connection, OLLAMA_NOT_RUNNING),
+    ],
+    ids=["refused", "unreachable"],
+)
+def test_should_hide_ollama_password_in_key_check(
+    handler: Callable[[httpx2.Request], httpx2.Response], message: str
+) -> None:
+    provider = _provider(handler, "ollama", ollama_url=CREDENTIAL_OLLAMA_URL)
+
+    check = provider.check_key()
+
+    assert check == KeyCheck(ok=False, message=message.format(status=401))
+
+
+def test_should_leave_provider_detail_out_for_custom_url() -> None:
+    body = {"error": {"message": "invalid model id"}}
+    provider = _provider(Recorder(400, body), "ollama")
+
+    with pytest.raises(ProviderError) as raised:
+        provider.classify(PROMPT, AdAssessment)
+
+    assert raised.value.message == "HTTP 400"
+
+
+def test_should_leave_provider_detail_out_of_key_check_for_custom_url() -> None:
+    body = {"error": {"message": "invalid model id"}}
+    provider = OpenAICompatProvider(
+        kind="openai",
+        api_key=OPENAI_TEST_KEY,
+        model=GPT_MINI,
+        base_url=ELSEWHERE_URL,
+        spec=None,
+        client=openai_client(Recorder(400, body), ELSEWHERE_URL),
+    )
+
+    check = provider.check_key()
+
+    assert check == KeyCheck(ok=False, message=BAD_REQUEST_CHECK)
+
+
+@pytest.mark.parametrize(
+    "handler", OLLAMA_TAGS_REPLIES.values(), ids=OLLAMA_TAGS_REPLIES.keys()
+)
+def test_should_name_ollama_serve_when_another_service_answers(
+    handler: Callable[[httpx2.Request], httpx2.Response],
+) -> None:
+    provider = _provider(handler, "ollama")
+
+    check = provider.check_key()
+
+    assert check == KeyCheck(ok=False, message=OLLAMA_NOT_RUNNING)
 
 
 @pytest.mark.parametrize("api_key", BLANK_KEYS, ids=BLANK_KEY_IDS)

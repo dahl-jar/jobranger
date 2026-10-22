@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import dataclass
 from http import HTTPStatus
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 import openai
 from openai.lib._parsing._completions import type_to_response_format_param
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from jobranger.providers.base import (
     EFFORT,
@@ -20,31 +21,32 @@ from jobranger.providers.base import (
     BatchClient,
     ClassifyPrompt,
     KeyCheck,
+    ModelReply,
     ProviderError,
     ProviderErrorKind,
     ProviderName,
     ProviderResult,
     StopKind,
     Usage,
-    error_kind,
     finish_result,
     provider_error,
+    read_reply,
     rejected_key,
     require_key,
+    status_message,
+    unreadable_reply,
 )
 from jobranger.providers.prices import cost_usd
-from jobranger.providers.urls import OLLAMA_API_PATH, ollama_root
+from jobranger.providers.urls import OLLAMA_API_PATH, ollama_root, without_userinfo
 
 if TYPE_CHECKING:
-    from openai.types.chat import ChatCompletion
-    from openai.types.completion_usage import CompletionUsage
-
     from jobranger.providers.prices import ModelSpec
 
 BASE_URLS: dict[ProviderName, str] = {
     "openai": "https://api.openai.com/v1",
     "openrouter": "https://openrouter.ai/api/v1",
 }
+OFFICIAL_URLS = frozenset(f"{url}/" for url in BASE_URLS.values())
 OLLAMA_TAGS_PATH = "/api/tags"
 OLLAMA_API_KEY = "ollama"
 OLLAMA_DEFAULT_TAG = ":latest"
@@ -54,19 +56,34 @@ CACHE_KEY_HEX_LENGTH = 16
 OPENROUTER_BODY: dict[str, object] = {
     "provider": {"require_parameters": True, "data_collection": "deny"}
 }
-STOP_KINDS = {
+STOP_KINDS: dict[str | None, StopKind] = {
     "length": StopKind.truncated,
     "content_filter": StopKind.refusal,
 }
-ERROR_KINDS: tuple[tuple[type[openai.APIError], ProviderErrorKind], ...] = (
-    (openai.AuthenticationError, ProviderErrorKind.auth),
-    (openai.PermissionDeniedError, ProviderErrorKind.auth),
-    (openai.NotFoundError, ProviderErrorKind.not_found),
-    (openai.BadRequestError, ProviderErrorKind.bad_request),
-    (openai.UnprocessableEntityError, ProviderErrorKind.bad_request),
-    (openai.RateLimitError, ProviderErrorKind.rate_limit),
-    (openai.APIConnectionError, ProviderErrorKind.connection),
-)
+STATUS_KINDS: dict[int, ProviderErrorKind] = {
+    HTTPStatus.BAD_REQUEST: ProviderErrorKind.bad_request,
+    HTTPStatus.UNAUTHORIZED: ProviderErrorKind.auth,
+    HTTPStatus.FORBIDDEN: ProviderErrorKind.auth,
+    HTTPStatus.NOT_FOUND: ProviderErrorKind.not_found,
+    HTTPStatus.REQUEST_ENTITY_TOO_LARGE: ProviderErrorKind.bad_request,
+    HTTPStatus.UNPROCESSABLE_ENTITY: ProviderErrorKind.bad_request,
+    HTTPStatus.TOO_MANY_REQUESTS: ProviderErrorKind.rate_limit,
+}
+
+OLLAMA_STATUS_MESSAGES = {
+    ProviderErrorKind.auth: (
+        "Ollama at {root} refused the request (HTTP {status}). "
+        "Check its access settings"
+    ),
+    ProviderErrorKind.rate_limit: (
+        "Ollama at {root} is limiting requests (HTTP {status}). Try again later"
+    ),
+    ProviderErrorKind.server: (
+        "Ollama at {root} failed (HTTP {status}). Check the Ollama logs"
+    ),
+}
+OLLAMA_OTHER_STATUS = "Ollama at {root} answered HTTP {status}. Check ollama_url"
+OLLAMA_NOT_RUNNING = "No Ollama answered at {root}. Start it with: ollama serve"
 
 type KeyCheckKind = Literal["model", "openrouter_key", "ollama_tags"]
 
@@ -125,6 +142,68 @@ class OllamaTags(BaseModel):
     models: list[OllamaTag]
 
 
+class ChoiceMessage(BaseModel):
+    content: str | None = None
+    refusal: str | None = None
+
+
+class CompletionChoice(BaseModel):
+    message: ChoiceMessage
+    finish_reason: str | None = None
+
+
+class PromptDetails(BaseModel):
+    cached_tokens: int | None = None
+
+
+class TokenUsage(BaseModel):
+    prompt_tokens: int
+    completion_tokens: int
+    prompt_tokens_details: PromptDetails | None = None
+    cost: object = None
+
+
+class CompletionReply(BaseModel):
+    choices: Annotated[list[CompletionChoice], Field(min_length=1)]
+    usage: TokenUsage | None = None
+
+
+class OpenRouterKey(BaseModel):
+    data: dict[str, object]
+
+
+def new_client(key: str, base_url: str) -> openai.OpenAI:
+    client = openai.OpenAI(
+        api_key=key,
+        base_url=base_url,
+        max_retries=SDK_MAX_RETRIES,
+        timeout=REQUEST_TIMEOUT_SECONDS,
+    )
+    client.organization = None
+    client.project = None
+    client._custom_headers = {}
+    return client
+
+
+def status_kind(status: int) -> ProviderErrorKind:
+    return STATUS_KINDS.get(status, ProviderErrorKind.server)
+
+
+def as_provider_error(error: openai.APIError, client: openai.OpenAI) -> ProviderError:
+    if isinstance(error, openai.APIStatusError):
+        kind = status_kind(error.status_code)
+        body = _visible_body(error, client)
+        message = status_message(kind, error.status_code, body, client.api_key)
+        header = error.response.headers.get(RETRY_AFTER_HEADER)
+        return provider_error(kind, message, header)
+    kind = (
+        ProviderErrorKind.connection
+        if isinstance(error, openai.APIConnectionError)
+        else ProviderErrorKind.server
+    )
+    return provider_error(kind, error.message, None)
+
+
 def base_url_for(kind: ProviderName, ollama_url: str) -> str:
     if kind == "ollama":
         return f"{ollama_root(ollama_url)}{OLLAMA_API_PATH}"
@@ -141,18 +220,13 @@ class OpenAICompatProvider:
         spec: ModelSpec | None,
         client: openai.OpenAI | None = None,
     ) -> None:
-        key = require_key(kind, api_key)
+        key = OLLAMA_API_KEY if kind == "ollama" else require_key(kind, api_key)
         self._kind = kind
         self._rules = KIND_RULES[kind]
         self._model = model
         self._base_url = base_url
         self._spec = spec
-        self._client = client or openai.OpenAI(
-            api_key=key,
-            base_url=base_url,
-            max_retries=SDK_MAX_RETRIES,
-            timeout=REQUEST_TIMEOUT_SECONDS,
-        )
+        self._client = client or new_client(key, base_url)
 
     @property
     def name(self) -> ProviderName:
@@ -181,28 +255,37 @@ class OpenAICompatProvider:
                 extra_body=rules.extra_body,
             )
         except openai.APIError as error:
-            raise _provider_error(error) from error
-        return self._result(completion, schema)
+            raise as_provider_error(error, self._client) from None
+        except json.JSONDecodeError:
+            raise unreadable_reply(self._kind) from None
+        reply = read_reply(CompletionReply, completion, self._kind)
+        return self._result(reply, schema)
 
     def check_key(self) -> KeyCheck:
         if self._rules.key_check == "ollama_tags":
             return self._check_ollama()
+        shape: type[BaseModel] = ModelReply
         try:
             if self._rules.key_check == "openrouter_key":
-                self._client.get(OPENROUTER_KEY_PATH, cast_to=object)
+                shape = OpenRouterKey
+                reply = self._client.get(OPENROUTER_KEY_PATH, cast_to=object)
             else:
-                self._client.models.retrieve(self._model)
+                reply = self._client.models.retrieve(self._model)
+        except json.JSONDecodeError:
+            raise unreadable_reply(self._kind) from None
         except openai.APIError as error:
+            converted = as_provider_error(error, self._client)
             rejected = rejected_key(
-                _error_kind(error),
+                converted.kind,
                 PROVIDER_LABELS[self._kind],
                 self._model,
-                error.body,
+                _visible_body(error, self._client),
                 self._client.api_key,
             )
             if rejected is None:
-                raise _provider_error(error) from error
+                raise converted from None
             return rejected
+        read_reply(shape, reply, self._kind)
         return KeyCheck(ok=True, message=KEY_WORKS)
 
     def batch_client(self) -> BatchClient | None:
@@ -215,14 +298,14 @@ class OpenAICompatProvider:
 
     def _check_ollama(self) -> KeyCheck:
         root = self._base_url.removesuffix(OLLAMA_API_PATH)
-        not_running = KeyCheck(
-            ok=False,
-            message=f"No Ollama answered at {root}. Start it with: ollama serve",
-        )
+        shown = without_userinfo(root)
+        not_running = KeyCheck(ok=False, message=OLLAMA_NOT_RUNNING.format(root=shown))
         try:
             raw = self._client.get(f"{root}{OLLAMA_TAGS_PATH}", cast_to=object)
             names = {tag.name for tag in OllamaTags.model_validate(raw).models}
-        except (openai.APIConnectionError, openai.APIStatusError, ValidationError):
+        except openai.APIStatusError as error:
+            return KeyCheck(ok=False, message=_ollama_status(shown, error.status_code))
+        except (openai.APIConnectionError, ValidationError, json.JSONDecodeError):
             return not_running
         if self._model in names or f"{self._model}{OLLAMA_DEFAULT_TAG}" in names:
             return KeyCheck(ok=True, message=f"Ollama has {self._model}")
@@ -233,7 +316,7 @@ class OpenAICompatProvider:
         )
 
     def _result[SchemaT](
-        self, completion: ChatCompletion, schema: type[SchemaT]
+        self, completion: CompletionReply, schema: type[SchemaT]
     ) -> ProviderResult[SchemaT]:
         choice = completion.choices[0]
         message = choice.message
@@ -246,18 +329,17 @@ class OpenAICompatProvider:
         )
         return finish_result(text, usage, stop, schema)
 
-    def _usage(self, raw: CompletionUsage | None) -> Usage:
+    def _usage(self, raw: TokenUsage | None) -> Usage:
         if raw is None:
             return Usage(calls=1, priced=False)
         reported = None
-        if self._rules.reported_cost and raw.model_extra:
-            cost = raw.model_extra.get("cost")
-            reported = float(cost) if isinstance(cost, int | float) else None
+        if self._rules.reported_cost and isinstance(raw.cost, int | float):
+            reported = float(raw.cost)
         return usage_from_openai(raw, self._spec, batch=False, reported_cost=reported)
 
 
 def usage_from_openai(
-    raw: CompletionUsage,
+    raw: TokenUsage,
     spec: ModelSpec | None,
     batch: bool,
     reported_cost: float | None,
@@ -289,24 +371,15 @@ def usage_from_openai(
     )
 
 
+def _visible_body(error: openai.APIError, client: openai.OpenAI) -> object:
+    return error.body if str(client.base_url) in OFFICIAL_URLS else None
+
+
+def _ollama_status(root: str, status: int) -> str:
+    template = OLLAMA_STATUS_MESSAGES.get(status_kind(status), OLLAMA_OTHER_STATUS)
+    return template.format(root=root, status=status)
+
+
 def _cache_key(prompt: ClassifyPrompt) -> str:
     digest = hashlib.sha256(prompt.system.encode()).hexdigest()
     return f"{CACHE_KEY_PREFIX}{digest[:CACHE_KEY_HEX_LENGTH]}"
-
-
-def _provider_error(error: openai.APIError) -> ProviderError:
-    header = (
-        error.response.headers.get(RETRY_AFTER_HEADER)
-        if isinstance(error, openai.APIStatusError)
-        else None
-    )
-    return provider_error(_error_kind(error), error.message, header)
-
-
-def _error_kind(error: openai.APIError) -> ProviderErrorKind:
-    if (
-        isinstance(error, openai.APIStatusError)
-        and error.status_code == HTTPStatus.REQUEST_ENTITY_TOO_LARGE
-    ):
-        return ProviderErrorKind.bad_request
-    return error_kind(error, ERROR_KINDS)

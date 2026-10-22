@@ -4,15 +4,12 @@ import html
 import unicodedata
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TYPE_CHECKING, Final, Literal, Protocol
+from typing import Final, Literal, Protocol
 from urllib.parse import unquote
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from jobranger.net.rate_limit import parse_retry_after
-
-if TYPE_CHECKING:
-    from pydantic import BaseModel
 
 type ProviderName = Literal["anthropic", "openai", "openrouter", "ollama"]
 type BatchState = Literal["running", "ended", "failed"]
@@ -23,8 +20,10 @@ SDK_MAX_RETRIES = 4
 REQUEST_TIMEOUT_SECONDS = 120
 RETRY_AFTER_HEADER = "retry-after"
 KEY_WORKS = "Key works"
+UNREADABLE_REPLY = "{provider} sent a reply jobranger could not read"
 DETAIL_MAX_CHARS = 300
 KEY_FRAGMENT_CHARS = 12
+MIN_KEY_CHARS = KEY_FRAGMENT_CHARS
 MAX_DECODE_ROUNDS = 3
 KEY_CHAR_MIN = 0x21
 KEY_CHAR_MAX = 0x7E
@@ -110,13 +109,16 @@ def saved_key(key: str | None) -> str | None:
 
 
 def require_key(provider: ProviderName, api_key: str) -> str:
-    key = api_key.strip()
+    key = saved_key(api_key)
     label = PROVIDER_LABELS[provider]
-    if not key:
+    if key is None:
         msg = f"{label} needs an API key"
         raise ValueError(msg)
     if not all(KEY_CHAR_MIN <= ord(char) <= KEY_CHAR_MAX for char in key):
         msg = f"{label} API key must be printable ASCII"
+        raise ValueError(msg)
+    if len(key) < MIN_KEY_CHARS:
+        msg = f"{label} API key is too short"
         raise ValueError(msg)
     return key
 
@@ -183,13 +185,22 @@ class Provider(Protocol):
     def batch_client(self) -> BatchClient | None: ...
 
 
-def error_kind(
-    error: Exception, table: tuple[tuple[type[Exception], ProviderErrorKind], ...]
-) -> ProviderErrorKind:
-    return next(
-        (kind for error_type, kind in table if isinstance(error, error_type)),
-        ProviderErrorKind.server,
-    )
+class ModelReply(BaseModel):
+    id: str
+
+
+def unreadable_reply(provider: ProviderName) -> ProviderError:
+    message = UNREADABLE_REPLY.format(provider=PROVIDER_LABELS[provider])
+    return ProviderError(ProviderErrorKind.server, message)
+
+
+def read_reply[ReplyT: BaseModel](
+    shape: type[ReplyT], reply: object, provider: ProviderName
+) -> ReplyT:
+    try:
+        return shape.model_validate(reply, from_attributes=True)
+    except ValidationError:
+        raise unreadable_reply(provider) from None
 
 
 def provider_error(
@@ -215,6 +226,18 @@ def rejected_key(
     if detail is not None:
         message = f"{message}. {provider} said: {detail}"
     return KeyCheck(ok=False, message=message)
+
+
+def status_line(status: int) -> str:
+    return f"HTTP {status}"
+
+
+def status_message(
+    kind: ProviderErrorKind, status: int, body: object, api_key: str | None
+) -> str:
+    detail = None if kind is ProviderErrorKind.auth else _error_detail(body, api_key)
+    line = status_line(status)
+    return line if detail is None else f"{line}: {detail}"
 
 
 def _error_detail(body: object, api_key: str | None) -> str | None:

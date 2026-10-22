@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from jobranger.providers.anthropic import AnthropicProvider
 from jobranger.providers.base import PROVIDER_LABELS, saved_key
-from jobranger.providers.models import check_ollama_url, sdk_client
+from jobranger.providers.models import check_ollama_url
 from jobranger.providers.openai_compat import (
     OLLAMA_API_KEY,
     OpenAICompatProvider,
@@ -55,12 +55,7 @@ def provider_for(
     if provider == "ollama":
         check_ollama_url(model_cfg.ollama_url)
     if provider == "anthropic":
-        return AnthropicProvider(
-            api_key=key,
-            model=model_id,
-            spec=spec,
-            client=sdk_client("anthropic", key),
-        )
+        return AnthropicProvider(api_key=key, model=model_id, spec=spec)
     return OpenAICompatProvider(
         kind=provider,
         api_key=key,

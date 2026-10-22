@@ -3,14 +3,23 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 import httpx
+import httpx2
 import pytest
 from factories import (
+    ANTHROPIC_TEST_KEY,
+    CREDENTIAL_OLLAMA_URL,
     INVALID_URL,
+    MASKED_KEY_MESSAGE,
+    OLLAMA_PASSWORD,
     OLLAMA_URL,
+    OPENAI_TEST_KEY,
     ROUTER_MODEL,
     Recorder,
     anthropic_client,
     openai_client,
+    redirect_sdk_env,
+    traceback_text,
+    unreadable_replies,
 )
 
 from jobranger.providers import models as model_listing
@@ -87,12 +96,30 @@ OPENROUTER_MODELS = {
     ]
 }
 OLLAMA_TAGS = {"models": [{"name": "llama3.2:latest", "size": 1}]}
-AUTH_ERROR_BODY = {"error": {"type": "authentication_error", "message": "bad key"}}
+AUTH_ERROR_BODY = {
+    "error": {"type": "authentication_error", "message": MASKED_KEY_MESSAGE}
+}
+KEY_FOR = {"anthropic": ANTHROPIC_TEST_KEY, "openai": OPENAI_TEST_KEY}
+SDK_LISTING_REPLIES = [
+    pytest.param(provider, client_for, label, handler, id=f"{provider} {name}")
+    for provider, client_for, label, wrong_types in (
+        (
+            "anthropic",
+            anthropic_client,
+            "Anthropic",
+            {"data": [{"id": 5, "display_name": "Five"}], "has_more": False},
+        ),
+        ("openai", openai_client, "OpenAI", {"object": "list", "data": [{"id": 5}]}),
+    )
+    for name, handler in unreadable_replies(wrong_types).items()
+]
+UNREADABLE_REPLY = "<html>busy</html>"
+RATE_LIMIT_BODY = {"error": {"type": "rate_limit_error", "message": "slow down"}}
 
 
 @pytest.fixture(autouse=True)
 def offline_sdk(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fail(provider: str, key: str | None) -> None:
+    def fail(provider: str, key: str) -> None:
         raise AssertionError(provider)
 
     monkeypatch.setattr(model_listing, "sdk_client", fail)
@@ -214,10 +241,50 @@ def test_should_name_provider_and_target_when_listing_fails(
     assert (caught.value.kind, caught.value.message) == (kind, message)
 
 
+@pytest.mark.parametrize(
+    ("ollama_url", "handler"),
+    [
+        (CREDENTIAL_OLLAMA_URL, _refuse),
+        (CREDENTIAL_OLLAMA_URL, lambda request: httpx.Response(503)),
+        (CREDENTIAL_OLLAMA_URL, lambda request: httpx.Response(401)),
+        (CREDENTIAL_OLLAMA_URL, lambda request: httpx.Response(200, text="{}")),
+        (f"http://user:{OLLAMA_PASSWORD}@[::1", _refuse),
+    ],
+    ids=["unreachable", "server error", "refused", "not tags", "invalid url"],
+)
+def test_should_hide_ollama_password_when_listing_fails(
+    ollama_url: str, handler: Callable[[httpx.Request], httpx.Response]
+) -> None:
+    with pytest.raises(ProviderError) as caught:
+        list_models("ollama", None, ollama_url, _http(handler))
+
+    assert OLLAMA_PASSWORD not in traceback_text(caught.value)
+
+
+@pytest.mark.parametrize(
+    ("provider", "client_for", "label", "handler"), SDK_LISTING_REPLIES
+)
+def test_should_raise_server_error_when_listing_reply_is_unreadable(
+    provider: ProviderName,
+    client_for: Callable[..., anthropic.Anthropic | openai.OpenAI],
+    label: str,
+    handler: Callable[[httpx2.Request], httpx2.Response],
+) -> None:
+    client = client_for(handler)
+
+    with pytest.raises(ProviderError) as caught:
+        list_models(provider, KEY_FOR[provider], OLLAMA_URL, _unused_http(), client)
+
+    assert (caught.value.kind, caught.value.message) == (
+        ProviderErrorKind.server,
+        f"{label} sent a reply jobranger could not read",
+    )
+
+
 def test_should_filter_openai_models_to_chat_models() -> None:
     client = openai_client(Recorder(200, OPENAI_MODELS))
 
-    models = list_models("openai", "sk-test", OLLAMA_URL, _unused_http(), client)
+    models = list_models("openai", OPENAI_TEST_KEY, OLLAMA_URL, _unused_http(), client)
 
     assert [(model.id, model.name) for model in models] == [
         ("gpt-5-mini", "gpt-5-mini"),
@@ -228,7 +295,9 @@ def test_should_filter_openai_models_to_chat_models() -> None:
 def test_should_list_unknown_anthropic_model_with_no_price_last() -> None:
     client = anthropic_client(Recorder(200, ANTHROPIC_MODELS))
 
-    models = list_models("anthropic", "sk-ant-test", OLLAMA_URL, _unused_http(), client)
+    models = list_models(
+        "anthropic", ANTHROPIC_TEST_KEY, OLLAMA_URL, _unused_http(), client
+    )
 
     assert models == [
         ModelInfo("claude-haiku-5-5", "Claude Haiku 5.5", 0.1, 0.5, batch=True),
@@ -248,26 +317,95 @@ def test_should_raise_auth_error_when_key_is_rejected_while_listing(
     client = client_for(Recorder(401, AUTH_ERROR_BODY))
 
     with pytest.raises(ProviderError) as caught:
-        list_models(provider, "sk-bad", OLLAMA_URL, _unused_http(), client)
+        list_models(provider, KEY_FOR[provider], OLLAMA_URL, _unused_http(), client)
 
-    assert caught.value.kind == ProviderErrorKind.auth
-    assert "bad key" in caught.value.message
+    assert (caught.value.kind, caught.value.message) == (
+        ProviderErrorKind.auth,
+        "HTTP 401",
+    )
+
+
+@pytest.mark.parametrize(
+    ("provider", "client_for"),
+    [("anthropic", anthropic_client), ("openai", openai_client)],
+)
+def test_should_carry_retry_after_when_listing_is_rate_limited(
+    provider: ProviderName,
+    client_for: Callable[[Recorder], anthropic.Anthropic | openai.OpenAI],
+) -> None:
+    client = client_for(Recorder(429, RATE_LIMIT_BODY, **{"retry-after": "7"}))
+
+    with pytest.raises(ProviderError) as caught:
+        list_models(provider, KEY_FOR[provider], OLLAMA_URL, _unused_http(), client)
+
+    assert (caught.value.kind, caught.value.retry_after) == (
+        ProviderErrorKind.rate_limit,
+        7.0,
+    )
+
+
+@pytest.mark.parametrize(
+    ("provider", "client_for", "body", "label"),
+    [
+        ("anthropic", anthropic_client, ANTHROPIC_MODELS, "Anthropic"),
+        ("openai", openai_client, OPENAI_MODELS, "OpenAI"),
+    ],
+)
+def test_should_refuse_non_ascii_key_without_listing(
+    provider: ProviderName,
+    client_for: Callable[[Recorder], anthropic.Anthropic | openai.OpenAI],
+    body: object,
+    label: str,
+) -> None:
+    recorder = Recorder(200, body)
+
+    with pytest.raises(ProviderError) as caught:
+        list_models(
+            provider, "fake\u200bkey", OLLAMA_URL, _unused_http(), client_for(recorder)
+        )
+
+    assert (caught.value.kind, caught.value.message, recorder.requests) == (
+        ProviderErrorKind.auth,
+        f"{label} API key must be printable ASCII",
+        [],
+    )
+
+
+@pytest.mark.parametrize(
+    ("provider", "client_for", "key"),
+    [
+        ("anthropic", anthropic_client, ANTHROPIC_TEST_KEY),
+        ("openai", openai_client, OPENAI_TEST_KEY),
+    ],
+)
+def test_should_leave_provider_detail_out_of_listing_error_with_the_key(
+    provider: ProviderName,
+    client_for: Callable[[Recorder], anthropic.Anthropic | openai.OpenAI],
+    key: str,
+) -> None:
+    body = {"error": {"type": "invalid_request_error", "message": f"bad {key}"}}
+    client = client_for(Recorder(400, body))
+
+    with pytest.raises(ProviderError) as caught:
+        list_models(provider, key, OLLAMA_URL, _unused_http(), client)
+
+    assert key not in traceback_text(caught.value)
 
 
 def test_should_build_listing_client_from_trimmed_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    built: list[tuple[str, str | None]] = []
+    built: list[tuple[str, str]] = []
 
-    def build(provider: str, key: str | None) -> anthropic.Anthropic:
+    def build(provider: str, key: str) -> anthropic.Anthropic:
         built.append((provider, key))
         return anthropic_client(Recorder(200, ANTHROPIC_MODELS))
 
     monkeypatch.setattr(model_listing, "sdk_client", build)
 
-    list_models("anthropic", " sk-ant-test\n", OLLAMA_URL, _unused_http())
+    list_models("anthropic", f" {ANTHROPIC_TEST_KEY}\n", OLLAMA_URL, _unused_http())
 
-    assert built == [("anthropic", "sk-ant-test")]
+    assert built == [("anthropic", ANTHROPIC_TEST_KEY)]
 
 
 def _openrouter_entry(**overrides: object) -> dict[str, object]:
@@ -305,7 +443,7 @@ def test_should_raise_auth_error_when_sdk_provider_has_no_key(
 
 
 def test_should_raise_server_error_when_openrouter_listing_is_malformed() -> None:
-    http = _http(lambda request: httpx.Response(200, text="<html>busy</html>"))
+    http = _http(lambda request: httpx.Response(200, text=UNREADABLE_REPLY))
 
     with pytest.raises(ProviderError) as caught:
         list_models("openrouter", None, OLLAMA_URL, http)
@@ -327,6 +465,18 @@ def test_should_raise_server_error_naming_url_when_ollama_reply_is_not_tags() ->
         "http://box:11434 answered, but not with an Ollama model list. "
         "Check ollama_url",
     )
+
+
+@pytest.mark.parametrize("provider", ["openrouter", "ollama"])
+def test_should_leave_unreadable_reply_out_of_listing_traceback(
+    provider: ProviderName,
+) -> None:
+    http = _http(lambda request: httpx.Response(200, text=UNREADABLE_REPLY))
+
+    with pytest.raises(ProviderError) as caught:
+        list_models(provider, None, OLLAMA_URL, http)
+
+    assert UNREADABLE_REPLY not in traceback_text(caught.value)
 
 
 def test_should_list_openrouter_model_with_bad_pricing_without_price() -> None:
@@ -407,6 +557,45 @@ def test_should_raise_connection_error_naming_invalid_ollama_url() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    ("status", "kind"),
+    [
+        (400, ProviderErrorKind.bad_request),
+        (404, ProviderErrorKind.not_found),
+        (413, ProviderErrorKind.bad_request),
+        (422, ProviderErrorKind.bad_request),
+        (500, ProviderErrorKind.server),
+    ],
+)
+def test_should_map_openrouter_listing_status_like_calls(
+    status: int, kind: ProviderErrorKind
+) -> None:
+    http = _http(lambda request: httpx.Response(status))
+
+    with pytest.raises(ProviderError) as caught:
+        list_models("openrouter", None, OLLAMA_URL, http)
+
+    assert caught.value.kind == kind
+
+
+@pytest.mark.parametrize(
+    ("provider", "status"),
+    [("openrouter", 401), ("openrouter", 403), ("ollama", 401), ("ollama", 403)],
+)
+def test_should_name_only_status_when_listing_auth_fails(
+    provider: ProviderName, status: int
+) -> None:
+    http = _http(lambda request: httpx.Response(status))
+
+    with pytest.raises(ProviderError) as caught:
+        list_models(provider, None, OLLAMA_URL, http)
+
+    assert (caught.value.kind, caught.value.message) == (
+        ProviderErrorKind.auth,
+        f"HTTP {status}",
+    )
+
+
 def test_should_raise_rate_limit_when_openrouter_answers_429() -> None:
     http = _http(lambda request: httpx.Response(429, headers={"retry-after": "7"}))
 
@@ -426,20 +615,18 @@ def test_should_raise_rate_limit_when_openrouter_answers_429() -> None:
         ("openai", "https://api.openai.com/v1/"),
     ],
 )
-def test_should_build_listing_client_with_retries_and_timeout(
+def test_should_build_listing_client_for_official_url_when_base_url_env_is_set(
     provider: Literal["anthropic", "openai"],
     base_url: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("ANTHROPIC_BASE_URL", "http://elsewhere.example.test")
-    monkeypatch.setenv("OPENAI_BASE_URL", "http://elsewhere.example.test")
-    monkeypatch.setenv("NO_PROXY", "*")
+    redirect_sdk_env(monkeypatch)
 
-    client = sdk_client(provider, "sk-test")
+    client = sdk_client(provider, OPENAI_TEST_KEY)
 
     assert (
         client.api_key,
         client.max_retries,
         client.timeout,
         str(client.base_url),
-    ) == ("sk-test", SDK_MAX_RETRIES, REQUEST_TIMEOUT_SECONDS, base_url)
+    ) == (OPENAI_TEST_KEY, SDK_MAX_RETRIES, REQUEST_TIMEOUT_SECONDS, base_url)

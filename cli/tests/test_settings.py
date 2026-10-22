@@ -6,7 +6,7 @@ import sys
 from typing import TYPE_CHECKING
 
 import pytest
-from factories import INVALID_URL, OLLAMA_URL
+from factories import INVALID_URL, OLLAMA_PASSWORD, OLLAMA_URL, traceback_text
 from pydantic import ValidationError
 
 from jobranger.catalogue import default_employer_feeds
@@ -170,6 +170,18 @@ def test_should_reject_invalid_ollama_url(config_path: Path, url: str) -> None:
         load_config(config_path)
 
     assert any(error.startswith("model.ollama_url") for error in raised.value.errors)
+
+
+def test_should_hide_ollama_password_when_config_fails_to_load(
+    config_path: Path,
+) -> None:
+    url = f"http://user:{OLLAMA_PASSWORD}@[::1"
+    config_path.write_text(config_path.read_text().replace(DEFAULT_OLLAMA_URL, url))
+
+    with pytest.raises(ConfigInvalidError) as raised:
+        load_config(config_path)
+
+    assert OLLAMA_PASSWORD not in traceback_text(raised.value)
 
 
 @pytest.mark.parametrize(

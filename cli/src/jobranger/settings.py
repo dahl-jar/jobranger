@@ -27,7 +27,7 @@ from jobranger.catalogue import (
     default_employer_feeds,
 )
 from jobranger.providers.base import ProviderName
-from jobranger.providers.urls import ollama_root
+from jobranger.providers.urls import ollama_root, without_userinfo
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -143,7 +143,7 @@ class ModelConfig(BaseModel):
     def _valid_ollama_url(cls, url: str) -> str:
         root = ollama_root(url)
         if not is_ollama_url(root):
-            raise ValueError(INVALID_OLLAMA_URL.format(url=url))
+            raise ValueError(INVALID_OLLAMA_URL.format(url=without_userinfo(url)))
         return root
 
 
@@ -205,7 +205,7 @@ def load_config(path: Path) -> AppConfig:
     try:
         return AppConfig.model_validate(data)
     except ValidationError as error:
-        raise ConfigInvalidError(path, validation_errors(error)) from error
+        raise ConfigInvalidError(path, validation_errors(error)) from None
 
 
 def save_config(path: Path, config: AppConfig) -> None:

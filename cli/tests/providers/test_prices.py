@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from jobranger.providers import prices
 from jobranger.providers.prices import ModelSpec, cost_usd, spec_for
 from jobranger.settings import PriceOverride
 
@@ -82,6 +83,16 @@ def test_should_price_ollama_models_at_zero() -> None:
 
     assert spec is not None
     assert _cost(spec, input_tokens=MTOK, output_tokens=MTOK) == 0.0
+
+
+def test_should_prefer_exact_dated_entry_over_undated_one(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    dated = _sonnet().model_copy(update={"input": 1.0})
+    table = {"anthropic:claude-x-20260101": dated, "anthropic:claude-x": _sonnet()}
+    monkeypatch.setattr(prices, "load_specs", lambda: table)
+
+    assert spec_for("anthropic", "claude-x-20260101", None) == dated
 
 
 def test_should_price_dated_model_id_from_undated_entry() -> None:

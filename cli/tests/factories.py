@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import base64
+import ipaddress
 import json
+import socket
 import threading
+import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -36,19 +39,38 @@ if TYPE_CHECKING:
 
 FIXTURES = Path(__file__).parent / "fixtures"
 OLLAMA_URL = "http://box:11434"
+OLLAMA_PASSWORD = "pass-1234"
+CREDENTIAL_OLLAMA_URL = f"http://user:{OLLAMA_PASSWORD}@box:11434"
 INVALID_URL = "http://[::1"
 ROUTER_MODEL = "vendor/model-one"
 FAKE_VERSION = "test-version"
 GUIDANCE = "Judge roles by the actual work.\n\nPrefer backend roles."
 OUTDATED_VERSION = "old"
 ANTHROPIC_TEST_KEY = "Fake-Anthropic-Key-For-Unit-Tests"
-OPENAI_TEST_KEY = "fake-key"
+OPENAI_TEST_KEY = "fake-openai-key"
 BLANK_KEYS = ("", "   ")
 BLANK_KEY_IDS = ("empty", "spaces")
 NON_ASCII_KEYS = ("fake\u00a0key", "fake\u200bkey", "fak\u00eb-key")
 NON_ASCII_KEY_IDS = ("nbsp", "zero-width space", "accented letter")
 SDK_ENV_VARIABLES = ("ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENAI_BASE_URL")
 SHORT_RETRY_AFTER = {"retry-after-ms": "1"}
+ELSEWHERE_URL = "http://elsewhere.example.test"
+JSON_CONTENT_TYPE = {"content-type": "application/json"}
+MASKED_KEY_MESSAGE = "Incorrect API key provided: sk-proj-****abcd"
+ENV_HEADERS = "x-env-header: leaked\nAuthorization: Bearer env-token"
+SDK_HEADER_ENV = {
+    "ANTHROPIC_CUSTOM_HEADERS": ENV_HEADERS,
+    "OPENAI_CUSTOM_HEADERS": ENV_HEADERS,
+    "OPENAI_ORG_ID": "org-env",
+    "OPENAI_PROJECT_ID": "proj-env",
+}
+CREDENTIAL_HEADERS = (
+    "authorization",
+    "x-api-key",
+    "x-env-header",
+    "openai-organization",
+    "openai-project",
+)
 ALL_ROLES = (
     "backend",
     "frontend",
@@ -237,10 +259,12 @@ class MemoryKeyring(KeyringBackend):
 
 def anthropic_client(
     handler: Callable[[httpx2.Request], httpx2.Response],
+    base_url: str = "https://api.anthropic.com",
 ) -> anthropic.Anthropic:
     transport = httpx2.MockTransport(handler)
     return anthropic.Anthropic(
         api_key=ANTHROPIC_TEST_KEY,
+        base_url=base_url,
         max_retries=0,
         http_client=httpx2.Client(transport=transport),
     )
@@ -254,6 +278,10 @@ def anthropic_message(
     message["stop_reason"] = stop_reason
     message["usage"].update(usage)
     return message
+
+
+def anthropic_model(model_id: str) -> dict[str, object]:
+    return {"id": model_id, "type": "model"}
 
 
 def openai_client(
@@ -295,15 +323,118 @@ class Recorder:
         return json.loads(self.requests[-1].content)
 
 
+def unreadable_replies(
+    wrong_types: object,
+) -> dict[str, Callable[[httpx2.Request], httpx2.Response]]:
+    return {
+        "junk json": lambda request: httpx2.Response(200, json={"unexpected": True}),
+        "wrong types": lambda request: httpx2.Response(200, json=wrong_types),
+        "invalid json": lambda request: httpx2.Response(
+            200, content=b"not json", headers=JSON_CONTENT_TYPE
+        ),
+        "plain text": lambda request: httpx2.Response(200, text="hello"),
+    }
+
+
+def refuse_connection(request: httpx2.Request) -> httpx2.Response:
+    raise httpx2.ConnectError("connection refused", request=request)
+
+
 def route_sdk_network(monkeypatch: pytest.MonkeyPatch, recorder: Recorder) -> None:
     for name in SDK_ENV_VARIABLES:
         monkeypatch.delenv(name, raising=False)
-    monkeypatch.setenv("NO_PROXY", "*")
     monkeypatch.setattr(
         httpx2.HTTPTransport,
         "handle_request",
         lambda _transport, request: recorder(request),
     )
+
+
+LOOPBACK_NAMES = frozenset({"localhost"})
+INET_FAMILIES = frozenset({socket.AF_INET, socket.AF_INET6})
+SCOPE_SEPARATOR = "%"
+HOST_CODEC = "idna"
+PROXY_VARIABLES = (
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "ALL_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "all_proxy",
+)
+NO_PROXY_HOSTS = "*"
+
+
+class NetworkBlockedError(RuntimeError):
+    def __init__(self, host: object) -> None:
+        super().__init__(f"tests may only reach loopback, blocked {host!r}")
+
+
+def is_loopback(host: object) -> bool:
+    if host is None:
+        return True
+    name = host.decode() if isinstance(host, bytes) else str(host)
+    if name in LOOPBACK_NAMES:
+        return True
+    try:
+        return ipaddress.ip_address(name.split(SCOPE_SEPARATOR)[0]).is_loopback
+    except ValueError:
+        return False
+
+
+def guard_network(patch: pytest.MonkeyPatch) -> None:
+    real_getaddrinfo = socket.getaddrinfo
+    real_connect = socket.socket.connect
+    real_connect_ex = socket.socket.connect_ex
+
+    def require_loopback(sock: socket.socket, address: object) -> None:
+        if sock.family in INET_FAMILIES and isinstance(address, tuple):
+            host = address[0]
+            if not is_loopback(host):
+                raise NetworkBlockedError(host)
+
+    def getaddrinfo(host: object, *args: object, **kwargs: object) -> object:
+        encoded = host.encode(HOST_CODEC) if isinstance(host, str) else host
+        if not is_loopback(encoded):
+            raise NetworkBlockedError(host)
+        return real_getaddrinfo(host, *args, **kwargs)
+
+    def connect(sock: socket.socket, address: object) -> None:
+        require_loopback(sock, address)
+        real_connect(sock, address)
+
+    def connect_ex(sock: socket.socket, address: object) -> int:
+        require_loopback(sock, address)
+        return real_connect_ex(sock, address)
+
+    for name in PROXY_VARIABLES:
+        patch.delenv(name, raising=False)
+    patch.setenv("NO_PROXY", NO_PROXY_HOSTS)
+    patch.setattr(socket, "getaddrinfo", getaddrinfo)
+    patch.setattr(socket.socket, "connect", connect)
+    patch.setattr(socket.socket, "connect_ex", connect_ex)
+
+
+def traceback_text(error: BaseException) -> str:
+    return "".join(traceback.format_exception(error))
+
+
+def redirect_sdk_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ANTHROPIC_BASE_URL", ELSEWHERE_URL)
+    monkeypatch.setenv("OPENAI_BASE_URL", ELSEWHERE_URL)
+
+
+def set_sdk_header_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name, value in SDK_HEADER_ENV.items():
+        monkeypatch.setenv(name, value)
+
+
+def credential_headers(request: httpx2.Request) -> dict[str, str]:
+    return {
+        name: request.headers[name]
+        for name in CREDENTIAL_HEADERS
+        if name in request.headers
+    }
 
 
 class ListSink:

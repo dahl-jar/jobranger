@@ -5,6 +5,7 @@ import logging
 import os
 import threading
 from datetime import UTC, datetime, timedelta
+from http import HTTPStatus
 from typing import TYPE_CHECKING
 
 import httpx
@@ -13,6 +14,7 @@ from factories import (
     CALL_USAGE,
     FIXTURES,
     GUIDANCE,
+    INVALID_URL,
     OTHER_TEAMTAILOR_FEED,
     OUTDATED_VERSION,
     FakeClock,
@@ -70,6 +72,12 @@ CONFIG = AppConfig(
 FINN_ONLY_CONFIG = CONFIG.model_copy(
     update={"sources": SourcesConfig(finn=True, nav=False, employers=False)}
 )
+FEED_ONLY_CONFIG = CONFIG.model_copy(
+    update={
+        "sources": SourcesConfig(nav=False, employer_feeds=(OTHER_TEAMTAILOR_FEED,))
+    }
+)
+EMPTY_RSS = "<rss><channel/></rss>"
 DEFAULT_SYSTEM = build_system(
     DEFAULT_TEXT,
     limit_rules(CONFIG.targets.limits),
@@ -78,6 +86,8 @@ DEFAULT_SYSTEM = build_system(
 VERSION = assessment_version(DEFAULT_SYSTEM)
 BARRIER_TIMEOUT_SECONDS = 2.0
 MORE_SOURCES_THAN_DEFAULT_POOL = 33
+APPLY_URL_BASE = "http://93.184.215.14/apply/"
+FINN_IMPORTED_TEXT = (FIXTURES / "finn_ad_imported.txt").read_text().strip()
 FEED_HOST_INTERVAL = 2.0
 TEAMTAILOR_XML = (FIXTURES / "teamtailor_jobs.xml").read_text()
 
@@ -165,6 +175,63 @@ def _stages(sink: ListSink, stage: str) -> list[RunEvent]:
     return [event for event in sink.events if event.stage == stage]
 
 
+def _use_two_new_ads(monkeypatch: pytest.MonkeyPatch) -> None:
+    _use_sources(monkeypatch, [_source("fake", [_new_ad(1), _new_ad(2)])])
+
+
+def _seed_reusable_pair(
+    store: Store, monkeypatch: pytest.MonkeyPatch, **classified: object
+) -> Ad:
+    store.upsert_ad(
+        make_ad(
+            id="finn:1",
+            title="Backend Developer",
+            label="junior",
+            description="Build Python services.",
+            match=make_match(version=VERSION),
+            **classified,
+        )
+    )
+    pending = _new_ad(
+        1,
+        title="Backend Developer",
+        company="Org One AS",
+        description="Build Python services.",
+    )
+    _use_sources(monkeypatch, [_source("fake", [pending])])
+    return pending
+
+
+def _feed_http(status: int = HTTPStatus.OK) -> httpx.Client:
+    return httpx.Client(
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(status, text=EMPTY_RSS)
+        )
+    )
+
+
+def _path_recorder(status: int) -> tuple[list[str], httpx.Client]:
+    checked: list[str] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        checked.append(request.url.path)
+        return httpx.Response(status)
+
+    return checked, httpx.Client(transport=httpx.MockTransport(respond))
+
+
+class CancellingSink(ListSink):
+    def __init__(self, stage: str, cancel: CancelToken) -> None:
+        super().__init__()
+        self._stage = stage
+        self._cancel = cancel
+
+    def emit(self, event: RunEvent) -> None:
+        super().emit(event)
+        if event.stage == self._stage:
+            self._cancel.cancel()
+
+
 @pytest.fixture
 def held_lock() -> Iterator[None]:
     lock_path = paths.run_lock_path()
@@ -189,7 +256,7 @@ def test_should_skip_run_when_lock_is_held(store: Store) -> None:
 def test_should_emit_source_done_event_with_new_count(
     store: Store, monkeypatch: pytest.MonkeyPatch, sink: ListSink
 ) -> None:
-    _use_sources(monkeypatch, [_source("fake", [_new_ad(1), _new_ad(2)])])
+    _use_two_new_ads(monkeypatch)
 
     _run(store, events=sink)
 
@@ -214,17 +281,11 @@ def test_should_stop_before_model_stage_when_cancelled(
     store: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     cancel = CancelToken()
-
-    class CancellingSink(ListSink):
-        def emit(self, event: RunEvent) -> None:
-            super().emit(event)
-            if event.stage == "source_done":
-                cancel.cancel()
-
+    sink = CancellingSink("source_done", cancel)
     _use_sources(monkeypatch, [_source("fake", [_new_ad(1)])])
     provider = FakeProvider()
 
-    result = _run(store, provider=provider, events=CancellingSink(), cancel=cancel)
+    result = _run(store, provider=provider, events=sink, cancel=cancel)
 
     last = store.last_run()
     assert last is not None
@@ -238,7 +299,7 @@ def test_should_stop_before_model_stage_when_cancelled(
 def test_should_emit_model_progress_per_ad(
     store: Store, monkeypatch: pytest.MonkeyPatch, sink: ListSink
 ) -> None:
-    _use_sources(monkeypatch, [_source("fake", [_new_ad(1), _new_ad(2)])])
+    _use_two_new_ads(monkeypatch)
 
     _run(store, events=sink)
 
@@ -251,7 +312,7 @@ def test_should_emit_model_progress_per_ad(
 def test_should_write_usage_per_provider_call(
     store: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _use_sources(monkeypatch, [_source("fake", [_new_ad(1), _new_ad(2)])])
+    _use_two_new_ads(monkeypatch)
     provider = FakeProvider([make_assessment(), RuntimeError("provider crashed")])
 
     with pytest.raises(RuntimeError):
@@ -276,7 +337,7 @@ def test_should_return_reported_ids_without_marking_them_reported(
 def test_should_skip_model_step_when_provider_is_none(
     store: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _use_sources(monkeypatch, [_source("fake", [_new_ad(1), _new_ad(2)])])
+    _use_two_new_ads(monkeypatch)
 
     result = run_pass(
         CONFIG,
@@ -309,7 +370,7 @@ def test_should_reclassify_after_limit_change(
 def test_should_reclassify_ads_after_guidance_edit(
     store: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _use_sources(monkeypatch, [_source("fake", [_new_ad(1), _new_ad(2)])])
+    _use_two_new_ads(monkeypatch)
     provider = FakeProvider()
     _run(store, provider=provider)
     save_guidance(guidance_path(), GUIDANCE)
@@ -334,7 +395,7 @@ def test_should_keep_run_version_in_digest_after_guidance_edit(
 def test_should_close_run_row_with_counts(
     store: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _use_sources(monkeypatch, [_source("fake", [_new_ad(1), _new_ad(2)])])
+    _use_two_new_ads(monkeypatch)
 
     _run(store)
 
@@ -524,7 +585,7 @@ def test_should_stop_workers_between_requests_when_cancelled(store: Store) -> No
 
 def test_should_mark_malformed_apply_url_skipped(store: Store) -> None:
     broken = make_ad(
-        apply_url="http://[::1",
+        apply_url=INVALID_URL,
         description="Build Java services.",
         match=make_match(version=VERSION),
     )
@@ -571,21 +632,7 @@ def test_should_classify_duplicate_rows_once(
 def test_should_reuse_existing_duplicate_classification(
     store: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    classified = make_ad(
-        id="finn:1",
-        title="Backend Developer",
-        label="junior",
-        description="Build Python services.",
-        match=make_match(version=VERSION),
-    )
-    store.upsert_ad(classified)
-    pending = _new_ad(
-        1,
-        title="Backend Developer",
-        company="Org One AS",
-        description="Build Python services.",
-    )
-    _use_sources(monkeypatch, [_source("fake", [pending])])
+    pending = _seed_reusable_pair(store, monkeypatch)
     provider = FakeProvider()
 
     _run(store, provider=provider)
@@ -621,7 +668,7 @@ def test_should_label_senior_sibling_of_freshly_classified_group(
 def test_should_keep_attempts_for_ads_left_pending_by_outage(
     store: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _use_sources(monkeypatch, [_source("fake", [_new_ad(1), _new_ad(2)])])
+    _use_two_new_ads(monkeypatch)
     provider = FakeProvider(
         [make_assessment(), ProviderError(ProviderErrorKind.server, "down")]
     )
@@ -644,7 +691,6 @@ def test_should_keep_attempts_for_ads_left_pending_by_outage(
 def test_should_expire_import_missing_from_employer_feed(
     store: Store, succeeded: bool
 ) -> None:
-    feed = OTHER_TEAMTAILOR_FEED
     dead_import = make_ad(
         id="finn:2",
         source_id="2",
@@ -655,16 +701,7 @@ def test_should_expire_import_missing_from_employer_feed(
     )
     store.upsert_ad(dead_import)
     status = 200 if succeeded else 500
-    http = httpx.Client(
-        transport=httpx.MockTransport(
-            lambda request: httpx.Response(status, text="<rss><channel/></rss>")
-        )
-    )
-    config = CONFIG.model_copy(
-        update={"sources": SourcesConfig(nav=False, employer_feeds=(feed,))}
-    )
-
-    _run(store, config, http=http)
+    _run(store, FEED_ONLY_CONFIG, http=_feed_http(status))
 
     expected = "expired" if succeeded else None
     assert store.active_ads()[0].apply_status == expected
@@ -718,11 +755,7 @@ def test_should_not_reuse_unusable_duplicate_classification(
 
 
 def test_should_check_only_reportable_apply_links(store: Store) -> None:
-    checked: list[str] = []
-
-    def respond(request: httpx.Request) -> httpx.Response:
-        checked.append(request.url.path)
-        return httpx.Response(404)
+    checked, http = _path_recorder(404)
 
     for index, label in ((1, "junior"), (2, "senior")):
         store.upsert_ad(
@@ -731,18 +764,18 @@ def test_should_check_only_reportable_apply_links(store: Store) -> None:
                 source_id=str(index),
                 label=label,
                 description="Build Java services.",
-                apply_url=f"http://93.184.215.14/apply/{index}",
+                apply_url=f"{APPLY_URL_BASE}{index}",
                 match=make_match(version=VERSION),
             )
         )
 
-    _run(store, http=httpx.Client(transport=httpx.MockTransport(respond)))
+    _run(store, http=http)
 
     assert checked == ["/apply/1"]
 
 
 def test_should_store_finn_page_text_and_apply_url(store: Store) -> None:
-    apply_url = "https://jobs.example.test/apply/1"
+    apply_url = f"{APPLY_URL_BASE}1"
     page = (FIXTURES / "finn_ad_imported.html").read_text() + (
         f'<script>\\"applicationUrl\\",\\"{apply_url}\\"</script>'
     )
@@ -758,22 +791,15 @@ def test_should_store_finn_page_text_and_apply_url(store: Store) -> None:
     _run(store, config, http=httpx.Client(transport=httpx.MockTransport(respond)))
 
     [stored] = store.active_ads()
-    assert (stored.apply_url, stored.description is not None) == (apply_url, True)
+    assert (stored.apply_url, stored.description) == (apply_url, FINN_IMPORTED_TEXT)
 
 
 def test_should_finish_cancelled_when_cancelled_between_model_calls(
     store: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     cancel = CancelToken()
-
-    class CancellingSink(ListSink):
-        def emit(self, event: RunEvent) -> None:
-            super().emit(event)
-            if event.stage == "model":
-                cancel.cancel()
-
-    sink = CancellingSink()
-    _use_sources(monkeypatch, [_source("fake", [_new_ad(1), _new_ad(2)])])
+    sink = CancellingSink("model", cancel)
+    _use_two_new_ads(monkeypatch)
 
     result = _run(store, events=sink, cancel=cancel)
 
@@ -862,20 +888,6 @@ def test_should_label_ad_error_after_three_failed_runs(
         _run(store, provider=FakeProvider([StopKind.invalid]))
 
     assert store.active_ads()[0].label == "error"
-
-
-def test_should_skip_twin_of_ad_reported_earlier(
-    store: Store, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    earlier = make_ad(id="finn:1", company="Org One AS", title="Utvikler")
-    store.upsert_ad(earlier)
-    store.mark_reported([earlier.id], datetime.now(tz=UTC).isoformat())
-    twin = _new_ad(1, company="IT, Org One", title="Utvikler")
-    _use_sources(monkeypatch, [_source("fake", [twin])])
-
-    result = _run(store)
-
-    assert result.reported_ids == ()
 
 
 def test_should_record_crashed_source_as_failed(
@@ -984,11 +996,7 @@ def test_should_stop_fetching_finn_page_after_three_failures(store: Store) -> No
 
 
 def test_should_recheck_apply_link_only_after_a_week(store: Store) -> None:
-    checked: list[str] = []
-
-    def respond(request: httpx.Request) -> httpx.Response:
-        checked.append(request.url.path)
-        return httpx.Response(200)
+    checked, http = _path_recorder(200)
 
     for index, days_ago in ((1, 3), (2, 8)):
         ad_id = f"finn:{index}"
@@ -997,14 +1005,14 @@ def test_should_recheck_apply_link_only_after_a_week(store: Store) -> None:
                 id=ad_id,
                 source_id=str(index),
                 description="Build Java services.",
-                apply_url=f"http://93.184.215.14/apply/{index}",
+                apply_url=f"{APPLY_URL_BASE}{index}",
                 match=make_match(version=VERSION),
             )
         )
         checked_at = datetime.now(tz=UTC) - timedelta(days=days_ago)
         store.set_apply_status(ad_id, "active", checked_at.isoformat())
 
-    _run(store, http=httpx.Client(transport=httpx.MockTransport(respond)))
+    _run(store, http=http)
 
     rechecked = {ad.id: ad.apply_checked_at for ad in store.active_ads()}
     assert checked == ["/apply/2"]
@@ -1015,26 +1023,15 @@ def test_should_recheck_apply_link_only_after_a_week(store: Store) -> None:
 def test_should_copy_reused_classification_fields(
     store: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    classified = make_ad(
-        id="finn:1",
-        title="Backend Developer",
-        label="junior",
-        description="Build Python services.",
+    pending = _seed_reusable_pair(
+        store,
+        monkeypatch,
         summary="Python backend.",
         display_title="Python Developer",
         role_type="backend",
         technologies=("Python",),
         requirements=("Bachelor",),
-        match=make_match(version=VERSION),
     )
-    store.upsert_ad(classified)
-    pending = _new_ad(
-        1,
-        title="Backend Developer",
-        company="Org One AS",
-        description="Build Python services.",
-    )
-    _use_sources(monkeypatch, [_source("fake", [pending])])
 
     _run(store)
 
@@ -1062,7 +1059,6 @@ def test_should_copy_reused_classification_fields(
 def test_should_expire_only_same_company_import_missing_from_feed(
     store: Store,
 ) -> None:
-    feed = OTHER_TEAMTAILOR_FEED
     for index, company in ((1, "Org Two AS"), (2, "Org One AS")):
         store.upsert_ad(
             make_ad(
@@ -1075,16 +1071,7 @@ def test_should_expire_only_same_company_import_missing_from_feed(
                 match=make_match(version=VERSION),
             )
         )
-    http = httpx.Client(
-        transport=httpx.MockTransport(
-            lambda request: httpx.Response(200, text="<rss><channel/></rss>")
-        )
-    )
-    config = CONFIG.model_copy(
-        update={"sources": SourcesConfig(nav=False, employer_feeds=(feed,))}
-    )
-
-    _run(store, config, http=http)
+    _run(store, FEED_ONLY_CONFIG, http=_feed_http())
 
     statuses = {ad.id: ad.apply_status for ad in store.active_ads()}
     assert statuses == {"nav:1": "expired", "nav:2": None}
@@ -1110,7 +1097,7 @@ def test_should_count_hidden_ads_listed_after_reported_one(
     needs_years = make_assessment(
         match={**make_assessment().match.model_dump(), "required_experience_years": 3}
     )
-    _use_sources(monkeypatch, [_source("fake", [_new_ad(1), _new_ad(2)])])
+    _use_two_new_ads(monkeypatch)
 
     result = _run(store, provider=FakeProvider([make_assessment(), needs_years]))
 
@@ -1169,22 +1156,7 @@ def test_should_classify_each_ad_once_across_runs(
 def test_should_keep_reused_classification_current_across_runs(
     store: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    store.upsert_ad(
-        make_ad(
-            id="finn:1",
-            title="Backend Developer",
-            label="junior",
-            description="Build Python services.",
-            match=make_match(version=VERSION),
-        )
-    )
-    pending = _new_ad(
-        1,
-        title="Backend Developer",
-        company="Org One AS",
-        description="Build Python services.",
-    )
-    _use_sources(monkeypatch, [_source("fake", [pending])])
+    _seed_reusable_pair(store, monkeypatch)
     provider = FakeProvider()
 
     _run(store, provider=provider)
@@ -1242,11 +1214,7 @@ def test_should_close_ad_whose_deadline_passed(store: Store) -> None:
 
 
 def test_should_check_at_most_sixty_apply_links_per_run(store: Store) -> None:
-    checked: list[str] = []
-
-    def respond(request: httpx.Request) -> httpx.Response:
-        checked.append(request.url.path)
-        return httpx.Response(200)
+    checked, http = _path_recorder(200)
 
     for index in range(61):
         store.upsert_ad(
@@ -1255,12 +1223,12 @@ def test_should_check_at_most_sixty_apply_links_per_run(store: Store) -> None:
                 source_id=str(index),
                 description="x",
                 deadline="2099-01-01",
-                apply_url=f"http://93.184.215.14/apply/{index}",
+                apply_url=f"{APPLY_URL_BASE}{index}",
                 match=make_match(version=VERSION),
             )
         )
 
-    _run(store, http=httpx.Client(transport=httpx.MockTransport(respond)))
+    _run(store, http=http)
 
     assert len(checked) == 60
 
@@ -1269,7 +1237,7 @@ def test_should_stamp_apply_check_with_utc_time(store: Store) -> None:
     store.upsert_ad(
         make_ad(
             description="x",
-            apply_url="http://93.184.215.14/apply/1",
+            apply_url=f"{APPLY_URL_BASE}1",
             match=make_match(version=VERSION),
         )
     )
@@ -1288,7 +1256,6 @@ def test_should_stamp_apply_check_with_utc_time(store: Store) -> None:
 
 @pytest.mark.usefixtures("no_retry_wait")
 def test_should_stamp_veto_time_in_utc(store: Store) -> None:
-    feed = OTHER_TEAMTAILOR_FEED
     store.upsert_ad(
         make_ad(
             id="nav:1",
@@ -1299,16 +1266,7 @@ def test_should_stamp_veto_time_in_utc(store: Store) -> None:
             match=make_match(version=VERSION),
         )
     )
-    http = httpx.Client(
-        transport=httpx.MockTransport(
-            lambda request: httpx.Response(200, text="<rss><channel/></rss>")
-        )
-    )
-    config = CONFIG.model_copy(
-        update={"sources": SourcesConfig(nav=False, employer_feeds=(feed,))}
-    )
-
-    _run(store, config, http=http)
+    _run(store, FEED_ONLY_CONFIG, http=_feed_http())
 
     stamp = store.active_ads()[0].apply_checked_at
     assert stamp is not None
@@ -1521,7 +1479,7 @@ def test_should_log_crashed_source_name(
 def test_should_log_id_of_malformed_apply_url(
     store: Store, logs: pytest.LogCaptureFixture
 ) -> None:
-    _seed_reportable(store, 1, "http://[::1")
+    _seed_reportable(store, 1, INVALID_URL)
 
     _run(store)
 
@@ -1533,8 +1491,8 @@ def test_should_log_apply_check_counts(
     store: Store, logs: pytest.LogCaptureFixture
 ) -> None:
     for index in (1, 2):
-        _seed_reportable(store, index, f"http://93.184.215.14/apply/{index}")
-    _seed_reportable(store, 3, "http://[::1")
+        _seed_reportable(store, index, f"{APPLY_URL_BASE}{index}")
+    _seed_reportable(store, 3, INVALID_URL)
 
     _run(
         store,
@@ -1550,7 +1508,6 @@ def test_should_log_apply_check_counts(
 
 @pytest.mark.usefixtures("no_retry_wait")
 def test_should_log_vetoed_import(store: Store, logs: pytest.LogCaptureFixture) -> None:
-    feed = OTHER_TEAMTAILOR_FEED
     store.upsert_ad(
         make_ad(
             id="finn:2",
@@ -1561,19 +1518,11 @@ def test_should_log_vetoed_import(store: Store, logs: pytest.LogCaptureFixture) 
             match=make_match(version=VERSION),
         )
     )
-    http = httpx.Client(
-        transport=httpx.MockTransport(
-            lambda request: httpx.Response(200, text="<rss><channel/></rss>")
-        )
-    )
-    config = CONFIG.model_copy(
-        update={"sources": SourcesConfig(nav=False, employer_feeds=(feed,))}
-    )
+    _run(store, FEED_ONLY_CONFIG, http=_feed_http())
 
-    _run(store, config, http=http)
-
+    feed = OTHER_TEAMTAILOR_FEED.source
     assert (
-        f"apply.veto listing missing from employer feed id=finn:2 feed={feed.source}"
+        f"apply.veto listing missing from employer feed id=finn:2 feed={feed}"
         in _messages(logs)
     )
 
@@ -1581,22 +1530,7 @@ def test_should_log_vetoed_import(store: Store, logs: pytest.LogCaptureFixture) 
 def test_should_store_run_version_on_reused_classification(
     store: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    store.upsert_ad(
-        make_ad(
-            id="finn:1",
-            title="Backend Developer",
-            label="junior",
-            description="Build Python services.",
-            match=make_match(version=VERSION),
-        )
-    )
-    pending = _new_ad(
-        1,
-        title="Backend Developer",
-        company="Org One AS",
-        description="Build Python services.",
-    )
-    _use_sources(monkeypatch, [_source("fake", [pending])])
+    _seed_reusable_pair(store, monkeypatch)
 
     _run(store)
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from factories import INVALID_URL, OLLAMA_URL, ROUTER_MODEL
+from factories import INVALID_URL, OLLAMA_URL, ROUTER_MODEL, redirect_sdk_env
 
 from jobranger.providers.base import ProviderError, ProviderErrorKind
 from jobranger.providers.registry import (
@@ -20,19 +20,16 @@ if TYPE_CHECKING:
 HAIKU = "claude-haiku-5-5"
 HAIKU_CONFIG = ModelConfig(provider="anthropic", model=HAIKU)
 PRICE = PriceOverride(input_per_mtok=4.0, output_per_mtok=20.0)
-ELSEWHERE = "http://elsewhere.example.test"
 SAVED_KEYS = {
     "anthropic_api_key": "sk-anthropic",
-    "openai_api_key": "sk-openai",
+    "openai_api_key": "sk-openai-test",
     "openrouter_api_key": "sk-openrouter",
 }
 
 
 @pytest.fixture(autouse=True)
 def redirecting_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("NO_PROXY", "*")
-    monkeypatch.setenv("ANTHROPIC_BASE_URL", ELSEWHERE)
-    monkeypatch.setenv("OPENAI_BASE_URL", ELSEWHERE)
+    redirect_sdk_env(monkeypatch)
 
 
 @pytest.mark.parametrize(("provider", "model"), [(None, HAIKU), ("anthropic", None)])
@@ -66,7 +63,7 @@ def test_should_raise_missing_key_when_no_key_is_saved(secret: str | None) -> No
     ("provider", "model", "api_key", "base_url", "price_in"),
     [
         ("anthropic", HAIKU, "sk-anthropic", "https://api.anthropic.com", 4.0),
-        ("openai", "gpt-5-mini", "sk-openai", "https://api.openai.com/v1/", 4.0),
+        ("openai", "gpt-5-mini", "sk-openai-test", "https://api.openai.com/v1/", 4.0),
         (
             "openrouter",
             ROUTER_MODEL,
@@ -77,7 +74,7 @@ def test_should_raise_missing_key_when_no_key_is_saved(secret: str | None) -> No
         ("ollama", "llama3.2", "ollama", "http://box:11434/v1/", 0.0),
     ],
 )
-def test_should_build_provider_with_its_own_key(
+def test_should_build_provider_with_its_own_key_and_official_url(
     provider: ProviderName,
     model: str,
     api_key: str,

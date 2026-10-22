@@ -7,9 +7,22 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator
 
-CONTRACTS = Path(__file__).resolve().parents[3] / "contracts"
-FIXTURES = CONTRACTS / "fixtures"
+CONTRACTS_DIR = "contracts"
+CONTRACTS_MARKER = Path(CONTRACTS_DIR) / "payload.schema.json"
 INVALID_SUFFIX = "-invalid"
+
+
+def find_contracts(start: Path) -> Path:
+    root = next(
+        (parent for parent in start.parents if (parent / CONTRACTS_MARKER).is_file()),
+        None,
+    )
+    assert root is not None, f"no folder above {start} holds {CONTRACTS_MARKER}"
+    return root / CONTRACTS_DIR
+
+
+CONTRACTS = find_contracts(Path(__file__).resolve())
+FIXTURES = CONTRACTS / "fixtures"
 
 
 def load(path: Path) -> object:
@@ -51,28 +64,41 @@ def golden_twin(path: Path) -> Path:
     pytest.fail(f"no golden payload fixture is a prefix of {path.name}")
 
 
-def changed_leaves(
-    golden: object, other: object, prefix: tuple[str | int, ...] = ()
-) -> list[tuple[str | int, ...]]:
-    leaves: list[tuple[str | int, ...]] = []
+type Leaf = tuple[str | int, ...]
+
+
+def changed_leaves(golden: object, other: object, prefix: Leaf = ()) -> list[Leaf]:
     if isinstance(golden, dict) and isinstance(other, dict):
-        for key in golden.keys() | other.keys():
-            if key in golden and key in other:
-                leaves += changed_leaves(golden[key], other[key], (*prefix, key))
-            else:
-                leaves.append((*prefix, key))
-        return leaves
-    if (
-        isinstance(golden, list)
-        and isinstance(other, list)
-        and len(golden) == len(other)
-    ):
-        for index, (left, right) in enumerate(zip(golden, other, strict=True)):
-            leaves += changed_leaves(left, right, (*prefix, index))
-        return leaves
+        return _changed_keys(golden, other, prefix)
+    if isinstance(golden, list) and isinstance(other, list):
+        return _changed_items(golden, other, prefix)
     if golden == other and type(golden) is type(other):
-        return leaves
+        return []
     return [prefix]
+
+
+def _changed_keys(
+    golden: dict[str, object], other: dict[str, object], prefix: Leaf
+) -> list[Leaf]:
+    leaves: list[Leaf] = []
+    for key in golden.keys() | other.keys():
+        if key in golden and key in other:
+            leaves += changed_leaves(golden[key], other[key], (*prefix, key))
+        else:
+            leaves.append((*prefix, key))
+    return leaves
+
+
+def _changed_items(
+    golden: list[object], other: list[object], prefix: Leaf
+) -> list[Leaf]:
+    if len(golden) != len(other):
+        return [prefix]
+    return [
+        leaf
+        for index, (left, right) in enumerate(zip(golden, other, strict=True))
+        for leaf in changed_leaves(left, right, (*prefix, index))
+    ]
 
 
 @pytest.mark.parametrize("path", fixtures("envelope", "payload"), ids=fixture_id)

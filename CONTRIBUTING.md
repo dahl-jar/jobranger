@@ -19,10 +19,9 @@ The test suite points `HOME`, the `XDG_*` dirs and the `JOBRANGER_*` dirs at a t
 
 The default matching prompt is `PROMPT_HEADER` and `BASE_RULES` in `src/jobranger/matching/prompt.py`. The tests compare it byte for byte with `tests/fixtures/main_prompt_header.txt` and `tests/fixtures/main_base_rules.txt`, so a prompt change updates both fixtures in the same commit. Any prompt change also changes the assessment version, and every stored ad is checked again on the next run.
 
-After a prompt change, re-record the model replies in `tests/fixtures/matching_replies.json` that the matching-case tests read.
+After a prompt change, re-record the model replies in `tests/fixtures/matching_replies.json` that the matching-case tests read. The script makes one model call per case in `tests/fixtures/matching_cases.json`.
 
 ```bash
-# one model call per case in tests/fixtures/matching_cases.json
 uv run python scripts/record_matching_replies.py claude -p --model claude-sonnet-5-5 --output-format json --tools ""
 ```
 
@@ -31,9 +30,10 @@ CV extraction parses PDF and DOCX files in a child process (`python -I -m jobran
 `tests/fixtures/cv/cv_user.pdf` is built from `cv_user.typ`. `cv_user_scan.pdf` is page 1 of it as a 40 ppi image with no text layer.
 
 ```bash
-# from tests/fixtures/cv
-typst compile cv_user.typ cv_user.pdf
+typst compile tests/fixtures/cv/cv_user.typ tests/fixtures/cv/cv_user.pdf
 ```
+
+Tests can only connect to loopback. Any other host fails with `NetworkBlockedError`, so stub HTTP with `httpx.MockTransport` or `httpx2.MockTransport`.
 
 ## relay
 
@@ -62,11 +62,15 @@ pnpm build
 pnpm mutate
 ```
 
-```bash
-# dev server with hot reload
-pnpm dev
+Dev server with hot reload:
 
-# rebuild the subset fonts in public/fonts from the pinned Nerd Fonts release
+```bash
+pnpm dev
+```
+
+Rebuild the subset fonts in `public/fonts` from the pinned Nerd Fonts release:
+
+```bash
 pnpm fonts
 ```
 
@@ -82,8 +86,7 @@ git diff --exit-code
 The fixture check runs with the CLI tests. Every golden in `contracts/fixtures/envelope` and `contracts/fixtures/payload` must pass its schema, and every file in `envelope-invalid` and `payload-invalid` must fail.
 
 ```bash
-# from cli/
-uv run pytest tests/contract
+uv --directory cli run pytest tests/contract
 ```
 
 Every schema guard needs one invalid fixture in `contracts/fixtures/payload-invalid` or `contracts/fixtures/envelope-invalid`. The fixture changes one leaf of its golden, so the guard is the only reason it fails. Name it `<type>.<rule>.json`.

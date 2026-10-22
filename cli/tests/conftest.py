@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import keyring
 import pytest
-from factories import FIXTURES, ListSink, MemoryKeyring
+from factories import FIXTURES, ListSink, MemoryKeyring, guard_network
 from keyring.backends import fail
 
 from jobranger import paths
@@ -44,6 +44,13 @@ def isolated_user_dirs(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Non
 @pytest.fixture(scope="session", autouse=True)
 def isolated_keyring() -> Iterator[None]:
     with _use_keyring(MemoryKeyring()):
+        yield
+
+
+@pytest.fixture(autouse=True, scope="session")
+def block_network() -> Iterator[None]:
+    with pytest.MonkeyPatch.context() as patch:
+        guard_network(patch)
         yield
 
 
