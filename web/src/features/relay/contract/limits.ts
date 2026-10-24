@@ -1,0 +1,17 @@
+export const FRAME_MAX_BYTES = 65536
+export const CIPHERTEXT_B64_MAX_CHARS = 61440
+export const GCM_TAG_BYTES = 16
+export const CHUNK_THRESHOLD_BYTES = 45056
+export const STEP_TIMEOUT_SECONDS = 15
+export const PAIR_CONFIRM_TIMEOUT_SECONDS = 120
+export const HELLO_MAX_BYTES = 4096
+export const AGENT_MAX_BYTES = 256
+export const CHUNK_DATA_MAX_BYTES = 32768
+export const CHUNK_MAX_COUNT = 256
+export const CV_MAX_BYTES = 5242880
+export const URL_MAX_CHARS = 2048
+export const REASSEMBLY_TIMEOUT_SECONDS = 60
+export const REASSEMBLY_MAX_OPEN = 2
+export const CONTRACT_VERSION = 1
+export const MAX_JSON_DEPTH = 64
+export const MAX_INTEGER_DIGITS = 16

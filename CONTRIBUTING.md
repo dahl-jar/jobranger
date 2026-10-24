@@ -76,20 +76,36 @@ pnpm fonts
 
 ## contracts
 
-Run from the repo root. Generated code must match the schemas.
+Run from the repo root. `contracts/generate.sh` writes the pydantic models, the TypeScript types, the Ajv validators and the schema copies from `contracts/payload.schema.json` and `contracts/envelope.schema.json`. Generated code must match the schemas.
 
 ```bash
+# regenerate, then check nothing drifted
 bash contracts/generate.sh
 git diff --exit-code
 ```
 
-The fixture check runs with the CLI tests. Every golden in `contracts/fixtures/envelope` and `contracts/fixtures/payload` must pass its schema, and every file in `envelope-invalid` and `payload-invalid` must fail.
+All three stacks test the same fixtures. Every golden in `contracts/fixtures/envelope` and `contracts/fixtures/payload` must pass its schema, and every file in `envelope-invalid` and `payload-invalid` must fail.
 
 ```bash
+# cli: schemas, decoders, limits and fixtures
 uv --directory cli run pytest tests/contract
+
+# web: validators from source and from the built bundle
+pnpm --dir web exec vitest run src/features/relay/contract tests
+
+# relay: envelope rules
+(cd relay && dotnet test --project tests/Jobranger.Relay.Core.Tests -c Release --filter-class "*EnvelopeContractTests")
 ```
 
-Every schema guard needs one invalid fixture in `contracts/fixtures/payload-invalid` or `contracts/fixtures/envelope-invalid`. The fixture changes one leaf of its golden, so the guard is the only reason it fails. Name it `<type>.<rule>.json`.
+Every schema guard needs one invalid fixture in `contracts/fixtures/payload-invalid` or `contracts/fixtures/envelope-invalid`. The fixture changes one leaf of its golden, so the guard is the only reason it fails. Name it `<type>.<rule>.json`. A new fixture also raises the counts in `web/src/test/fixtureCounts.ts`, and an envelope fixture raises the count in `ShouldFindEveryInvalidFixture` in the relay tests.
+
+Mutation runs scoped to the contract code:
+
+```bash
+(cd cli && uv run python scripts/mutate.py "jobranger.contract*")
+(cd web && pnpm mutate --mutate "src/features/relay/contract/*.ts,!src/features/relay/contract/*.test.ts,!src/features/relay/contract/*.gen.*")
+(cd relay && dotnet stryker --mutate "**/EnvelopeRules.cs")
+```
 
 ## Mutation runs
 

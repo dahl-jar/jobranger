@@ -17,4 +17,10 @@
     <ProjectReference Include="..\..\src\Jobranger.Relay.Core\Jobranger.Relay.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\..\contracts\envelope.schema.json" Link="contracts\envelope.schema.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\contracts\fixtures\envelope\*.json" LinkBase="contracts\fixtures\envelope" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\contracts\fixtures\envelope-invalid\*.json" LinkBase="contracts\fixtures\envelope-invalid" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

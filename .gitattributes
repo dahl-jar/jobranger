@@ -1,4 +1,6 @@
 * text=auto eol=lf
 
-cli/src/jobranger/link/contracts/** linguist-generated=true -diff -merge
-web/src/types/contracts/** linguist-generated=true -diff -merge
+cli/src/jobranger/contract/payload.py linguist-generated=true -merge
+cli/src/jobranger/contract/envelope.py linguist-generated=true -merge
+cli/src/jobranger/contract/*.schema.json linguist-generated=true -merge
+web/src/features/relay/contract/*.gen.* linguist-generated=true -merge

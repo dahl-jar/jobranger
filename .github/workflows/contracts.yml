@@ -4,15 +4,25 @@ on:
   push:
     branches: [main]
     paths:
+      - relay/src/Jobranger.Relay.Core/ContractLimits.cs
+      - web/scripts/**
       - contracts/**
-      - cli/src/jobranger/link/contracts/**
-      - web/src/types/contracts/**
+      - cli/src/jobranger/contract/**
+      - cli/tests/contract/**
+      - web/src/features/relay/contract/**
+      - relay/src/Jobranger.Relay.Core/Envelope*.cs
+      - relay/tests/Jobranger.Relay.Core.Tests/EnvelopeContractTests.cs
       - .github/workflows/contracts.yml
   pull_request:
     paths:
+      - relay/src/Jobranger.Relay.Core/ContractLimits.cs
+      - web/scripts/**
       - contracts/**
-      - cli/src/jobranger/link/contracts/**
-      - web/src/types/contracts/**
+      - cli/src/jobranger/contract/**
+      - cli/tests/contract/**
+      - web/src/features/relay/contract/**
+      - relay/src/Jobranger.Relay.Core/Envelope*.cs
+      - relay/tests/Jobranger.Relay.Core.Tests/EnvelopeContractTests.cs
       - .github/workflows/contracts.yml
   workflow_dispatch:
 
@@ -21,21 +31,39 @@ permissions:
 
 jobs:
   check:
-    name: Generate and compare
+    name: Generate, compare and test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: cli/uv.lock
 
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413  # v6.1.0
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
         with:
           package_json_file: web/package.json
 
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 24
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
 
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        with:
+          global-json-file: relay/global.json
+
+      - run: uv --directory cli sync --locked
+      - run: pnpm --dir web install --frozen-lockfile
+      - run: touch web/src/features/relay/contract/old.gen.ts
       - run: bash contracts/generate.sh
       - run: git diff --exit-code
+      - run: test -z "$(git status --porcelain)" || { git status --porcelain; exit 1; }
       - run: uv --directory cli run --locked pytest tests/contract
+      - run: pnpm --dir web exec tsc -b
+      - run: pnpm --dir web exec vitest run src/features/relay/contract tests --passWithNoTests=false
+      - run: dotnet test --project tests/Jobranger.Relay.Core.Tests -c Release --filter-class "*EnvelopeContractTests" --minimum-expected-tests 1
+        working-directory: relay

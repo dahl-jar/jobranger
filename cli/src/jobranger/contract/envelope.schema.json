@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Envelope",
+  "type": "object",
+  "oneOf": [
+    {"$ref": "#/$defs/EnvelopeHello"},
+    {"$ref": "#/$defs/EnvelopeData"}
+  ],
+  "discriminator": {"propertyName": "kind"},
+  "$defs": {
+    "Channel": {"type": "string", "pattern": "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$", "maxLength": 43},
+    "Sid": {"type": "string", "pattern": "^[A-Za-z0-9_-]{21}[AQgw]$", "maxLength": 22},
+    "Seq": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+    "Base64Url": {
+      "type": "string",
+      "pattern": "^(?:[A-Za-z0-9_-]{4})*(?:[A-Za-z0-9_-][AQgw]|[A-Za-z0-9_-]{2}[AEIMQUYcgkosw048])?$",
+      "not": {"pattern": "[^A-Za-z0-9_-]"},
+      "minLength": 4,
+      "maxLength": 61440
+    },
+    "EnvelopeHello": {
+      "type": "object",
+      "required": ["v", "channel", "sid", "seq", "kind", "ciphertext"],
+      "properties": {
+        "v": {"const": 1},
+        "channel": {"$ref": "#/$defs/Channel"},
+        "sid": {"$ref": "#/$defs/Sid"},
+        "seq": {"const": 0},
+        "kind": {"const": "hello"},
+        "ciphertext": {"$ref": "#/$defs/Base64Url"}
+      }
+    },
+    "EnvelopeData": {
+      "type": "object",
+      "required": ["v", "channel", "sid", "seq", "kind", "ciphertext"],
+      "properties": {
+        "v": {"const": 1},
+        "channel": {"$ref": "#/$defs/Channel"},
+        "sid": {"$ref": "#/$defs/Sid"},
+        "seq": {"$ref": "#/$defs/Seq"},
+        "kind": {"const": "data"},
+        "ciphertext": {"$ref": "#/$defs/Base64Url"}
+      }
+    }
+  }
+}

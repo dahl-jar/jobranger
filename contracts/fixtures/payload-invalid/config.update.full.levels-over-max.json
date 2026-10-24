@@ -1,0 +1,55 @@
+{
+  "type": "config.update",
+  "v": 1,
+  "id": "00000000-0000-4000-8000-000000000009",
+  "patch": {
+    "targets": {
+      "subfields": [
+        "backend",
+        "fullstack"
+      ],
+      "levels": [
+        "junior",
+        "mid",
+        "senior",
+        "lead",
+        "none",
+        "junior"
+      ],
+      "years": [
+        "0-1",
+        "1-3"
+      ],
+      "hide_masters": false,
+      "places": [
+        "Bergen"
+      ],
+      "relocate": true
+    },
+    "sources": {
+      "nav": true,
+      "employers": false,
+      "finn": true,
+      "linkedin": false
+    },
+    "schedule": {
+      "times": [
+        "06:00"
+      ]
+    },
+    "notify": {
+      "website": false,
+      "email": {
+        "on": true,
+        "address": "user@example.com"
+      }
+    },
+    "model": {
+      "price": {
+        "input_per_mtok": 0.8,
+        "output_per_mtok": 4.5
+      },
+      "monthly_limit_usd": null
+    }
+  }
+}

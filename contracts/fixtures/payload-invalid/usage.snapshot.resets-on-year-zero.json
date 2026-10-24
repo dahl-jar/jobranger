@@ -1,0 +1,30 @@
+{
+  "type": "usage.snapshot",
+  "v": 1,
+  "month": "2026-10",
+  "month_tokens": 1840000,
+  "today_tokens": 210000,
+  "month_usd": 2.35,
+  "today_usd": 0.41,
+  "resets_on": "0000-01-01",
+  "days": [
+    {
+      "day": "2026-10-11",
+      "calls": 37,
+      "input_tokens": 180000,
+      "output_tokens": 12000,
+      "cost_usd": 0.2,
+      "ads_read": 790,
+      "ads_checked": 37
+    },
+    {
+      "day": "2026-10-12",
+      "calls": 41,
+      "input_tokens": 196000,
+      "output_tokens": 14000,
+      "cost_usd": 0.41,
+      "ads_read": 812,
+      "ads_checked": 41
+    }
+  ]
+}

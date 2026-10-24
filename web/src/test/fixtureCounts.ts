@@ -1,0 +1,3 @@
+export const GOLDEN_COUNT = 53
+export const PAYLOAD_INVALID_COUNT = 104
+export const ENVELOPE_INVALID_COUNT = 35

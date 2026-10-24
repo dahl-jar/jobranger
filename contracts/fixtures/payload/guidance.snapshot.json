@@ -3,6 +3,5 @@
   "v": 1,
   "text": "Prefer backend roles with Python.\nTreat consulting roles as a partial fit.",
   "is_default": false,
-  "default_text": "Judge each ad against the profile.",
   "limit": 12000
 }

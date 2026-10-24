@@ -6,7 +6,7 @@
   "active": [
     {
       "id": "finn-401234567",
-      "company": "Havbris Data AS",
+      "company": "Employer One AS",
       "title": "Data Engineer",
       "place": "Trondheim",
       "role_type": "data_engineering",
@@ -43,7 +43,7 @@
     },
     {
       "id": "nav-7f3c2a",
-      "company": "Bryggen Software",
+      "company": "Employer Two AS",
       "title": "Fullstack Developer",
       "place": "",
       "role_type": "fullstack",
@@ -68,7 +68,7 @@
   "hidden": [
     {
       "id": "teamtailor-5521",
-      "company": "Nordvik Systemer",
+      "company": "Org Two AS",
       "title": "Senior Backend Engineer",
       "place": "Oslo",
       "role_type": "backend",
@@ -82,7 +82,7 @@
     },
     {
       "id": "nav-9911",
-      "company": "Driftsparken",
+      "company": "Org Three AS",
       "title": "IT-driftstekniker",
       "place": "Bergen",
       "role_type": null,
@@ -100,7 +100,7 @@
     {
       "id": "finn-398877665",
       "closed_on": "2026-10-08",
-      "company": "B\u00f8lge Consulting",
+      "company": "Employer Three AS",
       "title": "Software Engineer",
       "source": "finn",
       "reason": "expired",
