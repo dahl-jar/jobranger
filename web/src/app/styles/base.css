@@ -10,8 +10,6 @@ body {
   color: var(--ink);
   font-family: var(--font-mono);
   font-synthesis: none;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
 a {
@@ -25,6 +23,10 @@ a:hover {
 :is(a, button, input, select, textarea, summary):focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
+}
+
+h1[tabindex='-1']:focus {
+  outline: none;
 }
 
 .visually-hidden {

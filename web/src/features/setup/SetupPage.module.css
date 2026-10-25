@@ -1,0 +1,141 @@
+.layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px 48px;
+  margin-top: 32px;
+}
+
+.steps {
+  flex: 1 1 240px;
+  max-width: 280px;
+}
+
+.stepsLabel {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--rule);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.stepList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stepItem {
+  border-bottom: 1px solid var(--rule-soft);
+}
+
+.stepLink {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  font-size: 14px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.stepLink.done {
+  color: var(--ink2);
+}
+
+.stepLink[aria-current='step'] {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.stepNumber {
+  width: 22px;
+  color: var(--faint);
+}
+
+.stepLink[aria-current='step'] .stepNumber {
+  color: var(--ink);
+}
+
+.stepTitle {
+  flex-grow: 1;
+}
+
+.check {
+  display: inline-flex;
+  color: var(--ok);
+}
+
+.caption {
+  margin: 18px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.main {
+  flex: 999 1 640px;
+  min-width: 0;
+}
+
+.intro {
+  display: flow-root;
+}
+
+.counter {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.title {
+  margin: 4px 0 0;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.body {
+  max-width: 720px;
+  margin: 12px 0 0;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--ink2);
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.pairHint {
+  margin: 18px 0 0;
+  font-size: 14px;
+  color: var(--ink2);
+}
+
+.pairHint a {
+  text-underline-offset: 4px;
+}
+
+@media (max-width: 640px) {
+  .steps {
+    max-width: none;
+  }
+
+  .intro {
+    min-height: var(--setup-intro-min-height-narrow);
+  }
+
+  .title {
+    font-size: 26px;
+  }
+
+  .controls {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

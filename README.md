@@ -13,6 +13,8 @@ Development setup and checks are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Website
 
+`/` is the landing page with install steps and an example match. `/setup` walks through install, `jobranger init`, pairing and scheduling with example terminal output, one step per `?step=1` to `?step=8`.
+
 The site uses JetBrainsMono Nerd Font, served from `web/public/fonts` (SIL OFL 1.1, license next to the files). The theme switch offers Light, System and Dark, with Dark as the default. The choice is stored in the browser under `jobranger.theme`, and a script in the page head applies it before the first paint.
 
 ## License

@@ -23,7 +23,7 @@
   --ink: #1e1b17;
   --ink2: #46413a;
   --muted: #68625a;
-  --faint: #78716a;
+  --faint: #746e68;
   --rule: #ded8ce;
   --rule-soft: #eae6df;
   --divider: #cec7bb;
@@ -44,6 +44,9 @@
   --term-dim: #8c8273;
   --term-ok: #74b898;
   --term-part: #d9a35a;
+  --term-min-height: 460px;
+  --term-min-height-narrow: 376px;
+  --setup-intro-min-height-narrow: 145px;
 
   --font-mono: 'JetBrainsMono Nerd Font', 'JetBrains Mono', ui-monospace, monospace;
   --radius: 3px;

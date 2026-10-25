@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { readStoredTheme, resolveTheme, saveTheme, THEME_STORAGE_KEY } from '@/app/theme/theme'
+import { readStoredTheme, resolveTheme, saveTheme, THEME_STORAGE_KEY, watchStoredTheme } from '@/app/theme/theme'
 
 describe('resolveTheme', () => {
   it.each([
@@ -42,5 +42,17 @@ describe('saveTheme', () => {
     saveTheme('light')
 
     expect(localStorage.getItem('jobranger.theme')).toBe('light')
+  })
+})
+
+describe('watchStoredTheme', () => {
+  it('should stop calling back on storage changes after the watch ends', () => {
+    const onChange = vi.fn()
+    const stop = watchStoredTheme(onChange)
+    stop()
+
+    window.dispatchEvent(new StorageEvent('storage', { key: THEME_STORAGE_KEY, newValue: 'light' }))
+
+    expect(onChange).not.toHaveBeenCalled()
   })
 })

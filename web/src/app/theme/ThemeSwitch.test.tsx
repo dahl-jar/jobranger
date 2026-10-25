@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { THEME_STORAGE_KEY } from '@/app/theme/theme'
 import { ThemeProvider } from '@/app/theme/ThemeProvider'
 import { ThemeSwitch } from '@/app/theme/ThemeSwitch'
+import styles from '@/app/theme/ThemeSwitch.module.css'
+import { Icon } from '@/shared/ui/Icon'
 import { setPrefersLight } from '@/test/matchMedia'
 
 function renderSwitch(variant: 'icons' | 'labeled' = 'icons') {
@@ -99,6 +101,23 @@ describe('ThemeSwitch', () => {
 
     expect(button.textContent).toBe('')
     expect(button.querySelector('svg')).toBeInTheDocument()
+  })
+
+  it.each([
+    { name: 'Light theme', icon: 'sun' },
+    { name: 'System theme', icon: 'monitor' },
+    { name: 'Dark theme', icon: 'moon' },
+  ] as const)('should draw the $icon icon on $name', ({ name, icon }) => {
+    const { container } = render(<Icon name={icon} />)
+    renderSwitch('icons')
+
+    expect(screen.getByRole('button', { name }).innerHTML).toBe(container.innerHTML)
+  })
+
+  it('should style the icon buttons as icons', () => {
+    renderSwitch('icons')
+
+    expect([...screen.getByRole('button', { name: 'Light theme' }).classList]).toEqual([styles.option, styles.icon])
   })
 
   it('should still switch the theme when storage is blocked', async () => {

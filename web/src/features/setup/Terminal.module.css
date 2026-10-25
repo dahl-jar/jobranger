@@ -1,0 +1,120 @@
+.terminal {
+  margin-top: 24px;
+  overflow: hidden;
+  border: 1px solid var(--term-border);
+  border-radius: 4px;
+  background: var(--term-bg);
+  color: var(--term-ink);
+}
+
+.bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--term-rule);
+  font-size: 12px;
+  color: var(--term-dim);
+}
+
+.bar > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.output {
+  min-height: var(--term-min-height);
+  padding: 18px 20px 22px;
+  overflow-x: auto;
+  font-size: 14.5px;
+  line-height: 1.7;
+}
+
+.output:focus-visible {
+  outline: 2px solid var(--term-ink);
+  outline-offset: -2px;
+}
+
+.line {
+  min-height: 1.7em;
+  white-space: pre;
+}
+
+.prefix {
+  color: var(--term-dim);
+}
+
+.cmd {
+  color: var(--term-ink);
+  font-weight: 600;
+}
+
+.out {
+  color: var(--term-ink2);
+}
+
+.dim {
+  color: var(--term-dim);
+}
+
+.q {
+  color: var(--term-ink);
+  font-weight: 500;
+}
+
+.q .prefix,
+.sel,
+.ok {
+  color: var(--term-ok);
+}
+
+.sel {
+  font-weight: 500;
+}
+
+.part {
+  color: var(--term-part);
+}
+
+.head {
+  color: var(--term-ink);
+  font-weight: 700;
+}
+
+.big {
+  color: var(--term-ink);
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.prompt {
+  color: var(--term-dim);
+}
+
+.cursor {
+  display: inline-block;
+  width: 9px;
+  height: 17px;
+  background: var(--term-ink);
+  vertical-align: text-bottom;
+}
+
+@media (max-width: 640px) {
+  .bar {
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .output {
+    min-height: var(--term-min-height-narrow);
+    padding: 14px 16px 18px;
+    font-size: 13px;
+  }
+
+  .big {
+    font-size: 22px;
+  }
+}

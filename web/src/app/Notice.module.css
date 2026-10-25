@@ -31,6 +31,12 @@
   text-underline-offset: 4px;
 }
 
+.loading {
+  margin: 32px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
 .reload {
   display: inline-flex;
   align-items: center;

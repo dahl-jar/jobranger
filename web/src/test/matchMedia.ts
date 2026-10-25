@@ -1,4 +1,4 @@
-import { PREFERS_LIGHT_QUERY } from '@/app/theme/theme'
+const PREFERS_LIGHT_QUERY = '(prefers-color-scheme: light)'
 
 const lists = new Set<FakeMediaQueryList>()
 let prefersLight = false

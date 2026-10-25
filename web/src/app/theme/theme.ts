@@ -2,13 +2,13 @@ export type ThemeChoice = 'light' | 'system' | 'dark'
 type ResolvedTheme = 'light' | 'dark'
 
 export const THEME_STORAGE_KEY = 'jobranger.theme'
-export const PREFERS_LIGHT_QUERY = '(prefers-color-scheme: light)'
+const PREFERS_LIGHT_QUERY = '(prefers-color-scheme: light)'
 
 const DEFAULT_THEME: ThemeChoice = 'dark'
 const THEME_CHOICES: readonly string[] = ['light', 'system', 'dark'] satisfies ThemeChoice[]
 
 function isThemeChoice(value: string | null): value is ThemeChoice {
-  return value !== null && THEME_CHOICES.includes(value)
+  return THEME_CHOICES.some((choice) => choice === value)
 }
 
 export function readStoredTheme(): ThemeChoice {

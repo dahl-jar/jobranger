@@ -21,18 +21,18 @@ export default defineConfig({
       {
         extends: true,
         test: {
-          name: 'app',
+          name: 'dom',
           environment: 'jsdom',
           setupFiles: ['./src/test/setup.ts'],
-          include: ['src/**/*.test.{ts,tsx}', 'build/**/*.test.ts'],
+          include: ['src/**/*.test.{ts,tsx}'],
         },
       },
       {
         extends: true,
         test: {
-          name: 'bundle',
+          name: 'node',
           environment: 'node',
-          include: ['tests/**/*.test.ts'],
+          include: ['build/**/*.test.ts', 'tests/**/*.test.ts'],
         },
       },
     ],

@@ -4,9 +4,10 @@ import { ThemeProvider } from '@/app/theme/ThemeProvider'
 
 export function renderRoutes(routes: RouteObject[], path: string) {
   const router = createMemoryRouter(routes, { initialEntries: [path] })
-  return render(
+  const view = render(
     <ThemeProvider>
       <RouterProvider router={router} />
     </ThemeProvider>,
   )
+  return { ...view, router }
 }

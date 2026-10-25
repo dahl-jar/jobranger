@@ -1,6 +1,7 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
+import styles from '@/app/Notice.module.css'
 import { RouteError } from '@/app/RouteError'
 import { renderRoutes } from '@/test/render'
 
@@ -34,5 +35,11 @@ describe('RouteError', () => {
     await user.click(await screen.findByRole('button', { name: 'Reload' }))
 
     expect(reload).toHaveBeenCalledOnce()
+  })
+
+  it('should show the error as a full page notice', async () => {
+    renderBroken()
+
+    expect([...(await screen.findByRole('main')).classList]).toEqual([styles.notice, styles.standalone])
   })
 })

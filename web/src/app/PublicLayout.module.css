@@ -5,6 +5,10 @@
   box-sizing: border-box;
 }
 
+.wide {
+  max-width: var(--content-max-wide);
+}
+
 .header {
   display: flex;
   flex-wrap: wrap;

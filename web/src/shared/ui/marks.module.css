@@ -1,0 +1,39 @@
+.fit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.strong,
+.met {
+  color: var(--ok);
+}
+
+.partial {
+  color: var(--part);
+}
+
+.checks {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--ink2);
+}
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.check > span {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
