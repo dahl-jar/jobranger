@@ -29,7 +29,7 @@ public sealed class SecretServiceStoreTests {
 
     [Fact]
     public async Task ShouldReturnNoStore_WhenBusHasNoSecretService() {
-        Assert.SkipUnless(OperatingSystem.IsLinux() && LiveSecretStores.IsLive, LiveSecretStores.OffReason);
+        Assert.SkipUnless(LiveSecretStores.IsLiveLinux, LiveSecretStores.LinuxOffReason);
         using PrivateBus bus = new();
 
         SecretServiceStore? store =
@@ -40,7 +40,7 @@ public sealed class SecretServiceStoreTests {
 
     [Fact]
     public async Task ShouldReturnNoStore_WhenBusIsUnreachable() {
-        Assert.SkipUnless(OperatingSystem.IsLinux() && LiveSecretStores.IsLive, LiveSecretStores.OffReason);
+        Assert.SkipUnless(LiveSecretStores.IsLiveLinux, LiveSecretStores.LinuxOffReason);
         using PrivateBus bus = new();
         bus.StopBus();
 
@@ -52,7 +52,7 @@ public sealed class SecretServiceStoreTests {
 
     [Fact]
     public async Task ShouldThrowUnavailable_WhenBusDropsAfterConnect() {
-        Assert.SkipUnless(OperatingSystem.IsLinux() && LiveSecretStores.IsLive, LiveSecretStores.OffReason);
+        Assert.SkipUnless(LiveSecretStores.IsLiveLinux, LiveSecretStores.LinuxOffReason);
         using PrivateBus bus = new();
         bus.StartKeyring();
         SecretServiceStore store = await ConnectAsync();

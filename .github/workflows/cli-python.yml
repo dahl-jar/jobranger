@@ -29,6 +29,7 @@ jobs:
   check:
     name: Lint, type check and test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: cli-python
@@ -37,7 +38,6 @@ jobs:
 
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
         with:
-          python-version: "3.12"
           enable-cache: true
           cache-dependency-glob: cli-python/uv.lock
 

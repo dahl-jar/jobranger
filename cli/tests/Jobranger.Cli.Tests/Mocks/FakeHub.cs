@@ -61,9 +61,9 @@ internal sealed class FakeHub : IAsyncDisposable {
 
     public async ValueTask DisposeAsync() {
         await stop.CancelAsync();
+        await accepting;
         listener.Stop();
         Drop();
-        await accepting;
         listener.Dispose();
         stop.Dispose();
     }

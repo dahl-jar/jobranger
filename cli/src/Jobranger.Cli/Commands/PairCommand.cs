@@ -22,16 +22,28 @@ internal sealed class PairCommand : Command {
     private const string databaseFailure = "database_unreadable";
 
     public PairCommand(CliServices services)
-        : this(services, Environment.GetEnvironmentVariables(), TimeProvider.System) {
+        : this(
+            services,
+            Environment.GetEnvironmentVariables(),
+            TimeProvider.System,
+            Console.IsInputRedirected,
+            Link.OpenAsync) {
     }
 
-    public PairCommand(CliServices services, IDictionary environment, TimeProvider time)
+    public PairCommand(
+        CliServices services, IDictionary environment, TimeProvider time, bool inputRedirected, LinkOpener openLink)
         : base(CommandName, services.Messages.PairDescription) {
-        SetAction((_, cancellationToken) => RunAsync(services, environment, time, cancellationToken));
+        SetAction((_, cancellationToken) =>
+            RunAsync(services, environment, time, !inputRedirected, openLink, cancellationToken));
     }
 
     private static async Task<int> RunAsync(
-        CliServices services, IDictionary environment, TimeProvider time, CancellationToken cancellationToken) {
+        CliServices services,
+        IDictionary environment,
+        TimeProvider time,
+        bool canPrompt,
+        LinkOpener openLink,
+        CancellationToken cancellationToken) {
         ILogger logger = services.Logs.CreateLogger(typeof(PairCommand).FullName!);
         TextWriter output = services.Console.Profile.Out.Writer;
         IMessages messages = services.Messages;
@@ -39,7 +51,7 @@ internal sealed class PairCommand : Command {
         try {
             ServiceUrls urls = ServiceUrls.From(environment);
             await using Link link =
-                await Link.OpenAsync(environment, paths, urls, logger, cancellationToken).ConfigureAwait(false);
+                await openLink(environment, paths, urls, logger, canPrompt, cancellationToken).ConfigureAwait(false);
             Pairing pairing = new(link, messages, urls, paths, Environment.MachineName, time, logger);
             return await pairing.RunAsync(services.Console, prompt => Ask(output, prompt), cancellationToken)
                 .ConfigureAwait(false);
@@ -68,4 +80,12 @@ internal sealed class PairCommand : Command {
         output.Flush();
         return Console.In.ReadLine() ?? string.Empty;
     }
+
+    public delegate Task<Link> LinkOpener(
+        IDictionary environment,
+        Paths paths,
+        ServiceUrls urls,
+        ILogger logger,
+        bool canPrompt,
+        CancellationToken cancellationToken);
 }
