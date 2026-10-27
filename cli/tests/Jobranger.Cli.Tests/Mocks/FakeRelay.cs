@@ -42,6 +42,8 @@ internal sealed class FakeRelay : HttpMessageHandler, IRelayConnector {
 
     public Exception? ConnectFailure { get; set; }
 
+    public Exception? SendFailure { get; set; }
+
     public TimeSpan CodeLifetime { get; set; } = TimeSpan.FromMinutes(10);
 
     public string Channel { get; private set; } = "";
@@ -70,14 +72,16 @@ internal sealed class FakeRelay : HttpMessageHandler, IRelayConnector {
     }
 
     public void Hello(string sid, string step, long seq = 0) =>
-        toCli.Writer.TryWrite(new RelayEvent.Received(new Envelope(1, Channel, sid, seq, "hello", step)));
+        toCli.Writer.TryWrite(new RelayEvent.Received(EnvelopeFixtures.Hello(Channel, sid, step, seq)));
 
     public void Data(string sid, long seq, string ciphertext) =>
-        toCli.Writer.TryWrite(new RelayEvent.Received(new Envelope(1, Channel, sid, seq, "data", ciphertext)));
+        toCli.Writer.TryWrite(new RelayEvent.Received(EnvelopeFixtures.Data(Channel, sid, seq, ciphertext)));
 
     public void CloseSessions(params string[] sids) => toCli.Writer.TryWrite(new RelayEvent.SessionsClosed(sids));
 
     public void Disconnect() => toCli.Writer.TryWrite(new RelayEvent.Disconnected());
+
+    public void Replace() => toCli.Writer.TryWrite(new RelayEvent.Replaced());
 
     public static string Step(Envelope envelope) {
         using JsonDocument step = JsonDocument.Parse(Base64Url.DecodeFromChars(envelope.Ciphertext));
@@ -136,6 +140,9 @@ internal sealed class FakeRelay : HttpMessageHandler, IRelayConnector {
 
     private sealed class Connection(FakeRelay relay) : IRelayConnection {
         public Task SendAsync(Envelope envelope, CancellationToken cancellationToken) {
+            if (relay.SendFailure is not null) {
+                throw relay.SendFailure;
+            }
             relay.fromCli.Writer.TryWrite(envelope);
             return Task.CompletedTask;
         }

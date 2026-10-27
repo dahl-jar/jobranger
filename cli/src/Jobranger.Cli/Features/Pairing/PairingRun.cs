@@ -35,6 +35,7 @@ internal sealed class PairingRun(
     private const string terminalTimeoutFailure = "terminal_timeout";
     private const string expiredFailure = "code_expired";
     private const string disconnectedFailure = "disconnected";
+    private const string replacedFailure = "replaced";
     private const string cancelledFailure = "cancelled";
 
     private static readonly TimeSpan answerTimeout = TimeSpan.FromSeconds(ContractLimits.PairConfirmTimeoutSeconds);
@@ -104,6 +105,9 @@ internal sealed class PairingRun(
         RelayEvent relayEvent, TextWriter output, Func<string, string> ask, CancellationToken cancellationToken) {
         if (relayEvent is RelayEvent.Disconnected) {
             return await FailAsync(output, messages.PairFailed, disconnectedFailure, cancellationToken).ConfigureAwait(false);
+        }
+        if (relayEvent is RelayEvent.Replaced) {
+            return await FailAsync(output, messages.PairFailed, replacedFailure, cancellationToken).ConfigureAwait(false);
         }
         SessionUpdate update = relayEvent switch {
             RelayEvent.Received(Envelope envelope) =>

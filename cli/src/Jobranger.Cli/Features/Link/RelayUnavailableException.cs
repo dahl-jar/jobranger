@@ -8,4 +8,11 @@ internal sealed class RelayUnavailableException : Exception {
     public RelayUnavailableException(string message, Exception innerException)
         : base(message, innerException) {
     }
+
+    public RelayUnavailableException(string message, TimeSpan retryAfter)
+        : base(message) {
+        RetryAfter = retryAfter;
+    }
+
+    public TimeSpan RetryAfter { get; }
 }

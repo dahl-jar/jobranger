@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Runtime.Versioning;
 using Jobranger.Cli.Config;
 using Jobranger.Cli.Features.Link;
@@ -19,6 +20,10 @@ internal sealed class Pairing(
     private const int fewestMinutes = 1;
     private const string keysFailure = "keys";
     private const string relayFailure = "relay_unreachable";
+    private const string unknownReason = "unknown";
+
+    private static readonly FrozenSet<string> hubReasons = FrozenSet.Create(
+        StringComparer.Ordinal, "rate_limited", "unsupported_version", "invalid_envelope", "channel_mismatch");
 
     public async Task<int> RunAsync(IAnsiConsole console, Func<string, string> ask, CancellationToken cancellationToken) {
         TextWriter output = console.Profile.Out.Writer;
@@ -44,6 +49,10 @@ internal sealed class Pairing(
             return CliExitCodes.Failure;
         } catch (RelayUnavailableException) {
             return await FailAsync(output, messages.PairRelayUnreachable, relayFailure).ConfigureAwait(false);
+        } catch (HubRefusedException refused) {
+            LogEvents.PairingHubRefused(logger, hubReasons.Contains(refused.Reason) ? refused.Reason : unknownReason);
+            await output.WriteLineAsync(messages.PairFailed).ConfigureAwait(false);
+            return CliExitCodes.Failure;
         }
     }
 

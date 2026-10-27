@@ -41,7 +41,10 @@ internal sealed partial class Link : IAsyncDisposable {
         HttpClient http = new(new SocketsHttpHandler { AllowAutoRedirect = false, UseCookies = false }) {
             Timeout = relayRequestTimeout,
         };
-        LinkParts parts = new(new DeviceStore(database), new RelayApiClient(http, urls.Relay), new NoHubConnector());
+        LinkParts parts = new(
+            new DeviceStore(database),
+            new RelayApiClient(http, urls.Relay),
+            new HubConnector(urls.Relay, TimeProvider.System));
         return new Link(credentials, paths.ConfigDir(), logger, parts, [http, database]);
     }
 

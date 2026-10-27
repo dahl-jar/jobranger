@@ -58,6 +58,12 @@ internal static partial class LogEvents {
     public static partial void PairingRefused(ILogger logger, int status, string errorType);
 
     [LoggerMessage(
+        EventName = "pairing.hub_refused",
+        Level = LogLevel.Warning,
+        Message = "relay hub refused a pairing frame error_type={ErrorType}")]
+    public static partial void PairingHubRefused(ILogger logger, string errorType);
+
+    [LoggerMessage(
         EventName = "ashby.job.skipped",
         Level = LogLevel.Warning,
         Message = "skipped job without id, title, url or listing state source={Source}")]

@@ -32,7 +32,6 @@ public sealed class PairingTests : IAsyncDisposable {
     private const string machine = "build-host";
 
     private static readonly DateTimeOffset now = DeviceFixtures.PairedAt;
-    private static readonly TimeSpan pollInterval = TimeSpan.FromMilliseconds(10);
     private static readonly TimeSpan stepTimeout = TimeSpan.FromSeconds(ContractLimits.StepTimeoutSeconds);
     private static readonly TimeSpan confirmTimeout = TimeSpan.FromSeconds(ContractLimits.PairConfirmTimeoutSeconds);
     private static readonly ServiceUrls urls = new(new Uri("https://site.example.test"), FakeRelay.Address);
@@ -460,6 +459,33 @@ public sealed class PairingTests : IAsyncDisposable {
         Assert.Equal((CliExitCodes.Failure, "Pairing failed. Run jobranger pair again."), (await Finished(run), Lines[^1]));
     }
 
+    [Theory]
+    [InlineData("\u001b]0;spoof\u0007", "unknown")]
+    [InlineData("rate_limited", "rate_limited")]
+    public async Task ShouldLogKnownReasonOnly_WhenHubRefusesFrame(string reason, string logged) {
+        relay.SendFailure = new HubRefusedException(reason);
+        Task<int> run = StartAsync();
+        await ConnectedAsync();
+
+        relay.Hello(browser.Sid, browser.Commit(Tag()));
+
+        Assert.Equal(
+            (CliExitCodes.Failure, "Pairing failed. Run jobranger pair again.", false,
+                $"relay hub refused a pairing frame error_type={logged}"),
+            (await Finished(run), Lines[^1], output.ToString().Contains('\u001b', StringComparison.Ordinal),
+                logger.LatestRecord.Message));
+    }
+
+    [Fact]
+    public async Task ShouldEndPairing_WhenAnotherCliReplacesLink() {
+        Task<int> run = StartAsync();
+        await RevealedAsync(browser);
+
+        relay.Replace();
+
+        Assert.Equal((CliExitCodes.Failure, "Pairing failed. Run jobranger pair again."), (await Finished(run), Lines[^1]));
+    }
+
     private Task<int> StartAsync(
         IMessages? messages = null,
         string hostName = machine,
@@ -486,14 +512,7 @@ public sealed class PairingTests : IAsyncDisposable {
 
     private byte[] Tag() => SessionsEntry.PairTag(FakeRelay.Code, new ChannelId(relay.Channel));
 
-    private Task ConnectedAsync() => WaitUntilAsync(() => relay.Handles.Count > 0);
-
-    private static async Task WaitUntilAsync(Func<bool> condition) {
-        using CancellationTokenSource limit = new(TestWaits.Step);
-        while (!condition()) {
-            await Task.Delay(pollInterval, limit.Token);
-        }
-    }
+    private Task ConnectedAsync() => TestWaits.UntilAsync(() => relay.Handles.Count > 0);
 
     private async Task ConfirmReadAsync() {
         using FakeBrowserPeer probe = new();

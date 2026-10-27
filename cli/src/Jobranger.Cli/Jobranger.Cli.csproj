@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <PackageReference Include="Ace4896.DBus.Services.Secrets" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
     <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" />

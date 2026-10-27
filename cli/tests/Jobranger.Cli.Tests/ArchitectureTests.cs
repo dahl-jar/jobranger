@@ -10,6 +10,7 @@ namespace Jobranger.Cli.Tests;
 
 public sealed class ArchitectureTests {
     private const string cliRoot = "Jobranger.Cli";
+    private const string relayRoot = "Jobranger.Relay";
     private const string featuresFolder = "Features";
     private const string commandsFolder = "Commands";
     private const string rootFolder = "";
@@ -64,6 +65,13 @@ public sealed class ArchitectureTests {
         string[] edges = [.. Dependencies(seeds, soundRoot).Select(Describe)];
 
         Assert.Contains($"{soundRoot}.{origin} -> {soundRoot}.{target}", edges);
+    }
+
+    [Fact]
+    public void ShouldReferenceNoRelayAssembly_WhenCliIsBuilt() {
+        Assert.DoesNotContain(
+            typeof(CliServices).Assembly.GetReferencedAssemblies(),
+            name => name.Name!.StartsWith(relayRoot, StringComparison.Ordinal));
     }
 
     [Fact]
