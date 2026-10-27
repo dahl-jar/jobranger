@@ -61,7 +61,8 @@ jobs:
         with:
           build: "false"
 
-      - run: dotnet publish cli/src/Jobranger.Cli -c Release -r ${{ matrix.rid }} -o "$RUNNER_TEMP/publish"
+      - run: dotnet restore cli/src/Jobranger.Cli/Jobranger.Cli.csproj --locked-mode
+      - run: dotnet publish cli/src/Jobranger.Cli/Jobranger.Cli.csproj -c Release -r ${{ matrix.rid }} --no-restore -o "$RUNNER_TEMP/publish"
       - run: '"$RUNNER_TEMP/publish/jobranger" --version | grep -Ex "jobranger [0-9]+\.[0-9]+\.[0-9]+"'
         env:
           DOTNET_BUNDLE_EXTRACT_BASE_DIR: ${{ runner.temp }}/bundle
