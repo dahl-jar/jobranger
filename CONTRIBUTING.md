@@ -161,10 +161,16 @@ dotnet test --project contracts/tests/Jobranger.Contracts.Tests -c Release
 
 Every schema guard needs one invalid fixture in `contracts/fixtures/payload-invalid` or `contracts/fixtures/envelope-invalid`. The fixture changes one leaf of its golden, so the guard is the only reason it fails. Name it `<type>.<rule>.json`. A new fixture also raises the counts in `web/src/test/fixtureCounts.ts`. An envelope fixture raises the count in `ShouldFindEveryInvalidFixture` in the contracts tests, and a payload fixture raises the counts in `ShouldFindEveryPayloadFixture_WhenFixturesAreLinked`.
 
-`contracts/unicode/idna-hosts-16.0.0.json` lists the non-ASCII code points `Urls.Encode` accepts in a host. It is generated from the Unicode 16.0.0 data files, and a rerun gives the same file:
+`contracts/unicode/idna-hosts-16.0.0.json` holds the non-ASCII code points `Urls.Encode` accepts in a host, plus the UTS 46 mapping and NFC data. It is generated from the Unicode 16.0.0 data files, and a rerun gives the same file:
 
 ```bash
 python3 scripts/unicode/idna_hosts.py
+```
+
+`url_parity.py` writes `contracts/fixtures/urls/parity.json`, the Python results `UrlParityTests` compares against. CI reruns it and fails on a diff:
+
+```bash
+python3 scripts/unicode/url_parity.py
 ```
 
 Mutation runs scoped to the contract code:

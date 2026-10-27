@@ -23,6 +23,7 @@
     <None Include="..\..\fixtures\envelope-invalid\*.json" LinkBase="TestData\Contracts\fixtures\envelope-invalid" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\fixtures\payload\*.json" LinkBase="TestData\Contracts\fixtures\payload" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\fixtures\payload-invalid\*.json" LinkBase="TestData\Contracts\fixtures\payload-invalid" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\fixtures\urls\*.json" LinkBase="TestData\Contracts\fixtures\urls" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\..\web\src\features\relay\contract\limits.ts" Link="TestData\Web\limits.ts" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

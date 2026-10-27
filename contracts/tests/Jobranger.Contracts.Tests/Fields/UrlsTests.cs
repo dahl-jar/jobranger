@@ -6,8 +6,13 @@ namespace Jobranger.Contracts.Tests.Fields;
 
 public sealed class UrlsTests {
     private const string prefix = "https://jobs.example.test/";
+    private const int ligatureExpansion = 18;
+    private const string hexPrefix = "0x";
+    private const string lastDigit = "1";
     private static readonly string maxLengthUrl = prefix + new string('a', ContractLimits.UrlMaxChars - prefix.Length);
-    private static readonly string longUnicodeLabel = new string('\u00fc', ContractLimits.UrlMaxChars) + "\u0301";
+    private static readonly string longIpv4 = hexPrefix + new string('0', ContractLimits.UrlMaxChars - hexPrefix.Length - lastDigit.Length) + lastDigit;
+    private static readonly string ignoredPadding = new('\u00ad', ContractLimits.UrlMaxChars);
+    private static readonly string expandingLigatures = new('\ufdfa', (ContractLimits.UrlMaxChars / ligatureExpansion) + 1);
 
     public static TheoryData<string, string> EncodedUrls => new() {
         { "https://jobs.example.test/stilling/utvikler bø", "https://jobs.example.test/stilling/utvikler%20b%C3%B8" },
@@ -17,9 +22,8 @@ public sealed class UrlsTests {
         { "http://[::1]:8080/a", "http://[::1]:8080/a" },
         { "http://user@[::1]/a", "http://user@[::1]/a" },
         { "http://[::FFFF:127.0.0.1]/", "http://[::ffff:7f00:1]/" },
-        { "http://[2001:db8:0:0:1:0:0:1]/", "http://[2001:db8::1:0:0:1]/" },
         { "https://a@b@jobs.example.test/", "https://a@b@jobs.example.test/" },
-        { "https://user:pw@Jobs.Example.test:0443/", "https://user:pw@jobs.example.test:443/" },
+        { "https://user:pw@jobs.example.test:0443/", "https://user:pw@jobs.example.test:443/" },
         { "http://[1:0:0:2:0:0:0:3]/", "http://[1:0:0:2::3]/" },
         { "http://[::]/", "http://[::]/" },
         { "http://[1::]/", "http://[1::]/" },
@@ -41,6 +45,7 @@ public sealed class UrlsTests {
         { "javascript:alert(1)", "scheme" },
         { maxLengthUrl + "a", "maxLength" },
         { "https:///a", "host" },
+        { "https://#@jobs.example.test", "host" },
         { "https:jobs.example.test/", "host" },
         { "jobs.example.test/", "scheme" },
         { "http://::1]/", "ipv6" },
@@ -73,13 +78,7 @@ public sealed class UrlsTests {
         { "https://127.1/", "https://127.0.0.1/" },
         { "https://127.0.1/", "https://127.0.0.1/" },
         { "https://0xC0A80101/", "https://192.168.1.1/" },
-        { "https://bücher-straße.example.test/", "https://xn--bcher-strae-46a18a.example.test/" },
-        { "https://日本語.example.test/", "https://xn--wgv71a119e.example.test/" },
         { "https://\ud840\udc00.example.test/", "https://xn--j50i.example.test/" },
-        { "https://XN--BCHER-KVA.example.test/", "https://xn--bcher-kva.example.test/" },
-        { "https://XN--BCHER-STRAE-46A18A.example.test/", "https://xn--bcher-strae-46a18a.example.test/" },
-        { "https://xn--j50i.example.test/", "https://xn--j50i.example.test/" },
-        { "https://xn--wgv71a119e.example.test/", "https://xn--wgv71a119e.example.test/" },
         { "https://ÿ.example.test/", "https://xn--wda.example.test/" },
         { "https://àá.example.test/", "https://xn--0cac.example.test/" },
         { "https://§.example.test/", "https://xn--eba.example.test/" },
@@ -90,6 +89,11 @@ public sealed class UrlsTests {
         { "https://ジョブランジャーテスト.example.test/", "https://xn--yckad5cl4f9d3at4hre.example.test/" },
         { "https://ØST.example.test/", "https://xn--st-kka.example.test/" },
         { "https://\u13a0.example.test/", "https://xn--58d.example.test/" },
+        { "https://\uab70.example.test/", "https://xn--58d.example.test/" },
+        { "https://b\u00fc\u0301.example.test/", "https://xn--b-yta.example.test/" },
+        { "https://e\u0301.example.test/", "https://xn--9ca.example.test/" },
+        { "https://\u1112\u1161\u11ab.example.test/", "https://xn--6q8b.example.test/" },
+        { $"https://{longIpv4}/", "https://0.0.0.1/" },
     };
 
     public static TheoryData<string, string> RejectedHosts => new() {
@@ -104,14 +108,20 @@ public sealed class UrlsTests {
         { "https://xn--wca.example.test/", "host" },
         { "https://xn--e-xbb.example.test/", "host" },
         { "https://a../", "host" },
-        { "https://b\u00fc\u0301.example.test/", "host" },
         { "https://xn--ab_c.example.test/", "host" },
         { "https://1..2/", "ipv4" },
         { "https://a\u200db.example.test/", "host" },
         { "https://xn--ab-m1t.example.test/", "host" },
-        { "https://e\u0301.example.test/", "host" },
+        { "https://x\u0301.example.test/", "host" },
         { "https://\u05d0.example.test/", "host" },
-        { $"https://{longUnicodeLabel}.test/", "maxLength" },
+        { "https://xn--ypd8q.example.test/", "host" },
+        { "https://\ud7a4\u11b3.example.test/", "host" },
+    };
+
+    public static TheoryData<string> OversizedHosts => new() {
+        $"https://{ignoredPadding}jobs.example.test/",
+        $"https://{expandingLigatures}.example.test/",
+        $"https://{longIpv4}0/",
     };
 
     [Theory]
@@ -140,5 +150,13 @@ public sealed class UrlsTests {
         ContractException error = Assert.Throws<ContractException>(() => Urls.Encode(url));
 
         Assert.Equal(keyword, error.Keyword);
+    }
+
+    [Theory]
+    [MemberData(nameof(OversizedHosts))]
+    public void ShouldRejectHost_WhenHostRunesPassUrlMaxChars(string url) {
+        ContractException error = Assert.Throws<ContractException>(() => Urls.Encode(url));
+
+        Assert.Equal(FailureKeywords.MaxLength, error.Keyword);
     }
 }
