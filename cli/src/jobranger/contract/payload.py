@@ -517,6 +517,7 @@ class ConfigPatch(BaseModel):
     schedule: SchedulePatch | None = None
     notify: NotifyPatch | None = None
     model: ModelConfigPatch | None = None
+    language: Literal["en", "nb"] | None = None
 
 
 class ProjectRef(BaseModel):
@@ -692,6 +693,7 @@ class ConfigSnapshot(BaseModel):
     schedule: Schedule
     notify: Notify
     model: ModelConfig
+    language: Literal["en", "nb"]
 
 
 class ProfileSnapshot(BaseModel):

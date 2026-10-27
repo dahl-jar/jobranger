@@ -80,6 +80,7 @@ export type ClockTimes = ClockTime[];
 export type Email = string;
 export type ProviderId = "anthropic" | "openai" | "openrouter" | "ollama";
 export type ModelId = string;
+export type Language = "en" | "nb";
 export type Terms = string[];
 export type Limit = number;
 export type DocId = string;
@@ -221,6 +222,7 @@ export interface ConfigSnapshot {
   schedule: Schedule;
   notify: Notify;
   model: ModelConfig;
+  language: Language;
 }
 export interface RoleOption {
   id: RoleId;
@@ -502,6 +504,7 @@ export interface ConfigPatch {
   schedule?: SchedulePatch;
   notify?: NotifyPatch;
   model?: ModelConfigPatch;
+  language?: Language;
 }
 export interface TargetsPatch {
   subfields?: RoleIds;

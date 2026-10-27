@@ -1,0 +1,35 @@
+{
+  "type": "config.update",
+  "v": 1,
+  "id": "00000000-0000-4000-8000-000000000009",
+  "patch": {
+    "targets": {
+      "levels": [
+        "junior",
+        "mid"
+      ],
+      "places": [
+        "Bergen",
+        "Oslo"
+      ]
+    },
+    "schedule": {
+      "times": [
+        "03:00",
+        "15:00"
+      ]
+    },
+    "notify": {
+      "email": {
+        "address": null
+      }
+    },
+    "model": {
+      "price": {
+        "input_per_mtok": 0.8
+      },
+      "monthly_limit_usd": 15
+    },
+    "language": "de"
+  }
+}

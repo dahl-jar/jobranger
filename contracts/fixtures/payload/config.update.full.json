@@ -45,6 +45,7 @@
         "output_per_mtok": 4.5
       },
       "monthly_limit_usd": null
-    }
+    },
+    "language": "nb"
   }
 }

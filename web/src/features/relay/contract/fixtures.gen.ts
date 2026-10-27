@@ -639,7 +639,8 @@ export const payloadFixtures = {
         "output_per_mtok": 0
       },
       "monthly_limit_usd": null
-    }
+    },
+    "language": "en"
   } satisfies Payload,
   "config.snapshot": {
     "type": "config.snapshot",
@@ -707,7 +708,77 @@ export const payloadFixtures = {
         "output_per_mtok": 4.5
       },
       "monthly_limit_usd": 20
-    }
+    },
+    "language": "en"
+  } satisfies Payload,
+  "config.snapshot.nb": {
+    "type": "config.snapshot",
+    "v": 1,
+    "roles": [
+      {
+        "id": "backend",
+        "label": "Backend"
+      },
+      {
+        "id": "frontend",
+        "label": "Frontend"
+      },
+      {
+        "id": "data_engineering",
+        "label": "Data engineering"
+      }
+    ],
+    "targets": {
+      "subfields": [
+        "backend",
+        "data_engineering"
+      ],
+      "levels": [
+        "junior",
+        "mid"
+      ],
+      "years": [
+        "0-1",
+        "1-3"
+      ],
+      "hide_masters": true,
+      "places": [
+        "Bergen",
+        "Oslo"
+      ],
+      "relocate": false
+    },
+    "sources": {
+      "nav": true,
+      "employers": true,
+      "finn": false,
+      "linkedin": false
+    },
+    "schedule": {
+      "times": [
+        "03:00",
+        "15:00"
+      ],
+      "min_interval_hours": 2
+    },
+    "notify": {
+      "website": true,
+      "email": {
+        "on": true,
+        "address": "user@example.com"
+      }
+    },
+    "model": {
+      "provider": "anthropic",
+      "model": "model-one",
+      "key_hint": "a1b2",
+      "price": {
+        "input_per_mtok": 0.8,
+        "output_per_mtok": 4.5
+      },
+      "monthly_limit_usd": 20
+    },
+    "language": "nb"
   } satisfies Payload,
   "config.update.full": {
     "type": "config.update",
@@ -756,7 +827,8 @@ export const payloadFixtures = {
           "output_per_mtok": 4.5
         },
         "monthly_limit_usd": null
-      }
+      },
+      "language": "nb"
     }
   } satisfies Payload,
   "config.update": {

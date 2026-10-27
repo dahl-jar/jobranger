@@ -16,6 +16,7 @@ describe('applyConfigPatch', () => {
       patch: { model: { monthly_limit_usd: null } },
       expected: { model: { ...CONFIG.model, monthly_limit_usd: null } },
     },
+    { section: 'language', patch: { language: 'nb' }, expected: { language: 'nb' } },
   ])('should change only the patched field in $section', ({ patch, expected }) => {
     expect(applyConfigPatch(CONFIG, patch)).toEqual({ ...CONFIG, ...expected })
   })

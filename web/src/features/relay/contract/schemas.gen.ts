@@ -369,6 +369,13 @@ export const payloadSchema = {
         "ollama"
       ]
     },
+    "Language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "nb"
+      ]
+    },
     "ApplicationStatus": {
       "type": "string",
       "enum": [
@@ -1259,6 +1266,9 @@ export const payloadSchema = {
         },
         "model": {
           "$ref": "#/$defs/ModelConfigPatch"
+        },
+        "language": {
+          "$ref": "#/$defs/Language"
         }
       }
     },
@@ -1729,7 +1739,8 @@ export const payloadSchema = {
         "sources",
         "schedule",
         "notify",
-        "model"
+        "model",
+        "language"
       ],
       "properties": {
         "type": {
@@ -1759,6 +1770,9 @@ export const payloadSchema = {
         },
         "model": {
           "$ref": "#/$defs/ModelConfig"
+        },
+        "language": {
+          "$ref": "#/$defs/Language"
         }
       }
     },

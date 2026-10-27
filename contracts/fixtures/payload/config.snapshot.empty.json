@@ -64,5 +64,6 @@
       "output_per_mtok": 0
     },
     "monthly_limit_usd": null
-  }
+  },
+  "language": "en"
 }

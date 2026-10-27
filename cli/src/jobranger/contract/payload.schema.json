@@ -97,6 +97,7 @@
     },
     "ClockTimes": {"type": "array", "items": {"$ref": "#/$defs/ClockTime"}, "uniqueItems": true, "maxItems": 12},
     "ProviderId": {"type": "string", "enum": ["anthropic", "openai", "openrouter", "ollama"]},
+    "Language": {"type": "string", "enum": ["en", "nb"]},
     "ApplicationStatus": {"type": "string", "enum": ["waiting", "interview", "offer", "accepted", "rejected"]},
     "HiddenKind": {"type": "string", "enum": ["senior", "years", "masters", "role", "place", "other"]},
     "ClosedReason": {"type": "string", "enum": ["deadline", "removed", "filled"]},
@@ -356,7 +357,8 @@
         "sources": {"$ref": "#/$defs/SourcesPatch"},
         "schedule": {"$ref": "#/$defs/SchedulePatch"},
         "notify": {"$ref": "#/$defs/NotifyPatch"},
-        "model": {"$ref": "#/$defs/ModelConfigPatch"}
+        "model": {"$ref": "#/$defs/ModelConfigPatch"},
+        "language": {"$ref": "#/$defs/Language"}
       }
     },
     "ProjectRef": {
@@ -501,7 +503,7 @@
     },
     "ConfigSnapshot": {
       "type": "object",
-      "required": ["type", "v", "roles", "targets", "sources", "schedule", "notify", "model"],
+      "required": ["type", "v", "roles", "targets", "sources", "schedule", "notify", "model", "language"],
       "properties": {
         "type": {"const": "config.snapshot"},
         "v": {"const": 1},
@@ -510,7 +512,8 @@
         "sources": {"$ref": "#/$defs/Sources"},
         "schedule": {"$ref": "#/$defs/Schedule"},
         "notify": {"$ref": "#/$defs/Notify"},
-        "model": {"$ref": "#/$defs/ModelConfig"}
+        "model": {"$ref": "#/$defs/ModelConfig"},
+        "language": {"$ref": "#/$defs/Language"}
       }
     },
     "ProfileSnapshot": {
