@@ -8,24 +8,12 @@ internal static class CardText {
     public const int SummaryLimit = 1000;
 
     private const string ellipsis = "…";
-    private const char space = ' ';
 
     private static readonly CodeRanges bidiControls = new([(0x202A, 0x202E), (0x2066, 0x2069)]);
 
     public static string Cut(string text, int limit) {
         StringBuilder flat = new(text.Length);
-        bool inSpace = false;
-        bool inText = false;
-        foreach (int code in CodePoints.Of(text)) {
-            if (PythonUnicode.IsSpace(code)) {
-                inSpace = true;
-                continue;
-            }
-            if (inSpace && inText) {
-                flat.Append(space);
-            }
-            inSpace = false;
-            inText = true;
+        foreach (int code in CodePoints.Of(PythonUnicode.CollapseSpace(text))) {
             if (!PythonUnicode.IsHidden(code) && !bidiControls.Contains(code)) {
                 CodePoints.Append(flat, code);
             }

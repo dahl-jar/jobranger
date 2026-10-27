@@ -43,4 +43,11 @@ public sealed class TerminalLinesTests {
             "3 hidden: 2 other reasons · 1 other role",
             DigestEntry.HiddenLine(hidden, null, DigestFixtures.English));
     }
+
+    [Fact]
+    public void ShouldUseNorwegianSingular_WhenOneAdIsHidden() {
+        string line = DigestEntry.HiddenLine([new(HiddenGroup.Place, 1)], null, DigestFixtures.Norwegian);
+
+        Assert.Equal("1 skjult: 1 annet sted", line);
+    }
 }

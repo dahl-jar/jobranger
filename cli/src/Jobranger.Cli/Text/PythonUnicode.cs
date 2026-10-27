@@ -19,6 +19,7 @@ internal static class PythonUnicode {
     private const string unprintableKey = "unprintable";
     private const string nfkcDelimitersKey = "nfkc_delimiters";
     private const char sequenceSeparator = ' ';
+    private const char wordSeparator = ' ';
 
     private static readonly CodeRanges word;
     private static readonly CodeRanges space;
@@ -50,6 +51,35 @@ internal static class PythonUnicode {
     public static bool IsWord(int code) => word.Contains(code);
 
     public static bool IsSpace(int code) => space.Contains(code);
+
+    public static string Strip(string text) {
+        int start = 0;
+        int end = text.Length;
+        while (start < end && IsSpace(text[start])) {
+            start++;
+        }
+        while (end > start && IsSpace(text[end - 1])) {
+            end--;
+        }
+        return text[start..end];
+    }
+
+    public static string CollapseSpace(string text) {
+        StringBuilder collapsed = new(text.Length);
+        bool inSpace = false;
+        foreach (char character in text) {
+            if (IsSpace(character)) {
+                inSpace = true;
+                continue;
+            }
+            if (inSpace && collapsed.Length > 0) {
+                collapsed.Append(wordSeparator);
+            }
+            inSpace = false;
+            collapsed.Append(character);
+        }
+        return collapsed.ToString();
+    }
 
     public static bool IsHidden(int code) => hidden.Contains(code);
 

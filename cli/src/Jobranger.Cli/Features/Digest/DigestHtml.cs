@@ -67,8 +67,7 @@ internal static class DigestHtml {
 
     public static string Card(CardView card) {
         string links = string.Concat(card.Links.Select(link =>
-            $"<a href=\"{HtmlText.Escape(link.Href)}\" style=\"color:{(link.Muted ? muted : ink)};"
-            + $"margin-right:18px;display:inline-block;\">{HtmlText.Escape(link.Label)}</a>"));
+            Anchor(link, $"color:{(link.Muted ? muted : ink)};margin-right:18px;display:inline-block;")));
         string linkRow = links.Length > 0
             ? $"<div style=\"margin-top:16px;font-size:14px;font-weight:500;{wrap}\">{links}</div>"
             : "";
@@ -94,6 +93,9 @@ internal static class DigestHtml {
             + $"{HtmlText.Escape(card.Meta)}</div>"
             + $"{why}{linkRow}</td></tr></table>";
     }
+
+    private static string Anchor(LinkView link, string style) =>
+        $"<a href=\"{HtmlText.Escape(link.Href)}\" style=\"{style}\">{HtmlText.Escape(link.Label)}</a>";
 
     private static string Rule(string color, int gap) =>
         $"<div style=\"height:1px;line-height:1px;font-size:1px;background:{color};"
@@ -127,8 +129,7 @@ internal static class DigestHtml {
             return "";
         }
         string link = view.HiddenLink is LinkView hidden
-            ? $"{TerminalLines.Separator}<a href=\"{HtmlText.Escape(hidden.Href)}\" "
-                + $"style=\"color:{ink};\">{HtmlText.Escape(hidden.Label)}</a>"
+            ? TerminalLines.Separator + Anchor(hidden, $"color:{ink};")
             : "";
         return "<p style=\"margin:26px 0 0;font-size:14px;line-height:1.6;"
             + $"color:{bodyText};{wrap}\">"
@@ -138,8 +139,7 @@ internal static class DigestHtml {
     private static string Footer(DigestView view) {
         string links = string.Join(
             TerminalLines.Separator,
-            view.FooterLinks.Select(link =>
-                $"<a href=\"{HtmlText.Escape(link.Href)}\" style=\"color:{muted};\">{HtmlText.Escape(link.Label)}</a>"));
+            view.FooterLinks.Select(link => Anchor(link, $"color:{muted};")));
         string lastLine = links.Length > 0 ? links : HtmlText.Escape(view.StopLine);
         string notes = HtmlText.Escape(string.Join(noteSeparator, view.Notes));
         string footer = notes.Length > 0 ? notes + lineBreak + lastLine : lastLine;

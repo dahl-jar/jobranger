@@ -12,7 +12,9 @@ public sealed class DigestBuildTests {
     [InlineData("2026-10-15", true)]
     [InlineData("2026-10-16", false)]
     public void ShouldPutCardInApplySoon_WhenDeadlineIsWithinSevenDays(string deadline, bool soon) {
-        DigestData data = DigestEntry.Build(input with { Cards = [DigestFixtures.Due("finn:1", deadline)] }, today);
+        DigestInput due = input with { Cards = [DigestFixtures.Due("finn:1", deadline)] };
+
+        DigestData data = DigestEntry.Build(due, today);
 
         Assert.Equal((soon, !soon), (data.ApplySoon.Count == 1, data.NewToday.Count == 1));
     }
@@ -55,6 +57,21 @@ public sealed class DigestBuildTests {
         Assert.Equal(["finn:3", "finn:2", "finn:1"], Ids(carried ? data.Carried : data.NewToday));
     }
 
+    [Fact]
+    public void ShouldSortApplySoonByDeadline_WhenGroupIsBuilt() {
+        DigestInput unsorted = input with {
+            Cards = [
+                DigestFixtures.Due("finn:13", "2026-10-13"),
+                DigestFixtures.Due("finn:9", "2026-10-09"),
+                DigestFixtures.Due("finn:8", "2026-10-08"),
+            ],
+        };
+
+        DigestData data = DigestEntry.Build(unsorted, today);
+
+        Assert.Equal(["finn:8", "finn:9", "finn:13"], Ids(data.ApplySoon));
+    }
+
     [Theory]
     [InlineData("2026-10-07", false)]
     [InlineData("2026-10-20", true)]
@@ -68,7 +85,9 @@ public sealed class DigestBuildTests {
 
     [Fact]
     public void ShouldKeepCard_WhenDeadlineIsToday() {
-        DigestData data = DigestEntry.Build(input with { Cards = [DigestFixtures.Due("finn:1", "2026-10-08")] }, today);
+        DigestInput dueToday = input with { Cards = [DigestFixtures.Due("finn:1", "2026-10-08")] };
+
+        DigestData data = DigestEntry.Build(dueToday, today);
 
         Assert.Equal(["finn:1"], Ids(data.ApplySoon));
     }
@@ -77,21 +96,27 @@ public sealed class DigestBuildTests {
     public void ShouldCountEmployerPages_WhenCareerPagesWereRead() {
         DigestInput read = input with { SourcesRead = ["finn", "teamtailor:acme", "ashby:beta", "ashbyx"] };
 
-        Assert.Equal(2, DigestEntry.Build(read, today).EmployerPages);
+        DigestData data = DigestEntry.Build(read, today);
+
+        Assert.Equal(2, data.EmployerPages);
     }
 
     [Fact]
     public void ShouldDropModelStop_WhenNoAdIsPending() {
         DigestInput stopped = input with { ModelStopped = DigestStop.Auth, Pending = 0 };
 
-        Assert.Null(DigestEntry.Build(stopped, today).ModelStopped);
+        DigestData data = DigestEntry.Build(stopped, today);
+
+        Assert.Null(data.ModelStopped);
     }
 
     [Fact]
     public void ShouldKeepModelStop_WhenAdsArePending() {
         DigestInput stopped = input with { ModelStopped = DigestStop.ProviderDown, Pending = 5 };
 
-        Assert.Equal(DigestStop.ProviderDown, DigestEntry.Build(stopped, today).ModelStopped);
+        DigestData data = DigestEntry.Build(stopped, today);
+
+        Assert.Equal(DigestStop.ProviderDown, data.ModelStopped);
     }
 
     [Fact]

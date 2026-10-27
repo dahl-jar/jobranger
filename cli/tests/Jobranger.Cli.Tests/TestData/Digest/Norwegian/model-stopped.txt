@@ -1,6 +1,6 @@
 jobranger · torsdag 8. oktober
 
-1 godt treff i morges, valgt ut blant 12 nye annonser.
+1 godt treff i morges, valgt ut blant 5 nye annonser.
 
 NYE I DAG
 
@@ -12,4 +12,6 @@ Build backend services.
 Åpne annonsen ↗: https://ads.example.test/job/1
 
 Leste FINN og NAV i natt.
+Kunne ikke lese LinkedIn.
+AI-sjekkene stoppet: leverandøren avviste nøkkelen. 5 annonser venter. Sett en ny nøkkel med: jobranger init
 Stopp disse e-postene: jobranger config edit

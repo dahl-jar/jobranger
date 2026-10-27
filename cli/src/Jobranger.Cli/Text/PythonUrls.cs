@@ -30,6 +30,14 @@ internal static partial class PythonUrls {
         [.. Enumerable.Range(0, lastControlOrSpace + 1).Select(code => (char)code)];
 
     public static SplitUrl? Split(string url) {
+        SplitUrl parts = SplitUnchecked(url);
+        if (!BracketsAreValid(parts.Netloc) || CodePoints.Of(parts.Netloc).Any(PythonUnicode.ExpandsToUrlDelimiter)) {
+            return null;
+        }
+        return parts;
+    }
+
+    public static SplitUrl SplitUnchecked(string url) {
         string rest = RemoveUnsafe(url.TrimStart(controlsAndSpace));
         string scheme = "";
         int colon = rest.IndexOf(schemeEnd);
@@ -43,9 +51,6 @@ internal static partial class PythonUrls {
             int stop = end < 0 ? rest.Length : end;
             netloc = rest[netlocStart.Length..stop];
             rest = rest[stop..];
-            if (!BracketsAreValid(netloc)) {
-                return null;
-            }
         }
         string fragment = "";
         int hash = rest.IndexOf(fragmentStart);
@@ -58,9 +63,6 @@ internal static partial class PythonUrls {
         if (question >= 0) {
             query = rest[(question + 1)..];
             rest = rest[..question];
-        }
-        if (CodePoints.Of(netloc).Any(PythonUnicode.ExpandsToUrlDelimiter)) {
-            return null;
         }
         return new SplitUrl(scheme, netloc, rest, query, fragment);
     }
@@ -103,18 +105,6 @@ internal static partial class PythonUrls {
             }
         }
         return replaced.ToString();
-    }
-
-    public static string Strip(string text) {
-        int start = 0;
-        int end = text.Length;
-        while (start < end && PythonUnicode.IsSpace(text[start])) {
-            start++;
-        }
-        while (end > start && PythonUnicode.IsSpace(text[end - 1])) {
-            end--;
-        }
-        return text[start..end];
     }
 
     private static string RemoveUnsafe(string url) =>

@@ -9,12 +9,7 @@ internal static class DigestRenderer {
     private const int noonHour = 12;
     private const int eveningHour = 18;
     private const int overnightEndHour = 6;
-    private const string arrow = "↗";
-    private const string strongGlyph = "✓ ";
-    private const string partialGlyph = "◐ ";
     private const string listSeparator = ", ";
-    private const string appliedAction = "&action=applied";
-    private const string notForMeAction = "&action=not_for_me";
     private const string appPath = "/app";
     private const string hiddenPath = "/app/hidden";
     private const string settingsPath = "/app/settings";
@@ -35,9 +30,11 @@ internal static class DigestRenderer {
     }
 
     private static DigestView View(DigestData data, string? site, IMessages messages) {
-        CardView[] soon = [.. data.ApplySoon.Select(card => Card(card, data.Day, site, messages))];
-        CardView[] fresh = [.. data.NewToday.Select(card => Card(card, data.Day, site, messages))];
-        CardView[] earlier = [.. data.Carried.Select(card => Card(card, data.Day, site, messages))];
+        CardView[] Cards(IReadOnlyList<DigestCard> group) =>
+            [.. group.Select(card => CardViews.Of(card, data.Day, site, messages))];
+        CardView[] soon = Cards(data.ApplySoon);
+        CardView[] fresh = Cards(data.NewToday);
+        CardView[] earlier = Cards(data.Carried);
         SectionView[] sections = [
             .. new[] {
                 new SectionView(messages.DigestApplySoonTitle, soon, 0),
@@ -59,42 +56,6 @@ internal static class DigestRenderer {
             FooterLinks(site, messages),
             messages.DigestStopEmails,
             site is not null ? messages.DigestMoreOnWebsite : messages.DigestMoreInReport);
-    }
-
-    private static CardView Card(DigestCard card, DateOnly day, string? site, IMessages messages) {
-        DateOnly? deadline = card.DeadlineDate;
-        string[] meta = [card.Location, card.RoleLabel, DigestSources.Label(card.Source, messages)];
-        return new CardView(
-            card.Id,
-            deadline is DateOnly due ? messages.DigestShortDate(due) : messages.DigestNoDate,
-            messages.DigestDueNote(deadline?.DayNumber - day.DayNumber),
-            card.Fit,
-            FitLabel(card.Fit, messages),
-            CardText.Cut(card.Company, CardText.FieldLimit),
-            CardText.Cut(string.IsNullOrEmpty(card.DisplayTitle) ? card.Title : card.DisplayTitle, CardText.FieldLimit),
-            string.Join(
-                TerminalLines.Separator,
-                meta.Where(part => PythonUrls.Strip(part).Length > 0).Select(part => CardText.Cut(part, CardText.FieldLimit))),
-            CardText.Cut(card.Summary ?? "", CardText.SummaryLimit),
-            Links(card, site, messages));
-    }
-
-    private static string FitLabel(DigestFit fit, IMessages messages) => fit switch {
-        DigestFit.Strong => strongGlyph + messages.DigestStrongLabel,
-        DigestFit.Partial => partialGlyph + messages.DigestPartialLabel,
-        _ => messages.DigestOnRequestLabel,
-    };
-
-    private static List<LinkView> Links(DigestCard card, string? site, IMessages messages) {
-        List<LinkView> links = [];
-        if (DigestUrls.Web(card.Url) is WebUrl web) {
-            links.Add(new LinkView($"{messages.DigestOpenAd} {arrow}", web.Text));
-        }
-        if (site is not null && DigestUrls.AdLink(site, card.Id) is string adLink) {
-            links.Add(new LinkView(messages.DigestMarkApplied, adLink + appliedAction));
-            links.Add(new LinkView(messages.DigestNotForMe, adLink + notForMeAction, Muted: true));
-        }
-        return links;
     }
 
     private static LinkView[] FooterLinks(string? site, IMessages messages) {

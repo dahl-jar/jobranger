@@ -17,7 +17,7 @@ internal static class DigestUrls {
         if (CodePoints.Count(url) > urlLimit) {
             return null;
         }
-        SplitUrl? parts = PythonUrls.Split(PythonUrls.Strip(PythonUrls.ReplaceSurrogates(url)));
+        SplitUrl? parts = PythonUrls.Split(PythonUnicode.Strip(PythonUrls.ReplaceSurrogates(url)));
         if (parts is null || !webSchemes.Contains(parts.Scheme) || parts.Hostname is null
             || parts.Netloc.Contains(userSeparator)) {
             return null;

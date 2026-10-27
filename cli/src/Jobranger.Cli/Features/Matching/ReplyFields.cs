@@ -86,7 +86,7 @@ internal static class ReplyFields {
         if (JsonText.String(element) is not string text) {
             return null;
         }
-        string stripped = MatchText.Strip(text);
+        string stripped = PythonUnicode.Strip(text);
         if (specialNumbers.TryGetValue(stripped, out double special)) {
             return special;
         }

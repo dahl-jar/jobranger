@@ -15,6 +15,10 @@ public sealed class DigestUrlsTests {
         "https://ads.exa\u200Bmple.test/x",
         "https://[evil/x",
         "https://[1.2.3.4]/x",
+        "https://[::1/x",
+        "https://a]b[c/x",
+        "https://[::1]@[/x",
+        "https://:80/x",
         "https://ads\uFF0Fexample.test/x",
         adBase + "x" + new string(' ', urlLimit),
         adBase + new string('\u00E9', quotedLetters),
@@ -22,8 +26,10 @@ public sealed class DigestUrlsTests {
 
     [Theory]
     [MemberData(nameof(BrokenUrls))]
-    public void ShouldDropAdLink_WhenUrlBreaksWebRule(string url) {
-        Assert.Null(DigestUrls.Web(url));
+    public void ShouldRejectUrl_WhenUrlBreaksWebRule(string url) {
+        WebUrl? web = DigestUrls.Web(url);
+
+        Assert.Null(web);
     }
 
     [Theory]
@@ -34,21 +40,29 @@ public sealed class DigestUrlsTests {
     [InlineData("https://[::1]/x", "https://[::1]/x")]
     [InlineData("https://[::1%eth0]/x", "https://[::1%eth0]/x")]
     [InlineData("https://[v1.x]/x", "https://[v1.x]/x")]
+    [InlineData("https://u[::1]/x", "https://u[::1]/x")]
+    [InlineData("https://ads.example.test/\U0001F600x", "https://ads.example.test/%F0%9F%98%80x")]
     public void ShouldWriteCleanUrl_WhenUrlIsAccepted(string url, string expected) {
-        Assert.Equal(expected, DigestUrls.Web(url)!.Text);
+        WebUrl? web = DigestUrls.Web(url);
+
+        Assert.Equal(expected, web?.Text);
     }
 
     [Fact]
     public void ShouldReplaceLoneSurrogate_WhenUrlHasOne() {
-        string url = adBase + "p" + '\uD800';
+        string url = adBase + "p" + '\uD800' + "q";
 
-        Assert.Equal(adBase + "p", DigestUrls.Web(url)!.Text);
+        WebUrl? web = DigestUrls.Web(url);
+
+        Assert.Equal(adBase + "p?q", web?.Text);
     }
 
     [Fact]
-    public void ShouldKeepAdLink_WhenUrlIsAtLengthLimit() {
+    public void ShouldKeepUrl_WhenUrlIsAtLengthLimit() {
         string url = adBase + new string('p', pathAtLimit);
 
-        Assert.Equal(url, DigestUrls.Web(url)!.Text);
+        WebUrl? web = DigestUrls.Web(url);
+
+        Assert.Equal(url, web?.Text);
     }
 }
