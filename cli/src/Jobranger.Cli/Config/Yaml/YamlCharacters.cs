@@ -58,7 +58,7 @@ internal static partial class YamlCharacters {
 
     public static string Unmask(string value, ScalarStyle style) =>
         SeparatorRun().Replace(value, run =>
-            style == ScalarStyle.Plain && (run.Index == 0 || run.Index + run.Length == value.Length)
+            style == ScalarStyle.Plain && run.Index + run.Length == value.Length
                 ? string.Empty
                 : Fold(run.Value));
 

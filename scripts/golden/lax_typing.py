@@ -251,8 +251,8 @@ FOLDED_SEPARATOR_FORMS = (
     "a\x85\x85b",
     "a\u2028\x85b",
     "a\u2028",
-    "\u2028a",
     "'\u2028a'",
+    "'a:\u2028b'",
     "'a'\u2028",
     "a \x23 c\u2028",
     "a \x23 c\u2028x",
@@ -261,6 +261,11 @@ FOLDED_SEPARATOR_FORMS = (
     "'a'\u2028\u2028",
     "'a'\u2028 \x23 c",
     '"\\x80"',
+)
+SEPARATOR_ERROR_FORMS = (
+    "a:\u2028b",
+    "a\u2028... b",
+    '"a\u2028--- b"',
 )
 NON_PRINTABLE_FORMS = tuple(
     f"a{character}b"
@@ -426,11 +431,18 @@ EXTRA_FORMS = {
         ".5e3",
         *SEPARATOR_FORMS,
         *FOLDED_SEPARATOR_FORMS,
+        *SEPARATOR_ERROR_FORMS,
         *NON_PRINTABLE_FORMS,
         *TAB_FORMS,
         "|\r\n  a\r\n  b",
     ),
-    "stack": ("a\u2028, b", "a,\tb", '"a\\x80b", x\u2028y', '"a \\u0081 b", x\u2028y'),
+    "stack": (
+        "a\u2028, b",
+        "Java,\u2028'Kotlin, Go",
+        "a,\tb",
+        '"a\\x80b", x\u2028y',
+        '"a \\u0081 b", x\u2028y',
+    ),
     "evidence.id": ("a", "ab", "' '", '"abc\\n"', "!!str abc"),
     "evidence.name": ("nULL",),
     "evidence.start": ("2024-13",),

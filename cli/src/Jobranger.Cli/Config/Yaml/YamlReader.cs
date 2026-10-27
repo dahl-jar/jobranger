@@ -12,10 +12,14 @@ internal sealed partial class YamlReader(string text, string fileName) {
     private const char tab = '\t';
     private const char space = ' ';
     private const char escapeMark = '\\';
+    private const char valueMark = ':';
+    private const string documentStart = "---";
+    private const string documentEnd = "...";
     private const string inlineLeadIn = " \t:";
     private const int bracketWidth = 1;
     private const int maxDepth = 32;
     private const int firstLine = 1;
+    private const int separatorReach = 1;
     private const int notFound = -1;
 
     private readonly Parser parser =
@@ -164,10 +168,24 @@ internal sealed partial class YamlReader(string text, string fileName) {
 
     private bool IsSeparatorAllowed(int index) => SpanAt(index) switch {
         null => YamlCharacters.EndsLine(text, index + 1),
-        { Style: ScalarStyle.Literal or ScalarStyle.Folded } => false,
-        { Style: ScalarStyle.DoubleQuoted } quoted when SpanText(quoted).Contains(escapeMark) => false,
-        _ => !YamlCharacters.EndsLine(text, index + 1),
+        ScalarSpan span => CanUnmask(span)
+            && (span.Style != ScalarStyle.Plain || FollowsText(span, index))
+            && !YamlCharacters.EndsLine(text, index + 1)
+            && !StartsDocumentMarker(index + 1),
     };
+
+    private bool CanUnmask(ScalarSpan span) => span.Style switch {
+        ScalarStyle.Literal or ScalarStyle.Folded => false,
+        ScalarStyle.DoubleQuoted when SpanText(span).Contains(escapeMark) => false,
+        _ => !SpanText(span).Contains(newLine),
+    };
+
+    private bool FollowsText(ScalarSpan span, int index) =>
+        !text[span.Start..index].All(YamlCharacters.IsLineSeparator) && text[index - 1] != valueMark;
+
+    private bool StartsDocumentMarker(int index) =>
+        text.AsSpan(index).StartsWith(documentStart, StringComparison.Ordinal)
+            || text.AsSpan(index).StartsWith(documentEnd, StringComparison.Ordinal);
 
     private ScalarSpan? SpanAt(int index) =>
         scalarSpans.Where(span => index >= span.Start && index < span.End)
@@ -248,13 +266,28 @@ internal sealed partial class YamlReader(string text, string fileName) {
 
     private long ErrorLine(YamlException error) {
         if (error is not SyntaxErrorException) {
-            return error.Start.Line;
+            return SeparatorLine(error.Start.Line);
         }
         if (error.Start.Index == 0) {
             return TabIndentLine(parser.Current?.Start.Line ?? firstLine);
         }
         return IsTab(error.End) ? error.End.Line : error.Start.Line;
     }
+
+    private long SeparatorLine(long errorLine) {
+        long line = firstLine;
+        for (int index = 0; index < text.Length && line <= errorLine; index++) {
+            if (text[index] == newLine) {
+                line++;
+            } else if (line >= errorLine - separatorReach && IsLineEndSeparator(index)) {
+                return line;
+            }
+        }
+        return errorLine;
+    }
+
+    private bool IsLineEndSeparator(int index) =>
+        YamlCharacters.IsLineSeparator(text[index]) && YamlCharacters.EndsLine(text, index + 1);
 
     private bool IsTab(Mark mark) => mark.Index < text.Length && text[At(mark)] == tab;
 

@@ -1231,19 +1231,19 @@
     }
   },
   {
-    "id": "summary '\\u2028a'",
-    "field": "summary",
-    "yaml": "summary: \u2028a\nprofessional_years: 1\n",
-    "expect": {
-      "value": "a"
-    }
-  },
-  {
     "id": "summary \"'\\u2028a'\"",
     "field": "summary",
     "yaml": "summary: '\u2028a'\nprofessional_years: 1\n",
     "expect": {
       "value": "\u2028a"
+    }
+  },
+  {
+    "id": "summary \"'a:\\u2028b'\"",
+    "field": "summary",
+    "yaml": "summary: 'a:\u2028b'\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a:\u2028b"
     }
   },
   {
@@ -1308,6 +1308,30 @@
     "yaml": "summary: \"\\x80\"\nprofessional_years: 1\n",
     "expect": {
       "value": "\u0080"
+    }
+  },
+  {
+    "id": "summary 'a:\\u2028b'",
+    "field": "summary",
+    "yaml": "summary: a:\u2028b\nprofessional_years: 1\n",
+    "expect": {
+      "crash": "ScannerError"
+    }
+  },
+  {
+    "id": "summary 'a\\u2028... b'",
+    "field": "summary",
+    "yaml": "summary: a\u2028... b\nprofessional_years: 1\n",
+    "expect": {
+      "crash": "ParserError"
+    }
+  },
+  {
+    "id": "summary '\"a\\u2028--- b\"'",
+    "field": "summary",
+    "yaml": "summary: \"a\u2028--- b\"\nprofessional_years: 1\n",
+    "expect": {
+      "crash": "ScannerError"
     }
   },
   {
@@ -6718,6 +6742,14 @@
         "a",
         "b"
       ]
+    }
+  },
+  {
+    "id": "stack \"Java,\\u2028'Kotlin, Go\"",
+    "field": "stack",
+    "yaml": "summary: s\nprofessional_years: 1\nstack: [Java,\u2028'Kotlin, Go]\n",
+    "expect": {
+      "crash": "ScannerError"
     }
   },
   {
