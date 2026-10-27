@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-expected_tests=18
+expected_tests=22
 fixture_version="0.4.1"
 fixture_rids=(osx-arm64 linux-x64)
 linux_archive="jobranger-$fixture_version-linux-x64.tar.gz"
@@ -99,6 +99,18 @@ case "$1" in
 esac
 EOF
   chmod 0755 stub/uname
+}
+
+stub_sysctl() {
+  mkdir -p stub
+  printf '#!/bin/sh\necho %s\n' "$1" >stub/sysctl
+  chmod 0755 stub/sysctl
+}
+
+stub_older() {
+  mkdir -p older
+  printf '#!/bin/sh\necho older\n' >older/jobranger
+  chmod 0755 older/jobranger
 }
 
 stub_curl() {
@@ -265,6 +277,50 @@ should_install_build_for_platform() {
   done
 }
 
+should_install_arm64_build_under_rosetta() {
+  build_release
+  stub_sysctl 1
+
+  run_local_install Darwin x86_64 >/dev/null
+
+  assert_eq osx-arm64 "$(bin-install/jobranger)"
+}
+
+should_warn_when_other_jobranger_runs_first() {
+  build_release
+  stub_older
+  local output
+
+  output="$(PATH="$PWD/older:$PATH" run_local_install Linux x86_64)"
+
+  assert_contains "$output" "$PWD/older/jobranger"
+}
+
+should_not_warn_when_install_dir_runs_first() {
+  build_release
+  stub_older
+  mkdir -p bin-install
+  local output
+
+  output="$(PATH="$PWD/bin-install:$PWD/older:$PATH" run_local_install Linux x86_64)"
+
+  assert_eq "jobranger $fixture_version installed to $PWD/bin-install/jobranger" "$output"
+}
+
+should_refuse_when_no_checksum_tool_exists() {
+  build_release
+  mkdir -p tools
+  ln -s "$(command -v curl)" tools/curl
+  local shell status=0
+  shell="$(command -v sh)"
+
+  PATH="$PWD/tools" JOBRANGER_INSTALL_DIR="$PWD/bin-install" "$shell" out/install.sh 2>stderr.txt || status=$?
+
+  assert_eq 1 "$status"
+  assert_contains "$(cat stderr.txt)" "no checksum tool found"
+  assert_missing bin-install/jobranger
+}
+
 should_refuse_archive_when_checksum_differs() {
   build_release
   rewrite_checksums "\$2 == \"$linux_archive\" { \$1 = \"$(printf '%064d' 0)\" } { print }"
@@ -283,6 +339,7 @@ should_refuse_when_checksums_lack_archive() {
 
 should_refuse_platform_without_build() {
   build_release
+  stub_sysctl 0
 
   local platform system machine
   for platform in "Linux aarch64" "Darwin x86_64"; do

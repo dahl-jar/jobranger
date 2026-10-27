@@ -11,8 +11,16 @@ fail() {
   exit 1
 }
 
+native_machine() {
+  if [ "$(sysctl -n sysctl.proc_translated 2>/dev/null)" = 1 ]; then
+    echo arm64
+  else
+    uname -m
+  fi
+}
+
 detect_rid() {
-  platform="$(uname -s) $(uname -m)"
+  platform="$(uname -s) $(native_machine)"
   case "$platform" in
     "Darwin arm64") echo osx-arm64 ;;
     "Linux x86_64") echo linux-x64 ;;
@@ -33,6 +41,7 @@ sha256() {
 }
 
 command -v curl >/dev/null 2>&1 || fail "curl is required"
+command -v sha256sum >/dev/null 2>&1 || command -v shasum >/dev/null 2>&1 || fail "no checksum tool found, sha256sum or shasum is required"
 
 rid="$(detect_rid)"
 archive="jobranger-$version-$rid.tar.gz"
@@ -57,3 +66,7 @@ case ":$PATH:" in
   *":$install_dir:"*) ;;
   *) echo "add $install_dir to PATH to run jobranger" ;;
 esac
+active="$(command -v jobranger || true)"
+if [ -n "$active" ] && [ ! "$active" -ef "$install_dir/jobranger" ]; then
+  echo "$active runs first on PATH, remove it or install again with JOBRANGER_INSTALL_DIR=${active%/*}"
+fi
