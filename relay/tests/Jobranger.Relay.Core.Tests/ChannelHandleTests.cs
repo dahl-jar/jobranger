@@ -110,6 +110,19 @@ public sealed class ChannelHandleTests
         Assert.Null(claims);
     }
 
+    [Theory]
+    [InlineData("not json")]
+    [InlineData("{\"K\":\"t\",\"C\":\"x\",\"R\":\"web\",\"E\":\"soon\"}")]
+    public void ShouldRejectSignedTicketWithMalformedPayload(string payload)
+    {
+        byte[] body = Encoding.UTF8.GetBytes(payload);
+        string ticket = $"{Base64Url.EncodeToString(body)}.{Base64Url.EncodeToString(HMACSHA256.HashData(key, body))}";
+
+        TicketCheck check = handles.VerifyTicket(ticket);
+
+        Assert.Equal(new TicketCheck(TicketOutcome.Invalid, null), check);
+    }
+
     [Fact]
     public void ShouldNotAcceptTicketAsHandle()
     {

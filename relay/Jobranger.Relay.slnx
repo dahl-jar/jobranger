@@ -5,5 +5,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Jobranger.Relay.Core.Tests/Jobranger.Relay.Core.Tests.csproj" />
+    <Project Path="tests/Jobranger.Relay.Tests/Jobranger.Relay.Tests.csproj" />
   </Folder>
 </Solution>

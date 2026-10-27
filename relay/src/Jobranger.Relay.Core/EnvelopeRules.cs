@@ -13,12 +13,8 @@ public static class EnvelopeRules
     private const int base64Quantum = 4;
     private const int bytesPerQuantum = 3;
     private const int ceilingAddend = bytesPerQuantum - 1;
-    private const int oneByteRemainder = 2;
-    private const int twoByteRemainder = 3;
     private const string helloKind = "hello";
     private const string dataKind = "data";
-    private const string oneByteTail = "AQgw";
-    private const string twoByteTail = "AEIMQUYcgkosw048";
 
     public static bool TryParse(ReadOnlySpan<byte> utf8, [NotNullWhen(true)] out Envelope? envelope)
     {
@@ -69,30 +65,8 @@ public static class EnvelopeRules
 
     private static int Base64UrlChars(int bytes) => ((bytes * base64Quantum) + ceilingAddend) / bytesPerQuantum;
 
-    private static bool IsCanonicalBase64Url(string text, int minLength, int maxLength)
-    {
-        int remainder = text.Length % base64Quantum;
-        if (text.Length < minLength || text.Length > maxLength || remainder == 1)
-        {
-            return false;
-        }
-        foreach (char character in text)
-        {
-            if (!IsBase64UrlChar(character))
-            {
-                return false;
-            }
-        }
-        return remainder switch
-        {
-            oneByteRemainder => oneByteTail.Contains(text[^1], StringComparison.Ordinal),
-            twoByteRemainder => twoByteTail.Contains(text[^1], StringComparison.Ordinal),
-            _ => true,
-        };
-    }
-
-    private static bool IsBase64UrlChar(char character) =>
-        char.IsAsciiLetterOrDigit(character) || character is '-' or '_';
+    private static bool IsCanonicalBase64Url(string text, int minLength, int maxLength) =>
+        text.Length >= minLength && text.Length <= maxLength && CanonicalBase64Url.IsCanonical(text);
 
     private static bool HasSafeTokens(ReadOnlySpan<byte> utf8)
     {

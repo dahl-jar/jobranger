@@ -6,7 +6,9 @@ namespace Jobranger.Relay.Core;
 public sealed class PairingStore(
     TimeProvider time,
     int maxPending = RelayLimits.MaxPendingPairings,
-    int maxEntries = RelayLimits.MaxPairingEntries)
+    int maxPendingPerNetwork = RelayLimits.MaxPendingPairingsPerNetwork,
+    int maxEntries = RelayLimits.MaxPairingEntries,
+    Func<PairingCode>? drawCode = null)
 {
     private static readonly ClaimResult wrongCode = new(ClaimOutcome.WrongCode, null);
     private static readonly ClaimResult expired = new(ClaimOutcome.Expired, null);
@@ -14,11 +16,13 @@ public sealed class PairingStore(
 
     private readonly Dictionary<string, Entry> entries = new(StringComparer.Ordinal);
     private readonly Dictionary<ChannelId, Entry> pendingByChannel = [];
+    private readonly Dictionary<string, int> pendingByNetwork = new(StringComparer.Ordinal);
     private readonly SortedSet<Entry> lapsing = new(expiryOrder);
     private readonly SortedSet<Entry> retiring = new(expiryOrder);
     private readonly Lock gate = new();
+    private readonly Func<PairingCode> nextCode = drawCode ?? PairingCode.Generate;
 
-    public PendingPairing? Start(ChannelId channel)
+    public PendingPairing? Start(ChannelId channel, string network)
     {
         lock (gate)
         {
@@ -26,23 +30,25 @@ public sealed class PairingStore(
             Drain(now);
             pendingByChannel.TryGetValue(channel, out Entry? previous);
             int othersPending = pendingByChannel.Count - (previous is null ? 0 : 1);
+            int networkPending = pendingByNetwork.GetValueOrDefault(network) - (previous?.Network == network ? 1 : 0);
             if (othersPending >= maxPending
-                || (previous is null && entries.Count >= maxEntries)
+                || networkPending >= maxPendingPerNetwork
+                || (previous is null && entries.Count >= maxEntries && !TryEvictOldestTombstone())
                 || !TryDrawFreeCode(out PairingCode code))
             {
                 return null;
             }
 
-            Entry entry = new(code, channel, now + RelayLimits.CodeLifetime);
+            Entry entry = new(code, channel, network, now + RelayLimits.CodeLifetime);
             if (previous is not null)
             {
                 Replace(previous, entry);
             }
 
             entries.Add(code.Selector, entry);
-            retiring.Add(entry);
             lapsing.Add(entry);
             pendingByChannel.Add(channel, entry);
+            pendingByNetwork[network] = pendingByNetwork.GetValueOrDefault(network) + 1;
             return new PendingPairing(code, entry.ExpiresAt);
         }
     }
@@ -100,7 +106,7 @@ public sealed class PairingStore(
     {
         for (int attempt = 0; attempt < RelayLimits.MaxCodeDrawAttempts; attempt++)
         {
-            code = PairingCode.Generate();
+            code = nextCode();
             if (!entries.ContainsKey(code.Selector))
             {
                 return true;
@@ -129,6 +135,31 @@ public sealed class PairingStore(
         entry.Open = false;
         lapsing.Remove(entry);
         pendingByChannel.Remove(entry.Channel);
+        Release(entry.Network);
+        retiring.Add(entry);
+    }
+
+    private void Release(string network)
+    {
+        if (pendingByNetwork[network] == 1)
+        {
+            pendingByNetwork.Remove(network);
+        }
+        else
+        {
+            pendingByNetwork[network]--;
+        }
+    }
+
+    private bool TryEvictOldestTombstone()
+    {
+        if (retiring.Min is not { } oldest)
+        {
+            return false;
+        }
+
+        Forget(oldest);
+        return true;
     }
 
     private void Replace(Entry previous, Entry next)
@@ -148,13 +179,15 @@ public sealed class PairingStore(
         }
     }
 
-    private sealed class Entry(PairingCode code, ChannelId channel, DateTimeOffset expiresAt)
+    private sealed class Entry(PairingCode code, ChannelId channel, string network, DateTimeOffset expiresAt)
     {
         public string Selector { get; } = code.Selector;
 
         public byte[] Verifier { get; } = Encoding.ASCII.GetBytes(code.Verifier);
 
         public ChannelId Channel { get; } = channel;
+
+        public string Network { get; } = network;
 
         public DateTimeOffset ExpiresAt { get; } = expiresAt;
 

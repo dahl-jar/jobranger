@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -9,9 +8,6 @@ public sealed class ChannelHandle(HandleKeys keys, TimeProvider time)
 {
     private const string handleKind = "h";
     private const string ticketKind = "t";
-
-    private static readonly SearchValues<char> tokenChars =
-        SearchValues.Create("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_");
 
     public string Sign(ChannelId channel, RelayRole role, DateTimeOffset expires) =>
         Seal(new TokenPayload(handleKind, channel.Value, RelayRoles.Wire(role), expires.ToUnixTimeSeconds()));
@@ -43,18 +39,6 @@ public sealed class ChannelHandle(HandleKeys keys, TimeProvider time)
             : new TicketCheck(TicketOutcome.Expired, null);
     }
 
-    private static bool TryDecodeStrict(ReadOnlySpan<char> text, out byte[] bytes)
-    {
-        bytes = [];
-        if (text.ContainsAnyExcept(tokenChars) || !Base64Url.IsValid(text))
-        {
-            return false;
-        }
-
-        bytes = Base64Url.DecodeFromChars(text);
-        return true;
-    }
-
     private static bool Matches(byte[] key, byte[] body, byte[] mac) =>
         CryptographicOperations.FixedTimeEquals(HMACSHA256.HashData(key, body), mac);
 
@@ -74,13 +58,26 @@ public sealed class ChannelHandle(HandleKeys keys, TimeProvider time)
 
         ReadOnlySpan<char> bodyText = token.AsSpan(0, dot);
         ReadOnlySpan<char> macText = token.AsSpan(dot + 1);
-        if (!TryDecodeStrict(bodyText, out byte[] body) || !TryDecodeStrict(macText, out byte[] mac))
+        if (!CanonicalBase64Url.TryDecode(bodyText, out byte[] body)
+            || !CanonicalBase64Url.TryDecode(macText, out byte[] mac))
         {
             return null;
         }
 
         bool signed = Matches(keys.Current, body, mac) || (keys.Previous is { } previous && Matches(previous, body, mac));
-        return signed ? JsonSerializer.Deserialize(body, CoreJsonContext.Default.TokenPayload) : null;
+        return signed ? Parse(body) : null;
+    }
+
+    private static TokenPayload? Parse(byte[] body)
+    {
+        try
+        {
+            return JsonSerializer.Deserialize(body, CoreJsonContext.Default.TokenPayload);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private bool IsLive(TokenPayload payload) => DateTimeOffset.FromUnixTimeSeconds(payload.Expires) > time.GetUtcNow();
