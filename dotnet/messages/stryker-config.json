@@ -1,0 +1,12 @@
+{
+  "stryker-config": {
+    "solution": "../Jobranger.slnx",
+    "project": "Jobranger.Messaging.csproj",
+    "test-projects": [
+      "tests/Jobranger.Messaging.Tests/Jobranger.Messaging.Tests.csproj"
+    ],
+    "test-runner": "mtp",
+    "coverage-analysis": "perTest",
+    "reporters": ["html", "progress"]
+  }
+}

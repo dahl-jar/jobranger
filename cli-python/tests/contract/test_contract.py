@@ -32,27 +32,27 @@ from jobranger.contract.fields import decode_base64, encode_url, parse_timestamp
 from jobranger.contract.payload import Chunk, Payload
 from jobranger.matching.rules import DisplayFit
 
-CONTRACTS_DIR = "contracts"
-CONTRACTS_MARKER = Path(CONTRACTS_DIR) / "payload.schema.json"
+MESSAGES_DIR = "messages"
+MESSAGES_MARKER = Path(MESSAGES_DIR) / "payload.schema.json"
 
 
-def find_contracts(start: Path) -> Path:
+def find_messages(start: Path) -> Path:
     root = next(
-        (parent for parent in start.parents if (parent / CONTRACTS_MARKER).is_file()),
+        (parent for parent in start.parents if (parent / MESSAGES_MARKER).is_file()),
         None,
     )
-    assert root is not None, f"no folder above {start} holds {CONTRACTS_MARKER}"
-    return root / CONTRACTS_DIR
+    assert root is not None, f"no folder above {start} holds {MESSAGES_MARKER}"
+    return root / MESSAGES_DIR
 
 
-CONTRACTS = find_contracts(Path(__file__).resolve())
-ROOT = CONTRACTS.parent
-FIXTURES = CONTRACTS / "fixtures"
-WEB_CONTRACT = ROOT / "web" / "src" / "features" / "relay" / "contract"
+MESSAGES = find_messages(Path(__file__).resolve())
+ROOT = MESSAGES.parent
+FIXTURES = MESSAGES / "fixtures"
+WEB_CONTRACT = ROOT / "frontend" / "src" / "features" / "relay" / "contract"
 CLI_CONTRACT = ROOT / "cli-python" / "src" / "jobranger" / "contract"
 WORKFLOWS = ROOT / ".github" / "workflows"
-SESSION_SPEC = CONTRACTS / "session" / "v1.md"
-IGNORABLES = CONTRACTS / "unicode" / "default-ignorable-15.0.0.json"
+SESSION_SPEC = MESSAGES / "session" / "v1.md"
+IGNORABLES = MESSAGES / "unicode" / "default-ignorable-15.0.0.json"
 BMP_MAX = 0xFFFF
 JOINERS = {0x200C, 0x200D}
 NAME_CONTROLS = [(0x0000, 0x001F), (0x007F, 0x009F), (0x2028, 0x2029)]
@@ -143,7 +143,7 @@ def fixture_id(path: Path) -> str:
 
 @cache
 def schema(name: str) -> dict[str, Any]:
-    loaded: dict[str, Any] = load(CONTRACTS / f"{name}.schema.json")
+    loaded: dict[str, Any] = load(MESSAGES / f"{name}.schema.json")
     return loaded
 
 
@@ -1068,7 +1068,7 @@ def test_should_keep_generated_code_free_of_comments(path: Path) -> None:
 @pytest.mark.parametrize(
     "path",
     [
-        *sorted(CONTRACTS.glob("*.schema.json")),
+        *sorted(MESSAGES.glob("*.schema.json")),
         *sorted(CLI_CONTRACT.glob("*.schema.json")),
         WEB_CONTRACT / "schemas.gen.ts",
         WEB_CONTRACT / "validate.gen.js",
@@ -1225,23 +1225,26 @@ def test_should_not_mark_hand_written_code_as_generated(path: Path) -> None:
 @pytest.mark.parametrize(
     ("workflow", "path"),
     [
-        ("cli-python.yml", "contracts/**"),
-        ("cli-python.yml", "web/src/features/relay/contract/**"),
-        ("web.yml", "contracts/**"),
-        ("contracts.yml", "web/scripts/**"),
-        ("contracts.yml", "contracts/**"),
-        ("relay.yml", "contracts/**"),
-        ("contracts.yml", "cli-python/pyproject.toml"),
-        ("contracts.yml", "cli-python/uv.lock"),
-        ("contracts.yml", "web/package.json"),
-        ("contracts.yml", "web/pnpm-lock.yaml"),
-        ("contracts.yml", ".gitattributes"),
-        ("contracts.yml", "cli-python/.gitattributes"),
-        ("contracts.yml", "web/.gitattributes"),
-        ("contracts.yml", "Jobranger.slnx"),
-        ("contracts.yml", "Directory.*.props"),
-        ("contracts.yml", "global.json"),
-        ("contracts.yml", "nuget.config"),
+        ("cli-python.yml", "messages/**"),
+        ("cli-python.yml", "frontend/src/features/relay/contract/**"),
+        ("frontend.yml", "messages/**"),
+        ("messages.yml", "frontend/scripts/**"),
+        ("messages.yml", "messages/**"),
+        ("relay.yml", "messages/**"),
+        ("cli.yml", "dotnet/messages/**"),
+        ("relay.yml", "dotnet/messages/**"),
+        ("messages.yml", "dotnet/messages/**"),
+        ("messages.yml", "cli-python/pyproject.toml"),
+        ("messages.yml", "cli-python/uv.lock"),
+        ("messages.yml", "frontend/package.json"),
+        ("messages.yml", "frontend/pnpm-lock.yaml"),
+        ("messages.yml", ".gitattributes"),
+        ("messages.yml", "cli-python/.gitattributes"),
+        ("messages.yml", "frontend/.gitattributes"),
+        ("messages.yml", "dotnet/Jobranger.slnx"),
+        ("messages.yml", "dotnet/Directory.*.props"),
+        ("messages.yml", "dotnet/global.json"),
+        ("messages.yml", "dotnet/nuget.config"),
     ],
 )
 def test_should_run_workflow_on_contract_change(workflow: str, path: str) -> None:
@@ -1250,22 +1253,3 @@ def test_should_run_workflow_on_contract_change(workflow: str, path: str) -> Non
     paths = [triggers[event]["paths"] for event in ("push", "pull_request")]
 
     assert all(path in event_paths for event_paths in paths)
-
-
-@pytest.mark.parametrize("workflow", ["cli-python.yml", "web.yml"])
-@pytest.mark.parametrize(
-    "path",
-    ["contracts/src/**", "contracts/tests/**", "contracts/stryker-config.json"],
-)
-def test_should_skip_workflow_on_csharp_contract_change(
-    workflow: str, path: str
-) -> None:
-    triggers = YAML(typ="safe").load((WORKFLOWS / workflow).read_text("utf-8"))["on"]
-
-    paths = [triggers[event]["paths"] for event in ("push", "pull_request")]
-
-    assert all(
-        f"!{path}" in event_paths
-        and event_paths.index(f"!{path}") > event_paths.index("contracts/**")
-        for event_paths in paths
-    )

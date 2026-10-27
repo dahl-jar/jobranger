@@ -1,0 +1,95 @@
+name: Check messages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - frontend/scripts/**
+      - messages/**
+      - dotnet/messages/**
+      - cli-python/src/jobranger/contract/**
+      - cli-python/tests/contract/**
+      - frontend/src/features/relay/contract/**
+      - dotnet/Jobranger.slnx
+      - dotnet/Directory.*.props
+      - dotnet/global.json
+      - dotnet/nuget.config
+      - .github/workflows/messages.yml
+      - cli-python/pyproject.toml
+      - cli-python/uv.lock
+      - cli-python/.python-version
+      - frontend/package.json
+      - frontend/pnpm-lock.yaml
+      - .gitattributes
+      - cli-python/.gitattributes
+      - frontend/.gitattributes
+  pull_request:
+    paths:
+      - frontend/scripts/**
+      - messages/**
+      - dotnet/messages/**
+      - cli-python/src/jobranger/contract/**
+      - cli-python/tests/contract/**
+      - frontend/src/features/relay/contract/**
+      - dotnet/Jobranger.slnx
+      - dotnet/Directory.*.props
+      - dotnet/global.json
+      - dotnet/nuget.config
+      - .github/workflows/messages.yml
+      - cli-python/pyproject.toml
+      - cli-python/uv.lock
+      - cli-python/.python-version
+      - frontend/package.json
+      - frontend/pnpm-lock.yaml
+      - .gitattributes
+      - cli-python/.gitattributes
+      - frontend/.gitattributes
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Generate, compare and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+        with:
+          enable-cache: true
+          cache-dependency-glob: cli-python/uv.lock
+
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+        with:
+          package_json_file: frontend/package.json
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+        with:
+          global-json-file: dotnet/global.json
+
+      - run: uv --directory cli-python sync --locked
+      - run: pnpm --dir frontend install --frozen-lockfile
+      - run: touch frontend/src/features/relay/contract/old.gen.ts
+      - run: bash messages/generate.sh
+      - run: uv run --project cli-python --locked python messages/scripts/url_parity.py
+      - run: git diff --exit-code
+      - run: test -z "$(git status --porcelain)" || { git status --porcelain; exit 1; }
+      - run: uv --directory cli-python run --locked pytest tests/contract
+      - run: pnpm --dir frontend exec tsc -b
+      - run: pnpm --dir frontend exec vitest run src/features/relay/contract tests --passWithNoTests=false
+      - run: dotnet restore Jobranger.slnx --locked-mode
+        working-directory: dotnet
+      - name: Check payload records cover the schema
+        working-directory: dotnet
+        run: dotnet test --project messages/tests/Jobranger.Messaging.Tests -c Release --no-restore --filter-method "*.ShouldCoverEverySchemaProperty_WhenPayloadRecordsAreChecked" --minimum-expected-tests 1
+      - run: dotnet test --project messages/tests/Jobranger.Messaging.Tests -c Release --no-restore --minimum-expected-tests 568
+        working-directory: dotnet

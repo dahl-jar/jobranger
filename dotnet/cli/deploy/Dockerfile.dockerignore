@@ -1,0 +1,12 @@
+*
+!dotnet/global.json
+!dotnet/nuget.config
+!dotnet/Directory.Build.props
+!dotnet/Directory.Packages.props
+!.editorconfig
+!messages/payload.schema.json
+!messages/unicode/idna-hosts-16.0.0.json
+!dotnet/messages/src/
+!dotnet/cli/src/
+**/bin/
+**/obj/
