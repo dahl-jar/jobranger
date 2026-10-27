@@ -10,6 +10,7 @@ from typing import IO, TYPE_CHECKING
 
 from defusedxml import ElementTree
 from pypdf import PdfReader
+from pypdf.errors import LimitReachedError
 
 from jobranger.cv import (
     DOCX_SUFFIX,
@@ -65,7 +66,7 @@ def main() -> None:
 def extract(suffix: str, data: bytes) -> dict[str, str]:
     try:
         return {TEXT_KEY: EXTRACTORS[suffix](data)}
-    except TooLargeError:
+    except (TooLargeError, LimitReachedError):
         return {REASON_KEY: "too_large"}
     except Exception:
         return {REASON_KEY: "unreadable"}

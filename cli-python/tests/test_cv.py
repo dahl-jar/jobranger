@@ -45,6 +45,7 @@ PADDING_MEMBER = "word/media/padding.bin"
 BLOCKED_READ_TIMEOUT_SECONDS = 2
 TEST_DEADLINE_SECONDS = 1
 DEADLINE_GRACE_SECONDS = 4
+STREAM_LIMIT_WAIT_SECONDS = cv.EXTRACT_DEADLINE_SECONDS - DEADLINE_GRACE_SECONDS
 NORWEGIAN_LINE = "Utvikler i Bergen og Ålesund. Ærlig, øvet og våken. " * 6
 ACCIDENTAL_PAIR_LINE = NORWEGIAN_LINE + "«SKOLEN PÅ»"
 EQUAL_COUNTS_BYTES = "å".encode() + b"\x7f\xff"
@@ -261,9 +262,9 @@ def test_should_drop_undefined_cp1252_byte(tmp_path: Path, undefined: int) -> No
 @pytest.mark.parametrize(
     "joined",
     [
-        pytest.param("\U0001f468‍\U0001f4bb", id="emoji zwj sequence"),
-        pytest.param("\U0001f3f3️‍\U0001f308", id="rainbow flag"),
-        pytest.param("می‌خواهم", id="persian zwnj"),
+        pytest.param("\U0001f468\u200d\U0001f4bb", id="emoji zwj sequence"),
+        pytest.param("\U0001f3f3\ufe0f\u200d\U0001f308", id="rainbow flag"),
+        pytest.param("می\u200cخواهم", id="persian zwnj"),
     ],
 )
 def test_should_keep_joiners(tmp_path: Path, joined: str) -> None:
@@ -401,11 +402,6 @@ def test_should_turn_carriage_returns_into_line_breaks(tmp_path: Path) -> None:
     ("content", "expected"),
     [
         pytest.param(
-            lambda: pdf([flate_stream(PDF_TEXT_LINE * 5 + b"0 0 Td\n" * 10_000_000)]),
-            "too_large",
-            id="pdf with 10 million operators",
-        ),
-        pytest.param(
             lambda: pdf(
                 [
                     flate_stream(
@@ -447,6 +443,17 @@ def test_should_stop_hostile_file_within_deadline(
     )
 
     assert reason == expected
+
+
+def test_should_raise_too_large_when_pdf_has_10_million_operators(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "cv.pdf"
+    path.write_bytes(pdf([flate_stream(PDF_TEXT_LINE * 5 + b"0 0 Td\n" * 10_000_000)]))
+
+    reason = _reason_within(STREAM_LIMIT_WAIT_SECONDS, lambda: cv.extract_text(path))
+
+    assert reason == "too_large"
 
 
 def test_should_raise_too_large_when_worker_misses_deadline(
