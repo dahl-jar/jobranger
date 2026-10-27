@@ -430,7 +430,7 @@ EXTRA_FORMS = {
         *TAB_FORMS,
         "|\r\n  a\r\n  b",
     ),
-    "stack": ("a\u2028, b", "a,\tb"),
+    "stack": ("a\u2028, b", "a,\tb", '"a\\x80b", x\u2028y', '"a \\u0081 b", x\u2028y'),
     "evidence.id": ("a", "ab", "' '", '"abc\\n"', "!!str abc"),
     "evidence.name": ("nULL",),
     "evidence.start": ("2024-13",),
@@ -465,6 +465,7 @@ DOCUMENTS = (
     "summary: s\nprofessional_years: 1\nstack: ~\n",
     "summary: s\nprofessional_years: 1\nstack: ''\n",
     "su\u2028mmary: s\nprofessional_years: 1\n",
+    "professional_years: 1\nsummary: |\t",
 )
 
 

@@ -215,6 +215,8 @@ public sealed class ProfilesTests : IDisposable {
     [InlineData("summary: s\rprofessional_years: 3\t\r", "2")]
     [InlineData("professional_years: 1\nsummary: \"a\nb\"\n", "2")]
     [InlineData("summary: s\nprofessional_years: 1\nstack: [a\u0007]\n", "3")]
+    [InlineData("professional_years: 1\nsummary: \"a\\t\u2028b\"\n", "2")]
+    [InlineData("professional_years: 1\nsummary: 'a\u2028#b'\n", "2")]
     public void ShouldNameLine_WhenProfileIsNotYaml(string yaml, string line) {
         string path = Write(yaml);
 

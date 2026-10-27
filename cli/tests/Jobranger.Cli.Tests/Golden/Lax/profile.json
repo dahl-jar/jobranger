@@ -6732,6 +6732,28 @@
     }
   },
   {
+    "id": "stack '\"a\\\\x80b\", x\\u2028y'",
+    "field": "stack",
+    "yaml": "summary: s\nprofessional_years: 1\nstack: [\"a\\x80b\", x\u2028y]\n",
+    "expect": {
+      "value": [
+        "a\u0080b",
+        "x\u2028y"
+      ]
+    }
+  },
+  {
+    "id": "stack '\"a \\\\u0081 b\", x\\u2028y'",
+    "field": "stack",
+    "yaml": "summary: s\nprofessional_years: 1\nstack: [\"a \\u0081 b\", x\u2028y]\n",
+    "expect": {
+      "value": [
+        "a \u0081 b",
+        "x\u2028y"
+      ]
+    }
+  },
+  {
     "id": "evidence.id '1'",
     "field": "evidence.id",
     "yaml": "summary: s\nprofessional_years: 1\nprojects:\n  - id: 1\n    name: n\n    facts: x\n",
@@ -12477,6 +12499,14 @@
           "type": "extra_forbidden"
         }
       ]
+    }
+  },
+  {
+    "id": "document 'professional_years: 1\\nsummary: |\\t'",
+    "field": "document",
+    "yaml": "professional_years: 1\nsummary: |\t",
+    "expect": {
+      "crash": "ScannerError"
     }
   }
 ]

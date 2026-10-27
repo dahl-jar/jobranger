@@ -11,6 +11,7 @@ internal sealed partial class YamlReader(string text, string fileName) {
     private const char newLine = '\n';
     private const char tab = '\t';
     private const char space = ' ';
+    private const char escapeMark = '\\';
     private const string inlineLeadIn = " \t:";
     private const int bracketWidth = 1;
     private const int maxDepth = 32;
@@ -19,7 +20,6 @@ internal sealed partial class YamlReader(string text, string fileName) {
 
     private readonly Parser parser =
         new(new Scanner(new StringReader(YamlCharacters.Mask(text)), skipComments: true));
-    private readonly bool hasLineSeparators = text.Any(YamlCharacters.IsLineSeparator);
     private readonly List<ScalarSpan> scalarSpans = [];
     private readonly List<(int Start, int End)> flowSpans = [];
     private readonly List<(string Path, bool KeepsComments, int Start)> keys = [];
@@ -124,9 +124,14 @@ internal sealed partial class YamlReader(string text, string fileName) {
     }
 
     private string ReadScalar(Scalar scalar) {
-        scalarSpans.Add(new ScalarSpan(At(scalar.Start), At(scalar.End), scalar.Style));
-        return hasLineSeparators ? YamlCharacters.Unmask(scalar.Value, scalar.Style) : scalar.Value;
+        ScalarSpan span = new(At(scalar.Start), At(scalar.End), scalar.Style);
+        scalarSpans.Add(span);
+        return HasSeparator(span) ? YamlCharacters.Unmask(scalar.Value, scalar.Style) : scalar.Value;
     }
+
+    private bool HasSeparator(ScalarSpan span) => SpanText(span).Any(YamlCharacters.IsLineSeparator);
+
+    private string SpanText(ScalarSpan span) => text[span.Start..span.End];
 
     private void EndFlow(int start, ParsingEvent end) {
         lastEnd = At(end.End) + bracketWidth;
@@ -153,14 +158,15 @@ internal sealed partial class YamlReader(string text, string fileName) {
     private bool IsTabAllowed(int index) => SpanAt(index) switch {
         null => IsInFlow(index) || IsInComment(index),
         { Style: ScalarStyle.Plain } => false,
-        { Style: ScalarStyle.Literal or ScalarStyle.Folded } block => index > text.IndexOf(newLine, block.Start),
+        { Style: ScalarStyle.Literal or ScalarStyle.Folded } block => index > LineEnd(block.Start),
         _ => true,
     };
 
     private bool IsSeparatorAllowed(int index) => SpanAt(index) switch {
         null => YamlCharacters.EndsLine(text, index + 1),
         { Style: ScalarStyle.Literal or ScalarStyle.Folded } => false,
-        _ => true,
+        { Style: ScalarStyle.DoubleQuoted } quoted when SpanText(quoted).Contains(escapeMark) => false,
+        _ => !YamlCharacters.EndsLine(text, index + 1),
     };
 
     private ScalarSpan? SpanAt(int index) =>
