@@ -16,6 +16,7 @@ internal sealed class ApiSender(
     private const double firstWaitSeconds = 0.5;
     private const double longestBackoffSeconds = 8;
     private const double jitterShare = 0.25;
+    private const double longestServerWaitSeconds = 60;
 
     private static readonly TimeSpan attemptTimeout = TimeSpan.FromSeconds(120);
 
@@ -44,8 +45,7 @@ internal sealed class ApiSender(
         status is requestTimeout or conflict or tooManyRequests or >= firstServerError;
 
     private bool ShouldRetry(Attempt sent) {
-        if (rules.RefusesLongerWait && sent.ServerWait is double wait && double.IsFinite(wait)
-            && wait > rules.LongestServerWaitSeconds) {
+        if (sent.ServerWait is double wait && double.IsFinite(wait) && Refuses(wait)) {
             return false;
         }
         return sent.ShouldRetry switch {
@@ -56,10 +56,11 @@ internal sealed class ApiSender(
     }
 
     private TimeSpan WaitBefore(Attempt sent, int attempt) =>
-        sent.ServerWait is double wait && wait > 0
-        && (!rules.RefusesLongerWait || wait <= rules.LongestServerWaitSeconds)
-            ? TimeSpan.FromSeconds(Math.Min(wait, rules.LongestServerWaitSeconds))
+        sent.ServerWait is double wait && wait > 0 && !Refuses(wait)
+            ? TimeSpan.FromSeconds(Math.Min(wait, longestServerWaitSeconds))
             : Backoff(attempt);
+
+    private bool Refuses(double wait) => rules.RefusedWaitSeconds is double refused && wait > refused;
 
     private TimeSpan Backoff(int attempt) {
         double seconds = Math.Min(firstWaitSeconds * Math.Pow(2, attempt), longestBackoffSeconds);

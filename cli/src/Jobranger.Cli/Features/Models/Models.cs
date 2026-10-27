@@ -20,21 +20,10 @@ internal sealed class Models(Func<HttpMessageHandler> createHandler, TimeProvide
         return [.. models.OrderBy(model => model.PriceIn is null).ThenBy(model => model.PriceIn ?? 0m)];
     }
 
-    private static string RequireKey(ProviderName provider, string? key) {
-        string label = provider.ToString();
-        if (string.IsNullOrWhiteSpace(key)) {
-            throw new ApiException(ApiErrorKind.Auth, ApiErrors.MissingKey(label));
-        }
-        try {
-            return ApiKeys.Require(label, key);
-        } catch (ArgumentException error) {
-            throw new ApiException(ApiErrorKind.Auth, error.Message);
-        }
-    }
-
     private async Task<List<ModelInfo>> ListKeyedAsync(
         ProviderName provider, string? key, CancellationToken cancellationToken) {
-        string checkedKey = RequireKey(provider, key);
+        string checkedKey = ApiKeys.RequireSaved(
+            provider.ToString(), key, message => new ApiException(ApiErrorKind.Auth, message));
         SdkRules rules = provider == ProviderName.Anthropic ? SdkRules.Anthropic : SdkRules.OpenAI;
         using ApiSender sender = new(createHandler(), time, ApiSender.DefaultRetries, rules, Random.Shared);
         return provider == ProviderName.Anthropic

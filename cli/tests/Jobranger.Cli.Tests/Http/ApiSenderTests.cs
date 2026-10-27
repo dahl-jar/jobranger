@@ -64,7 +64,6 @@ public sealed class ApiSenderTests {
     [Theory]
     [InlineData("30", 30)]
     [InlineData("60", 60)]
-    [InlineData("120", 120)]
     [InlineData("2.5", 2.5)]
     public async Task ShouldWaitRetryAfter_WhenServerSetsIt(string header, double seconds) {
         using FakeApiHandler handler = RetryThenOk(("retry-after", header));
@@ -106,15 +105,28 @@ public sealed class ApiSenderTests {
     }
 
     [Theory]
-    [InlineData("200", 200)]
-    [InlineData("9999999", 4294967)]
-    public async Task ShouldWaitLongRetryAfter_WhenSdkIsAnthropic(string header, double seconds) {
+    [InlineData("86400", true)]
+    [InlineData("120", false)]
+    public async Task ShouldWaitOneMinute_WhenServerAsksLonger(string header, bool anthropic) {
         using FakeApiHandler handler = RetryThenOk(("retry-after", header));
-        using ApiSender sender = Create(handler, retries, SdkRules.Anthropic);
+        using ApiSender sender = Create(handler, retries, anthropic ? SdkRules.Anthropic : SdkRules.OpenAI);
         Task<ApiReply> sending = Send(sender);
         await handler.ArrivedAsync(settle);
 
-        (bool tooEarly, bool onTime) = await NextArrivalAsync(handler, TimeSpan.FromSeconds(seconds));
+        (bool tooEarly, bool onTime) = await NextArrivalAsync(handler, TimeSpan.FromSeconds(60));
+
+        Assert.Equal((false, true), (tooEarly, onTime));
+        await sending;
+    }
+
+    [Fact]
+    public async Task ShouldBackOff_WhenOpenAIRetryAfterIsInfinite() {
+        using FakeApiHandler handler = RetryThenOk(("retry-after", "inf"));
+        using ApiSender sender = Create(handler, retries);
+        Task<ApiReply> sending = Send(sender);
+        await handler.ArrivedAsync(settle);
+
+        (bool tooEarly, bool onTime) = await NextArrivalAsync(handler, TimeSpan.FromSeconds(0.5));
 
         Assert.Equal((false, true), (tooEarly, onTime));
         await sending;

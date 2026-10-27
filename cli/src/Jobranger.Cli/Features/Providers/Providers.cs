@@ -36,16 +36,8 @@ internal sealed class Providers(Func<HttpMessageHandler> createHandler, TimeProv
         if (!secretNames.TryGetValue(provider, out string? name)) {
             throw new ArgumentOutOfRangeException(nameof(provider), provider, "provider has no saved key name");
         }
-        string label = provider.ToString();
         string? saved = await secrets(name, cancellationToken).ConfigureAwait(false);
-        if (string.IsNullOrWhiteSpace(saved)) {
-            throw new ModelSetupException(ApiErrors.MissingKey(label));
-        }
-        try {
-            return ApiKeys.Require(label, saved);
-        } catch (ArgumentException error) {
-            throw new ModelSetupException(error.Message);
-        }
+        return ApiKeys.RequireSaved(provider.ToString(), saved, message => new ModelSetupException(message));
     }
 
     private static string OllamaRoot(string url) {

@@ -58,6 +58,4 @@ internal static class ApiErrors {
 
     public static ApiException Unreadable(string label) =>
         new(ApiErrorKind.Server, $"{label} sent a reply jobranger could not read");
-
-    public static string MissingKey(string label) => $"no API key saved for {label}";
 }
