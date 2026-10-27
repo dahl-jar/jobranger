@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import itertools
 import json
 import sqlite3
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from jobranger.ads.models import Ad
@@ -11,6 +13,7 @@ from jobranger.matching.assessment import Check
 from jobranger.matching.classify import Classification
 from jobranger.matching.rules import Match
 from jobranger.providers.base import Usage
+from jobranger.storage import store as store_module
 from jobranger.storage.store import (
     ApplicationChange,
     NewApplication,
@@ -30,6 +33,17 @@ RUN_LIMIT = 10
 HUGE_COST = 1e308
 NEGATIVE_COST = -1.0
 TEXT_COUNT = "x"
+CLOCK_START = datetime(2026, 10, 9, 9, 0, tzinfo=UTC)
+CLOCK_STEP = timedelta(milliseconds=1)
+
+
+def pin_clock() -> None:
+    ticks = itertools.count()
+
+    def tick() -> str:
+        return (CLOCK_START + next(ticks) * CLOCK_STEP).isoformat()
+
+    store_module._now = tick
 
 
 def make_match(version: str, blockers: tuple[str, ...] = ()) -> Match:
@@ -262,6 +276,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
     args.db.unlink(missing_ok=True)
+    pin_clock()
     store = Store(args.db)
     seed_ads(store)
     classify(store)
