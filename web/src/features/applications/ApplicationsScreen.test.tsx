@@ -2,7 +2,8 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { QUERY_KEYS } from '@/app/queryKeys'
 import { UNDO_WINDOW_MS } from '@/features/applications/useRemoveWithUndo'
-import type { ApplicationsSnapshot } from '@/features/relay/contract/payload.gen'
+import type { Snapshots } from '@/app/useSnapshot'
+import type { ApplicationsSnapshot, ApplicationStatus, Saved } from '@/features/relay/contract/payload.gen'
 import { heldSend, REFUSED, sentDrafts, SNAPSHOTS } from '@/test/appData'
 import { renderApp } from '@/test/appHarness'
 import { stubDialogs } from '@/test/dialog'
@@ -10,6 +11,17 @@ import { stubDialogs } from '@/test/dialog'
 const LISTED = SNAPSHOTS.applications.applications.find((application) => !application.removed)
 const LISTED_ID = LISTED?.id ?? 0
 const NOTE = 'Call back on Monday'
+const AREA = 'Full stack'
+
+function withStatus(snapshot: ApplicationsSnapshot, status: ApplicationStatus): ApplicationsSnapshot {
+  return { ...snapshot, applications: snapshot.applications.map((application) => (application.id === LISTED_ID ? { ...application, status } : application)) }
+}
+
+function withoutSnapshot(name: keyof Snapshots): Partial<Snapshots> {
+  const data: Partial<Snapshots> = { ...SNAPSHOTS }
+  delete data[name]
+  return data
+}
 
 function cachedApplication(queryClient: ReturnType<typeof renderApp>['queryClient']) {
   return queryClient.getQueryData<ApplicationsSnapshot>(QUERY_KEYS.applications)?.applications.find((application) => application.id === LISTED_ID)
@@ -39,9 +51,9 @@ describe('ApplicationsScreen', () => {
 
     await user.click(screen.getByRole('menuitemradio', { name: 'Offer' }))
 
-    expect([sentDrafts(held.send), cachedApplication(queryClient)?.status]).toEqual([
+    expect([sentDrafts(held.send), queryClient.getQueryData(QUERY_KEYS.applications)]).toEqual([
       [{ type: 'application.update', v: 1, application_id: LISTED_ID, status: 'offer' }],
-      'offer',
+      withStatus(SNAPSHOTS.applications, 'offer'),
     ])
   })
 
@@ -126,7 +138,7 @@ describe('ApplicationsScreen', () => {
     const { user, queryClient } = renderApp('/app/applications', { send: held.send })
     await user.click(await screen.findByRole('button', { name: 'Status: Waiting' }))
     await user.click(screen.getByRole('menuitemradio', { name: 'Offer' }))
-    act(() => queryClient.setQueryData<ApplicationsSnapshot>(QUERY_KEYS.applications, (snapshot) => snapshot && { ...snapshot, applications: snapshot.applications.map((application) => (application.id === LISTED_ID ? { ...application, status: 'rejected' } : application)) }))
+    act(() => queryClient.setQueryData(QUERY_KEYS.applications, withStatus(SNAPSHOTS.applications, 'rejected')))
 
     act(() => held.reject())
 
@@ -165,5 +177,87 @@ describe('ApplicationsScreen', () => {
     await user.click(screen.getByRole('button', { name: 'Done' }))
 
     await waitFor(() => expect([cachedApplication(queryClient)?.note, cachedApplication(queryClient)?.status]).toEqual([NOTE, LISTED?.status]))
+  })
+
+  it('should keep a pending removal when an earlier status change fails', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const held = heldSend()
+    const { user, queryClient } = renderApp(`/app/applications/${LISTED_ID}`, { send: held.send })
+    const panel = await screen.findByRole('dialog')
+    await user.click(within(panel).getByRole('button', { name: 'Status: Waiting' }))
+    await user.click(screen.getByRole('menuitemradio', { name: 'Offer' }))
+    held.send.mockImplementation(() => new Promise<Saved>(() => undefined))
+    await user.click(within(panel).getByRole('button', { name: 'Remove from list' }))
+    await act(() => vi.advanceTimersByTimeAsync(UNDO_WINDOW_MS))
+
+    act(() => held.reject())
+
+    await screen.findByRole('alert')
+    expect([cachedApplication(queryClient)?.removed, cachedApplication(queryClient)?.status]).toEqual([true, 'waiting'])
+  })
+
+  it('should restore the status of an application that is not first in the list', async () => {
+    const held = heldSend()
+    const reversed = { ...SNAPSHOTS.applications, applications: [...SNAPSHOTS.applications.applications].reverse() }
+    const { user, queryClient } = renderApp('/app/applications', { send: held.send, data: { ...SNAPSHOTS, applications: reversed } })
+    await user.click(await screen.findByRole('button', { name: 'Status: Waiting' }))
+    await user.click(screen.getByRole('menuitemradio', { name: 'Offer' }))
+
+    act(() => held.reject())
+
+    await screen.findByRole('alert')
+    expect(cachedApplication(queryClient)?.status).toBe('waiting')
+  })
+
+  it('should show the error when the application left the list before the change fails', async () => {
+    const held = heldSend()
+    const { user, queryClient } = renderApp('/app/applications', { send: held.send })
+    await user.click(await screen.findByRole('button', { name: 'Status: Waiting' }))
+    await user.click(screen.getByRole('menuitemradio', { name: 'Offer' }))
+    act(() => queryClient.setQueryData(QUERY_KEYS.applications, { ...SNAPSHOTS.applications, applications: SNAPSHOTS.applications.applications.filter((application) => application.id !== LISTED_ID) }))
+
+    act(() => held.reject())
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(REFUSED.message)
+  })
+
+  it('should clear the error once a note is saved', async () => {
+    const held = heldSend()
+    const { user } = renderApp(`/app/applications/${LISTED_ID}`, { send: held.send })
+    const panel = await screen.findByRole('dialog')
+    await user.click(within(panel).getByRole('button', { name: 'Status: Waiting' }))
+    await user.click(screen.getByRole('menuitemradio', { name: 'Offer' }))
+    act(() => held.reject())
+    await screen.findByRole('alert')
+
+    await user.type(within(panel).getByRole('textbox', { name: 'Note' }), NOTE)
+    await user.click(within(panel).getByRole('button', { name: 'Done' }))
+
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('should name the role area from the config in the panel', async () => {
+    const config = { ...SNAPSHOTS.config, roles: [{ id: 'fullstack' as const, label: AREA }] }
+    renderApp(`/app/applications/${LISTED_ID}`, { data: { ...SNAPSHOTS, config } })
+
+    const panel = await screen.findByRole('dialog')
+
+    expect(within(panel).getByText(AREA)).toBeInTheDocument()
+  })
+
+  it('should open the panel before the config arrives', async () => {
+    renderApp(`/app/applications/${LISTED_ID}`, { data: withoutSnapshot('config') })
+
+    const panel = await screen.findByRole('dialog')
+
+    expect(within(panel).getByText(LISTED?.company ?? '')).toBeInTheDocument()
+  })
+
+  it('should keep the search sidebar while the applications snapshot is missing', async () => {
+    renderApp('/app/applications', { data: withoutSnapshot('applications') })
+
+    const sidebar = await screen.findByRole('complementary', { name: 'Your search' })
+
+    expect([sidebar, screen.queryByRole('navigation', { name: 'Lists' })]).toEqual([expect.anything(), null])
   })
 })

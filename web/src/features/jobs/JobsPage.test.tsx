@@ -2,7 +2,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { QUERY_KEYS } from '@/app/queryKeys'
 import { markAd } from '@/features/jobs/selectors'
-import type { AdsSnapshot, ConfigSnapshot } from '@/features/relay/contract/payload.gen'
+import type { AdsSnapshot, ConfigSnapshot, Saved } from '@/features/relay/contract/payload.gen'
 import { heldSend, sentDrafts, SNAPSHOTS } from '@/test/appData'
 import { renderApp } from '@/test/appHarness'
 
@@ -256,5 +256,74 @@ describe('JobsPage', () => {
     const sidebar = await screen.findByRole('complementary', { name: 'Your search' })
 
     expect(within(sidebar).getByRole('heading', { name: 'Applications' })).toBeInTheDocument()
+  })
+
+  it('should keep the mark of another ad when an earlier mark fails', async () => {
+    const held = heldSend()
+    const { user, queryClient } = renderApp('/app/active', { send: held.send })
+    await screen.findByRole('link', { name: UNMARKED_TITLE })
+    await user.click(within(row(UNMARKED_TITLE)).getByRole('button', { name: 'Skip' }))
+    held.send.mockImplementation(() => new Promise<Saved>(() => undefined))
+    await user.click(within(row(APPLIED_TITLE)).getByRole('button', { name: 'Undo' }))
+
+    act(() => held.reject())
+
+    await within(row(UNMARKED_TITLE)).findByRole('alert')
+    expect(cachedAd(queryClient, APPLIED_ID)?.mark).toBeNull()
+  })
+
+  it('should restore an applied mark when Undo is refused', async () => {
+    const held = heldSend()
+    const { user, queryClient } = renderApp('/app/active', { send: held.send })
+    await screen.findByRole('link', { name: APPLIED_TITLE })
+    await user.click(within(row(APPLIED_TITLE)).getByRole('button', { name: 'Undo' }))
+
+    act(() => held.reject())
+
+    await within(row(APPLIED_TITLE)).findByRole('alert')
+    expect(cachedAd(queryClient, APPLIED_ID)?.mark).toBe('applied')
+  })
+
+  it('should keep a different machine mark of the same time when an earlier mark fails', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(BROWSER_NOW)
+    const held = heldSend()
+    const { user, queryClient } = renderApp('/app/active', { send: held.send })
+    await screen.findByRole('link', { name: UNMARKED_TITLE })
+    await user.click(within(row(UNMARKED_TITLE)).getByRole('button', { name: 'Skip' }))
+    act(() => queryClient.setQueryData(QUERY_KEYS.ads, markAd(SNAPSHOTS.ads, UNMARKED_ID, 'not_for_me', BROWSER_NOW.toISOString())))
+
+    act(() => held.reject())
+
+    await within(row(UNMARKED_TITLE)).findByRole('alert')
+    expect(cachedAd(queryClient, UNMARKED_ID)?.mark).toBe('not_for_me')
+  })
+
+  it('should show the refusal once a dropped ad is back in the list', async () => {
+    const held = heldSend()
+    const { user, queryClient } = renderApp('/app/active', { send: held.send })
+    await screen.findByRole('link', { name: UNMARKED_TITLE })
+    await user.click(within(row(UNMARKED_TITLE)).getByRole('button', { name: 'Skip' }))
+    act(() => queryClient.setQueryData(QUERY_KEYS.ads, { ...SNAPSHOTS.ads, active: SNAPSHOTS.ads.active.filter((ad) => ad.id !== UNMARKED_ID) }))
+    act(() => held.reject())
+    await waitFor(() => expect(queryClient.isMutating()).toBe(0))
+
+    act(() => queryClient.setQueryData(QUERY_KEYS.ads, SNAPSHOTS.ads))
+
+    await screen.findByRole('link', { name: UNMARKED_TITLE })
+    expect(within(row(UNMARKED_TITLE)).getByRole('alert')).toBeInTheDocument()
+  })
+
+  it('should show the refusal of an email link mark confirmed while the ad was gone', async () => {
+    const held = heldSend()
+    const { user, queryClient } = renderApp(`/app/ad?id=${encodeURIComponent(UNMARKED_ID)}&action=applied`, { send: held.send })
+    const choice = await screen.findByRole('button', { name: 'Mark as applied' })
+    act(() => queryClient.setQueryData(QUERY_KEYS.ads, { ...SNAPSHOTS.ads, active: SNAPSHOTS.ads.active.filter((ad) => ad.id !== UNMARKED_ID) }))
+    await user.click(choice)
+    act(() => queryClient.setQueryData(QUERY_KEYS.ads, SNAPSHOTS.ads))
+
+    act(() => held.reject())
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Not saved: Run times must be at least 2 hours apart')
   })
 })

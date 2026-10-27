@@ -1,9 +1,9 @@
-import { type QueryClient, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Navigate, useLocation, useParams } from 'react-router'
 import { commandErrorText } from '@/features/shell/commandErrorText'
 import { useAppBase } from '@/app/paths'
 import { QUERY_KEYS } from '@/app/queryKeys'
+import { useOptimisticWrite } from '@/app/useOptimisticWrite'
 import { useSnapshot } from '@/app/useSnapshot'
 import type { ApplicationDraft } from '@/features/applications/AddApplicationForm'
 import { ApplicationPanel } from '@/features/applications/ApplicationPanel'
@@ -28,24 +28,18 @@ import { usePageTitle } from '@/shared/usePageTitle'
 type CreateDraft = Omit<ApplicationCreate, 'id'>
 type UpdateDraft = Omit<ApplicationUpdate, 'id'>
 type RemoveDraft = Omit<ApplicationRemove, 'id'>
+type ChangeDraft = UpdateDraft | RemoveDraft
 type ApplicationChange = Partial<Pick<Application, 'status' | 'note' | 'removed'>>
 
-interface ChangeContext {
-  previous: ApplicationChange
-  written: ApplicationChange
+function findApplication(snapshot: ApplicationsSnapshot, applicationId: number): Application | undefined {
+  return snapshot.applications.find((application) => application.id === applicationId)
 }
 
-function findApplication(client: QueryClient, applicationId: number): Application | undefined {
-  return client.getQueryData<ApplicationsSnapshot>(QUERY_KEYS.applications)?.applications.find((application) => application.id === applicationId)
-}
-
-function writeChange(client: QueryClient, applicationId: number, change: ApplicationChange): void {
-  client.setQueryData<ApplicationsSnapshot>(QUERY_KEYS.applications, (snapshot) =>
-    snapshot && {
-      ...snapshot,
-      applications: snapshot.applications.map((application) => (application.id === applicationId ? { ...application, ...change } : application)),
-    },
-  )
+function withChange(snapshot: ApplicationsSnapshot, applicationId: number, change: ApplicationChange): ApplicationsSnapshot {
+  return {
+    ...snapshot,
+    applications: snapshot.applications.map((application) => (application.id === applicationId ? { ...application, ...change } : application)),
+  }
 }
 
 function pick(application: Application | undefined, change: ApplicationChange): ApplicationChange {
@@ -53,30 +47,25 @@ function pick(application: Application | undefined, change: ApplicationChange): 
   return Object.fromEntries(Object.keys(change).map((key) => [key, application[key as keyof ApplicationChange]]))
 }
 
-function stillWritten(client: QueryClient, applicationId: number, written: ApplicationChange): boolean {
-  const current = pick(findApplication(client, applicationId), written)
+function changeOf(draft: ChangeDraft): ApplicationChange {
+  return draft.type === 'application.remove' ? { removed: draft.removed } : { ...(draft.status && { status: draft.status }), ...(draft.note !== undefined && { note: draft.note }) }
+}
+
+function stillWritten(snapshot: ApplicationsSnapshot, applicationId: number, written: ApplicationChange): boolean {
+  const current = pick(findApplication(snapshot, applicationId), written)
   return Object.entries(written).every(([key, value]) => current[key as keyof ApplicationChange] === value)
 }
 
 function useApplicationChange(onFailed: (message: string) => void) {
-  const queryClient = useQueryClient()
   const text = useText()
-  const options = {
-    onMutate: (draft: UpdateDraft | RemoveDraft): ChangeContext => {
-      const written: ApplicationChange =
-        draft.type === 'application.remove' ? { removed: draft.removed } : { ...(draft.status && { status: draft.status }), ...(draft.note !== undefined && { note: draft.note }) }
-      const previous = pick(findApplication(queryClient, draft.application_id), written)
-      writeChange(queryClient, draft.application_id, written)
-      return { previous, written }
-    },
-    onError: (error: Error, draft: UpdateDraft | RemoveDraft, context: ChangeContext | undefined) => {
-      if (context !== undefined && stillWritten(queryClient, draft.application_id, context.written)) writeChange(queryClient, draft.application_id, context.previous)
-      onFailed(commandErrorText(error, text))
-    },
-  }
-  const update = useCommand<UpdateDraft, ChangeContext>(options)
-  const remove = useCommand<RemoveDraft, ChangeContext>(options)
-  return { update: update.mutate, remove: remove.mutate }
+  const command = useOptimisticWrite<ApplicationsSnapshot, ChangeDraft>({
+    queryKey: QUERY_KEYS.applications,
+    apply: (snapshot, draft) => withChange(snapshot, draft.application_id, changeOf(draft)),
+    holds: (current, draft) => stillWritten(current, draft.application_id, changeOf(draft)),
+    restore: (current, draft, previous) => withChange(current, draft.application_id, pick(findApplication(previous, draft.application_id), changeOf(draft))),
+    onError: (error) => onFailed(commandErrorText(error, text)),
+  })
+  return command.mutate
 }
 
 export function ApplicationsScreen() {
@@ -91,7 +80,7 @@ export function ApplicationsScreen() {
   const [failure, setFailure] = useState<string | undefined>(undefined)
   const change = useApplicationChange(setFailure)
   const create = useCommand<CreateDraft>()
-  const removal = useRemoveWithUndo((id) => change.remove({ type: 'application.remove', v: 1, application_id: id, removed: true }))
+  const removal = useRemoveWithUndo((id) => change({ type: 'application.remove', v: 1, application_id: id, removed: true }))
   usePageTitle(text.applications.heading)
   if (snapshot === undefined || ads === undefined) return null
 
@@ -108,12 +97,12 @@ export function ApplicationsScreen() {
 
   function changeStatus(id: number, status: ApplicationStatus) {
     setFailure(undefined)
-    change.update({ type: 'application.update', v: 1, application_id: id, status })
+    change({ type: 'application.update', v: 1, application_id: id, status })
   }
 
   function changeNote(id: number, note: string) {
     setFailure(undefined)
-    change.update({ type: 'application.update', v: 1, application_id: id, note })
+    change({ type: 'application.update', v: 1, application_id: id, note })
   }
 
   return (
