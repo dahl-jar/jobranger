@@ -5,8 +5,6 @@ using ProfilesEntry = Jobranger.Cli.Features.Profiles.Profiles;
 namespace Jobranger.Cli.Tests.Features.Profiles;
 
 public sealed class ProfileSeparatorTests : IDisposable {
-    internal const string FactsProfile = "summary: s\nprofessional_years: 1\nprojects:\n  - id: abc\n    name: n\n    facts: ";
-
     private readonly TempDir temp = new();
 
     public void Dispose() => temp.Dispose();
@@ -18,7 +16,7 @@ public sealed class ProfileSeparatorTests : IDisposable {
     [InlineData("Built X.\u0085Led Y.", "Built X. Led Y.")]
     public void ShouldReadFactsLikePython_WhenTextHasUnicodeSeparator(string facts, string expected) {
         string path = temp.File("profile.yaml");
-        File.WriteAllText(path, FactsProfile + facts + "\n");
+        File.WriteAllText(path, ProfileFixtures.FactsProfile + facts + "\n");
 
         Profile loaded = ProfilesEntry.Load(path);
 
