@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import io
 import json
 import os
 import resource
@@ -18,13 +17,15 @@ from cv_samples import (
     document,
     docx,
     flate_stream,
+    page_stream,
     paragraph,
     pdf,
+    pdf_with_contents_array,
+    pdf_with_text,
     repeated_cv_pdf,
     word_part,
 )
-from pypdf import PdfWriter, apply_configuration, get_configuration
-from pypdf.generic import ArrayObject, DecodedStreamObject, NameObject
+from pypdf import apply_configuration, get_configuration
 
 from jobranger import child_process, cv, cv_worker
 
@@ -49,28 +50,10 @@ TEXT_BOX = (
 )
 
 
-def _pdf_page(text: str) -> bytes:
-    return flate_stream(f"BT /F1 12 Tf 72 720 Td ({text}) Tj ET".encode())
-
-
 def _docx_unpacked_to(size: int) -> bytes:
     body = paragraph("x")
     padding = size - len(document(body))
     return docx(document(" " * padding + body))
-
-
-def _pdf_with_contents_array(streams: list[bytes]) -> bytes:
-    writer = PdfWriter(clone_from=io.BytesIO(pdf([_pdf_page("x")])))
-    page = writer.pages[0]
-    contents = ArrayObject()
-    for content in streams:
-        stream = DecodedStreamObject()
-        stream.set_data(content)
-        contents.append(writer._add_object(stream.flate_encode()))
-    page[NameObject("/Contents")] = contents
-    out = io.BytesIO()
-    writer.write(out)
-    return out.getvalue()
 
 
 def _raise_memory_error(data: bytes) -> str:
@@ -188,7 +171,7 @@ def test_should_report_too_large_when_pdf_stream_passes_decompression_limit() ->
 
 
 def test_should_report_too_large_when_pdf_stream_passes_decoding_work_limit() -> None:
-    data = pdf([_pdf_page("x")])
+    data = pdf_with_text("x")
 
     with apply_configuration(stream_decoding_work_maximum_length=0):
         reply = cv_worker.extract(".pdf", data)
@@ -198,7 +181,7 @@ def test_should_report_too_large_when_pdf_stream_passes_decoding_work_limit() ->
 
 def test_should_report_too_large_when_pdf_contents_array_passes_output_limit() -> None:
     half_limit = get_configuration().array_based_stream_maximum_output_length // 2
-    data = _pdf_with_contents_array([b" " * (half_limit + 1)] * 2)
+    data = pdf_with_contents_array([b" " * (half_limit + 1)] * 2)
 
     reply = cv_worker.extract(".pdf", data)
 
@@ -278,7 +261,7 @@ def test_should_read_notes_after_body_and_hyphens_inline() -> None:
 
 
 def test_should_join_pdf_pages_with_line_breaks() -> None:
-    data = pdf([_pdf_page("ONE"), _pdf_page("TWO")])
+    data = pdf([page_stream("ONE"), page_stream("TWO")])
 
     reply = cv_worker.extract(".pdf", data)
 
