@@ -6,6 +6,5 @@ internal enum YamlKind {
     Bool,
     Int,
     Float,
-    Timestamp,
     Other,
 }

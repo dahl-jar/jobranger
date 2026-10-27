@@ -10,6 +10,8 @@ from jobranger.matching.profile import Profile
 from jobranger.settings import read_yaml
 from pydantic import ValidationError
 
+from matching import write_json
+
 LAX_FOLDER = "Lax"
 REPLY_YEARS_FILE = "reply-years.json"
 PROFILE_FILE = "profile.json"
@@ -104,7 +106,6 @@ REPLY_YEARS = (
     "\x1d2",
     "\x1e2",
     "\x1c",
-    "\x1f",
     " 1_0 ",
     "\t1_0",
     "1_0\n",
@@ -319,6 +320,11 @@ EXTRA_FORMS = {
         "0b_",
         "._",
         "2024-02-30",
+        "0xaf",
+        "0xAF",
+        "0x1F",
+        "!!int 0o8",
+        "!!int 0b2",
     ),
     "has_master": (
         "' yes'",
@@ -382,7 +388,7 @@ EXTRA_FORMS = {
         ".5e3",
     ),
     "evidence.id": ("a", "ab", "' '", '"abc\\n"', "!!str abc"),
-    "evidence.name": ("nULL", "1_0"),
+    "evidence.name": ("nULL",),
     "evidence.start": ("2024-13",),
     "evidence.end": ("202401", '"2024-01\\n"', "1999-00"),
 }
@@ -417,10 +423,14 @@ DOCUMENTS = (
 )
 
 
-def write_json(path: Path, value: object) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    text = json.dumps(value, ensure_ascii=False, indent=2) + "\n"
-    path.write_bytes(text.encode("utf-8"))
+def unique(rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    seen: set[str] = set()
+    for row in rows:
+        if row["id"] in seen:
+            msg = f"duplicate case id {row['id']}"
+            raise ValueError(msg)
+        seen.add(row["id"])
+    return rows
 
 
 def reply_years(payload: dict[str, object], text: str) -> str | None:
@@ -434,10 +444,12 @@ def reply_years(payload: dict[str, object], text: str) -> str | None:
 
 def export_reply_years(inputs: Path, out: Path) -> None:
     payload = json.loads((inputs / CLASSIFICATION).read_text("utf-8"))
-    rows = [
-        {"id": ascii(text), "text": text, "years": reply_years(payload, text)}
-        for text in dict.fromkeys(REPLY_YEARS)
-    ]
+    rows = unique(
+        [
+            {"id": ascii(text), "text": text, "years": reply_years(payload, text)}
+            for text in REPLY_YEARS
+        ]
+    )
     write_json(out / LAX_FOLDER / REPLY_YEARS_FILE, rows)
 
 
@@ -445,8 +457,7 @@ def field_forms(field: str) -> list[str]:
     forms = [
         form for form in FORMS if not (field in LIST_FIELDS and form == BLOCK_ITEM_FORM)
     ]
-    extra = [form for form in EXTRA_FORMS.get(field, ()) if form not in forms]
-    return forms + extra
+    return forms + list(EXTRA_FORMS.get(field, ()))
 
 
 def field_yaml(field: str, form: str) -> str:
@@ -473,13 +484,7 @@ def profile_cases() -> list[dict[str, str]]:
         {"id": f"{DOCUMENT_FIELD} {ascii(text)}", "field": DOCUMENT_FIELD, "yaml": text}
         for text in DOCUMENTS
     ]
-    seen: set[str] = set()
-    for case in cases:
-        if case["id"] in seen:
-            msg = f"duplicate profile case id {case['id']}"
-            raise ValueError(msg)
-        seen.add(case["id"])
-    return cases
+    return unique(cases)
 
 
 def field_value(profile: Profile, field: str) -> object:

@@ -12,7 +12,6 @@ internal static partial class YamlTypes {
     private const string floatTag = "tag:yaml.org,2002:float";
     private const string boolTag = "tag:yaml.org,2002:bool";
     private const string nullTag = "tag:yaml.org,2002:null";
-    private const string timestampTag = "tag:yaml.org,2002:timestamp";
     private const string nonSpecificTag = "!";
     private const string boolStarts = "tTfF";
     private const string floatStarts = "-+0123456789.";
@@ -37,7 +36,6 @@ internal static partial class YamlTypes {
 
     private static readonly YamlValue other = new(YamlKind.Other);
     private static readonly YamlValue nullValue = new(YamlKind.Null);
-    private static readonly YamlValue timestamp = new(YamlKind.Timestamp);
     private static readonly YamlValue trueValue = new(YamlKind.Bool, Number: 1);
     private static readonly YamlValue falseValue = new(YamlKind.Bool, Number: 0);
     private static readonly FrozenSet<string> trueWords = FrozenSet.Create(StringComparer.Ordinal, "yes", "y", "true", "on");
@@ -48,7 +46,7 @@ internal static partial class YamlTypes {
         new(intStarts, IntPattern(), Integer),
         new(mergeStarts, MergePattern(), _ => other),
         new(nullStarts, NullPattern(), _ => nullValue, TakesEmpty: true),
-        new(timestampStarts, TimestampPattern(), _ => timestamp),
+        new(timestampStarts, TimestampPattern(), _ => other),
         new(valueStarts, ValuePattern(), _ => other),
     ];
     private static readonly (string Prefix, int Radix)[] prefixes =
@@ -75,7 +73,6 @@ internal static partial class YamlTypes {
         floatTag => Float(value),
         boolTag => Bool(value.ToLowerInvariant()),
         nullTag => nullValue,
-        timestampTag => timestamp,
         _ => other,
     };
 

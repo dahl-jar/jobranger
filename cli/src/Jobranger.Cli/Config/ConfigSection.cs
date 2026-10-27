@@ -142,20 +142,8 @@ internal sealed class ConfigSection {
         return null;
     }
 
-    public List<string>? TextList(string key) {
-        if (List(key) is not JsonArray items) {
-            return null;
-        }
-        List<string> texts = [];
-        for (int index = 0; index < items.Count; index++) {
-            if (items[index] is JsonValue value && value.TryGetValue(out string? text)) {
-                texts.Add(text);
-            } else {
-                errors.Add(new ConfigError(ItemLocation(key, index), ConfigProblem.NotText));
-            }
-        }
-        return texts;
-    }
+    public List<string>? TextList(string key) =>
+        Texts(key, (item, _) => item is JsonValue value && value.TryGetValue(out string? text) ? text : null);
 
     public List<string>? ChoiceList(string key, IReadOnlyList<string> allowed) {
         if (TextList(key) is not List<string> texts) {
@@ -170,7 +158,7 @@ internal sealed class ConfigSection {
         return [.. texts.Where(allowed.Contains)];
     }
 
-    public string? StrictText(string key) {
+    public string? RequiredStrictText(string key) {
         if (!values.ContainsKey(key)) {
             Fail(key, ConfigProblem.Required);
             return null;
@@ -183,7 +171,7 @@ internal sealed class ConfigSection {
         return null;
     }
 
-    public string? OptionalText(string key) {
+    public string? StrictText(string key) {
         if (!values.ContainsKey(key)) {
             return null;
         }
@@ -201,40 +189,27 @@ internal sealed class ConfigSection {
         if (!values.ContainsKey(key)) {
             return null;
         }
-        bool? flag = Flag(ValueAt(Location(key)));
+        bool? flag = LaxFlagOf(ValueAt(Location(key)));
         if (flag is null) {
             Fail(key, ConfigProblem.NotBoolean);
         }
         return flag;
     }
 
-    public double? LaxNumber(string key) {
+    public double? RequiredLaxNumber(string key) {
         if (!values.ContainsKey(key)) {
             Fail(key, ConfigProblem.Required);
             return null;
         }
-        double? number = Number(ValueAt(Location(key)));
+        double? number = LaxNumberOf(ValueAt(Location(key)));
         if (number is null) {
             Fail(key, ConfigProblem.NotNumber);
         }
         return number;
     }
 
-    public List<string>? StrictTextList(string key) {
-        if (List(key) is not JsonArray items) {
-            return null;
-        }
-        List<string> texts = [];
-        for (int index = 0; index < items.Count; index++) {
-            YamlValue value = ValueAt(ItemLocation(key, index));
-            if (value.Kind == YamlKind.Text) {
-                texts.Add(value.Text);
-            } else {
-                errors.Add(new ConfigError(ItemLocation(key, index), ConfigProblem.NotText));
-            }
-        }
-        return texts;
-    }
+    public List<string>? StrictTextList(string key) =>
+        Texts(key, (_, index) => ValueAt(ItemLocation(key, index)) is { Kind: YamlKind.Text } value ? value.Text : null);
 
     private static ConfigSection? Of(
         JsonNode? node,
@@ -249,18 +224,32 @@ internal sealed class ConfigSection {
         return null;
     }
 
+    private List<string>? Texts(string key, Func<JsonNode?, int, string?> read) {
+        if (List(key) is not JsonArray items) {
+            return null;
+        }
+        List<string> texts = [];
+        for (int index = 0; index < items.Count; index++) {
+            if (read(items[index], index) is string text) {
+                texts.Add(text);
+            } else {
+                errors.Add(new ConfigError(ItemLocation(key, index), ConfigProblem.NotText));
+            }
+        }
+        return texts;
+    }
+
     private YamlValue ValueAt(string location) =>
         scalars.TryGetValue(location, out YamlScalar? scalar) ? YamlTypes.Resolve(scalar) : new YamlValue(YamlKind.Other);
 
-    private static bool? Flag(YamlValue value) => value.Kind switch {
+    private static bool? LaxFlagOf(YamlValue value) => value.Kind switch {
         YamlKind.Bool => value.Number == 1,
-        YamlKind.Int or YamlKind.Float when value.Number == 0 => false,
-        YamlKind.Int or YamlKind.Float when value.Number == 1 => true,
+        YamlKind.Int or YamlKind.Float => PydanticLax.Bool(value.Number),
         YamlKind.Text => PydanticLax.Bool(value.Text),
         _ => null,
     };
 
-    private static double? Number(YamlValue value) => value.Kind switch {
+    private static double? LaxNumberOf(YamlValue value) => value.Kind switch {
         YamlKind.Int when double.IsFinite(value.Number) => value.Number,
         YamlKind.Float or YamlKind.Bool => value.Number,
         YamlKind.Text => PydanticLax.Float(value.Text),

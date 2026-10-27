@@ -33,15 +33,15 @@ internal static partial class ProfileFile {
             return null;
         }
         ConfigSection section = new(values, string.Empty, profileKeys, errors, tree.Scalars);
-        string? summary = section.StrictText(SummaryKey);
-        double? years = section.LaxNumber(YearsKey);
-        if (years is double value && !(value >= 0)) {
-            errors.Add(new ConfigError(YearsKey, ConfigProblem.BelowZero));
-        }
-        Dictionary<string, List<Evidence>> lists = evidenceLists.ToDictionary(
-            key => key, key => EvidenceList(section, key, errors), StringComparer.Ordinal);
-        CheckUniqueIds(lists, errors);
-        Profile profile = new() {
+        Profile profile = Fields(section, errors);
+        return errors.Count == 0 ? profile : null;
+    }
+
+    private static Profile Fields(ConfigSection section, List<ConfigError> errors) {
+        string? summary = section.RequiredStrictText(SummaryKey);
+        double? years = Years(section, errors);
+        Dictionary<string, List<Evidence>> lists = ReadEvidenceLists(section, errors);
+        return new Profile {
             Summary = summary ?? string.Empty,
             ProfessionalYears = years ?? 0,
             HasMaster = section.LaxFlag(HasMasterKey) ?? false,
@@ -51,7 +51,21 @@ internal static partial class ProfileFile {
             Languages = section.StrictTextList(LanguagesKey) ?? [],
             Stack = section.StrictTextList(StackKey) ?? [],
         };
-        return errors.Count == 0 ? profile : null;
+    }
+
+    private static double? Years(ConfigSection section, List<ConfigError> errors) {
+        double? years = section.RequiredLaxNumber(YearsKey);
+        if (years is double value && !(value >= 0)) {
+            errors.Add(new ConfigError(YearsKey, ConfigProblem.BelowZero));
+        }
+        return years;
+    }
+
+    private static Dictionary<string, List<Evidence>> ReadEvidenceLists(ConfigSection section, List<ConfigError> errors) {
+        Dictionary<string, List<Evidence>> lists = evidenceLists.ToDictionary(
+            key => key, key => EvidenceList(section, key, errors), StringComparer.Ordinal);
+        CheckUniqueIds(lists, errors);
+        return lists;
     }
 
     private static List<Evidence> EvidenceList(ConfigSection section, string key, List<ConfigError> errors) {
@@ -65,24 +79,24 @@ internal static partial class ProfileFile {
     }
 
     private static Evidence ReadEvidence(ConfigSection item, string location, List<ConfigError> errors) {
-        string? id = item.StrictText(IdKey);
+        string? id = item.RequiredStrictText(IdKey);
         if (id is not null && !EvidenceIdPattern().IsMatch(id)) {
             errors.Add(new ConfigError(ConfigLocation.Join(location, IdKey), ConfigProblem.NotEvidenceId));
         } else if (id is not null && ContextEdits.IsReserved(id)) {
             errors.Add(new ConfigError(ConfigLocation.Join(location, IdKey), ConfigProblem.ReservedId));
         }
-        string facts = item.StrictText(FactsKey) ?? string.Empty;
+        string facts = item.RequiredStrictText(FactsKey) ?? string.Empty;
         ConfigSection.CheckLength(facts, ConfigLocation.Join(location, FactsKey), factsLimit, errors);
         return new Evidence(
             id ?? string.Empty,
-            item.StrictText(NameKey) ?? string.Empty,
+            item.RequiredStrictText(NameKey) ?? string.Empty,
             facts,
             Month(item, location, StartKey, errors),
             Month(item, location, EndKey, errors));
     }
 
     private static string? Month(ConfigSection item, string location, string key, List<ConfigError> errors) {
-        string? month = item.OptionalText(key);
+        string? month = item.StrictText(key);
         if (month is not null && !MonthPattern().IsMatch(month)) {
             errors.Add(new ConfigError(ConfigLocation.Join(location, key), ConfigProblem.NotMonth));
         }

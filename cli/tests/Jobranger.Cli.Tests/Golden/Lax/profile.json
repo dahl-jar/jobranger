@@ -2874,6 +2874,46 @@
     }
   },
   {
+    "id": "professional_years '0xaf'",
+    "field": "professional_years",
+    "yaml": "summary: s\nprofessional_years: 0xaf\n",
+    "expect": {
+      "value": "175.0"
+    }
+  },
+  {
+    "id": "professional_years '0xAF'",
+    "field": "professional_years",
+    "yaml": "summary: s\nprofessional_years: 0xAF\n",
+    "expect": {
+      "value": "175.0"
+    }
+  },
+  {
+    "id": "professional_years '0x1F'",
+    "field": "professional_years",
+    "yaml": "summary: s\nprofessional_years: 0x1F\n",
+    "expect": {
+      "value": "31.0"
+    }
+  },
+  {
+    "id": "professional_years '!!int 0o8'",
+    "field": "professional_years",
+    "yaml": "summary: s\nprofessional_years: !!int 0o8\n",
+    "expect": {
+      "crash": "ValueError"
+    }
+  },
+  {
+    "id": "professional_years '!!int 0b2'",
+    "field": "professional_years",
+    "yaml": "summary: s\nprofessional_years: !!int 0b2\n",
+    "expect": {
+      "crash": "ValueError"
+    }
+  },
+  {
     "id": "has_master '1'",
     "field": "has_master",
     "yaml": "summary: s\nprofessional_years: 1\nhas_master: 1\n",

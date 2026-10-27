@@ -18,6 +18,12 @@ internal static class PydanticLax {
         return falseWords.Contains(text) ? false : null;
     }
 
+    public static bool? Bool(double number) => number switch {
+        1 => true,
+        0 => false,
+        _ => null,
+    };
+
     public static double? Float(string text) {
         if (RustFloat.Parse(text.Trim()) is double number) {
             return number;

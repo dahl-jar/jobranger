@@ -46,11 +46,7 @@ internal static class ReplyFields {
             return flag;
         }
         if (StrictNumber(element) is double number) {
-            return number switch {
-                1 => true,
-                0 => false,
-                _ => null,
-            };
+            return PydanticLax.Bool(number);
         }
         string? text = JsonText.String(element);
         if (text is null) {

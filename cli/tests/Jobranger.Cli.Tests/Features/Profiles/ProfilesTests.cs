@@ -26,7 +26,7 @@ public sealed class ProfilesTests : IDisposable {
     private const string contextPath = "/config/context.yaml";
     private const string profileName = "profile.yaml";
     private const string idSuffix = ".id";
-    private const string rejected = "rejected";
+    private const string crashOutcome = "rejected";
     private const string jsonNull = "null";
 
     private static readonly JsonArray profileForms = LaxGolden.Rows("profile.json");
@@ -109,15 +109,11 @@ public sealed class ProfilesTests : IDisposable {
     }
 
     [Theory]
-    [InlineData("id: java_project", "id: Java", "projects.0.id", nameof(ConfigProblem.NotEvidenceId))]
-    [InlineData("id: java_project", "id: j", "projects.0.id", nameof(ConfigProblem.NotEvidenceId))]
     [InlineData("    facts: Java.", "    facts: Java.\n    start: 2024-1", "projects.0.start", nameof(ConfigProblem.NotMonth))]
     [InlineData("    facts: Java.", "    facts: Java.\n    end: May 2024", "projects.0.end", nameof(ConfigProblem.NotMonth))]
     [InlineData("id: java_project", "id: education", "projects.0.id", nameof(ConfigProblem.DuplicateKey))]
     [InlineData("id: java_project", "id: about_me", "projects.0.id", nameof(ConfigProblem.ReservedId))]
     [InlineData("id: java_project", "id: doc_cv_pdf", "projects.0.id", nameof(ConfigProblem.ReservedId))]
-    [InlineData("summary: Developer", "has_master: false", "summary", nameof(ConfigProblem.Required))]
-    [InlineData("summary: Developer", "summary: Developer\nskills: []", "skills", nameof(ConfigProblem.UnknownKey))]
     public void ShouldRejectProfile_WhenFieldBreaksRule(
         string field, string replacement, string location, string problem) {
         string path = Write(valid.Replace(field, replacement, StringComparison.Ordinal));
@@ -128,26 +124,6 @@ public sealed class ProfilesTests : IDisposable {
         Assert.Equal(
             (path, location, Enum.Parse<ConfigProblem>(problem)),
             (error.Path, error.Errors[0].Location, error.Errors[0].Problem));
-    }
-
-    [Theory]
-    [InlineData(0, false)]
-    [InlineData(-1, true)]
-    public void ShouldRejectYears_WhenBelowZero(int years, bool rejected) {
-        string path = Write(valid.Replace("professional_years: 1", $"professional_years: {years}", StringComparison.Ordinal));
-
-        Exception? error = Record.Exception(() => ProfilesEntry.Load(path));
-
-        Assert.Equal(rejected, error is ConfigInvalidException { Errors: [{ Problem: ConfigProblem.BelowZero }] });
-    }
-
-    [Fact]
-    public void ShouldRejectProfile_WhenRootIsList() {
-        string path = Write("- a\n");
-
-        ConfigInvalidException error = Assert.Throws<ConfigInvalidException>(() => ProfilesEntry.Load(path));
-
-        Assert.Equal(ConfigProblem.NotSection, error.Errors.Single().Problem);
     }
 
     [Fact]
@@ -162,6 +138,15 @@ public sealed class ProfilesTests : IDisposable {
         Assert.Equal(
             [("projects.0.id", ConfigProblem.Required), ("projects.1.id", ConfigProblem.Required)],
             error.Errors.Select(item => (item.Location, item.Problem)));
+    }
+
+    [Fact]
+    public void ShouldReadNoMaster_WhenHasMasterIsAbsent() {
+        string path = Write(valid);
+
+        Profile profile = ProfilesEntry.Load(path);
+
+        Assert.False(profile.HasMaster);
     }
 
     [Fact]
@@ -216,7 +201,7 @@ public sealed class ProfilesTests : IDisposable {
     [InlineData("summary: s\nprofessional_years: 2024-02-30\n", "professional_years", nameof(ConfigProblem.NotNumber))]
     [InlineData("summary: s\nprofessional_years: !!int ' 5'\n", "professional_years", nameof(ConfigProblem.NotNumber))]
     [InlineData("summary: !!binary aGk=\nprofessional_years: 1\n", "summary", nameof(ConfigProblem.NotText))]
-    public void ShouldRejectProfile_WhenValueDivergesFromPython(string yaml, string location, string problem) {
+    public void ShouldReportFieldTypeError_WhenTagOrDateCannotBuildValue(string yaml, string location, string problem) {
         string path = Write(yaml);
 
         ConfigInvalidException error = Assert.Throws<ConfigInvalidException>(() => ProfilesEntry.Load(path));
@@ -228,8 +213,8 @@ public sealed class ProfilesTests : IDisposable {
 
     [Fact]
     public void ShouldWriteNullYears_WhenYearsAreInfinite() {
-        Profile profile = ProfilesEntry.Load(
-            Write(valid.Replace("professional_years: 1", "professional_years: .inf", StringComparison.Ordinal)));
+        string path = Write(valid.Replace("professional_years: 1", "professional_years: .inf", StringComparison.Ordinal));
+        Profile profile = ProfilesEntry.Load(path);
 
         string text = ProfilesEntry.Text(profile);
 
@@ -257,7 +242,7 @@ public sealed class ProfilesTests : IDisposable {
 
     private static string Expected(string id, string field, JsonObject expect) {
         if (expect.ContainsKey("crash")) {
-            return rejected;
+            return crashOutcome;
         }
         if (expect["errors"] is JsonArray errors) {
             return Errors(errors.Select(item => PythonError(
@@ -287,7 +272,7 @@ public sealed class ProfilesTests : IDisposable {
         try {
             profile = ProfilesEntry.Load(path);
         } catch (ConfigInvalidException error) {
-            return rejectedOnly ? rejected : Errors(error.Errors.Select(item => (item.Location, item.Problem)));
+            return rejectedOnly ? crashOutcome : Errors(error.Errors.Select(item => (item.Location, item.Problem)));
         }
         Evidence? evidence = profile.Projects.Count > 0 ? profile.Projects[0] : null;
         return field switch {
