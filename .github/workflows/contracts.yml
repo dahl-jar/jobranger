@@ -5,8 +5,6 @@ on:
     branches: [main]
     paths:
       - web/scripts/**
-      - scripts/codegen/**
-      - scripts/unicode/**
       - contracts/**
       - cli-python/src/jobranger/contract/**
       - cli-python/tests/contract/**
@@ -22,11 +20,11 @@ on:
       - web/package.json
       - web/pnpm-lock.yaml
       - .gitattributes
+      - cli-python/.gitattributes
+      - web/.gitattributes
   pull_request:
     paths:
       - web/scripts/**
-      - scripts/codegen/**
-      - scripts/unicode/**
       - contracts/**
       - cli-python/src/jobranger/contract/**
       - cli-python/tests/contract/**
@@ -42,6 +40,8 @@ on:
       - web/package.json
       - web/pnpm-lock.yaml
       - .gitattributes
+      - cli-python/.gitattributes
+      - web/.gitattributes
   workflow_dispatch:
 
 permissions:
@@ -78,7 +78,7 @@ jobs:
       - run: pnpm --dir web install --frozen-lockfile
       - run: touch web/src/features/relay/contract/old.gen.ts
       - run: bash contracts/generate.sh
-      - run: uv run --project cli-python --locked python scripts/unicode/url_parity.py
+      - run: uv run --project cli-python --locked python contracts/scripts/url_parity.py
       - run: git diff --exit-code
       - run: test -z "$(git status --porcelain)" || { git status --porcelain; exit 1; }
       - run: uv --directory cli-python run --locked pytest tests/contract

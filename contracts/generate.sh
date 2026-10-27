@@ -31,6 +31,6 @@ for name in payload envelope; do
     --maxItems -1
 done
 node "$root/web/scripts/generate-validators.ts" "$root/contracts" "$typescript_out/validate.gen"
-"${uv_run[@]}" python "$root/scripts/codegen/postprocess.py" "$root"
+"${uv_run[@]}" python "$root/contracts/scripts/postprocess.py" "$root"
 "${uv_run[@]}" ruff format --quiet "$python_out"
 "${uv_run[@]}" ruff check --fix --quiet "$python_out"

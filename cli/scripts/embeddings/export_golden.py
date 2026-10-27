@@ -40,7 +40,7 @@ PAD_ID = 1
 MASK_FLOOR = 1e-9
 NORM_FLOOR = 1e-12
 DESCRIPTION_LIMIT = 600
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 GOLDEN_PATH = (
     REPO_ROOT / "cli/tests/Jobranger.Cli.Tests/Golden/Embeddings/embeddings.json"
 )
@@ -68,10 +68,10 @@ TEXTS = (
     "Ærlig, åpen og ødeleggende? ÆØÅ æøå",
     "Café naïve résumé façade",
     "ﬁnance ﬂow ① ＡＢＣ",
-    "Emoji 🚀 og 👩‍💻 i annonsen",
+    "Emoji 🚀 og 👩\u200d💻 i annonsen",
     "日本語のソフトウェアエンジニア",
     "Разработчик программного обеспечения",
-    "C++/C# .NET 8, ASP.NET Core, SQL Server & Azure DevOps — 5+ års erfaring",
+    "C++/C# .NET 8, ASP.NET Core, SQL Server & Azure DevOps \u2014 5+ års erfaring",
     "https://example.test/jobs/123?ref=abc&utm=x",
     " ".join([LONG_DESCRIPTION] * 3),
     "Utvikler. " + LONG_DESCRIPTION[:DESCRIPTION_LIMIT],

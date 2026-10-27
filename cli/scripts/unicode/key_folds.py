@@ -6,7 +6,7 @@ import unicodedata
 from pathlib import Path
 
 UNICODE_VERSION = unicodedata.unidata_version
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 OUTPUT = REPO_ROOT / "cli/src/Jobranger.Cli/Secrets" / f"key-folds-{UNICODE_VERSION}.json"
 CODE_POINTS = 0x110000
 FIRST_NON_ASCII = 0x80

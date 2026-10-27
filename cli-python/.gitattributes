@@ -1,0 +1,3 @@
+src/jobranger/contract/payload.py linguist-generated=true -merge
+src/jobranger/contract/envelope.py linguist-generated=true -merge
+src/jobranger/contract/*.schema.json linguist-generated=true -merge

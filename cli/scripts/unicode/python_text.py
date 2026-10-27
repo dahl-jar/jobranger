@@ -10,7 +10,7 @@ from pathlib import Path
 
 UNICODE_VERSION = "15.0.0"
 PYTHON_VERSION = (3, 12)
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 TEXT_DIR = REPO_ROOT / "cli/src/Jobranger.Cli/Text"
 ENTITIES = TEXT_DIR / "entities.json"
 TABLES = TEXT_DIR / f"python-text-{UNICODE_VERSION}.json"

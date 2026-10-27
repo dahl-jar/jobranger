@@ -1,5 +1,5 @@
 {
-  "generator": "scripts/unicode/url_parity.py",
+  "generator": "contracts/scripts/url_parity.py",
   "rule": "Python urlsplit, ipaddress and the idna codec, ASCII lowercased. Null means rejected",
   "dropped": [
     {

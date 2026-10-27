@@ -6,7 +6,6 @@ on:
     paths:
       - cli/**
       - contracts/**
-      - deploy/cli/**
       - Jobranger.slnx
       - Directory.*.props
       - global.json
@@ -19,7 +18,6 @@ on:
     paths:
       - cli/**
       - contracts/**
-      - deploy/cli/**
       - Jobranger.slnx
       - Directory.*.props
       - global.json
@@ -124,5 +122,5 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - run: docker build -f deploy/cli/Dockerfile -t jobranger-cli:ci .
+      - run: docker build -f cli/deploy/Dockerfile -t jobranger-cli:ci .
       - run: docker run --rm jobranger-cli:ci --version | grep -Ex "jobranger [0-9]+\.[0-9]+\.[0-9]+"

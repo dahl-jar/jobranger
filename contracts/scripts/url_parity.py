@@ -94,7 +94,7 @@ def encode(url: str) -> str | None:
 
 def main() -> int:
     document = {
-        "generator": "scripts/unicode/url_parity.py",
+        "generator": "contracts/scripts/url_parity.py",
         "rule": "Python urlsplit, ipaddress and the idna codec, ASCII lowercased. Null means rejected",
         "dropped": [{"url": url, "reason": reason} for url, reason in DROPPED.items()],
         "rows": [{"url": url, "encoded": encode(url)} for url in URLS],

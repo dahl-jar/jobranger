@@ -9,7 +9,7 @@ from pathlib import Path
 
 PINNED_COMMIT = "cb67b6236db52bc278f44469d62a89009cd9c0ef"
 PYTHON_CLI = "cli-python"
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT_DIR = Path(__file__).resolve().parent
 TESTS = REPO_ROOT / "cli/tests/Jobranger.Cli.Tests"
 GOLDEN = TESTS / "Golden"
@@ -75,7 +75,7 @@ def write_source() -> None:
     )
     lines = [
         f"{PYTHON_CLI} commit {PINNED_COMMIT}",
-        "exported by scripts/golden/export_goldens.py",
+        "exported by cli/scripts/golden/export_goldens.py",
         *outputs,
     ]
     SOURCE.write_text("\n".join(lines) + "\n", encoding="utf-8")

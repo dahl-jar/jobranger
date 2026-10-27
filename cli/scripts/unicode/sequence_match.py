@@ -8,7 +8,7 @@ from difflib import SequenceMatcher
 from pathlib import Path
 
 PYTHON_VERSION = (3, 12)
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 TABLE = REPO_ROOT / "cli/tests/Jobranger.Cli.Tests/TestData/Text/sequence-match.json"
 SEED = 2026
 EDITS_PER_TEXT = 6
