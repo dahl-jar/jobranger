@@ -8,8 +8,8 @@ internal static class SecretStores {
     public const string SelectVariable = "JOBRANGER_SECRET_STORE";
     public const string FileOnly = "file";
 
-    public static Task<ISecretStore?> OpenAsync(IDictionary environment, CancellationToken cancellationToken) =>
-        OpenAsync(environment, token => ForPlatformAsync(environment, token), cancellationToken);
+    public static Task<ISecretStore?> OpenAsync(IDictionary environment, bool canPrompt, CancellationToken cancellationToken) =>
+        OpenAsync(environment, token => ForPlatformAsync(environment, canPrompt, token), cancellationToken);
 
     public static async Task<ISecretStore?> OpenAsync(
         IDictionary environment,
@@ -19,9 +19,10 @@ internal static class SecretStores {
             ? null
             : await platformStore(cancellationToken).ConfigureAwait(false);
 
-    private static async Task<ISecretStore?> ForPlatformAsync(IDictionary environment, CancellationToken cancellationToken) {
+    private static async Task<ISecretStore?> ForPlatformAsync(
+        IDictionary environment, bool canPrompt, CancellationToken cancellationToken) {
         if (OperatingSystem.IsMacOS()) {
-            return new KeychainSecretStore(ProductService);
+            return new KeychainSecretStore(ProductService, canPrompt);
         }
         if (OperatingSystem.IsLinux()) {
             return await SecretServiceStore.OpenAsync(environment, ProductService, cancellationToken).ConfigureAwait(false);

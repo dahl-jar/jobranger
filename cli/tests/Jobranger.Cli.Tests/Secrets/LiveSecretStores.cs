@@ -5,7 +5,9 @@ namespace Jobranger.Cli.Tests.Secrets;
 
 internal static class LiveSecretStores {
     public const string LiveVariable = "JOBRANGER_SECRET_STORE_LIVE";
+    public const string LockedVariable = "JOBRANGER_KEYCHAIN_LOCKED";
     public const string OffReason = "live secret store tests are off: set " + LiveVariable + "=1";
+    public const string LinuxOffReason = "secret service tests run on Linux only, with " + LiveVariable + "=1";
     public const string Collection = "secret service bus";
     public const string PythonService = "jobranger-ci-python";
     public const string PythonValue = "sk-fake-python-1234";
@@ -19,11 +21,20 @@ internal static class LiveSecretStores {
         Environment.GetEnvironmentVariable(LiveVariable) == liveValue
         && (!OperatingSystem.IsMacOS() || Environment.GetEnvironmentVariable(ciVariable) == ciValue);
 
+    public static bool IsLiveLinux => IsLive && OperatingSystem.IsLinux();
+
+    public static bool IsLockedKeychain =>
+        IsLive && OperatingSystem.IsMacOS() && Environment.GetEnvironmentVariable(LockedVariable) == liveValue;
+
+    public static string LockedOffReason =>
+        $"locked keychain test is off: live={IsLive} macOS={OperatingSystem.IsMacOS()} "
+        + $"{LockedVariable}={Environment.GetEnvironmentVariable(LockedVariable) ?? "unset"}";
+
     public static string UniqueService() => testServicePrefix + Guid.NewGuid().ToString("N");
 
     public static async Task<ISecretStore> OpenAsync(string service, CancellationToken cancellationToken) {
         if (OperatingSystem.IsMacOS()) {
-            return new KeychainSecretStore(service);
+            return new KeychainSecretStore(service, canPrompt: false);
         }
         if (OperatingSystem.IsLinux()) {
             return await SecretServiceStore.OpenAsync(Environment.GetEnvironmentVariables(), service, cancellationToken)

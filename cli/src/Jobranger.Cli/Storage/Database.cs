@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Runtime.Versioning;
 using Jobranger.Cli.Files;
 using Microsoft.Data.Sqlite;
@@ -11,9 +10,6 @@ internal static partial class Database {
     private const int busyTimeoutSeconds = 5;
     private const string symlinkReason = "symbolic link";
     private const string notRegularReason = "not a regular file";
-
-    private static readonly string busyTimeoutSql = string.Create(CultureInfo.InvariantCulture,
-        $"PRAGMA busy_timeout = {TimeSpan.FromSeconds(busyTimeoutSeconds).TotalMilliseconds}");
 
     private static readonly Lock createLock = new();
 
@@ -29,7 +25,6 @@ internal static partial class Database {
         }.ToString());
         try {
             connection.Open();
-            SqlCommands.Execute(connection, null, busyTimeoutSql);
             Migrations.Migrate(connection, Migrations.All);
             return connection;
         } catch {

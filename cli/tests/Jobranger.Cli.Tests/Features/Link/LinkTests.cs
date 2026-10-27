@@ -205,7 +205,7 @@ public sealed class LinkTests : IDisposable {
         using (await Build(store).LoadOrCreateKeysAsync(Token)) {
         }
         string recorded = store.Values[secretName];
-        using FileLock? held = FileLock.TryAcquire(temp.File(lockName), NullLogger.Instance);
+        using FileLock held = FileLock.Acquire(temp.File(lockName), TestWaits.Step, NullLogger.Instance, Token);
         using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(Token);
         deadline.CancelAfter(shortWait);
 
@@ -368,7 +368,7 @@ public sealed class LinkTests : IDisposable {
 
     [Fact]
     public async Task ShouldThrowLinkKeyErrorNamingLock_WhenLockStaysBusy() {
-        using FileLock? held = FileLock.TryAcquire(temp.File(lockName), NullLogger.Instance);
+        using FileLock held = FileLock.Acquire(temp.File(lockName), TestWaits.Step, NullLogger.Instance, Token);
 
         LinkKeyException refused = await Assert.ThrowsAsync<LinkKeyException>(() => Build(new FakeSecretStore()).RotateKeysAsync(Token));
 

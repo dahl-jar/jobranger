@@ -4,6 +4,9 @@
 !Directory.Build.props
 !Directory.Packages.props
 !.editorconfig
+!contracts/payload.schema.json
+!contracts/unicode/idna-hosts-16.0.0.json
+!contracts/src/
 !cli/src/
 **/bin/
 **/obj/
