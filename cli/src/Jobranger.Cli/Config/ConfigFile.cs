@@ -57,7 +57,7 @@ internal static class ConfigFile {
     private static YamlTree ParseFile(string path) => new YamlReader(ReadText(path), Path.GetFileName(path)).Read();
 
     private static string ReadText(string path) {
-        byte[] bytes;
+        byte[] bytes = [];
         try {
             bytes = File.ReadAllBytes(path);
         } catch (Exception error) when (error is FileNotFoundException or DirectoryNotFoundException) {

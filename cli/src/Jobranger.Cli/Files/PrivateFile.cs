@@ -62,20 +62,20 @@ internal static partial class PrivateFile {
 
     public static FileStream? OpenRead(string path, ILogger logger) {
         SafeFileHandle? opened = UnixFiles.OpenReadNoFollow(path, out int error);
-        if (opened is not SafeFileHandle handle) {
+        if (opened is null) {
             return UnixFiles.IsMissing(error) ? null : throw OpenError(path, error);
         }
         try {
-            if (!UnixFiles.IsRegularFile(handle)) {
+            if (!UnixFiles.IsRegularFile(opened)) {
                 throw new PrivateFileException(path, notRegularReason);
             }
-            if ((File.GetUnixFileMode(handle) & openToOthers) != 0) {
-                File.SetUnixFileMode(handle, OwnerOnlyFileMode);
+            if ((File.GetUnixFileMode(opened) & openToOthers) != 0) {
+                File.SetUnixFileMode(opened, OwnerOnlyFileMode);
                 LogFileTightened(logger, Path.GetFileName(path));
             }
-            return new FileStream(handle, FileAccess.Read);
+            return new FileStream(opened, FileAccess.Read);
         } catch {
-            handle.Dispose();
+            opened.Dispose();
             throw;
         }
     }

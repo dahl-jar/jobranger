@@ -87,9 +87,8 @@ internal sealed partial class YamlReader(string text, string fileName) {
         parser.MoveNext();
         JsonObject entries = [];
         while (parser.Current is not MappingEnd) {
-            if (parser.Current is not Scalar key) {
-                throw new YamlException(parser.Current!.Start, parser.Current.End, "mapping key is not text");
-            }
+            Scalar key = parser.Current as Scalar
+                ?? throw new YamlException(parser.Current!.Start, parser.Current.End, "mapping key is not text");
             parser.MoveNext();
             string location = ConfigLocation.Join(path, key.Value);
             keys.Add((location, keepsComments, At(key.Start)));
@@ -102,8 +101,8 @@ internal sealed partial class YamlReader(string text, string fileName) {
                 continue;
             }
             entries[key.Value] = value;
-            if (keepsComments && ReadInlineComment(blockValue ? At(key.End) : lastEnd) is string inline) {
-                inlineComments[location] = inline;
+            if (keepsComments) {
+                KeepInlineComment(location, blockValue ? At(key.End) : lastEnd);
             }
         }
         MappingEnd end = parser.Consume<MappingEnd>();
@@ -111,6 +110,13 @@ internal sealed partial class YamlReader(string text, string fileName) {
             lastEnd = At(end.End) + bracketWidth;
         }
         return entries;
+    }
+
+    private void KeepInlineComment(string location, int from) {
+        string? inline = ReadInlineComment(from);
+        if (inline is not null) {
+            inlineComments[location] = inline;
+        }
     }
 
     private string? ReadInlineComment(int from) {

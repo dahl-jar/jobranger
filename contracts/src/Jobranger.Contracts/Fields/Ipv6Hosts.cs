@@ -15,11 +15,7 @@ internal static class Ipv6Hosts {
     private static readonly SearchValues<char> allowed = SearchValues.Create("0123456789abcdefABCDEF:.");
 
     public static string Encode(string host) {
-        if (host.AsSpan().ContainsAnyExcept(allowed)
-            || !IPAddress.TryParse(host, out IPAddress? address)
-            || address.AddressFamily != AddressFamily.InterNetworkV6) {
-            throw ContractException.AtRoot(ipv6Keyword);
-        }
+        IPAddress address = ParseIpv6(host) ?? throw ContractException.AtRoot(ipv6Keyword);
         byte[] bytes = address.GetAddressBytes();
         int[] pieces = [.. Enumerable.Range(0, pieceCount).Select(index => (int)BinaryPrimitives.ReadUInt16BigEndian(bytes.AsSpan(index * sizeof(ushort))))];
         (int start, int length) = LongestZeroRun(pieces);
@@ -27,6 +23,14 @@ internal static class Ipv6Hosts {
             return $"[{Hex(pieces)}]";
         }
         return $"[{Hex(pieces[..start])}::{Hex(pieces[(start + length)..])}]";
+    }
+
+    private static IPAddress? ParseIpv6(string host) {
+        IPAddress? address = null;
+        if (host.AsSpan().ContainsAnyExcept(allowed) || !IPAddress.TryParse(host, out address)) {
+            return null;
+        }
+        return address.AddressFamily == AddressFamily.InterNetworkV6 ? address : null;
     }
 
     private static (int Start, int Length) LongestZeroRun(int[] pieces) {

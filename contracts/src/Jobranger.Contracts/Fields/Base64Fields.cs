@@ -7,7 +7,7 @@ public static class Base64Fields {
     private const string maxBytesKeyword = "maxBytes";
 
     public static byte[] Decode(string text, int maxBytes) {
-        byte[] decoded;
+        byte[] decoded = [];
         try {
             decoded = Convert.FromBase64String(text);
         } catch (FormatException) {

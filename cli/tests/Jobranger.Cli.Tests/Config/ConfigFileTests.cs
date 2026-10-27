@@ -362,6 +362,57 @@ public sealed class ConfigFileTests : IDisposable {
     }
 
     [Fact]
+    public void ShouldReportNotYaml_WhenMappingNestingIsTooDeep() {
+        File.WriteAllText(path, NestedMappings(deepNesting));
+
+        ConfigInvalidException invalid = Assert.Throws<ConfigInvalidException>(() => ConfigFile.Load(path, Home));
+
+        Assert.Equal([new ConfigError("config.yaml", ConfigProblem.NotYaml, "5")], invalid.Errors);
+    }
+
+    [Fact]
+    public void ShouldLoadConfig_WhenFileStartsWithByteOrderMark() {
+        File.WriteAllText(path, "\uFEFF" + sample);
+
+        ConfigFile.Save(path, ConfigFile.Load(path, Home), Home, NullLogger.Instance);
+
+        Assert.Equal(sample, File.ReadAllText(path));
+    }
+
+    [Fact]
+    public void ShouldReadFirstLanguage_WhenKeyRepeats() {
+        File.WriteAllText(path, "language: en\nlanguage: nb\n");
+
+        Language? language = ConfigFile.ReadLanguage(path);
+
+        Assert.Equal(Language.En, language);
+    }
+
+    [Fact]
+    public void ShouldKeepInlineComment_WhenValueIsFlowMapping() {
+        File.WriteAllText(path, sample.Replace(
+            "schedule:\n  times: ['03:00', '15:00']\n",
+            "schedule: {times: ['03:00', '15:00']} # when\n",
+            StringComparison.Ordinal));
+
+        ConfigFile.Save(path, ConfigFile.Load(path, Home), Home, NullLogger.Instance);
+
+        Assert.Contains("schedule: # when", File.ReadAllLines(path));
+    }
+
+    [Fact]
+    public void ShouldDropComment_WhenKeyIsInsideNestedFlowMapping() {
+        File.WriteAllText(
+            path,
+            "version: 1\nprofile:\n  path: ~/p\nmodel: {\n  price: {\n    input_per_mtok: 1,\n"
+            + "    output_per_mtok: 2 # inner\n  }\n}\n");
+
+        ConfigFile.Save(path, ConfigFile.Load(path, Home), Home, NullLogger.Instance);
+
+        Assert.DoesNotContain("# inner", File.ReadAllText(path), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ShouldReportNotText_WhenNestingIsAtLimit() {
         File.WriteAllText(path, NestedPlaces(deepestAllowedNesting));
 
@@ -387,6 +438,10 @@ public sealed class ConfigFileTests : IDisposable {
     private static string NestedPlaces(int depth) =>
         "version: 1\nprofile:\n  path: ~/p\ntargets:\n  places: " + new string('[', depth) + new string(']', depth)
         + "\n";
+
+    private static string NestedMappings(int depth) =>
+        "version: 1\nprofile:\n  path: ~/p\ntargets:\n  places: " + string.Concat(Enumerable.Repeat("{a: ", depth))
+        + "1" + new string('}', depth) + "\n";
 
     private static string TestData(string name) =>
         File.ReadAllText(ConfigTestData(name));

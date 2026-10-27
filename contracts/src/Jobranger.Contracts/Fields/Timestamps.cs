@@ -11,8 +11,9 @@ public static class Timestamps {
     private const int maxFractionDigits = 7;
 
     public static DateTimeOffset Parse(string text) {
+        DateTimeOffset parsed = default;
         if (!PayloadValidator.IsValid(definition, text)
-            || !DateTimeOffset.TryParseExact(WithoutExtraDigits(text), format, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTimeOffset parsed)) {
+            || !DateTimeOffset.TryParseExact(WithoutExtraDigits(text), format, CultureInfo.InvariantCulture, DateTimeStyles.None, out parsed)) {
             throw ContractException.AtRoot(formatKeyword);
         }
         return parsed;

@@ -53,6 +53,8 @@ public sealed class UrlsTests {
         { "http://[::1", "ipv6" },
         { "http://[::1]x/", "ipv6" },
         { "https://[::1%25eth0]/", "ipv6" },
+        { "http://[1.2.3.4]/", "ipv6" },
+        { "http://[1:::2]/", "ipv6" },
         { "https://jobs.example.test/\ud800", "utf8" },
         { "http://exa mple.test/", "host" },
         { "https://-a.test/", "host" },
