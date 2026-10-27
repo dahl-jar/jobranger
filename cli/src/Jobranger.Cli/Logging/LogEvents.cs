@@ -8,4 +8,34 @@ internal static partial class LogEvents {
         Level = LogLevel.Information,
         Message = "removed old log files removed={Removed} keep_days={KeepDays}")]
     public static partial void LogsPruned(ILogger logger, int removed, int keepDays);
+
+    [LoggerMessage(EventName = "source.crashed", Level = LogLevel.Error, Message = "source crashed source={Source}")]
+    public static partial void SourceCrashed(ILogger logger, string source, Exception error);
+
+    [LoggerMessage(EventName = "nav.token.failed", Level = LogLevel.Error, Message = "public token request failed")]
+    public static partial void NavTokenFailed(ILogger logger, Exception error);
+
+    [LoggerMessage(
+        EventName = "nav.feed.failed",
+        Level = LogLevel.Error,
+        Message = "feed read failed, cursor kept at the last completed page")]
+    public static partial void NavFeedFailed(ILogger logger, Exception error);
+
+    [LoggerMessage(
+        EventName = "nav.feed.skipped",
+        Level = LogLevel.Warning,
+        Message = "skipped feed items without a valid uuid skipped={Skipped}")]
+    public static partial void NavItemsSkipped(ILogger logger, int skipped);
+
+    [LoggerMessage(EventName = "nav.entry.failed", Level = LogLevel.Warning, Message = "skipped feed entry ad_id={AdId}")]
+    public static partial void NavEntryFailed(ILogger logger, string adId, Exception error);
+
+    [LoggerMessage(EventName = "finn.recent.failed", Level = LogLevel.Error, Message = "recent scan failed")]
+    public static partial void FinnRecentFailed(ILogger logger, Exception error);
+
+    [LoggerMessage(EventName = "finn.search.failed", Level = LogLevel.Error, Message = "category scan failed")]
+    public static partial void FinnSearchFailed(ILogger logger, Exception error);
+
+    [LoggerMessage(EventName = "finn.ad_text.failed", Level = LogLevel.Warning, Message = "ad page read failed ad_id={AdId}")]
+    public static partial void FinnAdTextFailed(ILogger logger, string adId, Exception error);
 }

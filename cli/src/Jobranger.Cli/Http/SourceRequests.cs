@@ -116,7 +116,7 @@ internal static class SourceRequests {
         }
     }
 
-    private static bool IsSameOrigin(Uri left, Uri right) =>
+    internal static bool IsSameOrigin(Uri left, Uri right) =>
         Uri.Compare(left, right, UriComponents.SchemeAndServer, UriFormat.UriEscaped, StringComparison.OrdinalIgnoreCase) == 0;
 
     private static bool IsTransient(Exception error) => error switch {

@@ -1,0 +1,78 @@
+{
+  "uuid": "00000000-0000-4000-8000-000000000001",
+  "ad_content": {
+    "uuid": "00000000-0000-4000-8000-000000000001",
+    "published": "2026-08-24T00:00:00+02:00",
+    "expires": "2026-09-07T00:00:00+02:00",
+    "updated": "2026-08-24T12:55:20.871361+02:00",
+    "workLocations": [
+      {
+        "country": "NORGE",
+        "address": "",
+        "city": "BERGEN",
+        "postalCode": "5003",
+        "county": "VESTLAND",
+        "municipal": "BERGEN"
+      }
+    ],
+    "contactList": [
+      {
+        "name": "user",
+        "email": "user@example.com",
+        "phone": "00000000",
+        "role": null,
+        "title": ""
+      }
+    ],
+    "title": "Barne- og ungdomsarbeider, 80 % vikariat",
+    "description": "<p><strong>Vil du jobbe med barn og unge?</strong></p><p>Teamet bygger og drifter interne verktøy for planlegging og rapportering. Du jobber tett med produkteier og andre utviklere, tar oppgaver fra idé til produksjon og får ansvar for egne leveranser fra første dag.</p><p>Vi bruker kodegjennomgang, parprogrammering og automatiske tester, og vi deployer flere ganger i uken. Ny teknologi tas inn når teamet ser at den løser et konkret problem.</p>",
+    "sourceurl": "",
+    "source": "IMPORTAPI",
+    "applicationUrl": "https://jobs.example.com/apply/1001?channel=NavRest&iso=no",
+    "applicationDue": "2026-09-07T00:00:00",
+    "occupationCategories": [
+      {
+        "level1": "Utdanning",
+        "level2": "Barnehage- og skolefritidsassistenter"
+      }
+    ],
+    "categoryList": [
+      {
+        "categoryType": "ESCO",
+        "code": "http://data.europa.eu/esco/occupation/b7507136-e71e-47e8-b873-e77d5cdf2922",
+        "name": "Barne- og ungdomsarbeider",
+        "description": "",
+        "score": 0.4
+      },
+      {
+        "categoryType": "JANZZ",
+        "code": "107824",
+        "name": "Barne- og ungdomsarbeider",
+        "description": "",
+        "score": 0.4
+      },
+      {
+        "categoryType": "STYRK08",
+        "code": "5311",
+        "name": "Barnehage- og skolefritidsassistenter mv.",
+        "description": "",
+        "score": 0.4
+      }
+    ],
+    "jobtitle": "",
+    "link": "https://arbeidsplassen.nav.no/stillinger/stilling/00000000-0000-4000-8000-000000000001",
+    "employer": {
+      "name": "Org One kommune",
+      "orgnr": "000000000",
+      "description": "Kommunen ligger ved kysten.",
+      "homepage": ""
+    },
+    "engagementtype": "Vikariat",
+    "extent": "Deltid",
+    "starttime": "",
+    "positioncount": "1",
+    "sector": "Offentlig"
+  },
+  "sistEndret": "2026-08-24T12:55:20.871+02:00",
+  "status": "ACTIVE"
+}

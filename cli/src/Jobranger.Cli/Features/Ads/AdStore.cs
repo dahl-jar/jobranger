@@ -1,6 +1,7 @@
 using Jobranger.Cli.Config;
 using Jobranger.Cli.Storage;
 using Microsoft.Data.Sqlite;
+using CatalogueEntry = Jobranger.Cli.Catalogue.Catalogue;
 
 namespace Jobranger.Cli.Features.Ads;
 
@@ -79,16 +80,6 @@ internal sealed partial class AdStore(SqliteConnection connection, TimeProvider 
     private const string newestFirst = "first_seen DESC";
     private const string uncheckedFirst = "apply_checked_at IS NOT NULL, first_seen DESC";
     private const string expiredStatus = "expired";
-    private const string generalSoftware = "general_software";
-
-    private static readonly Dictionary<string, string> levelsFromLabel = new(StringComparer.Ordinal) {
-        ["junior"] = "junior",
-        ["mid"] = "mid",
-        ["senior"] = "senior",
-        ["lead"] = "lead",
-        ["none"] = "none",
-        ["error"] = "none",
-    };
 
     public bool Upsert(Ad ad) => SqlCommands.Execute(connection, null, insertSql,
         ("$id", ad.Id),
@@ -199,9 +190,9 @@ internal sealed partial class AdStore(SqliteConnection connection, TimeProvider 
         targets.Limits.HideMasters ? where + noMastersWhere : where;
 
     private static string TargetLabels(Targets targets) =>
-        JsonLists.Write(levelsFromLabel.Where(pair => targets.Limits.Levels.Contains(pair.Value)).Select(pair => pair.Key));
+        JsonLists.Write(CatalogueEntry.LevelsFromLabel.Where(pair => targets.Limits.Levels.Contains(pair.Value)).Select(pair => pair.Key));
 
-    private static string TargetRoles(Targets targets) => JsonLists.Write([generalSoftware, .. targets.Subfields]);
+    private static string TargetRoles(Targets targets) => JsonLists.Write([CatalogueEntry.GeneralSoftware, .. targets.Subfields]);
 
     private static Ad ReadAd(SqliteDataReader reader) => new() {
         Id = reader.GetString(0),
