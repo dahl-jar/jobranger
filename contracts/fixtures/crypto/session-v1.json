@@ -1,0 +1,30 @@
+{
+  "cli_static_public": "hPtZHsTxlcOpNhHLd1ehja-D4dOViXk8fSClMMzibAk",
+  "cli_eph_public": "xh2s6kcdZjW35dEe2gDubIaKhsfITiTbp8FTT-8vp2c",
+  "browser_static_public": "GdbtCXXo6sQ5RWLTuRSmOTNHyAVykgZofexR4ZQwbmg",
+  "browser_eph_public": "bPZx_j7zDAgvZj8sFj8Db_3jF3Q6e6bYqrDNwVVHeSU",
+  "sid": "Ee8hzATM8LYuaoJGRMtXQQ",
+  "nonce_b": "Uvl_FzbZrFKa7lTEAItvNg",
+  "agent": "Firefox on macOS",
+  "commit": "bhlD2y2xWhJNNeRGkSVS4y7Fljrb_IclhH8m7rxFcmQ",
+  "transcript_hash": "1aZ1SA4m7_QIylIzIuf7krxeg7Frtpt2banIGlXj8cQ",
+  "ikm": "q5keO2cNX4hXc1Nlu8yq4f04H9UmgBgaKPNOp0AnfWfqtoQHj9BleMXxPVXbN9bEAeCsQ9tEIZRHNLYOli7AOEVT4T904vywZOJ3yMzjAkq1zdPL0GvG8-Cl3g80M84b",
+  "key_c2b": "WLAIDGVMGgFOSwO6rWXGB-o9Kgqz01A_oDa39J5rdrw",
+  "key_b2c": "PMeRXdHbpI2YAEyI-2IPS-8FVeGNzW4tSEd3WRi3xZY",
+  "key_confirm": "n9IwWUPrmEDM8xUCCfZqaPftrj0n2Kj21k143t-h7XU",
+  "sas": "iOoooce-hGE",
+  "words": [
+    "gecko",
+    "niece",
+    "afraid",
+    "tuesday"
+  ],
+  "confirm_cli": "hrY2DJcDlaPDLUaMDrk9rZ2spKmsUZVWjF6DNbAXOM0",
+  "confirm_browser": "amph0pWJCemRPI5GmCaEPK07UdRZmOR8L-nakOPlUiI",
+  "frame_seq": 1,
+  "frame_plaintext": "{\"type\":\"saved\",\"v\":1,\"ref\":\"00000000-0000-4000-8000-000000000014\",\"applies_from\":\"next_run\"}",
+  "frame_ciphertext": "lRYiZVKhhtlS73sDrZ_lcOuR3TVGDeSH5v3CO5PanB4helVrXDwuOQNURRiZXJm2w-k3vA1g6LNe6H6qtjnVuynlZrA-RBq4uGxXJbgs5-wVGpqrR96Vnh7LuGzMnjVzMQw2PqOZjnZB4Fjzcg",
+  "channel": "QzATLaCZ1ciBwANAgYReA3Np4WJ48r7ZPzlZsVwdxSQ",
+  "pair_code": "KQFB-MXTW",
+  "pair_tag": "12UQIiI7bA2K2czifheB8w"
+}

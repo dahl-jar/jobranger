@@ -1,0 +1,240 @@
+.page {
+  max-width: 640px;
+  margin: 72px auto 0;
+  padding-bottom: 72px;
+}
+
+.title {
+  margin: 0;
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+.pairedTitle {
+  margin-top: 10px;
+}
+
+.lead {
+  margin: 14px 0 0;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--ink2);
+}
+
+.steps {
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--ink);
+}
+
+.step {
+  display: flex;
+  gap: 20px;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.number {
+  flex-shrink: 0;
+  width: 32px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.stepBody {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.stepTitle {
+  display: block;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.command {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius);
+  font-size: 15px;
+}
+
+.prompt {
+  color: var(--muted);
+}
+
+.note {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.note a {
+  text-underline-offset: 3px;
+}
+
+.codeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.codeInput {
+  flex: 1 1 220px;
+  min-width: 0;
+  min-height: 52px;
+  padding: 0 14px;
+  box-sizing: border-box;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.codeInput[aria-invalid='true'] {
+  border-color: var(--miss);
+}
+
+.codeInput::placeholder {
+  color: var(--faint);
+}
+
+.large {
+  min-height: 52px;
+  padding: 0 22px;
+  font-size: 15px;
+}
+
+.large:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--miss);
+}
+
+.privacy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink2);
+}
+
+.privacy li {
+  display: flex;
+  gap: 8px;
+}
+
+.ok {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--ok);
+}
+
+.words {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  margin: 28px 0 0;
+  padding: 22px 0;
+  list-style: none;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--rule);
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  margin-top: 28px;
+}
+
+.connected {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ok);
+}
+
+.facts {
+  margin: 24px 0 0;
+  border-top: 1px solid var(--ink);
+}
+
+.fact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 15px;
+}
+
+.fact dt {
+  width: 150px;
+  color: var(--muted);
+}
+
+.fact dd {
+  flex: 1 1 260px;
+  margin: 0;
+  font-weight: 600;
+}
+
+.linkButton {
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .page {
+    margin-top: 40px;
+  }
+
+  .title {
+    font-size: 30px;
+  }
+
+  .words {
+    font-size: 24px;
+  }
+}

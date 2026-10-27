@@ -25,6 +25,12 @@ export const routes: RouteObject[] = [
             HydrateFallback: PageLoading,
             handle: { subtitle: 'Setup walkthrough', showHome: true, wide: true } satisfies PublicLayoutHandle,
           },
+          {
+            path: 'pair',
+            lazy: async () => ({ Component: (await import('@/features/pairing/PairPage')).PairPage }),
+            HydrateFallback: PageLoading,
+            handle: { showHome: true } satisfies PublicLayoutHandle,
+          },
           { path: '*', Component: NotFound },
         ],
       },

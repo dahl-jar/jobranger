@@ -1,7 +1,9 @@
+import 'fake-indexeddb/auto'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import styles from '@/app/PublicLayout.module.css'
+import { PageLoading } from '@/app/PageLoading'
 import { routes } from '@/app/router'
 import { renderRoutes } from '@/test/render'
 
@@ -90,6 +92,7 @@ describe('routes', () => {
     { path: '/', title: 'jobranger' },
     { path: '/setup?step=3', title: 'Setup, step 3 of 8 · jobranger' },
     { path: '/nowhere', title: 'No page here · jobranger' },
+    { path: '/pair', title: 'Connect your machine · jobranger' },
   ])('should title $path as "$title"', async ({ path, title }) => {
     renderRoutes(routes, path)
 
@@ -185,6 +188,27 @@ describe('routes', () => {
     renderRoutes(routes, path)
 
     expect(await screen.findByRole('heading', { level: 1 })).toHaveAttribute('tabindex', '-1')
+  })
+
+  it('should show the pair page at /pair', async () => {
+    renderRoutes(routes, '/pair')
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Connect your machine' })).toBeInTheDocument()
+  })
+
+  it('should link Home from the pair page header', async () => {
+    renderRoutes(routes, '/pair')
+
+    expect(within(await screen.findByRole('banner')).getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/')
+  })
+
+  it('should give every lazy route a loading fallback', () => {
+    const lazyRoutes = (routes[0]?.children?.[0]?.children ?? []).filter((route) => route.lazy !== undefined)
+
+    expect(lazyRoutes.map((route) => [route.path, route.HydrateFallback])).toEqual([
+      ['setup', PageLoading],
+      ['pair', PageLoading],
+    ])
   })
 
   it('should give the setup walkthrough the wide layout', async () => {

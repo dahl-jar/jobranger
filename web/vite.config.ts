@@ -6,6 +6,7 @@ import { themeInitPlugin } from './build/themeInitPlugin.ts'
 
 const THEME_INIT_ENTRY = fileURLToPath(new URL('./src/app/theme/themeInit.ts', import.meta.url))
 const CONTRACTS = findContracts(fileURLToPath(new URL('.', import.meta.url)))
+const RELAY_TESTS = 'src/features/relay/**/*.test.ts'
 
 export default defineConfig({
   plugins: [react(), themeInitPlugin(THEME_INIT_ENTRY)],
@@ -32,6 +33,7 @@ export default defineConfig({
           environment: 'jsdom',
           setupFiles: ['./src/test/setup.ts'],
           include: ['src/**/*.test.{ts,tsx}'],
+          exclude: [...configDefaults.exclude, '.stryker-tmp/**', RELAY_TESTS],
         },
       },
       {
@@ -39,7 +41,7 @@ export default defineConfig({
         test: {
           name: 'node',
           environment: 'node',
-          include: ['build/**/*.test.ts', 'tests/**/*.test.ts'],
+          include: ['build/**/*.test.ts', 'tests/**/*.test.ts', RELAY_TESTS],
         },
       },
     ],
