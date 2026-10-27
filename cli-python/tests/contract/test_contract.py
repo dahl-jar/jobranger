@@ -48,7 +48,7 @@ def find_messages(start: Path) -> Path:
 MESSAGES = find_messages(Path(__file__).resolve())
 ROOT = MESSAGES.parent
 FIXTURES = MESSAGES / "fixtures"
-WEB_CONTRACT = ROOT / "frontend" / "src" / "features" / "relay" / "contract"
+FRONTEND_CONTRACT = ROOT / "frontend" / "src" / "features" / "relay" / "contract"
 CLI_CONTRACT = ROOT / "cli-python" / "src" / "jobranger" / "contract"
 WORKFLOWS = ROOT / ".github" / "workflows"
 SESSION_SPEC = MESSAGES / "session" / "v1.md"
@@ -90,17 +90,17 @@ GENERATED = [
     CLI_CONTRACT / "envelope.py",
     CLI_CONTRACT / "payload.schema.json",
     CLI_CONTRACT / "envelope.schema.json",
-    *sorted(WEB_CONTRACT.glob("*.gen.*")),
+    *sorted(FRONTEND_CONTRACT.glob("*.gen.*")),
 ]
 HAND_WRITTEN = [
     CLI_CONTRACT / "__init__.py",
     CLI_CONTRACT / "codec.py",
     CLI_CONTRACT / "fields.py",
     CLI_CONTRACT / "limits.py",
-    WEB_CONTRACT / "limits.ts",
-    WEB_CONTRACT / "validate.ts",
-    WEB_CONTRACT / "scan.ts",
-    WEB_CONTRACT / "contract.test.ts",
+    FRONTEND_CONTRACT / "limits.ts",
+    FRONTEND_CONTRACT / "validate.ts",
+    FRONTEND_CONTRACT / "scan.ts",
+    FRONTEND_CONTRACT / "contract.test.ts",
 ]
 SIGNALR_INVOCATION = (
     '{{"type":1,"invocationId":"1","target":"Send","arguments":[{}]}}\x1e'
@@ -122,7 +122,9 @@ MAX_LENGTH_URL = URL_PREFIX + "a" * (limits.URL_MAX_CHARS - len(URL_PREFIX))
 PATTERN_LENGTH = re.compile(r"\{[0-9]+,([0-9]+)\}\$$")
 SPEC_CONSTANT = re.compile(r"`([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)`")
 SPEC_VALUE = re.compile(r"`([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)` \(([0-9,]+)\)")
-WEB_LIMIT = re.compile(r"^export const ([A-Z][A-Z0-9_]*) = ([0-9_]+)$", re.MULTILINE)
+FRONTEND_LIMIT = re.compile(
+    r"^export const ([A-Z][A-Z0-9_]*) = ([0-9_]+)$", re.MULTILINE
+)
 
 
 def load(path: Path) -> Any:
@@ -928,17 +930,17 @@ def test_should_offer_every_display_fit_in_schema() -> None:
     assert set(payload_defs()["Fit"]["enum"]) == fits
 
 
-def test_should_match_web_limits_with_cli_limits() -> None:
-    text = (WEB_CONTRACT / "limits.ts").read_text(encoding="utf-8")
+def test_should_match_frontend_limits_with_cli_limits() -> None:
+    text = (FRONTEND_CONTRACT / "limits.ts").read_text(encoding="utf-8")
     cli = {
         name: value
         for name, value in vars(limits).items()
         if name.isupper() and type(value) is int
     }
 
-    web = {name: int(value) for name, value in WEB_LIMIT.findall(text)}
+    frontend = {name: int(value) for name, value in FRONTEND_LIMIT.findall(text)}
 
-    assert web == cli
+    assert frontend == cli
 
 
 def test_should_define_every_limit_named_in_session_spec() -> None:
@@ -1051,7 +1053,7 @@ def test_should_type_reply_ref_like_command_id() -> None:
     [
         CLI_CONTRACT / "payload.py",
         CLI_CONTRACT / "envelope.py",
-        *sorted(WEB_CONTRACT.glob("*.gen.*")),
+        *sorted(FRONTEND_CONTRACT.glob("*.gen.*")),
     ],
     ids=lambda path: path.name,
 )
@@ -1070,8 +1072,8 @@ def test_should_keep_generated_code_free_of_comments(path: Path) -> None:
     [
         *sorted(MESSAGES.glob("*.schema.json")),
         *sorted(CLI_CONTRACT.glob("*.schema.json")),
-        WEB_CONTRACT / "schemas.gen.ts",
-        WEB_CONTRACT / "validate.gen.js",
+        FRONTEND_CONTRACT / "schemas.gen.ts",
+        FRONTEND_CONTRACT / "validate.gen.js",
     ],
     ids=path_id,
 )
@@ -1231,8 +1233,13 @@ def test_should_not_mark_hand_written_code_as_generated(path: Path) -> None:
         ("messages.yml", "frontend/scripts/**"),
         ("messages.yml", "messages/**"),
         ("relay.yml", "messages/**"),
+        ("cli.yml", "messages/**"),
         ("cli.yml", "dotnet/messages/**"),
         ("relay.yml", "dotnet/messages/**"),
+        ("messages.yml", ".github/workflows/cli.yml"),
+        ("messages.yml", ".github/workflows/relay.yml"),
+        ("messages.yml", ".github/workflows/frontend.yml"),
+        ("messages.yml", ".github/workflows/cli-python.yml"),
         ("messages.yml", "dotnet/messages/**"),
         ("messages.yml", "cli-python/pyproject.toml"),
         ("messages.yml", "cli-python/uv.lock"),

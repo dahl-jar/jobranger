@@ -15,6 +15,10 @@ on:
       - dotnet/global.json
       - dotnet/nuget.config
       - .github/workflows/messages.yml
+      - .github/workflows/cli.yml
+      - .github/workflows/relay.yml
+      - .github/workflows/frontend.yml
+      - .github/workflows/cli-python.yml
       - cli-python/pyproject.toml
       - cli-python/uv.lock
       - cli-python/.python-version
@@ -36,6 +40,10 @@ on:
       - dotnet/global.json
       - dotnet/nuget.config
       - .github/workflows/messages.yml
+      - .github/workflows/cli.yml
+      - .github/workflows/relay.yml
+      - .github/workflows/frontend.yml
+      - .github/workflows/cli-python.yml
       - cli-python/pyproject.toml
       - cli-python/uv.lock
       - cli-python/.python-version

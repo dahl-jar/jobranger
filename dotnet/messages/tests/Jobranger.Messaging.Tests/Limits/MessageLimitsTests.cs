@@ -33,10 +33,10 @@ public sealed partial class MessageLimitsTests {
     };
 
     [Fact]
-    public void ShouldEqualWebLimits_WhenComparedByName() {
-        string text = File.ReadAllText(Path.Combine(testData, "Web", "limits.ts"));
-        SortedDictionary<string, string> web = new(
-            WebLimit().Matches(text).ToDictionary(match => match.Groups["name"].Value, match => match.Groups["value"].Value),
+    public void ShouldEqualFrontendLimits_WhenComparedByName() {
+        string text = File.ReadAllText(Path.Combine(testData, "Frontend", "limits.ts"));
+        SortedDictionary<string, string> frontend = new(
+            FrontendLimit().Matches(text).ToDictionary(match => match.Groups["name"].Value, match => match.Groups["value"].Value),
             StringComparer.Ordinal);
 
         SortedDictionary<string, string> contract = new(
@@ -46,7 +46,7 @@ public sealed partial class MessageLimitsTests {
                 .ToDictionary(field => ScreamingSnake(field.Name), ConstantText),
             StringComparer.Ordinal);
 
-        Assert.Equal(web, contract);
+        Assert.Equal(frontend, contract);
     }
 
     [Theory]
@@ -71,7 +71,7 @@ public sealed partial class MessageLimitsTests {
         Convert.ToString(field.GetRawConstantValue(), CultureInfo.InvariantCulture)!;
 
     [GeneratedRegex(@"^export const (?<name>[A-Z][A-Z0-9_]*) = (?:'(?<value>[^']*)'|(?<value>[0-9]+))$", RegexOptions.Multiline)]
-    private static partial Regex WebLimit();
+    private static partial Regex FrontendLimit();
 
     [GeneratedRegex("(?<!^)(?=[A-Z])")]
     private static partial Regex WordStart();

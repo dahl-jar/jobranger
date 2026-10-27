@@ -17,7 +17,7 @@ The cli-python tests cover the schemas, decoders, limits and fixtures:
 uv --directory cli-python run pytest tests/contract
 ```
 
-The web tests cover the validators, from source and from the built bundle:
+The frontend tests cover the validators, from source and from the built bundle:
 
 ```bash
 pnpm --dir frontend exec vitest run src/features/relay/contract tests
@@ -29,7 +29,7 @@ The C# messaging library tests cover the envelope rules, proofs, limits, the pay
 (cd dotnet && dotnet test --project messages/tests/Jobranger.Messaging.Tests -c Release)
 ```
 
-Every schema guard needs one invalid fixture in `messages/fixtures/payload-invalid` or `messages/fixtures/envelope-invalid`. The fixture changes one leaf of its golden, so the guard is the only reason it fails. Name it `<type>.<rule>.json`. A new fixture also raises the counts in `frontend/src/test/fixtureCounts.ts`. An envelope fixture raises the count in `ShouldFindEveryInvalidFixture` in the contracts tests, and a payload fixture raises the counts in `ShouldFindEveryPayloadFixture_WhenFixturesAreLinked`.
+Every schema guard needs one invalid fixture in `messages/fixtures/payload-invalid` or `messages/fixtures/envelope-invalid`. The fixture changes one leaf of its golden, so the guard is the only reason it fails. Name it `<type>.<rule>.json`. A new fixture also raises the counts in `frontend/src/test/fixtureCounts.ts`. An envelope fixture raises the count in `ShouldFindEveryInvalidFixture` in `Jobranger.Messaging.Tests`, and a payload fixture raises the counts in `ShouldFindEveryPayloadFixture_WhenFixturesAreLinked`.
 
 `messages/unicode/idna-hosts-16.0.0.json` holds the non-ASCII code points `Urls.Encode` accepts in a host, plus the UTS 46 mapping and NFC data. It is generated from the Unicode 16.0.0 data files, and a rerun gives the same file:
 

@@ -24,7 +24,7 @@
     <None Include="..\..\..\..\messages\fixtures\payload\*.json" LinkBase="TestData\Messages\fixtures\payload" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\..\..\messages\fixtures\payload-invalid\*.json" LinkBase="TestData\Messages\fixtures\payload-invalid" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\..\..\messages\fixtures\urls\*.json" LinkBase="TestData\Messages\fixtures\urls" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\..\..\frontend\src\features\relay\contract\limits.ts" Link="TestData\Web\limits.ts" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\..\frontend\src\features\relay\contract\limits.ts" Link="TestData\Frontend\limits.ts" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

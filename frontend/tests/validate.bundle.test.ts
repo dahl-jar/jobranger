@@ -12,9 +12,9 @@ interface ValidateBundle {
   parseEnvelope(text: string): unknown
 }
 
-const WEB = fileURLToPath(new URL('..', import.meta.url))
-const FIXTURES = join(findMessages(WEB), 'fixtures')
-const ENTRY = join(WEB, 'src', 'features', 'relay', 'contract', 'validate.ts')
+const FRONTEND = fileURLToPath(new URL('..', import.meta.url))
+const FIXTURES = join(findMessages(FRONTEND), 'fixtures')
+const ENTRY = join(FRONTEND, 'src', 'features', 'relay', 'contract', 'validate.ts')
 const RUNTIME_CODEGEN = ['new Function', 'eval(']
 const BUILD_TIMEOUT_MS = 120_000
 const BUNDLE_NAME = 'validate'
@@ -55,8 +55,8 @@ function errorName(action: () => unknown): string {
 beforeAll(async () => {
   outDir = mkdtempSync(join(tmpdir(), 'validate-bundle-'))
   await build({
-    configFile: join(WEB, 'vite.config.ts'),
-    root: WEB,
+    configFile: join(FRONTEND, 'vite.config.ts'),
+    root: FRONTEND,
     logLevel: 'silent',
     build: { outDir, emptyOutDir: true, lib: { entry: ENTRY, formats: ['es'], fileName: BUNDLE_NAME } },
   })
