@@ -1,0 +1,6 @@
+version: 1
+profile:
+  path: ~/profile.yaml
+model:
+  model: pass-1234
+  model: other

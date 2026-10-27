@@ -1,0 +1,6 @@
+version: 1
+profile:
+  path: ~/profile.yaml
+model:
+  price:
+    input_per_mtok: 1

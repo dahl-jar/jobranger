@@ -1,0 +1,5 @@
+version: 1
+profile:
+  path: ~/profile.yaml
+model:
+  model: café pass-1234

@@ -1,0 +1,4 @@
+version: 1
+profile:
+  path: ~/profile.yaml
+%TAG ! tag:example.test,2026:pass-1234

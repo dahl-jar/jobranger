@@ -1,0 +1,6 @@
+version: 1
+profile:
+  path: ~/profile.yaml
+notify:
+  email:
+    sender: "pass-1234 <user@example.test>, other_user@example.test"

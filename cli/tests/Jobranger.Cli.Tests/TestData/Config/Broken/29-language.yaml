@@ -1,0 +1,4 @@
+version: 1
+profile:
+  path: ~/profile.yaml
+language: pass-1234

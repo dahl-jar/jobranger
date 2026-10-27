@@ -1,0 +1,5 @@
+version: 1
+profile:
+  path: ~/profile.yaml
+targets:
+	places: [pass-1234]

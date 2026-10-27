@@ -1,0 +1,7 @@
+version: 1
+profile:
+  path: ~/profile.yaml
+model: &name
+  model: model-1
+notify:
+  <<: *name

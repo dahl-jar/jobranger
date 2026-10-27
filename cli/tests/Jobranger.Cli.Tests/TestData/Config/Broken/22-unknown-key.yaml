@@ -1,0 +1,4 @@
+version: 1
+profile:
+  path: ~/profile.yaml
+unknown_key: pass-1234

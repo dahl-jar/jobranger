@@ -1,0 +1,6 @@
+version: 1
+profile:
+  path: ~/profile.yaml
+notify:
+  email:
+    via: pass-1234

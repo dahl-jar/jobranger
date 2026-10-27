@@ -1,6 +1,6 @@
 using System.Text.Json.Nodes;
 
-namespace Jobranger.Cli.Config;
+namespace Jobranger.Cli.Config.Yaml;
 
 internal sealed record YamlTree(
     JsonNode? Root,

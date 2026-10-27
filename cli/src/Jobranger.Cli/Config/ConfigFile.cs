@@ -1,13 +1,14 @@
 using System.Runtime.Versioning;
 using System.Text;
 using System.Text.Json.Nodes;
+using Jobranger.Cli.Config.Yaml;
 using Jobranger.Cli.Files;
 using Jobranger.Cli.Text;
 using Microsoft.Extensions.Logging;
 
 namespace Jobranger.Cli.Config;
 
-internal static partial class ConfigFile {
+internal static class ConfigFile {
     private const char byteOrderMark = '\uFEFF';
 
     private static readonly UTF8Encoding strictUtf8 =
@@ -41,7 +42,7 @@ internal static partial class ConfigFile {
             }
         }
         JsonObject model = ConfigWriter.ToTree(config, home);
-        PrivateFile.Write(path, strictUtf8.GetBytes(EmitYaml(model, previous)), logger);
+        PrivateFile.Write(path, strictUtf8.GetBytes(YamlEmitter.Emit(model, previous)), logger);
     }
 
     public static Language? ReadLanguage(string path) {
@@ -53,7 +54,7 @@ internal static partial class ConfigFile {
         }
     }
 
-    private static YamlTree ParseFile(string path) => ParseYaml(ReadText(path), Path.GetFileName(path));
+    private static YamlTree ParseFile(string path) => new YamlReader(ReadText(path), Path.GetFileName(path)).Read();
 
     private static string ReadText(string path) {
         byte[] bytes;

@@ -9,21 +9,30 @@ internal static partial class AppConfigValidator {
     private const int minutesPerDay = 24 * minutesPerHour;
     private const int minRunGapHours = 2;
     private const int minRunGapMinutes = minRunGapHours * minutesPerHour;
-    private const string timesLocation = "schedule.times";
-    private const string emailLocation = "notify.email";
     private const string hourGroup = "hour";
     private const string minuteGroup = "minute";
 
     private static readonly string[] ollamaSchemes = [Uri.UriSchemeHttp, Uri.UriSchemeHttps];
+    private static readonly string timesLocation = ConfigLocation.Join(ConfigKeys.Schedule, ConfigKeys.Times);
+    private static readonly string emailLocation = ConfigLocation.Join(ConfigKeys.Notify, ConfigKeys.Email);
+    private static readonly string priceLocation = ConfigLocation.Join(ConfigKeys.Model, ConfigKeys.Price);
+    private static readonly string monthlyLimitLocation =
+        ConfigLocation.Join(ConfigKeys.Model, ConfigKeys.MonthlyLimitUsd);
+    private static readonly string inputPriceLocation = ConfigLocation.Join(priceLocation, ConfigKeys.InputPerMtok);
+    private static readonly string outputPriceLocation = ConfigLocation.Join(priceLocation, ConfigKeys.OutputPerMtok);
+    private static readonly string ollamaUrlLocation = ConfigLocation.Join(ConfigKeys.Model, ConfigKeys.OllamaUrl);
+    private static readonly string addressLocation = ConfigLocation.Join(emailLocation, ConfigKeys.Address);
+    private static readonly string senderLocation = ConfigLocation.Join(emailLocation, ConfigKeys.Sender);
+    private static readonly string smtpUrlLocation = ConfigLocation.Join(emailLocation, ConfigKeys.SmtpUrl);
 
     public static IReadOnlyList<ConfigError> Validate(AppConfig config) {
         List<ConfigError> errors = [];
         CheckTimes(config.Schedule.Times, errors);
-        CheckAmount(config.Model.MonthlyLimitUsd, "model.monthly_limit_usd", errors);
-        CheckAmount(config.Model.Price?.InputPerMtok, "model.price.input_per_mtok", errors);
-        CheckAmount(config.Model.Price?.OutputPerMtok, "model.price.output_per_mtok", errors);
+        CheckAmount(config.Model.MonthlyLimitUsd, monthlyLimitLocation, errors);
+        CheckAmount(config.Model.Price?.InputPerMtok, inputPriceLocation, errors);
+        CheckAmount(config.Model.Price?.OutputPerMtok, outputPriceLocation, errors);
         if (!IsOllamaUrl(config.Model.OllamaUrl)) {
-            errors.Add(new ConfigError("model.ollama_url", ConfigProblem.NotOllamaUrl));
+            errors.Add(new ConfigError(ollamaUrlLocation, ConfigProblem.NotOllamaUrl));
         }
         CheckEmailValues(config.Notify.Email, errors);
         CheckEmailRequired(config.Notify.Email, errors);
@@ -65,13 +74,13 @@ internal static partial class AppConfigValidator {
 
     private static void CheckEmailValues(EmailConfig email, List<ConfigError> errors) {
         if (email.Address is string address && !MailAddresses.IsAddress(address)) {
-            errors.Add(new ConfigError("notify.email.address", ConfigProblem.NotAddress));
+            errors.Add(new ConfigError(addressLocation, ConfigProblem.NotAddress));
         }
         if (email.Sender is string sender && !MailAddresses.IsMailbox(sender)) {
-            errors.Add(new ConfigError("notify.email.sender", ConfigProblem.NotSender));
+            errors.Add(new ConfigError(senderLocation, ConfigProblem.NotSender));
         }
         if (email.SmtpUrl is string url && SmtpServer.Parse(url) is null) {
-            errors.Add(new ConfigError("notify.email.smtp_url", ConfigProblem.NotSmtpUrl));
+            errors.Add(new ConfigError(smtpUrlLocation, ConfigProblem.NotSmtpUrl));
         }
     }
 

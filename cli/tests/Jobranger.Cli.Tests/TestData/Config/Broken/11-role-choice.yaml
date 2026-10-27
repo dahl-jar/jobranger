@@ -1,0 +1,5 @@
+version: 1
+profile:
+  path: ~/profile.yaml
+targets:
+  subfields: [backend, pass-1234]

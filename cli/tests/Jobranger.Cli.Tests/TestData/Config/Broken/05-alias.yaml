@@ -1,0 +1,8 @@
+version: 1
+profile:
+  path: ~/profile.yaml
+model:
+  model: &name pass-1234
+notify:
+  email:
+    smtp_user: *name

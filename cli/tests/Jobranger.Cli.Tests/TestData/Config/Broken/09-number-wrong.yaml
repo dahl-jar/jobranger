@@ -1,0 +1,5 @@
+version: 1
+profile:
+  path: ~/profile.yaml
+model:
+  monthly_limit_usd: pass-1234

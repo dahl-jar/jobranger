@@ -6,65 +6,65 @@ namespace Jobranger.Cli.Config;
 internal static class ConfigWriter {
     public static JsonObject ToTree(AppConfig config, string home) {
         JsonObject tree = new() {
-            ["version"] = ConfigReader.Version,
-            ["profile"] = new JsonObject {
-                ["path"] = HomePath.Contract(config.Profile.Path, home),
-                ["cv_name"] = config.Profile.CvName,
-                ["cv_read_at"] = config.Profile.CvReadAt,
+            [ConfigKeys.Version] = ConfigReader.Version,
+            [ConfigKeys.Profile] = new JsonObject {
+                [ConfigKeys.Path] = HomePath.Contract(config.Profile.Path, home),
+                [ConfigKeys.CvName] = config.Profile.CvName,
+                [ConfigKeys.CvReadAt] = config.Profile.CvReadAt,
             },
-            ["targets"] = new JsonObject {
-                ["subfields"] = Texts(config.Targets.Subfields),
-                ["limits"] = new JsonObject {
-                    ["levels"] = Texts(config.Targets.Limits.Levels),
-                    ["years"] = Texts(config.Targets.Limits.Years),
-                    ["hide_masters"] = config.Targets.Limits.HideMasters,
+            [ConfigKeys.Targets] = new JsonObject {
+                [ConfigKeys.Subfields] = Texts(config.Targets.Subfields),
+                [ConfigKeys.Limits] = new JsonObject {
+                    [ConfigKeys.Levels] = Texts(config.Targets.Limits.Levels),
+                    [ConfigKeys.Years] = Texts(config.Targets.Limits.Years),
+                    [ConfigKeys.HideMasters] = config.Targets.Limits.HideMasters,
                 },
-                ["places"] = Texts(config.Targets.Places),
-                ["relocate"] = config.Targets.Relocate,
+                [ConfigKeys.Places] = Texts(config.Targets.Places),
+                [ConfigKeys.Relocate] = config.Targets.Relocate,
             },
-            ["sources"] = new JsonObject {
-                ["nav"] = config.Sources.Nav,
-                ["employers"] = config.Sources.Employers,
-                ["finn"] = config.Sources.Finn,
-                ["linkedin"] = config.Sources.LinkedIn,
-                ["employer_feeds"] = new JsonArray([.. config.Sources.EmployerFeeds.Select(Feed)]),
+            [ConfigKeys.Sources] = new JsonObject {
+                [ConfigKeys.Nav] = config.Sources.Nav,
+                [ConfigKeys.Employers] = config.Sources.Employers,
+                [ConfigKeys.Finn] = config.Sources.Finn,
+                [ConfigKeys.LinkedIn] = config.Sources.LinkedIn,
+                [ConfigKeys.EmployerFeeds] = new JsonArray([.. config.Sources.EmployerFeeds.Select(Feed)]),
             },
-            ["schedule"] = new JsonObject { ["times"] = Texts(config.Schedule.Times) },
-            ["model"] = new JsonObject {
-                ["provider"] = config.Model.Provider is ProviderName provider ? WireNames.Of(provider) : null,
-                ["model"] = config.Model.Model,
-                ["ollama_url"] = config.Model.OllamaUrl,
-                ["monthly_limit_usd"] = config.Model.MonthlyLimitUsd,
-                ["price"] = config.Model.Price is PriceOverride price
+            [ConfigKeys.Schedule] = new JsonObject { [ConfigKeys.Times] = Texts(config.Schedule.Times) },
+            [ConfigKeys.Model] = new JsonObject {
+                [ConfigKeys.Provider] = config.Model.Provider is ProviderName provider ? WireNames.Of(provider) : null,
+                [ConfigKeys.Model] = config.Model.Model,
+                [ConfigKeys.OllamaUrl] = config.Model.OllamaUrl,
+                [ConfigKeys.MonthlyLimitUsd] = config.Model.MonthlyLimitUsd,
+                [ConfigKeys.Price] = config.Model.Price is PriceOverride price
                     ? new JsonObject {
-                        ["input_per_mtok"] = price.InputPerMtok,
-                        ["output_per_mtok"] = price.OutputPerMtok,
+                        [ConfigKeys.InputPerMtok] = price.InputPerMtok,
+                        [ConfigKeys.OutputPerMtok] = price.OutputPerMtok,
                     }
                     : null,
             },
-            ["notify"] = new JsonObject {
-                ["website"] = config.Notify.Website,
-                ["email"] = new JsonObject {
-                    ["on"] = config.Notify.Email.On,
-                    ["address"] = config.Notify.Email.Address,
-                    ["via"] = WireNames.Of(config.Notify.Email.Via),
-                    ["smtp_url"] = config.Notify.Email.SmtpUrl,
-                    ["smtp_user"] = config.Notify.Email.SmtpUser,
-                    ["sender"] = config.Notify.Email.Sender,
+            [ConfigKeys.Notify] = new JsonObject {
+                [ConfigKeys.Website] = config.Notify.Website,
+                [ConfigKeys.Email] = new JsonObject {
+                    [ConfigKeys.On] = config.Notify.Email.On,
+                    [ConfigKeys.Address] = config.Notify.Email.Address,
+                    [ConfigKeys.Via] = WireNames.Of(config.Notify.Email.Via),
+                    [ConfigKeys.SmtpUrl] = config.Notify.Email.SmtpUrl,
+                    [ConfigKeys.SmtpUser] = config.Notify.Email.SmtpUser,
+                    [ConfigKeys.Sender] = config.Notify.Email.Sender,
                 },
             },
         };
         if (config.Language is Text.Language language) {
-            tree["language"] = WireNames.Of(language);
+            tree[ConfigKeys.Language] = WireNames.Of(language);
         }
         return tree;
     }
 
     private static JsonObject Feed(EmployerFeed feed) => new() {
-        ["kind"] = feed.Kind,
-        ["key"] = feed.Key,
-        ["company"] = feed.Company,
-        ["board"] = feed.Board,
+        [ConfigKeys.Kind] = feed.Kind,
+        [ConfigKeys.Key] = feed.Key,
+        [ConfigKeys.Company] = feed.Company,
+        [ConfigKeys.Board] = feed.Board,
     };
 
     private static JsonArray Texts(IEnumerable<string> values) =>

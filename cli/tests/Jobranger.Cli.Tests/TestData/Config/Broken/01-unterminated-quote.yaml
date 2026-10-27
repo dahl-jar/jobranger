@@ -1,0 +1,6 @@
+version: 1
+profile:
+  path: ~/profile.yaml
+notify:
+  email:
+    smtp_url: "smtps://user:pass-1234@smtp.example.test
