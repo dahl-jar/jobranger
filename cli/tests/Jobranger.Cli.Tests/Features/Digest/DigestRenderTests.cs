@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using Jobranger.Cli.Features.Digest;
 using Jobranger.Cli.Tests.Mocks;
+using Jobranger.Cli.Text;
 using DigestEntry = Jobranger.Cli.Features.Digest.Digest;
 
 namespace Jobranger.Cli.Tests.Features.Digest;
@@ -104,13 +105,26 @@ public sealed class DigestRenderTests {
         Assert.Contains("\">Stop these emails: jobranger config edit</p>", rendered.Html, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void ShouldPointDroppedCardsToReport_WhenSiteIsOff() {
+    [Theory]
+    [InlineData(Locales.English, "more in jobranger report")]
+    [InlineData(Locales.Norwegian, "til i jobranger report")]
+    public void ShouldPointDroppedCardsToReport_WhenSiteIsOff(string lang, string hint) {
         (DigestData caseData, string? _) = DigestCases.Load("cut-for-size");
 
-        RenderedDigest rendered = DigestEntry.Render(caseData, null, DigestFixtures.English);
+        RenderedDigest rendered = DigestEntry.Render(caseData, null, MessagesFor(lang));
 
-        Assert.Contains("more in jobranger report", rendered.Text, StringComparison.Ordinal);
+        Assert.Contains(hint, rendered.Text, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(Locales.English, "AI checks stopped: the provider did not answer. 5 ads wait for the next run.")]
+    [InlineData(Locales.Norwegian, "AI-sjekkene stoppet: leverandøren svarte ikke. 5 annonser venter på neste kjøring.")]
+    public void ShouldWriteProviderDownNote_WhenProviderStops(string lang, string note) {
+        DigestData stopped = data with { ModelStopped = DigestStop.ProviderDown, Pending = 5 };
+
+        RenderedDigest rendered = DigestEntry.Render(stopped, null, MessagesFor(lang));
+
+        Assert.Contains(note, rendered.Text, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -149,4 +163,6 @@ public sealed class DigestRenderTests {
 
         Assert.Equal(expected, rendered.Text);
     }
+
+    private static IMessages MessagesFor(string lang) => Messages.For(null, Locales.EnvironmentWithoutConfig(lang));
 }
