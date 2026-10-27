@@ -26,7 +26,7 @@ dev = [
     "types-defusedxml",
     "mutmut",
     "jsonschema[format-nongpl]==4.26.0",
-    "datamodel-code-generator==0.83.0",
+    "datamodel-code-generator==0.86.0",
     "types-jsonschema==4.26.0.20261006",
 ]
 
