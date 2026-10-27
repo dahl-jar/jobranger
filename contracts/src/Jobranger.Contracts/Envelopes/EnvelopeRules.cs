@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using Jobranger.Contracts.Fields;
 using Jobranger.Contracts.Limits;
+using Jobranger.Contracts.Payloads;
 
 namespace Jobranger.Contracts.Envelopes;
 
@@ -21,11 +22,9 @@ public static class EnvelopeRules {
         envelope = null;
         Envelope? parsed;
         try {
-            if (!HasSafeTokens(utf8)) {
-                return false;
-            }
+            JsonPreScan.Check(utf8);
             parsed = JsonSerializer.Deserialize(utf8, ContractsJsonContext.Default.Envelope);
-        } catch (JsonException) {
+        } catch (Exception error) when (error is JsonException or ContractException) {
             return false;
         }
         if (parsed is null || !IsValid(parsed)) {
@@ -60,47 +59,4 @@ public static class EnvelopeRules {
 
     private static bool IsCanonicalBase64Url(string text, int minLength, int maxLength) =>
         text.Length >= minLength && text.Length <= maxLength && CanonicalBase64Url.IsCanonical(text);
-
-    private static bool HasSafeTokens(ReadOnlySpan<byte> utf8) {
-        Utf8JsonReader reader = new(utf8, new JsonReaderOptions { MaxDepth = ContractLimits.MaxJsonDepth });
-        Stack<HashSet<string>> objects = new();
-        try {
-            while (reader.Read()) {
-                if (!IsSafeToken(ref reader, objects)) {
-                    return false;
-                }
-            }
-        } catch (InvalidOperationException) {
-            return false;
-        }
-        return true;
-    }
-
-    private static bool IsSafeToken(ref Utf8JsonReader reader, Stack<HashSet<string>> objects) {
-        switch (reader.TokenType) {
-            case JsonTokenType.StartObject:
-                objects.Push(new HashSet<string>(StringComparer.Ordinal));
-                return true;
-            case JsonTokenType.EndObject:
-                _ = objects.Pop();
-                return true;
-            case JsonTokenType.PropertyName:
-                return objects.Peek().Add(reader.GetString()!);
-            case JsonTokenType.String:
-                _ = reader.GetString();
-                return true;
-            case JsonTokenType.Number:
-                return HasShortIntegerPart(reader.ValueSpan) && reader.TryGetDouble(out double value) && double.IsFinite(value);
-            default:
-                return true;
-        }
-    }
-
-    private static bool HasShortIntegerPart(ReadOnlySpan<byte> number) {
-        if (number.ContainsAny(".eE"u8)) {
-            return true;
-        }
-        int digits = number.Length - (number[0] == (byte)'-' ? 1 : 0);
-        return digits <= ContractLimits.MaxIntegerDigits;
-    }
 }

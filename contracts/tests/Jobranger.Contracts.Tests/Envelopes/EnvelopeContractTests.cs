@@ -15,6 +15,7 @@ public sealed class EnvelopeContractTests {
     private const int dataCiphertextMinChars = 22;
     private const int helloCiphertextMinChars = 4;
     private const int helloCiphertextMaxChars = 5462;
+    private const byte overlongLeadByte = 0xC0;
 
     public static TheoryData<string> GoldenFixtures => FileNames(goldenFolder, "*.json");
 
@@ -88,6 +89,14 @@ public sealed class EnvelopeContractTests {
     [InlineData("\"extra\":1e400,")]
     public void ShouldRejectEnvelopeWithUnsafeJson(string extra) {
         byte[] json = WithExtra(extra);
+
+        Assert.False(EnvelopeRules.TryParse(json, out _));
+    }
+
+    [Fact]
+    public void ShouldRejectEnvelopeWithInvalidUtf8() {
+        byte[] json = WithExtra("\"extra\":\"x\",");
+        json[json.AsSpan().IndexOf("\"x\""u8) + 1] = overlongLeadByte;
 
         Assert.False(EnvelopeRules.TryParse(json, out _));
     }
