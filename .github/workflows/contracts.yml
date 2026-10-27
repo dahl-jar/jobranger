@@ -6,6 +6,7 @@ on:
     paths:
       - web/scripts/**
       - scripts/codegen/**
+      - scripts/unicode/**
       - contracts/**
       - cli-python/src/jobranger/contract/**
       - cli-python/tests/contract/**
@@ -24,6 +25,7 @@ on:
     paths:
       - web/scripts/**
       - scripts/codegen/**
+      - scripts/unicode/**
       - contracts/**
       - cli-python/src/jobranger/contract/**
       - cli-python/tests/contract/**
@@ -80,4 +82,6 @@ jobs:
       - run: pnpm --dir web exec tsc -b
       - run: pnpm --dir web exec vitest run src/features/relay/contract tests --passWithNoTests=false
       - run: dotnet restore Jobranger.slnx --locked-mode
-      - run: dotnet test --project contracts/tests/Jobranger.Contracts.Tests -c Release --no-restore --minimum-expected-tests 96
+      - name: Check payload records cover the schema
+        run: dotnet test --project contracts/tests/Jobranger.Contracts.Tests -c Release --no-restore --filter-method "*.ShouldCoverEverySchemaProperty_WhenPayloadRecordsAreChecked" --minimum-expected-tests 1
+      - run: dotnet test --project contracts/tests/Jobranger.Contracts.Tests -c Release --no-restore --minimum-expected-tests 524

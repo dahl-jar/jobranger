@@ -9,8 +9,8 @@ jobranger fetches job ads from FINN, NAV, LinkedIn and employer job boards, chec
 | `relay/` | ASP.NET Core relay between the CLI and the website |
 | `edge/` | Cloudflare Worker that rate limits requests to the relay by address and network |
 | `web/` | React website |
-| `contracts/` | Message schemas and the encrypted session layout (`contracts/session/v1.md`) shared by the CLI and the website, plus the C# contracts library (`contracts/src/Jobranger.Contracts`) used by the relay |
-| `scripts/` | `codegen/postprocess.py`, the last step of `contracts/generate.sh` |
+| `contracts/` | Message schemas and the encrypted session layout (`contracts/session/v1.md`) shared by the CLI and the website, plus the C# contracts library (`contracts/src/Jobranger.Contracts`) with the envelope rules, payload records and payload codec |
+| `scripts/` | `codegen/postprocess.py`, the last step of `contracts/generate.sh`, and `unicode/idna_hosts.py`, which writes the host table in `contracts/unicode` |
 
 Development setup and checks are in [CONTRIBUTING.md](CONTRIBUTING.md).
 

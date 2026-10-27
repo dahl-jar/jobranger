@@ -151,13 +151,19 @@ The web tests cover the validators, from source and from the built bundle:
 pnpm --dir web exec vitest run src/features/relay/contract tests
 ```
 
-The C# contracts library tests cover the envelope rules, proofs and limits:
+The C# contracts library tests cover the envelope rules, proofs, limits, the payload codec and the URL, timestamp, email and base64 field helpers:
 
 ```bash
 dotnet test --project contracts/tests/Jobranger.Contracts.Tests -c Release
 ```
 
-Every schema guard needs one invalid fixture in `contracts/fixtures/payload-invalid` or `contracts/fixtures/envelope-invalid`. The fixture changes one leaf of its golden, so the guard is the only reason it fails. Name it `<type>.<rule>.json`. A new fixture also raises the counts in `web/src/test/fixtureCounts.ts`, and an envelope fixture raises the count in `ShouldFindEveryInvalidFixture` in the contracts tests.
+Every schema guard needs one invalid fixture in `contracts/fixtures/payload-invalid` or `contracts/fixtures/envelope-invalid`. The fixture changes one leaf of its golden, so the guard is the only reason it fails. Name it `<type>.<rule>.json`. A new fixture also raises the counts in `web/src/test/fixtureCounts.ts`. An envelope fixture raises the count in `ShouldFindEveryInvalidFixture` in the contracts tests, and a payload fixture raises the counts in `ShouldFindEveryPayloadFixture_WhenFixturesAreLinked`.
+
+`contracts/unicode/idna-hosts-16.0.0.json` lists the non-ASCII code points `Urls.Encode` accepts in a host. It is generated from the Unicode 16.0.0 data files, and a rerun gives the same file:
+
+```bash
+python3 scripts/unicode/idna_hosts.py
+```
 
 Mutation runs scoped to the contract code:
 
@@ -165,6 +171,7 @@ Mutation runs scoped to the contract code:
 (cd cli-python && uv run python scripts/mutate.py "jobranger.contract*")
 (cd web && pnpm mutate --mutate "src/features/relay/contract/*.ts,!src/features/relay/contract/*.test.ts,!src/features/relay/contract/*.gen.*")
 (cd contracts && dotnet stryker --mutate "**/EnvelopeRules.cs")
+(cd contracts && dotnet stryker --mutate "**/Payloads/*.cs" --mutate "**/Fields/*.cs")
 ```
 
 ## Mutation runs
