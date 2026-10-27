@@ -68,4 +68,7 @@ public static class RelayLimits
     public static readonly TimeSpan HubHandshakeTimeout = TimeSpan.FromSeconds(15);
     public static readonly TimeSpan HubSendTimeout = TimeSpan.FromSeconds(5);
     public static readonly TimeSpan HubFullRetryAfter = TimeSpan.FromSeconds(30);
+    public static readonly TimeSpan SweepPeriod = TimeSpan.FromSeconds(30);
+    public static readonly TimeSpan SweeperStaleAfter = TimeSpan.FromSeconds(90);
+    public static readonly TimeSpan SweeperDeadAfter = TimeSpan.FromMinutes(5);
 }

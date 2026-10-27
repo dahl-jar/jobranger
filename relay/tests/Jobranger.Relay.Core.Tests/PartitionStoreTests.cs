@@ -76,6 +76,19 @@ public sealed class PartitionStoreTests : IDisposable
     }
 
     [Fact]
+    public void ShouldDropIdlePartitionsOnSweep()
+    {
+        Acquired("client-a");
+        Acquired("client-b");
+        time.Advance(window);
+        store.Sweep();
+
+        int live = store.LiveCount;
+
+        Assert.Equal(0, live);
+    }
+
+    [Fact]
     public void ShouldKeepActivePartitionAcrossSweep()
     {
         Acquired("client-a");

@@ -1,3 +1,5 @@
+using Jobranger.Relay.Telemetry;
+
 namespace Jobranger.Relay.Pairing;
 
 internal static class RelayProblems
@@ -24,6 +26,11 @@ internal static class RelayProblems
     {
         context.ProblemDetails.Extensions.Remove(traceIdKey);
         context.ProblemDetails.Extensions.TryAdd(CodeKey, CodeFor(context.ProblemDetails.Status));
+        if (context.ProblemDetails.Extensions[CodeKey] is string code)
+        {
+            context.HttpContext.RequestServices.GetRequiredService<RelayMetrics>().RequestRejected(code);
+        }
+
         if (context.ProblemDetails.Status == StatusCodes.Status429TooManyRequests)
         {
             context.ProblemDetails.Type ??= tooManyRequestsType;

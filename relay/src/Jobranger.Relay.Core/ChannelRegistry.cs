@@ -7,6 +7,17 @@ public sealed class ChannelRegistry(TimeProvider time, Func<ChannelId, bool> may
     private readonly Dictionary<ChannelId, ChannelMembers> channels = [];
     private readonly Lock gate = new();
 
+    public int ActiveChannels
+    {
+        get
+        {
+            lock (gate)
+            {
+                return channels.Count;
+            }
+        }
+    }
+
     public JoinOutcome Admits(ChannelId channel, RelayRole role, string? grant)
     {
         lock (gate)

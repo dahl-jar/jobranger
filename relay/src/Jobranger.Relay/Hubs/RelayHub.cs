@@ -12,6 +12,7 @@ internal sealed class RelayHub(
     HubConnections connections,
     HubDelivery delivery,
     RefusalSampler sampler,
+    RelayMetrics metrics,
     ILoggerFactory loggers) : Hub
 {
     private const string receiveMethod = "Receive";
@@ -27,6 +28,7 @@ internal sealed class RelayHub(
         if (joined.Outcome != JoinOutcome.Joined)
         {
             string reason = HubErrors.For(joined.Outcome);
+            metrics.ConnectionRejected(reason);
             if (sampler.ShouldLog(samplerPrefix + reason))
             {
                 RelayLog.For(loggers).HubConnectionRefused(claims.Channel.Value, reason);
@@ -54,6 +56,7 @@ internal sealed class RelayHub(
         HandleClaims claims = Context.Claims();
         Envelope accepted = filter.Accept(Context, claims, envelope);
         await delivery.Send(registry.Members(claims.Channel, RelayRoles.Other(claims.Role)), receiveMethod, [accepted]);
+        metrics.EnvelopeForwarded(accepted.Ciphertext.Length);
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)

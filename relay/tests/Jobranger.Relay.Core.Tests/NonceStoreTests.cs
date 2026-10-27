@@ -107,6 +107,18 @@ public sealed class NonceStoreTests
     }
 
     [Fact]
+    public void ShouldForgetExpiredNonceOnSweepAfterTombstoneRetention()
+    {
+        RelayNonce nonce = Issued(store);
+        time.Advance(nonceLifetime + tombstoneRetention);
+        store.Sweep();
+
+        NonceOutcome outcome = store.Consume(nonce.Value);
+
+        Assert.Equal(NonceOutcome.Unknown, outcome);
+    }
+
+    [Fact]
     public void ShouldKeepExpiredNonceUntilTombstoneRetentionPasses()
     {
         RelayNonce nonce = Issued(store);

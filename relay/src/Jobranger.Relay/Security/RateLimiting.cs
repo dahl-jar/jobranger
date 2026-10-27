@@ -77,9 +77,13 @@ internal static class RateLimiting
             http.Response.Headers.RetryAfter = seconds.ToString(CultureInfo.InvariantCulture);
         }
 
-        if (policy is not null && http.RequestServices.GetRequiredService<RefusalSampler>().ShouldLog(policy))
+        if (policy is not null)
         {
-            RelayLog.For(http.RequestServices.GetRequiredService<ILoggerFactory>()).RateLimitRefused(policy);
+            http.RequestServices.GetRequiredService<RelayMetrics>().RateLimited(policy);
+            if (http.RequestServices.GetRequiredService<RefusalSampler>().ShouldLog(policy))
+            {
+                RelayLog.For(http.RequestServices.GetRequiredService<ILoggerFactory>()).RateLimitRefused(policy);
+            }
         }
 
         return RelayProblems.RateLimited.ToResult();

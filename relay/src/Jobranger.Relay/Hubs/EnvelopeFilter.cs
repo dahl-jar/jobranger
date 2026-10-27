@@ -8,7 +8,8 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace Jobranger.Relay.Hubs;
 
-internal sealed class EnvelopeFilter(ChannelRegistry registry, TimeProvider time, RefusalSampler sampler, ILoggerFactory loggers)
+internal sealed class EnvelopeFilter(
+    ChannelRegistry registry, TimeProvider time, RefusalSampler sampler, RelayMetrics metrics, ILoggerFactory loggers)
 {
     private const string versionProperty = "v";
     private const string samplerPrefix = "envelope:";
@@ -86,6 +87,7 @@ internal sealed class EnvelopeFilter(ChannelRegistry registry, TimeProvider time
 
     private HubException Refuse(HandleClaims claims, string reason)
     {
+        metrics.EnvelopeRejected(reason);
         if (sampler.ShouldLog(samplerPrefix + reason))
         {
             RelayLog.For(loggers).EnvelopeRejected(claims.Channel.Value, reason);

@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Jobranger.Relay;
 using Jobranger.Relay.Core;
+using Jobranger.Relay.Health;
 using Jobranger.Relay.Hubs;
 using Jobranger.Relay.Options;
 using Jobranger.Relay.Pairing;
@@ -37,11 +38,14 @@ try
     builder.Services.AddProxyHeaders();
     builder.Services.AddSiteCors();
     builder.Services.AddRelayRateLimits();
+    builder.Services.AddRelayHealth();
+    builder.Services.AddRelayMetrics();
     builder.AddRelayRedaction();
     builder.AddRelayHub();
 
     WebApplication app = builder.Build();
 
+    app.UseRelayMetrics();
     app.Use(HubSetup.HideNegotiate);
     app.UseForwardedHeaders();
     app.UseExceptionHandler();
@@ -55,6 +59,7 @@ try
     app.MapPairing();
     app.MapSessions();
     app.MapRelayHub();
+    app.MapRelayHealth();
 
     app.Run();
     return 0;

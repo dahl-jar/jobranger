@@ -8,7 +8,7 @@ public sealed class PairingStore(
     int maxPending = RelayLimits.MaxPendingPairings,
     int maxPendingPerNetwork = RelayLimits.MaxPendingPairingsPerNetwork,
     int maxEntries = RelayLimits.MaxPairingEntries,
-    Func<PairingCode>? drawCode = null)
+    Func<PairingCode>? drawCode = null) : ISweepable
 {
     private static readonly ClaimResult wrongCode = new(ClaimOutcome.WrongCode, null);
     private static readonly ClaimResult expired = new(ClaimOutcome.Expired, null);

@@ -36,6 +36,7 @@ public sealed class RelayFactory : WebApplicationFactory<Program>
         {
             services.AddSingleton<TimeProvider>(Time);
             services.AddSingleton<IStartupFilter, PeerAddressFilter>();
+            services.AddSingleton<IStartupFilter, LocalPortFilter>();
             if (HubSocketCap is { } cap)
             {
                 services.AddSingleton(new HubSocketGate(cap, RelayLimits.MaxHubSocketsPerNetwork));

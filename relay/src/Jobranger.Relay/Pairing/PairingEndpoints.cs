@@ -58,6 +58,7 @@ internal static class PairingEndpoints
         PairingStore pairings,
         ChannelHandle handles,
         TimeProvider time,
+        RelayMetrics metrics,
         ILoggerFactory loggers)
     {
         ILogger logger = RelayLog.For(loggers);
@@ -75,6 +76,7 @@ internal static class PairingEndpoints
         DateTimeOffset handleExpires = Expiry.After(time, RelayLimits.HandleLifetime);
         string handle = handles.SignCli(proof.Channel, handleExpires);
         logger.PairingStarted(proof.Channel.Value);
+        metrics.PairingStarted();
         return TypedResults.Ok(new PairStartResponse(
             pending.Code.ToString(), Expiry.WholeSeconds(pending.ExpiresAt), proof.Channel.Value, handle, handleExpires));
     }
@@ -86,6 +88,7 @@ internal static class PairingEndpoints
         PairedChannels paired,
         ChannelHandle handles,
         TimeProvider time,
+        RelayMetrics metrics,
         ILoggerFactory loggers)
     {
         ILogger logger = RelayLog.For(loggers);
@@ -102,6 +105,7 @@ internal static class PairingEndpoints
 
         paired.Record(channel);
         logger.PairingClaimed(channel.Value);
+        metrics.PairingClaimed();
         return TypedResults.Ok(WebSession.Open(channel, ChannelHandle.NewGrant(), handles, time));
     }
 }

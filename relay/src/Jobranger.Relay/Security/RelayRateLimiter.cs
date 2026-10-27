@@ -4,7 +4,7 @@ using Jobranger.Relay.Core;
 
 namespace Jobranger.Relay.Security;
 
-public sealed class RelayRateLimiter : PartitionedRateLimiter<HttpContext>
+public sealed class RelayRateLimiter : PartitionedRateLimiter<HttpContext>, ISweepable
 {
     private const int clientScale = 1;
 
@@ -33,6 +33,14 @@ public sealed class RelayRateLimiter : PartitionedRateLimiter<HttpContext>
     }
 
     public override RateLimiterStatistics? GetStatistics(HttpContext resource) => null;
+
+    public void Sweep()
+    {
+        foreach (PartitionStore store in Stores())
+        {
+            store.Sweep();
+        }
+    }
 
     public RateLimitLease AttemptAcquireForChannel(ChannelId channel, RelayRole role) =>
         channels.AttemptAcquire($"{RelayRoles.Wire(role)}:{channel.Value}");
@@ -64,16 +72,16 @@ public sealed class RelayRateLimiter : PartitionedRateLimiter<HttpContext>
     {
         if (disposing)
         {
-            foreach (PartitionStore store in clients.Values.Concat(blocks.Values))
+            foreach (PartitionStore store in Stores())
             {
                 store.Dispose();
             }
-
-            channels.Dispose();
         }
 
         base.Dispose(disposing);
     }
+
+    private IEnumerable<PartitionStore> Stores() => clients.Values.Concat(blocks.Values).Append(channels);
 
     private sealed class TieredLease(RateLimitLease block, RateLimitLease client) : RateLimitLease
     {

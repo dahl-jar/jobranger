@@ -16,7 +16,8 @@ internal sealed class HandleAuthHandler(
     UrlEncoder encoder,
     ChannelHandle handles,
     IOptions<RelayOptions> relay,
-    RefusalSampler sampler)
+    RefusalSampler sampler,
+    RelayMetrics metrics)
     : AuthenticationHandler<AuthenticationSchemeOptions>(options, NullLoggerFactory.Instance, encoder)
 {
     public const string SchemeName = "RelayHandle";
@@ -55,6 +56,7 @@ internal sealed class HandleAuthHandler(
     {
         AuthenticateResult result = await HandleAuthenticateOnceSafeAsync();
         string reason = result.Failure?.Message ?? missingHandle;
+        metrics.ConnectionRejected(reason);
         if (sampler.ShouldLog(samplerPrefix + reason))
         {
             RelayLog.For(loggers).HubAuthRefused(reason);

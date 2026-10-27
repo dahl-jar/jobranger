@@ -7,7 +7,7 @@ public sealed class NonceStore(
     TimeProvider time,
     int maxOutstanding = RelayLimits.MaxOutstandingNonces,
     int maxPerNetwork = RelayLimits.MaxOutstandingNoncesPerNetwork,
-    int maxPerChannel = RelayLimits.MaxOutstandingNoncesPerChannel)
+    int maxPerChannel = RelayLimits.MaxOutstandingNoncesPerChannel) : ISweepable
 {
     private const int nonceBytes = 32;
     private const string networkSharePrefix = "network:";
@@ -42,6 +42,14 @@ public sealed class NonceStore(
             }
 
             return expired.Contains(nonce) ? NonceOutcome.Expired : NonceOutcome.Unknown;
+        }
+    }
+
+    public void Sweep()
+    {
+        lock (gate)
+        {
+            Drain(time.GetUtcNow());
         }
     }
 

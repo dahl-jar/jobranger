@@ -78,8 +78,7 @@ public sealed class HubTests(RelayFactory factory) : IClassFixture<RelayFactory>
     {
         ChannelId channel = RelayClients.NewChannel(factory);
         await using HubPeer browser = await RelayClients.ConnectWebAsync(factory, channel);
-        JsonObject envelope = Envelopes.Data(channel, Envelopes.NewSid());
-        envelope["v"] = 2;
+        JsonObject envelope = Envelopes.WithUnsupportedVersion(channel);
 
         string reason = await browser.Rejection(envelope.ToJsonString());
 

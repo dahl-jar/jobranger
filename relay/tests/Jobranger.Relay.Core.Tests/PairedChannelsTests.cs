@@ -82,6 +82,20 @@ public sealed class PairedChannelsTests
     }
 
     [Fact]
+    public void ShouldDropExpiredChannelsOnSweep()
+    {
+        paired.Record(Channels.One);
+        time.Advance(oneDay);
+        paired.Record(Channels.Two);
+        time.Advance(ticketLifetime - oneDay);
+        paired.Sweep();
+
+        int remaining = paired.Count;
+
+        Assert.Equal(1, remaining);
+    }
+
+    [Fact]
     public void ShouldKeepEveryChannelWhenKnownChannelIsRecordedAgain()
     {
         paired.Record(Channels.One);

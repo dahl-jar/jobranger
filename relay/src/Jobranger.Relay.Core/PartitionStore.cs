@@ -5,7 +5,7 @@ using System.Threading.RateLimiting;
 
 namespace Jobranger.Relay.Core;
 
-public sealed class PartitionStore : IDisposable
+public sealed class PartitionStore : ISweepable, IDisposable
 {
     private const int shardKeyBytes = 32;
 
@@ -55,6 +55,14 @@ public sealed class PartitionStore : IDisposable
         }
     }
 
+    public void Sweep()
+    {
+        lock (gate)
+        {
+            SweepIdle(time.GetUtcNow());
+        }
+    }
+
     public void Dispose()
     {
         lock (gate)
@@ -99,6 +107,11 @@ public sealed class PartitionStore : IDisposable
             return;
         }
 
+        SweepIdle(now);
+    }
+
+    private void SweepIdle(DateTimeOffset now)
+    {
         lastSweep = now;
         foreach ((string key, RateLimiter limiter) in live)
         {

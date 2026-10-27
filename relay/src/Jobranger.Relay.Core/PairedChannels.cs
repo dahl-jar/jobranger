@@ -1,10 +1,21 @@
 namespace Jobranger.Relay.Core;
 
-public sealed class PairedChannels(TimeProvider time, int capacity = RelayLimits.MaxPairedChannels)
+public sealed class PairedChannels(TimeProvider time, int capacity = RelayLimits.MaxPairedChannels) : ISweepable
 {
     private readonly Dictionary<ChannelId, LinkedListNode<PairedChannel>> records = [];
     private readonly LinkedList<PairedChannel> byLastUse = new();
     private readonly Lock gate = new();
+
+    internal int Count
+    {
+        get
+        {
+            lock (gate)
+            {
+                return records.Count;
+            }
+        }
+    }
 
     public void Record(ChannelId channel)
     {
@@ -37,6 +48,18 @@ public sealed class PairedChannels(TimeProvider time, int capacity = RelayLimits
 
             Remember(channel);
             return true;
+        }
+    }
+
+    public void Sweep()
+    {
+        lock (gate)
+        {
+            DateTimeOffset now = time.GetUtcNow();
+            while (byLastUse.First is { Value: var oldest } && oldest.ExpiresAt <= now)
+            {
+                Forget(oldest.Channel);
+            }
         }
     }
 
