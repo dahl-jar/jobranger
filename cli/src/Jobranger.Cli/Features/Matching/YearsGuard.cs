@@ -7,7 +7,6 @@ namespace Jobranger.Cli.Features.Matching;
 
 internal static partial class YearsGuard {
     private const RegexOptions ignoreCase = RegexOptions.IgnoreCase | RegexOptions.CultureInvariant;
-    private const double oneYear = 1;
     private const int windowWords = 6;
 
     private static readonly Dictionary<string, int> writtenNumbers = new(StringComparer.Ordinal) {
@@ -63,11 +62,11 @@ internal static partial class YearsGuard {
         if (MatchRules.MaxYears(limits) is not double cap || found.Years <= cap) {
             return match with { RequiredExperienceYears = years };
         }
-        string stated = YearCount(found.Years);
+        string stated = MatchRules.YearCount(found.Years);
         string blocker = MatchRules.Clean($"Candidate does not have {stated} of experience");
         string reason = MatchRules.Clean(
             $"The ad asks for at least {stated} of experience: \"{found.Phrase}\". "
-            + $"The search accepts at most {YearCount(cap)}.");
+            + $"The search accepts at most {MatchRules.YearCount(cap)}.");
         return match with {
             Status = Fit.Unsuitable,
             Reason = reason,
@@ -84,9 +83,6 @@ internal static partial class YearsGuard {
 
     private static string[] Words(string text) =>
         SoftHeading().Replace(text, " ").Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-    private static string YearCount(double years) =>
-        $"{MatchRules.YearsText(years)} {(years == oneYear ? "year" : "years")}";
 
     private static int Years(RegexMatch found) {
         string raw = found.Groups[1].Success ? found.Groups[1].Value : found.Groups[2].Value;

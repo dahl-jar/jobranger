@@ -573,19 +573,6 @@
     "years": 5
   },
   {
-    "id": "flat_equivalent_far_before",
-    "title": "Utvikler",
-    "description": "Bachelor innen nettverksteknologi eller tilsvarende Annen utdanning kan kompensere for manglende formell utdanning Må ha minimum 5 år relevant erfaring innen IKT-sikkerhet",
-    "bands": [
-      "0-1"
-    ],
-    "model_years": null,
-    "stated_years": 5,
-    "phrase": "minimum 5 år relevant erfaring",
-    "status": "unsuitable",
-    "years": 5
-  },
-  {
     "id": "flat_slash_experience",
     "title": "Utvikler",
     "description": "Bachelor eller tilsvarende Annen utdanning kan kompensere for manglende formell utdanning Må ha minimum 3 års relevant arbeidserfaring/tjenesteerfaring Førerkort klasse B",
@@ -597,58 +584,6 @@
     "phrase": "minimum 3 års relevant arbeidserfaring/tjenesteerfaring",
     "status": "unsuitable",
     "years": 3
-  },
-  {
-    "id": "flat_preference_after_comma",
-    "title": "Utvikler",
-    "description": "Vi ser etter deg som Minst fem års erfaring som utvikler Solid kompetanse i .NET og C# Erfaring med skytjenester, gjerne Azure",
-    "bands": [
-      "0-1"
-    ],
-    "model_years": null,
-    "stated_years": 5,
-    "phrase": "Minst fem års erfaring",
-    "status": "unsuitable",
-    "years": 5
-  },
-  {
-    "id": "flat_equivalent_before_minimum",
-    "title": "Utvikler",
-    "description": "Fullført høyere utdanning innen informatikk eller tilsvarende på minimum bachelornivå minimum fem års erfaring som utvikler, hvorav minst to år med Azure",
-    "bands": [
-      "0-1"
-    ],
-    "model_years": null,
-    "stated_years": 5,
-    "phrase": "minimum fem års erfaring",
-    "status": "unsuitable",
-    "years": 5
-  },
-  {
-    "id": "flat_preference_far_after",
-    "title": "Utvikler",
-    "description": "For å lykkes i rollen tror vi at du har: Minimum 5 års erfaring med systemutvikling Erfaring med backend-teknologier som .NET og C# Erfaring med Terraform eller lignende er fordel",
-    "bands": [
-      "0-1"
-    ],
-    "model_years": null,
-    "stated_years": 5,
-    "phrase": "Minimum 5 års erfaring",
-    "status": "unsuitable",
-    "years": 5
-  },
-  {
-    "id": "flat_equivalent_before_phrase",
-    "title": "Utvikler",
-    "description": "Vi ser etter deg som har: Bachelor innen informatikk eller tilsvarende Minimum 5 års relevant arbeidserfaring Konsulenterfaring",
-    "bands": [
-      "0-1"
-    ],
-    "model_years": null,
-    "stated_years": 5,
-    "phrase": "Minimum 5 års relevant arbeidserfaring",
-    "status": "unsuitable",
-    "years": 5
   },
   {
     "id": "preference_beyond_window",

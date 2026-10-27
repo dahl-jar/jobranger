@@ -4,7 +4,13 @@ import re
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
-from jobranger.matching.rules import MATCH_ITEM_LIMIT, Match, clean_text, max_years
+from jobranger.matching.rules import (
+    MATCH_ITEM_LIMIT,
+    Match,
+    clean_text,
+    max_years,
+    year_count,
+)
 
 if TYPE_CHECKING:
     from jobranger.settings import Limits
@@ -60,7 +66,6 @@ GUARD_REASON = (
     "The search accepts at most {cap}."
 )
 GUARD_BLOCKER = "Candidate does not have {years} of experience"
-ONE_YEAR = 1
 WINDOW_WORDS = 6
 
 
@@ -97,10 +102,10 @@ def apply_years_guard(
     cap = max_years(limits)
     if cap is None or found.years <= cap:
         return replace(match, required_experience_years=years)
-    stated = _year_count(found.years)
+    stated = year_count(found.years)
     blocker = clean_text(GUARD_BLOCKER.format(years=stated))
     reason = clean_text(
-        GUARD_REASON.format(years=stated, phrase=found.phrase, cap=_year_count(cap))
+        GUARD_REASON.format(years=stated, phrase=found.phrase, cap=year_count(cap))
     )
     blockers = (blocker, *(item for item in match.blockers if item != blocker))
     return replace(
@@ -124,11 +129,6 @@ def _is_optional(item: str, found: re.Match[str]) -> bool:
 
 def _words(text: str) -> list[str]:
     return SOFT_HEADING.sub(" ", text).split()
-
-
-def _year_count(years: float) -> str:
-    unit = "year" if years == ONE_YEAR else "years"
-    return f"{years:g} {unit}"
 
 
 def _unfold(text: str) -> str:
