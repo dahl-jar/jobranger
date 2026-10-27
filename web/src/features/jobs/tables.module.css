@@ -1,0 +1,175 @@
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-top: 18px;
+  font-size: 13px;
+}
+
+.pill {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink2);
+  font: inherit;
+  cursor: pointer;
+}
+
+.pill[aria-pressed='true'] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.scroll {
+  position: relative;
+  margin-top: 16px;
+  overflow-x: auto;
+}
+
+.table {
+  min-width: 680px;
+  font-size: 14px;
+}
+
+.hiddenRow,
+.closedRow,
+.allRow {
+  display: grid;
+  gap: 12px;
+  align-items: center;
+  min-height: 44px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--rule-soft);
+}
+
+.hiddenRow {
+  grid-template-columns: 220px minmax(0, 1.2fr) minmax(0, 1.6fr) 110px 150px;
+}
+
+.closedRow {
+  grid-template-columns: 80px minmax(0, 1.2fr) minmax(0, 1.6fr) 170px 120px;
+}
+
+.allRow {
+  grid-template-columns: 80px minmax(0, 1.2fr) minmax(0, 1.5fr) minmax(0, 1.6fr) 100px;
+}
+
+.head {
+  min-height: 0;
+  padding: 8px 0;
+  border-bottom: 2px solid var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink2);
+}
+
+.shown {
+  opacity: 0.6;
+}
+
+.reason {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--ink2);
+}
+
+.reasonText {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.note {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.company,
+.role {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.company {
+  font-weight: 600;
+}
+
+.role,
+.why {
+  color: var(--ink2);
+}
+
+.roleLink {
+  color: inherit;
+}
+
+.source,
+.date,
+.muted {
+  color: var(--muted);
+}
+
+.source {
+  font-size: 13px;
+}
+
+.state {
+  color: var(--ink2);
+}
+
+.muted,
+.state {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.showAnyway {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.showAnyway:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.moved {
+  color: var(--ok);
+}
+
+.you {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.youApplied {
+  font-weight: 600;
+  color: var(--ok);
+}
+
+.footer {
+  margin: 14px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+}
