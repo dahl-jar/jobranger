@@ -98,13 +98,11 @@ case "$1" in
   -m) echo "$STUB_UNAME_M" ;;
 esac
 EOF
-  chmod 0755 stub/uname
-}
-
-stub_sysctl() {
-  mkdir -p stub
-  printf '#!/bin/sh\necho %s\n' "$1" >stub/sysctl
-  chmod 0755 stub/sysctl
+  cat >stub/sysctl <<'EOF'
+#!/bin/sh
+echo "${STUB_SYSCTL:-0}"
+EOF
+  chmod 0755 stub/uname stub/sysctl
 }
 
 stub_older() {
@@ -279,9 +277,8 @@ should_install_build_for_platform() {
 
 should_install_arm64_build_under_rosetta() {
   build_release
-  stub_sysctl 1
 
-  run_local_install Darwin x86_64 >/dev/null
+  STUB_SYSCTL=1 run_local_install Darwin x86_64 >/dev/null
 
   assert_eq osx-arm64 "$(bin-install/jobranger)"
 }
@@ -293,13 +290,12 @@ should_warn_when_other_jobranger_runs_first() {
 
   output="$(PATH="$PWD/older:$PATH" run_local_install Linux x86_64)"
 
-  assert_contains "$output" "$PWD/older/jobranger"
+  assert_contains "$output" "$PWD/older/jobranger runs first on PATH, remove it or install again with JOBRANGER_INSTALL_DIR=$PWD/older"
 }
 
 should_not_warn_when_install_dir_runs_first() {
   build_release
   stub_older
-  mkdir -p bin-install
   local output
 
   output="$(PATH="$PWD/bin-install:$PWD/older:$PATH" run_local_install Linux x86_64)"
@@ -339,7 +335,6 @@ should_refuse_when_checksums_lack_archive() {
 
 should_refuse_platform_without_build() {
   build_release
-  stub_sysctl 0
 
   local platform system machine
   for platform in "Linux aarch64" "Darwin x86_64"; do
