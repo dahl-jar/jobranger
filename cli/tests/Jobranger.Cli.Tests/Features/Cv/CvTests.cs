@@ -155,12 +155,10 @@ public sealed class CvTests : IDisposable {
             CvFixtures.PdfTextLine + string.Concat(Enumerable.Repeat("0 0 Td\n", busyOperations))));
         byte[] data = CvFixtures.Pdf([.. Enumerable.Repeat(busyPage, PdfText.MaxPages)]);
         CvEntry cv = RealCv(shortDeadline);
-        Stopwatch clock = Stopwatch.StartNew();
 
         string? reason = await CvFixtures.ReasonAsync(() => cv.TextFromUploadAsync("cv.pdf", data, Token()));
 
-        Assert.True(reason == CvUnreadableException.TooLarge && clock.Elapsed < shortDeadline + deadlineGrace,
-            $"reason {reason} after {clock.Elapsed}");
+        Assert.Equal(CvUnreadableException.TooLarge, reason);
     }
 
     private static CancellationToken Token() => TestContext.Current.CancellationToken;

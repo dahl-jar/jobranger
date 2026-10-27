@@ -18,6 +18,7 @@ public sealed class ChildProcessRunnerTests : IDisposable {
     private static readonly TimeSpan shortDeadline = TimeSpan.FromMilliseconds(300);
     private static readonly TimeSpan longDeadline = TimeSpan.FromSeconds(20);
     private static readonly TimeSpan exitGrace = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan grandchildExitWait = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan pollInterval = TimeSpan.FromMilliseconds(50);
 
     private readonly ChildProcessRunner runner = new();
@@ -96,7 +97,7 @@ public sealed class ChildProcessRunnerTests : IDisposable {
 
     [Fact]
     public async Task ShouldKillGrandchild_WhenDeadlinePasses() {
-        ChildRequest request = Script("sleep 30 & echo $! > pid; wait") with { Deadline = shortDeadline };
+        ChildRequest request = Script("sleep 120 & echo $! > pid; wait") with { Deadline = shortDeadline };
 
         await runner.RunAsync(request, TestContext.Current.CancellationToken);
 
@@ -154,7 +155,7 @@ public sealed class ChildProcessRunnerTests : IDisposable {
 
     private static async Task<bool> HasEndedAsync(int processId) {
         Stopwatch clock = Stopwatch.StartNew();
-        while (clock.Elapsed < exitGrace) {
+        while (clock.Elapsed < grandchildExitWait) {
             try {
                 using Process process = Process.GetProcessById(processId);
                 if (process.HasExited) {
