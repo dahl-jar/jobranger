@@ -239,6 +239,44 @@ EVIDENCE_TEMPLATE = (
 EVIDENCE_DEFAULTS = {"id": "abc", "name": "n", "facts": "x"}
 EVIDENCE_FIELDS = ("id", "name", "facts", "start", "end")
 
+LINE_SEPARATORS = ("\x85", "\u2028", "\u2029")
+SCALAR_QUOTES = ("{}", "'{}'", '"{}"')
+SEPARATOR_FORMS = tuple(
+    quote.format(f"a{separator}b")
+    for separator in LINE_SEPARATORS
+    for quote in SCALAR_QUOTES
+)
+FOLDED_SEPARATOR_FORMS = (
+    "a \u2028 b",
+    "a\x85\x85b",
+    "a\u2028\x85b",
+    "a\u2028",
+    "\u2028a",
+    "'\u2028a'",
+    "'a'\u2028",
+    "a \x23 c\u2028",
+    "a \x23 c\u2028x",
+    "|\n  a\u2028b",
+    "a\u2028\x23c",
+    "'a'\u2028\u2028",
+    "'a'\u2028 \x23 c",
+    '"\\x80"',
+)
+NON_PRINTABLE_FORMS = tuple(
+    f"a{character}b"
+    for character in ("\x01", "\x07", "\x0b", "\x0c", "\x1b", "\x7f", "\x80", "\ufffe")
+)
+TAB_FORMS = (
+    "a\tb",
+    "a\t",
+    "'a'\t",
+    "a \x23 c\tz",
+    "'a\tb'",
+    "|\t\n  a",
+    "|\n  a\tb",
+    "a#b\t",
+)
+
 EXTRA_FORMS = {
     "professional_years": (
         "-0",
@@ -323,6 +361,8 @@ EXTRA_FORMS = {
         "0xaf",
         "0xAF",
         "!!int 0o8",
+        "3\t",
+        "\t3",
     ),
     "has_master": (
         "' yes'",
@@ -384,7 +424,13 @@ EXTRA_FORMS = {
         "!!str 'x'",
         "1_",
         ".5e3",
+        *SEPARATOR_FORMS,
+        *FOLDED_SEPARATOR_FORMS,
+        *NON_PRINTABLE_FORMS,
+        *TAB_FORMS,
+        "|\r\n  a\r\n  b",
     ),
+    "stack": ("a\u2028, b", "a,\tb"),
     "evidence.id": ("a", "ab", "' '", '"abc\\n"', "!!str abc"),
     "evidence.name": ("nULL",),
     "evidence.start": ("2024-13",),
@@ -418,6 +464,7 @@ DOCUMENTS = (
     "summary: s\nprofessional_years: 1\nstack: {}\n",
     "summary: s\nprofessional_years: 1\nstack: ~\n",
     "summary: s\nprofessional_years: 1\nstack: ''\n",
+    "su\u2028mmary: s\nprofessional_years: 1\n",
 )
 
 

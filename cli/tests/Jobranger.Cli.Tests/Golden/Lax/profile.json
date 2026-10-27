@@ -1127,6 +1127,326 @@
     }
   },
   {
+    "id": "summary 'a\\x85b'",
+    "field": "summary",
+    "yaml": "summary: a\u0085b\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a b"
+    }
+  },
+  {
+    "id": "summary \"'a\\x85b'\"",
+    "field": "summary",
+    "yaml": "summary: 'a\u0085b'\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a b"
+    }
+  },
+  {
+    "id": "summary '\"a\\x85b\"'",
+    "field": "summary",
+    "yaml": "summary: \"a\u0085b\"\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a b"
+    }
+  },
+  {
+    "id": "summary 'a\\u2028b'",
+    "field": "summary",
+    "yaml": "summary: a\u2028b\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a\u2028b"
+    }
+  },
+  {
+    "id": "summary \"'a\\u2028b'\"",
+    "field": "summary",
+    "yaml": "summary: 'a\u2028b'\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a\u2028b"
+    }
+  },
+  {
+    "id": "summary '\"a\\u2028b\"'",
+    "field": "summary",
+    "yaml": "summary: \"a\u2028b\"\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a\u2028b"
+    }
+  },
+  {
+    "id": "summary 'a\\u2029b'",
+    "field": "summary",
+    "yaml": "summary: a\u2029b\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a\u2029b"
+    }
+  },
+  {
+    "id": "summary \"'a\\u2029b'\"",
+    "field": "summary",
+    "yaml": "summary: 'a\u2029b'\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a\u2029b"
+    }
+  },
+  {
+    "id": "summary '\"a\\u2029b\"'",
+    "field": "summary",
+    "yaml": "summary: \"a\u2029b\"\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a\u2029b"
+    }
+  },
+  {
+    "id": "summary 'a \\u2028 b'",
+    "field": "summary",
+    "yaml": "summary: a \u2028 b\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a\u2028b"
+    }
+  },
+  {
+    "id": "summary 'a\\x85\\x85b'",
+    "field": "summary",
+    "yaml": "summary: a\u0085\u0085b\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a\nb"
+    }
+  },
+  {
+    "id": "summary 'a\\u2028\\x85b'",
+    "field": "summary",
+    "yaml": "summary: a\u2028\u0085b\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a\u2028\nb"
+    }
+  },
+  {
+    "id": "summary 'a\\u2028'",
+    "field": "summary",
+    "yaml": "summary: a\u2028\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a"
+    }
+  },
+  {
+    "id": "summary '\\u2028a'",
+    "field": "summary",
+    "yaml": "summary: \u2028a\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a"
+    }
+  },
+  {
+    "id": "summary \"'\\u2028a'\"",
+    "field": "summary",
+    "yaml": "summary: '\u2028a'\nprofessional_years: 1\n",
+    "expect": {
+      "value": "\u2028a"
+    }
+  },
+  {
+    "id": "summary \"'a'\\u2028\"",
+    "field": "summary",
+    "yaml": "summary: 'a'\u2028\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a"
+    }
+  },
+  {
+    "id": "summary 'a # c\\u2028'",
+    "field": "summary",
+    "yaml": "summary: a # c\u2028\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a"
+    }
+  },
+  {
+    "id": "summary 'a # c\\u2028x'",
+    "field": "summary",
+    "yaml": "summary: a # c\u2028x\nprofessional_years: 1\n",
+    "expect": {
+      "crash": "ParserError"
+    }
+  },
+  {
+    "id": "summary '|\\n  a\\u2028b'",
+    "field": "summary",
+    "yaml": "summary: |\n  a\u2028b\nprofessional_years: 1\n",
+    "expect": {
+      "crash": "ParserError"
+    }
+  },
+  {
+    "id": "summary 'a\\u2028#c'",
+    "field": "summary",
+    "yaml": "summary: a\u2028#c\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a"
+    }
+  },
+  {
+    "id": "summary \"'a'\\u2028\\u2028\"",
+    "field": "summary",
+    "yaml": "summary: 'a'\u2028\u2028\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a"
+    }
+  },
+  {
+    "id": "summary \"'a'\\u2028 # c\"",
+    "field": "summary",
+    "yaml": "summary: 'a'\u2028 # c\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a"
+    }
+  },
+  {
+    "id": "summary '\"\\\\x80\"'",
+    "field": "summary",
+    "yaml": "summary: \"\\x80\"\nprofessional_years: 1\n",
+    "expect": {
+      "value": "\u0080"
+    }
+  },
+  {
+    "id": "summary 'a\\x01b'",
+    "field": "summary",
+    "yaml": "summary: a\u0001b\nprofessional_years: 1\n",
+    "expect": {
+      "crash": "ReaderError"
+    }
+  },
+  {
+    "id": "summary 'a\\x07b'",
+    "field": "summary",
+    "yaml": "summary: a\u0007b\nprofessional_years: 1\n",
+    "expect": {
+      "crash": "ReaderError"
+    }
+  },
+  {
+    "id": "summary 'a\\x0bb'",
+    "field": "summary",
+    "yaml": "summary: a\u000bb\nprofessional_years: 1\n",
+    "expect": {
+      "crash": "ReaderError"
+    }
+  },
+  {
+    "id": "summary 'a\\x0cb'",
+    "field": "summary",
+    "yaml": "summary: a\fb\nprofessional_years: 1\n",
+    "expect": {
+      "crash": "ReaderError"
+    }
+  },
+  {
+    "id": "summary 'a\\x1bb'",
+    "field": "summary",
+    "yaml": "summary: a\u001bb\nprofessional_years: 1\n",
+    "expect": {
+      "crash": "ReaderError"
+    }
+  },
+  {
+    "id": "summary 'a\\x7fb'",
+    "field": "summary",
+    "yaml": "summary: a\u007fb\nprofessional_years: 1\n",
+    "expect": {
+      "crash": "ReaderError"
+    }
+  },
+  {
+    "id": "summary 'a\\x80b'",
+    "field": "summary",
+    "yaml": "summary: a\u0080b\nprofessional_years: 1\n",
+    "expect": {
+      "crash": "ReaderError"
+    }
+  },
+  {
+    "id": "summary 'a\\ufffeb'",
+    "field": "summary",
+    "yaml": "summary: a\ufffeb\nprofessional_years: 1\n",
+    "expect": {
+      "crash": "ReaderError"
+    }
+  },
+  {
+    "id": "summary 'a\\tb'",
+    "field": "summary",
+    "yaml": "summary: a\tb\nprofessional_years: 1\n",
+    "expect": {
+      "crash": "ScannerError"
+    }
+  },
+  {
+    "id": "summary 'a\\t'",
+    "field": "summary",
+    "yaml": "summary: a\t\nprofessional_years: 1\n",
+    "expect": {
+      "crash": "ScannerError"
+    }
+  },
+  {
+    "id": "summary \"'a'\\t\"",
+    "field": "summary",
+    "yaml": "summary: 'a'\t\nprofessional_years: 1\n",
+    "expect": {
+      "crash": "ScannerError"
+    }
+  },
+  {
+    "id": "summary 'a # c\\tz'",
+    "field": "summary",
+    "yaml": "summary: a # c\tz\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a"
+    }
+  },
+  {
+    "id": "summary \"'a\\tb'\"",
+    "field": "summary",
+    "yaml": "summary: 'a\tb'\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a\tb"
+    }
+  },
+  {
+    "id": "summary '|\\t\\n  a'",
+    "field": "summary",
+    "yaml": "summary: |\t\n  a\nprofessional_years: 1\n",
+    "expect": {
+      "crash": "ScannerError"
+    }
+  },
+  {
+    "id": "summary '|\\n  a\\tb'",
+    "field": "summary",
+    "yaml": "summary: |\n  a\tb\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a\tb\n"
+    }
+  },
+  {
+    "id": "summary 'a#b\\t'",
+    "field": "summary",
+    "yaml": "summary: a#b\t\nprofessional_years: 1\n",
+    "expect": {
+      "crash": "ScannerError"
+    }
+  },
+  {
+    "id": "summary '|\\r\\n  a\\r\\n  b'",
+    "field": "summary",
+    "yaml": "summary: |\r\n  a\r\n  b\nprofessional_years: 1\n",
+    "expect": {
+      "value": "a\nb\n"
+    }
+  },
+  {
     "id": "professional_years '1'",
     "field": "professional_years",
     "yaml": "summary: s\nprofessional_years: 1\n",
@@ -2895,6 +3215,22 @@
     "yaml": "summary: s\nprofessional_years: !!int 0o8\n",
     "expect": {
       "crash": "ValueError"
+    }
+  },
+  {
+    "id": "professional_years '3\\t'",
+    "field": "professional_years",
+    "yaml": "summary: s\nprofessional_years: 3\t\n",
+    "expect": {
+      "crash": "ScannerError"
+    }
+  },
+  {
+    "id": "professional_years '\\t3'",
+    "field": "professional_years",
+    "yaml": "summary: s\nprofessional_years: \t3\n",
+    "expect": {
+      "crash": "ScannerError"
     }
   },
   {
@@ -6370,6 +6706,28 @@
     "expect": {
       "value": [
         "abc"
+      ]
+    }
+  },
+  {
+    "id": "stack 'a\\u2028, b'",
+    "field": "stack",
+    "yaml": "summary: s\nprofessional_years: 1\nstack: [a\u2028, b]\n",
+    "expect": {
+      "value": [
+        "a",
+        "b"
+      ]
+    }
+  },
+  {
+    "id": "stack 'a,\\tb'",
+    "field": "stack",
+    "yaml": "summary: s\nprofessional_years: 1\nstack: [a,\tb]\n",
+    "expect": {
+      "value": [
+        "a",
+        "b"
       ]
     }
   },
@@ -12100,6 +12458,23 @@
         {
           "loc": "stack",
           "type": "tuple_type"
+        }
+      ]
+    }
+  },
+  {
+    "id": "document 'su\\u2028mmary: s\\nprofessional_years: 1\\n'",
+    "field": "document",
+    "yaml": "su\u2028mmary: s\nprofessional_years: 1\n",
+    "expect": {
+      "errors": [
+        {
+          "loc": "summary",
+          "type": "missing"
+        },
+        {
+          "loc": "su\u2028mmary",
+          "type": "extra_forbidden"
         }
       ]
     }

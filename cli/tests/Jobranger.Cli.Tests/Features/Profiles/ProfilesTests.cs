@@ -211,6 +211,20 @@ public sealed class ProfilesTests : IDisposable {
             error.Errors.Select(item => (item.Location, item.Problem)));
     }
 
+    [Theory]
+    [InlineData("summary: s\rprofessional_years: 3\t\r", "2")]
+    [InlineData("professional_years: 1\nsummary: \"a\nb\"\n", "2")]
+    [InlineData("summary: s\nprofessional_years: 1\nstack: [a\u0007]\n", "3")]
+    public void ShouldNameLine_WhenProfileIsNotYaml(string yaml, string line) {
+        string path = Write(yaml);
+
+        ConfigInvalidException error = Assert.Throws<ConfigInvalidException>(() => ProfilesEntry.Load(path));
+
+        Assert.Equal(
+            [(profileName, ConfigProblem.NotYaml, line)],
+            error.Errors.Select(item => (item.Location, item.Problem, item.Detail)));
+    }
+
     [Fact]
     public void ShouldWriteNullYears_WhenYearsAreInfinite() {
         string path = Write(valid.Replace("professional_years: 1", "professional_years: .inf", StringComparison.Ordinal));
