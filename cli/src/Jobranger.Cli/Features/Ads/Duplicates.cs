@@ -1,76 +1,51 @@
-using System.Collections.Frozen;
-using System.Text;
 using Jobranger.Cli.Text;
 
 namespace Jobranger.Cli.Features.Ads;
 
 internal static class Duplicates {
-    private const int descriptionMinLength = 120;
     private const double vacancyJaccardThreshold = 0.9;
     private const double descriptionSimilarityThreshold = 0.92;
     private const double unrelatedDescriptionThreshold = 0.5;
-    private const int shingleSize = 5;
     private const int minCompanyTokenLength = 3;
-    private const char space = ' ';
-    private const char plus = '+';
-    private const char hash = '#';
-
-    private static readonly string[] companyCutWords = ["avd", "via"];
-    private static readonly FrozenSet<string> companyNoise = FrozenSet.Create(
-        StringComparer.Ordinal, [.. DedupKey.CompanySuffixes, "hf", "norge", "norway", "group", "services"]);
-    private static readonly FrozenSet<string> roleTokens = FrozenSet.Create(
-        StringComparer.Ordinal,
-        "android", "ios", "web", "mobile", "windows", "macos", "linux", "embedded", "frontend", "backend", "fullstack",
-        "java", "kotlin", "scala", "net", "c#", "f#", "c++", "c", "python", "go", "golang", "rust", "ruby", "rails",
-        "php", "javascript", "typescript", "node", "react", "angular", "vue", "svelte", "swift", "flutter", "dart",
-        "elixir", "erlang", "haskell", "clojure", "data", "devops", "cloud", "security", "test", "qa", "ml", "ai");
-    private static readonly string[] roleNouns = [
-        "utvikler", "utviklere", "developer", "developers", "ingeniør", "engineer", "arkitekt", "architect",
-        "konsulent", "consultant", "programmerer", "programmer", "spesialist", "specialist", "rådgiver", "ekspert",
-        "expert", "leder", "lead", "tester",
-    ];
 
     public static IReadOnlyList<IReadOnlyList<Ad>> Group(IReadOnlyList<Ad> ads) {
         List<List<Ad>> groups = [];
+        List<AdProfile> heads = [];
+        Dictionary<string, List<int>> byUrl = [];
+        Dictionary<string, List<int>> byKey = [];
+        Dictionary<string, List<int>> byCompany = [];
         foreach (Ad ad in ads.OrderBy(ad => ad.Id, StringComparer.Ordinal)) {
-            List<Ad>? group = groups.Find(candidate => IsDuplicate(ad, candidate[0]));
-            if (group is null) {
-                groups.Add([ad]);
-            } else {
-                group.Add(ad);
+            AdProfile profile = new(ad);
+            IEnumerable<int> candidates = Candidates(profile, heads, byUrl, byKey, byCompany);
+            int match = candidates.Order().Distinct().FirstOrDefault(index => IsDuplicate(profile, heads[index]), -1);
+            if (match >= 0) {
+                groups[match].Add(ad);
+                continue;
+            }
+            int created = groups.Count;
+            groups.Add([ad]);
+            heads.Add(profile);
+            if (profile.Url.Length > 0) {
+                Index(byUrl, profile.Url, created);
+            }
+            Index(byKey, profile.Key, created);
+            foreach (string token in profile.Companies) {
+                Index(byCompany, token, created);
             }
         }
         return groups;
     }
 
-    public static bool IsSameVacancy(Ad left, Ad right) {
-        if (!LocationsOverlap(left.Location, right.Location)) {
-            return false;
-        }
-        if (DedupKey.For(left.Company, left.Title) == DedupKey.For(right.Company, right.Title)) {
-            return !DescriptionsUnrelated(left, right);
-        }
-        if (!CompaniesMatch(left.Company, right.Company)) {
-            return false;
-        }
-        string leftTitle = Normalize(left.Title);
-        string rightTitle = Normalize(right.Title);
-        if (leftTitle == rightTitle) {
-            return !DescriptionsUnrelated(left, right);
-        }
-        if (!SameRole(left, right)) {
-            return false;
-        }
-        return ShingleJaccard(left.Description ?? string.Empty, right.Description ?? string.Empty)
-            >= vacancyJaccardThreshold;
-    }
+    public static bool IsSameVacancy(Ad left, Ad right) => IsSameVacancy(new AdProfile(left), new AdProfile(right));
 
     public static (IReadOnlyList<Ad> Remaining, IReadOnlyList<string> Covered) SplitReported(
         IReadOnlyList<Ad> ads, IReadOnlyList<Ad> reported) {
+        AdProfile[] reportedProfiles = [.. reported.Select(ad => new AdProfile(ad))];
         List<Ad> remaining = [];
         List<string> covered = [];
         foreach (Ad ad in ads) {
-            if (reported.Any(other => IsSameVacancy(ad, other))) {
+            AdProfile profile = new(ad);
+            if (reportedProfiles.Any(other => IsSameVacancy(profile, other))) {
                 covered.Add(ad.Id);
             } else {
                 remaining.Add(ad);
@@ -79,9 +54,37 @@ internal static class Duplicates {
         return (remaining, covered);
     }
 
-    public static bool CompaniesMatch(string left, string right) {
-        HashSet<string> leftTokens = CompanyTokens(left);
-        HashSet<string> rightTokens = CompanyTokens(right);
+    public static bool CompaniesMatch(string left, string right) =>
+        CompaniesMatch(AdProfile.CompanyTokens(left), AdProfile.CompanyTokens(right));
+
+    private static IEnumerable<int> Candidates(
+        AdProfile profile,
+        List<AdProfile> heads,
+        Dictionary<string, List<int>> byUrl,
+        Dictionary<string, List<int>> byKey,
+        Dictionary<string, List<int>> byCompany) {
+        Dictionary<int, int> shared = [];
+        foreach (string token in profile.Companies) {
+            foreach (int group in byCompany.GetValueOrDefault(token) ?? []) {
+                shared[group] = shared.GetValueOrDefault(group) + 1;
+            }
+        }
+        IEnumerable<int> candidates = shared
+            .Where(entry => entry.Value == profile.Companies.Count || entry.Value == heads[entry.Key].Companies.Count)
+            .Select(entry => entry.Key)
+            .Concat(byKey.GetValueOrDefault(profile.Key) ?? []);
+        return profile.Url.Length > 0 ? candidates.Concat(byUrl.GetValueOrDefault(profile.Url) ?? []) : candidates;
+    }
+
+    private static void Index(Dictionary<string, List<int>> index, string key, int group) {
+        if (!index.TryGetValue(key, out List<int>? groups)) {
+            groups = [];
+            index[key] = groups;
+        }
+        groups.Add(group);
+    }
+
+    private static bool CompaniesMatch(HashSet<string> leftTokens, HashSet<string> rightTokens) {
         if (leftTokens.Count == 0 || rightTokens.Count == 0) {
             return false;
         }
@@ -94,118 +97,63 @@ internal static class Duplicates {
             && smaller.Any(token => CodePoints.Count(token) >= minCompanyTokenLength);
     }
 
-    private static bool IsDuplicate(Ad left, Ad right) =>
-        SameUrl(left.Url, right.Url) || IsSameVacancy(left, right) || IsNearCopy(left, right);
+    private static bool IsDuplicate(AdProfile left, AdProfile right) =>
+        (left.Url.Length > 0 && left.Url == right.Url) || IsSameVacancy(left, right) || IsNearCopy(left, right);
 
-    private static bool SameUrl(string left, string right) {
-        string canonical = CanonicalUrls.Of(left);
-        return canonical.Length > 0 && canonical == CanonicalUrls.Of(right);
-    }
-
-    private static bool IsNearCopy(Ad left, Ad right) {
-        if (!CompaniesMatch(left.Company, right.Company)
-            || Normalize(left.Location) != Normalize(right.Location)
-            || !SameRole(left, right)) {
+    private static bool IsSameVacancy(AdProfile left, AdProfile right) {
+        if (!LocationsOverlap(left, right)) {
             return false;
         }
-        string leftText = Description(left);
-        string rightText = Description(right);
-        return BothLong(leftText, rightText)
-            && (leftText == rightText || SequenceMatch.Ratio(leftText, rightText) >= descriptionSimilarityThreshold);
-    }
-
-    private static bool DescriptionsUnrelated(Ad left, Ad right) {
-        string leftText = Description(left);
-        string rightText = Description(right);
-        return BothLong(leftText, rightText)
-            && SequenceMatch.Ratio(leftText, rightText) < unrelatedDescriptionThreshold;
-    }
-
-    private static bool BothLong(string left, string right) =>
-        CodePoints.Count(left) >= descriptionMinLength && CodePoints.Count(right) >= descriptionMinLength;
-
-    private static string Description(Ad ad) => Normalize(ad.Description ?? string.Empty);
-
-    private static bool SameRole(Ad left, Ad right) {
-        HashSet<string> leftRoles = RoleTokens(Normalize(left.Title));
-        HashSet<string> rightRoles = RoleTokens(Normalize(right.Title));
-        if (leftRoles.Count == 0 && rightRoles.Count == 0) {
-            leftRoles = RoleTokens(Description(left));
-            rightRoles = RoleTokens(Description(right));
+        if (left.Key == right.Key) {
+            return !DescriptionsUnrelated(left, right);
         }
-        return leftRoles.SetEquals(rightRoles) && TitleLevels.Of(left.Title) == TitleLevels.Of(right.Title);
-    }
-
-    private static HashSet<string> RoleTokens(string normalized) =>
-        [.. Words(normalized).Select(RoleToken).OfType<string>()];
-
-    private static string? RoleToken(string word) {
-        if (roleTokens.Contains(word)) {
-            return word;
+        if (!CompaniesMatch(left.Companies, right.Companies)) {
+            return false;
         }
-        foreach (string noun in roleNouns) {
-            if (word.Length > noun.Length && word.EndsWith(noun, StringComparison.Ordinal)
-                && roleTokens.Contains(word[..^noun.Length])) {
-                return word[..^noun.Length];
-            }
+        if (left.Title == right.Title) {
+            return !DescriptionsUnrelated(left, right);
         }
-        return null;
+        return SameRole(left, right) && ShingleJaccard(left, right) >= vacancyJaccardThreshold;
     }
 
-    private static bool LocationsOverlap(string left, string right) {
-        HashSet<string> leftWords = [.. Words(Normalize(left))];
-        HashSet<string> rightWords = [.. Words(Normalize(right))];
-        return leftWords.Count == 0 || rightWords.Count == 0 || leftWords.Overlaps(rightWords);
+    private static bool IsNearCopy(AdProfile left, AdProfile right) {
+        if (!BothLong(left, right) || left.Location != right.Location
+            || !CompaniesMatch(left.Companies, right.Companies) || !SameRole(left, right)) {
+            return false;
+        }
+        return left.Description == right.Description || RatioAtLeast(left, right, descriptionSimilarityThreshold);
     }
 
-    private static double ShingleJaccard(string left, string right) {
-        HashSet<string> leftShingles = Shingles(left);
-        HashSet<string> rightShingles = Shingles(right);
+    private static bool DescriptionsUnrelated(AdProfile left, AdProfile right) =>
+        BothLong(left, right) && !RatioAtLeast(left, right, unrelatedDescriptionThreshold);
+
+    private static bool RatioAtLeast(AdProfile left, AdProfile right, double threshold) =>
+        SequenceMatch.QuickRatio(left.Counts, right.Counts) >= threshold
+        && SequenceMatch.Ratio(left.Codes, right.Codes) >= threshold;
+
+    private static bool BothLong(AdProfile left, AdProfile right) => left.LongDescription && right.LongDescription;
+
+    private static bool SameRole(AdProfile left, AdProfile right) {
+        bool titled = left.TitleRoles.Count > 0 || right.TitleRoles.Count > 0;
+        HashSet<string> leftRoles = titled ? left.TitleRoles : left.DescriptionRoles;
+        HashSet<string> rightRoles = titled ? right.TitleRoles : right.DescriptionRoles;
+        return leftRoles.SetEquals(rightRoles) && left.Level == right.Level;
+    }
+
+    private static bool LocationsOverlap(AdProfile left, AdProfile right) =>
+        left.LocationWords.Count == 0 || right.LocationWords.Count == 0
+        || left.LocationWords.Overlaps(right.LocationWords);
+
+    private static double ShingleJaccard(AdProfile left, AdProfile right) {
+        HashSet<(string, string, string, string, string)> leftShingles = left.Shingles;
+        HashSet<(string, string, string, string, string)> rightShingles = right.Shingles;
         if (leftShingles.Count == 0 || rightShingles.Count == 0) {
             return 0.0;
         }
-        int shared = leftShingles.Count(rightShingles.Contains);
+        bool leftSmaller = leftShingles.Count <= rightShingles.Count;
+        HashSet<(string, string, string, string, string)> smaller = leftSmaller ? leftShingles : rightShingles;
+        HashSet<(string, string, string, string, string)> larger = leftSmaller ? rightShingles : leftShingles;
+        int shared = smaller.Count(larger.Contains);
         return (double)shared / (leftShingles.Count + rightShingles.Count - shared);
-    }
-
-    private static HashSet<string> Shingles(string text) {
-        string normalized = Normalize(text);
-        if (CodePoints.Count(normalized) < descriptionMinLength) {
-            return [];
-        }
-        string[] words = Words(normalized);
-        return [.. Enumerable.Range(0, Math.Max(words.Length - shingleSize + 1, 0))
-            .Select(start => string.Join(space, words, start, shingleSize))];
-    }
-
-    private static HashSet<string> CompanyTokens(string value) {
-        string[] words = Words(Normalize(value));
-        foreach (string cut in companyCutWords) {
-            int index = Array.IndexOf(words, cut);
-            if (index >= 0) {
-                words = words[..index];
-            }
-        }
-        return [.. words.Where(word => !companyNoise.Contains(word))];
-    }
-
-    private static string[] Words(string normalized) =>
-        normalized.Split(space, StringSplitOptions.RemoveEmptyEntries);
-
-    private static string Normalize(string value) {
-        StringBuilder normalized = new(value.Length);
-        bool gap = false;
-        foreach (int code in CodePoints.Of(PythonUnicode.CaseFold(value))) {
-            if (!PythonUnicode.IsWord(code) && code != plus && code != hash) {
-                gap = true;
-                continue;
-            }
-            if (gap && normalized.Length > 0) {
-                normalized.Append(space);
-            }
-            gap = false;
-            CodePoints.Append(normalized, code);
-        }
-        return normalized.ToString();
     }
 }
