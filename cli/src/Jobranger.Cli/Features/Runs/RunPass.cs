@@ -69,6 +69,8 @@ internal sealed class RunPass(
             HiddenCounts = progress.Report.HiddenCounts,
             Pending = progress.Classified.Pending,
             ModelStopped = progress.Classified.Stopped,
+            UnknownEvidenceDropped = progress.Classified.UnknownEvidenceDropped,
+            UnpricedLimit = model is RunModel used && BudgetEntry.UnpricedLimit(request.Config, used.Prices),
             Version = progress.Version,
         };
     }
@@ -105,8 +107,8 @@ internal sealed class RunPass(
         if (progress.Tally.Cancelled || cancellationToken.IsCancellationRequested) {
             return RunStatus.Cancelled;
         }
-        progress.Classified = await new ClassifyStage(ads, budget, request.Events, logger)
-            .RunAsync(new ClassifyInput(model, prompt, config.Targets.Limits, today), cancellationToken)
+        progress.Classified = await new ClassifyStage(ads, budget, time, request.Events, logger)
+            .RunAsync(new ClassifyInput(model, prompt, config, today), cancellationToken)
             .ConfigureAwait(false);
         if (progress.Classified.Stopped == StopReason.Cancelled) {
             return RunStatus.Cancelled;

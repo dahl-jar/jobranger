@@ -4,4 +4,5 @@ internal enum StopReason {
     Auth,
     ProviderDown,
     Cancelled,
+    Budget,
 }

@@ -4,6 +4,7 @@ using Jobranger.Cli.Features.Matching;
 using Jobranger.Cli.Features.Models;
 using Jobranger.Cli.Features.Providers;
 using Jobranger.Cli.Features.Sources;
+using AdsEntry = Jobranger.Cli.Features.Ads.Ads;
 using MatchingEntry = Jobranger.Cli.Features.Matching.Matching;
 
 namespace Jobranger.Cli.Features.Runs;
@@ -74,7 +75,7 @@ internal static class RunConversions {
         MatchingEntry.EncodeMatch(classification.Match, classification.Checks));
 
     public static Classification ToClassification(AdView view) => new(
-        view.Label ?? ClassifyStage.ErrorLabel,
+        view.Label ?? AdsEntry.ErrorLabel,
         view.Summary,
         view.RequiresMaster,
         view.IsProgrammingJob == true,

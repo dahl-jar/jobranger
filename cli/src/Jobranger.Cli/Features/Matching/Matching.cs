@@ -32,6 +32,9 @@ internal static class Matching {
         string version) =>
         Classifier.ToClassification(assessment, ad, evidence, education, limits, version);
 
+    public static bool CitesUnknownEvidence(AdAssessment assessment, IReadOnlySet<string> evidence, string version) =>
+        MatchRules.Parse(assessment.Match, version) is Match match && MatchRules.HasUnknownEvidence(match, evidence);
+
     public static Classification WithTitleLevel(string title, Classification result) =>
         Classifier.WithTitleLevel(title, result);
 

@@ -5,6 +5,8 @@ using Microsoft.Data.Sqlite;
 namespace Jobranger.Cli.Features.Ads;
 
 internal sealed class Ads(SqliteConnection connection, TimeProvider time) {
+    public const string ErrorLabel = AdStore.ErrorLabel;
+
     private const int applyCheckLimit = 60;
 
     private static readonly TimeSpan applyRecheckAge = TimeSpan.FromDays(7);
@@ -53,11 +55,14 @@ internal sealed class Ads(SqliteConnection connection, TimeProvider time) {
 
     public IReadOnlyList<Ad> Pending(int maxAttempts) => store.PendingClassification(maxAttempts);
 
-    public IReadOnlyList<Ad> Exhausted(int maxAttempts) => store.ExhaustedClassification(maxAttempts);
+    public IReadOnlyList<Ad> Exhausted(int maxAttempts, string version) =>
+        store.ExhaustedClassification(maxAttempts, version);
+
+    public IReadOnlyList<Ad> Outdated(string version) => store.OutdatedClassification(version);
 
     public void BumpLabelAttempts(IReadOnlyList<string> adIds) => store.BumpLabelAttempts(adIds);
 
-    public bool RefreshAssessments(string version) => store.RefreshAssessments(version);
+    public void ResetUnassessed(string version) => store.ResetUnassessed(version);
 
     public void SetClassification(string adId, StoredClassification classification, string version) =>
         store.SetClassification(adId, classification, version);

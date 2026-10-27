@@ -85,10 +85,22 @@ internal static partial class LogEvents {
     public static partial void RunLocked(ILogger logger);
 
     [LoggerMessage(
-        EventName = "classify.refreshed",
+        EventName = "classify.outdated",
         Level = LogLevel.Information,
-        Message = "cleared assessments made with an older prompt")]
-    public static partial void AssessmentsRefreshed(ILogger logger);
+        Message = "queued ads assessed with an older prompt count={Count}")]
+    public static partial void OutdatedQueued(ILogger logger, int count);
+
+    [LoggerMessage(
+        EventName = "classify.call_retried",
+        Level = LogLevel.Warning,
+        Message = "model call failed, ad queued again failure={Failure}")]
+    public static partial void ClassifyCallRetried(ILogger logger, string failure);
+
+    [LoggerMessage(
+        EventName = "classify.budget_paused",
+        Level = LogLevel.Information,
+        Message = "stopped model calls at the monthly limit")]
+    public static partial void ClassifyBudgetPaused(ILogger logger);
 
     [LoggerMessage(
         EventName = "classify.provider.failed",

@@ -36,6 +36,9 @@ internal sealed class Budget(SqliteConnection connection) {
         return batch ? total * batchMultiplier : total;
     }
 
+    public static bool UnpricedLimit(AppConfig config, ModelPrices? prices) =>
+        config.Model.MonthlyLimitUsd is not null && prices is null;
+
     public static decimal? EstimateDailyCost(ModelPrices? prices, decimal dailyAds, bool batch) =>
         prices is null ? null : ConstantAdCost(prices, batch) * dailyAds;
 

@@ -24,13 +24,14 @@ public sealed class AdsBatchWriterTests : IDisposable {
     public void Dispose() => db.Dispose();
 
     [Fact]
-    public void ShouldKeepTitleLevelLabel_WhenVersionIsRefreshed() {
+    public void ShouldLeaveTitleLevelLabelOutOfReclassification_WhenPageIsLabelled() {
         ads.Upsert(Pending(1, "Senior utvikler", "Org One AS"));
+
         writer.Write(Batch("finn") with { Pages = [new PageResult("finn:1", null, null, "senior")] });
 
-        ads.RefreshAssessments(version);
-
-        Assert.Equal(("senior", 0), (Column("finn:1", "label"), ads.Pending(3).Count));
+        Assert.Equal(
+            ("senior", 0, 0),
+            (Column("finn:1", "label"), ads.Outdated(version).Count, ads.Pending(3).Count));
     }
 
     [Fact]

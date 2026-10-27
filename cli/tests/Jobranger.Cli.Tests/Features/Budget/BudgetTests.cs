@@ -132,6 +132,15 @@ public sealed class BudgetTests : IDisposable {
         Assert.False(allowed);
     }
 
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    public void ShouldNotFlagUnpricedLimit_WhenLimitCanBeChecked(bool limited, bool priced) {
+        bool flagged = BudgetEntry.UnpricedLimit(Config(limited ? 1m : null), priced ? Prices : null);
+
+        Assert.False(flagged);
+    }
+
     [Fact]
     public void ShouldAllowCall_WhenNoLimitAndPriceIsUnknown() {
         bool allowed = budget.Allowed(Config(null), null, today, 0m);

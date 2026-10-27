@@ -1,3 +1,3 @@
 namespace Jobranger.Cli.Features.Runs;
 
-internal sealed record ClassifyOutcome(int Pending, StopReason? Stopped);
+internal sealed record ClassifyOutcome(int Pending, StopReason? Stopped, int UnknownEvidenceDropped = 0);

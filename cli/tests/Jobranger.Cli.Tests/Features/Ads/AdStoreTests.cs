@@ -42,22 +42,29 @@ public sealed class AdStoreTests : IDisposable {
         Assert.Equal(TestDatabase.Rows(python, insertedColumnsQuery), TestDatabase.Rows(mine, insertedColumnsQuery));
     }
 
-    [Fact]
-    public void ShouldResetOutdatedAssessment_WhenRefreshing() {
-        store.Upsert(Primary with { Label = "junior", Description = "Build Java services.", AssessmentVersion = OutdatedVersion });
+    [Theory]
+    [InlineData(null)]
+    [InlineData("error")]
+    public void ShouldGiveFreshAttempts_WhenUnassessedAdIsOutdated(string? label) {
+        store.Upsert(Primary with { Label = label, Description = "Build Java services.", AssessmentVersion = OutdatedVersion });
         store.BumpLabelAttempts([Primary.Id, Primary.Id, Primary.Id]);
 
-        bool refreshed = store.RefreshAssessments(CurrentVersion);
+        store.ResetUnassessed(CurrentVersion);
 
-        Ad pending = store.PendingClassification(maxAttempts).Single();
-        Assert.Equal((true, "Build Java services.", null), (refreshed, pending.Description, pending.Assessment));
+        Assert.Equal(
+            (Primary.Id, "0|" + CurrentVersion),
+            (store.PendingClassification(maxAttempts).Single().Id,
+                (string?)db.Scalar("SELECT label_attempts || '|' || assessment_version FROM ads")));
     }
 
     [Fact]
-    public void ShouldReportNoChange_WhenEveryAssessmentIsCurrent() {
+    public void ShouldResetLabelAttempts_WhenClassificationIsStored() {
         store.Upsert(Primary with { Description = "Build Java services." });
+        store.BumpLabelAttempts([Primary.Id, Primary.Id]);
 
-        Assert.False(store.RefreshAssessments(CurrentVersion));
+        store.SetClassification(Primary.Id, Classification, CurrentVersion);
+
+        Assert.Equal(0L, db.Scalar("SELECT label_attempts FROM ads"));
     }
 
     [Fact]
@@ -66,7 +73,7 @@ public sealed class AdStoreTests : IDisposable {
         store.Upsert(Numbered(2) with { Description = "x" });
         store.BumpLabelAttempts(["finn:2", "finn:2", "finn:2"]);
 
-        Assert.Equal(["finn:2"], store.ExhaustedClassification(maxAttempts).Select(ad => ad.Id));
+        Assert.Equal(["finn:2"], store.ExhaustedClassification(maxAttempts, CurrentVersion).Select(ad => ad.Id));
     }
 
     [Fact]

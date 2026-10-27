@@ -27,6 +27,12 @@ internal sealed record RunResult {
 
     public StopReason? ModelStopped { get; init; }
 
+    public bool BudgetPaused => ModelStopped == StopReason.Budget;
+
+    public bool UnpricedLimit { get; init; }
+
+    public int UnknownEvidenceDropped { get; init; }
+
     public string? Version { get; init; }
 
     public static RunResult Locked() => new() { Status = RunStatus.Locked };

@@ -22,7 +22,7 @@ internal sealed class FakeModelClient(Func<ClassifyPrompt, CancellationToken, Ta
     public static FakeModelClient Keyed(IReadOnlyDictionary<string, string> replies) =>
         new((prompt, _) => Task.FromResult(Reply(replies[AdId(prompt)])));
 
-    private static string AdId(ClassifyPrompt prompt) =>
+    public static string AdId(ClassifyPrompt prompt) =>
         JsonNode.Parse(prompt.User.TrimEnd().Split(lineBreak)[^1])![idKey]!.GetValue<string>();
 
     public Task<ModelReply> ClassifyAsync(ClassifyPrompt prompt, JsonObject schema, CancellationToken cancellationToken) {
