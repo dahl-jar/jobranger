@@ -1,15 +1,15 @@
 import { AD_PATH, deepLinkPath } from '@/features/jobs/paths'
 import type { AdsSnapshot } from '@/features/relay/contract/payload.gen'
 
-export type DeepLinkAction = 'applied' | 'not_for_me'
-export type DeepLinkOutcome = 'mark' | 'marked' | 'missing'
+type DeepLinkAction = 'applied' | 'not_for_me'
+type DeepLinkOutcome = 'mark' | 'marked' | 'missing'
 
 export interface DeepLink {
   adId: string
   action: DeepLinkAction
 }
 
-export interface AdLink {
+interface AdLink {
   adId: string
   action: DeepLinkAction | undefined
 }
@@ -35,8 +35,7 @@ function single(params: URLSearchParams, name: string): string | undefined {
   return values.length === 1 ? values[0] : undefined
 }
 
-export function parseAdLink(pathname: string, search: string): AdLink | undefined {
-  if (pathname !== AD_PATH) return undefined
+export function parseAdSearch(search: string): AdLink | undefined {
   const params = new URLSearchParams(search)
   const adId = single(params, ID_PARAM)
   if (adId === undefined || !isAdId(adId)) return undefined
@@ -45,7 +44,8 @@ export function parseAdLink(pathname: string, search: string): AdLink | undefine
 }
 
 export function parseDeepLink(pathname: string, search: string): DeepLink | undefined {
-  const link = parseAdLink(pathname, search)
+  if (pathname !== AD_PATH) return undefined
+  const link = parseAdSearch(search)
   if (link?.action === undefined) return undefined
   return { adId: link.adId, action: link.action }
 }

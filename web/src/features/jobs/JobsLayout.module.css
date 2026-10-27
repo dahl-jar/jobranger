@@ -1,0 +1,31 @@
+.columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 48px;
+  margin-top: 28px;
+}
+
+.main {
+  flex: 999 1 560px;
+  min-width: 0;
+}
+
+.aside {
+  flex: 1 1 240px;
+  max-width: 300px;
+  min-width: 0;
+}
+
+.block {
+  margin-top: 34px;
+}
+
+.notice {
+  margin-top: 14px;
+}
+
+.error {
+  margin: 14px 0 0;
+  font-size: 14px;
+  color: var(--miss);
+}

@@ -20,7 +20,7 @@ export function RelayProvider({ children }: { children: ReactNode }) {
   const live = useRef<Live | undefined>(undefined)
   const [relay] = useState<Relay>(() => ({
     store,
-    send: (draft) => live.current?.commands.send(draft) ?? Promise.reject(disconnectedError()),
+    send: (draft, onProgress) => live.current?.commands.send(draft, onProgress) ?? Promise.reject(disconnectedError()),
     unpair: async () => {
       await live.current?.client.unpair()
     },
@@ -36,7 +36,7 @@ export function RelayProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const deps = injected ?? defaultRelayDeps()
-    const commands = new CommandTracker((command) => client.send(command))
+    const commands = new CommandTracker((command, onProgress) => client.send(command, onProgress))
     const client: RelayClient = new RelayClient({
       ...deps,
       onState: (state) => {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   deepLinkOutcome,
-  parseAdLink,
+  parseAdSearch,
   parseDeepLink,
   savePendingDeepLink,
   takePendingDeepLink,
@@ -44,16 +44,16 @@ describe('parseDeepLink', () => {
   })
 })
 
-describe('parseAdLink', () => {
+describe('parseAdSearch', () => {
   it('should open the ad without an action from a detail link', () => {
-    expect(parseAdLink(AD_PATH, searchOf(detailPath('teamtailor:org/1')))).toEqual({
+    expect(parseAdSearch(searchOf(detailPath('teamtailor:org/1')))).toEqual({
       adId: 'teamtailor:org/1',
       action: undefined,
     })
   })
 
   it('should drop an unknown action and keep the ad', () => {
-    expect(parseAdLink(AD_PATH, '?id=finn%3A1&action=delete')).toEqual({ adId: 'finn:1', action: undefined })
+    expect(parseAdSearch('?id=finn%3A1&action=delete')).toEqual({ adId: 'finn:1', action: undefined })
   })
 })
 

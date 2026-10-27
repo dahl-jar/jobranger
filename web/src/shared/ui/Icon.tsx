@@ -12,6 +12,13 @@ const ICON_SHAPES = {
     </>
   ),
   moon: <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />,
+  sliders: (
+    <>
+      <path d="M4 7h10M18 7h2M4 17h4M12 17h8" />
+      <circle cx="16" cy="7" r="2" />
+      <circle cx="10" cy="17" r="2" />
+    </>
+  ),
   back: <path d="M19 12H5M11 6l-6 6 6 6" />,
   forward: <path d="M5 12h14M13 6l6 6-6 6" />,
   down: <path d="M12 5v14M6 13l6 6 6-6" />,
@@ -140,6 +147,7 @@ const STROKE_WIDTHS: Partial<Record<IconName, number>> = {
   plus: BOLD_STROKE_WIDTH,
   pencil: BOLD_STROKE_WIDTH,
   doc: LIGHT_STROKE_WIDTH,
+  sliders: LIGHT_STROKE_WIDTH,
   page: BOLD_STROKE_WIDTH,
   chevron: BOLD_STROKE_WIDTH,
   up: CHECK_STROKE_WIDTH,

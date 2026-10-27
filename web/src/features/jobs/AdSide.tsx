@@ -6,7 +6,7 @@ import type { Messages } from '@/shared/i18n/en'
 import { useText } from '@/shared/i18n/languageContext'
 import { FitMark } from '@/shared/ui/FitMark'
 import { Icon } from '@/shared/ui/Icon'
-import { SOURCE_NAMES } from '@/shared/sources'
+import { SOURCE_NAMES } from '@/shared/labels/sources'
 
 const MARK_CLASSES: Record<Mark, string | undefined> = {
   applied: styles.markApplied,

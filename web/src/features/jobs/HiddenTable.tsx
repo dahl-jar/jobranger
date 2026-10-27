@@ -5,7 +5,7 @@ import { hiddenBreakdown, selectHidden } from '@/features/jobs/selectors'
 import type { AdsSnapshot, HiddenAd, HiddenKind, YearBand } from '@/features/relay/contract/payload.gen'
 import { useText } from '@/shared/i18n/languageContext'
 import { Icon } from '@/shared/ui/Icon'
-import { SOURCE_NAMES } from '@/shared/sources'
+import { SOURCE_NAMES } from '@/shared/labels/sources'
 
 const LOOSENING_KINDS: ReadonlySet<HiddenKind> = new Set(['years', 'senior', 'place'])
 

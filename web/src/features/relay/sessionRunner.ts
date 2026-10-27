@@ -14,6 +14,7 @@ import {
   type PendingHandshake,
   type Session,
 } from '@/features/relay/session'
+import { type PaceClock, sealedChars, SendPacer } from '@/features/relay/sendPacer'
 import type { ConnectRelay, Presence, RelayEvents, RelayTransport } from '@/features/relay/transport'
 
 const MS_PER_SECOND = 1000
@@ -33,6 +34,8 @@ export type CloseReason =
   | 'broken'
   | 'connection'
   | 'offline'
+export type SendProgress = (sent: number, count: number) => void
+
 export type FailReason = 'handshake' | 'cli_key' | 'unknown_device'
 
 export type SessionEvent =
@@ -52,6 +55,7 @@ export interface SessionRunnerOptions {
   pairCode?: string | undefined
   onEvent: (event: SessionEvent) => void
   parseAssembled?: (text: string) => Promise<Payload | undefined>
+  paceClock?: PaceClock
 }
 
 type Phase =
@@ -72,6 +76,7 @@ function isActive(phase: Phase): phase is ActivePhase {
 export class SessionRunner implements RelayEvents {
   readonly #options: SessionRunnerOptions
   readonly #pairing: boolean
+  readonly #pacer: SendPacer
   #phase: Phase = { name: 'idle' }
   #transport: RelayTransport | undefined
   #cliOnline = false
@@ -86,6 +91,7 @@ export class SessionRunner implements RelayEvents {
   constructor(options: SessionRunnerOptions) {
     this.#options = options
     this.#pairing = options.cliStatic === undefined
+    this.#pacer = new SendPacer(options.paceClock)
     if (this.#pairing && options.pairCode === undefined) throw new Error('pairing needs the claimed code')
   }
 
@@ -128,15 +134,19 @@ export class SessionRunner implements RelayEvents {
     })
   }
 
-  async send(payload: Payload): Promise<void> {
+  async send(payload: Payload, onProgress?: SendProgress): Promise<void> {
     const phase = this.#phase
     const transport = this.#transport
     if (phase.name !== 'ready' || !transport) throw new Error('session is not ready')
     const parts = splitMessage(payload)
     const sending = this.#outgoing.then(async () => {
-      for (const part of parts) {
-        const frame = await phase.session.seal(new TextEncoder().encode(JSON.stringify(part)))
+      for (const [index, part] of parts.entries()) {
+        const plaintext = new TextEncoder().encode(JSON.stringify(part))
+        const pacing = this.#pacer.take(sealedChars(plaintext.length))
+        if (pacing) await pacing
+        const frame = await phase.session.seal(plaintext)
         await transport.send(this.#envelope(phase.sid, frame.seq, 'data', frame.ciphertext))
+        if (this.#phase === phase) onProgress?.(index + 1, parts.length)
       }
     })
     this.#outgoing = sending.catch(() => undefined)

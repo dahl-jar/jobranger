@@ -23,7 +23,7 @@ describe('usage in bokmål', () => {
   ])('should show the table with $name without English text', async ({ snapshot }) => {
     renderNorwegian(<UsageTable usage={snapshot} today={TODAY} />)
 
-    expect(await screen.findByRole('heading', { name: 'Bruk' })).toBeInTheDocument()
+    expect(await screen.findByText(/^Denne måneden/)).toBeInTheDocument()
     expectNoEnglish()
   })
 

@@ -2,13 +2,14 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import styles from '@/features/jobs/tables.module.css'
 import { closedWhy } from '@/features/jobs/labels'
+import { useAppBase } from '@/app/paths'
 import { detailPath } from '@/features/jobs/paths'
 import { selectActive, selectClosed } from '@/features/jobs/selectors'
 import type { AdsSnapshot, SourceId } from '@/features/relay/contract/payload.gen'
 import { formatDay, formatDue } from '@/shared/format/dates'
 import type { Messages } from '@/shared/i18n/en'
 import { useText } from '@/shared/i18n/languageContext'
-import { SOURCE_NAMES } from '@/shared/sources'
+import { SOURCE_NAMES } from '@/shared/labels/sources'
 
 interface AllRow {
   key: string
@@ -20,7 +21,7 @@ interface AllRow {
   isActive: boolean
 }
 
-function allRows(snapshot: AdsSnapshot, text: Messages): AllRow[] {
+function allRows(snapshot: AdsSnapshot, text: Messages, base: string): AllRow[] {
   const today = snapshot.as_of
   return [
     ...selectActive(snapshot).map((ad) => ({
@@ -28,7 +29,7 @@ function allRows(snapshot: AdsSnapshot, text: Messages): AllRow[] {
       due: formatDue(ad.deadline, today, text).due,
       company: ad.company,
       role: (
-        <Link to={detailPath(ad.id)} state={{ from: 'all' }} className={styles.roleLink}>
+        <Link to={detailPath(ad.id, base)} state={{ from: 'all' }} className={styles.roleLink}>
           {ad.title}
         </Link>
       ),
@@ -60,7 +61,7 @@ function allRows(snapshot: AdsSnapshot, text: Messages): AllRow[] {
 export function AllTable({ snapshot }: { snapshot: AdsSnapshot }) {
   const text = useText()
   const words = text.jobs
-  const rows = allRows(snapshot, text)
+  const rows = allRows(snapshot, text, useAppBase())
   return (
     <>
       <div className={styles.scroll}>

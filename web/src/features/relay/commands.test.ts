@@ -28,11 +28,13 @@ function track(promise: Promise<Saved>): () => Outcome {
   return () => outcome
 }
 
-function setup(deliver: (command: Command) => Promise<void> = async () => undefined) {
+type Progress = (sent: number, count: number) => void
+
+function setup(deliver: (command: Command, onProgress: Progress) => Promise<void> = async () => undefined) {
   const delivered: Command[] = []
-  const tracker = new CommandTracker(async (command) => {
+  const tracker = new CommandTracker(async (command, onProgress) => {
     delivered.push(command)
-    await deliver(command)
+    await deliver(command, onProgress)
   })
   return { tracker, delivered }
 }
@@ -225,5 +227,36 @@ describe('CommandTracker', () => {
       { error: new CommandError('disconnected', 'connection lost.') },
       { error: new CommandError('disconnected', 'connection lost.') },
     ])
+  })
+
+  it('should pass chunk progress on to the sender', async () => {
+    const { tracker } = setup(async (_, onProgress) => {
+      onProgress(1, 2)
+      onProgress(2, 2)
+    })
+    const progress: number[][] = []
+
+    track(tracker.send(RUN_START, (sent, count) => progress.push([sent, count])))
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(progress).toEqual([
+      [1, 2],
+      [2, 2],
+    ])
+  })
+
+  it('should report no progress after the command failed', async () => {
+    let report: Progress = () => undefined
+    const { tracker } = setup((_, onProgress) => {
+      report = onProgress
+      return new Promise<void>(() => undefined)
+    })
+    const progress: number[][] = []
+    track(tracker.send(RUN_START, (sent, count) => progress.push([sent, count])))
+
+    tracker.failAll()
+    report(1, 2)
+
+    expect(progress).toEqual([])
   })
 })

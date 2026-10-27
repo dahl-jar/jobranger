@@ -6,7 +6,7 @@ import { LimitedChips } from '@/features/settings/LimitedChips'
 import { timingLabel, type SearchField } from '@/features/settings/searchTiming'
 import { SettingsGroup } from '@/features/settings/SettingsGroup'
 import styles from '@/features/settings/Settings.module.css'
-import { LEVELS, YEAR_BANDS } from '@/features/jobs/labels'
+import { LEVELS, YEAR_BANDS } from '@/shared/labels/targets'
 import { useText } from '@/shared/i18n/languageContext'
 
 function toggled<T>(items: readonly T[], item: T, checked: boolean): T[] {

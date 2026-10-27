@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState, type MouseEvent, type PointerEvent, type SyntheticEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router'
+import { useAppBase } from '@/app/paths'
 import styles from '@/features/applications/ApplicationPanel.module.css'
-import { APPLICATIONS_PATH, openedFromList } from '@/features/applications/applicationsPath'
+import { applicationsPath, openedFromList } from '@/features/applications/applicationsPath'
 import { NOTE_MAX_CHARS } from '@/features/applications/limits'
 import { neighborButton, rowOrAddButton } from '@/features/applications/rowFocus'
 import { StatusMenu } from '@/features/applications/StatusMenu'
@@ -13,7 +14,7 @@ import button from '@/shared/ui/button.module.css'
 import { CheckList } from '@/shared/ui/CheckList'
 import { FitMark } from '@/shared/ui/FitMark'
 import { Icon } from '@/shared/ui/Icon'
-import { SOURCE_NAMES } from '@/shared/sources'
+import { SOURCE_NAMES } from '@/shared/labels/sources'
 
 const COMPANY_SEARCH_URL = 'https://www.google.com/search?q='
 
@@ -175,6 +176,7 @@ function PanelHistory({ application, today }: PanelPartProps) {
 function PanelDialog({ application, today, roles, editsDisabled, onStatusChange, onNoteChange, onRemove }: ApplicationPanelProps) {
   const navigate = useNavigate()
   const location = useLocation()
+  const base = useAppBase()
   const titleId = useId()
   const dialogRef = useRef<HTMLDialogElement>(null)
   const savedNote = useRef(application.note)
@@ -210,7 +212,7 @@ function PanelDialog({ application, today, roles, editsDisabled, onStatusChange,
     dialogRef.current?.close()
     focusTarget?.focus()
     if (openedFromList(location.state)) void navigate(-1)
-    else void navigate(`${APPLICATIONS_PATH}${location.search}`, { replace: true })
+    else void navigate(`${applicationsPath(base)}${location.search}`, { replace: true })
   }
 
   function close() {

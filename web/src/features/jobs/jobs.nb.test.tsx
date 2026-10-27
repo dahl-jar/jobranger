@@ -5,12 +5,14 @@ import { ConfigSummary } from '@/features/jobs/ConfigSummary'
 import { ADS_SNAPSHOT, APPLIED_AD, CONFIG_SNAPSHOT, DATED_AD, YEARS_HIDDEN_AD } from '@/features/jobs/goldenPayloads'
 import { JobsView } from '@/features/jobs/JobsView'
 import { RolesFilter } from '@/features/jobs/RolesFilter'
-import type { JobList } from '@/features/jobs/selectors'
+import { ListTabs } from '@/features/jobs/ListTabs'
+import { type JobList, listCounts } from '@/features/jobs/selectors'
 import type { HiddenKind } from '@/features/relay/contract/payload.gen'
 import { expectNoEnglish } from '@/test/english'
 import { renderNorwegian } from '@/test/render'
 
 const MARK_ERROR = 'offline'
+const APPLICATIONS_TOTAL = 3
 const AD_DATA = [
   ...ADS_SNAPSHOT.active.flatMap((ad) => [ad.title, ad.company, ad.place, ad.summary, ad.reason, ...ad.gaps, ...ad.checks.map((check) => check.text)]),
   ...ADS_SNAPSHOT.hidden.flatMap((ad) => [ad.title, ad.company, ad.reason]),
@@ -20,20 +22,22 @@ const AD_DATA = [
 
 function renderList(list: JobList, reason: HiddenKind | undefined = undefined) {
   renderNorwegian(
-    <JobsView
-      list={list}
-      snapshot={ADS_SNAPSHOT}
-      config={CONFIG_SNAPSHOT}
-      reason={reason}
-      movedIds={new Set([YEARS_HIDDEN_AD.id])}
-      applications={3}
-      errors={{ [DATED_AD.id]: MARK_ERROR }}
-      disabled={false}
-      onMark={vi.fn()}
-      onUnmark={vi.fn()}
-      onShowAnyway={vi.fn()}
-      onReasonChange={vi.fn()}
-    />,
+    <>
+      <ListTabs counts={listCounts(ADS_SNAPSHOT)} applications={APPLICATIONS_TOTAL} />
+      <JobsView
+        list={list}
+        snapshot={ADS_SNAPSHOT}
+        config={CONFIG_SNAPSHOT}
+        reason={reason}
+        movedIds={new Set([YEARS_HIDDEN_AD.id])}
+        errors={{ [DATED_AD.id]: MARK_ERROR }}
+        disabled={false}
+        onMark={vi.fn()}
+        onUnmark={vi.fn()}
+        onShowAnyway={vi.fn()}
+        onReasonChange={vi.fn()}
+      />
+    </>,
   )
 }
 
@@ -59,7 +63,6 @@ describe('jobs in bokmål', () => {
         config={undefined}
         reason={undefined}
         movedIds={new Set()}
-        applications={undefined}
         errors={{}}
         disabled={false}
         onMark={vi.fn()}

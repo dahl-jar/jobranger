@@ -17,11 +17,12 @@ function sentSince(applications: readonly Application[], today: string, text: Me
 
 interface ApplicationsSummaryProps {
   applications: readonly Application[]
+  total?: number | undefined
   today: string
   pendingId?: number | undefined
 }
 
-export function ApplicationsSummary({ applications, today, pendingId }: ApplicationsSummaryProps) {
+export function ApplicationsSummary({ applications, total, today, pendingId }: ApplicationsSummaryProps) {
   const text = useText()
   const words = text.applications
   const listed = listedApplications(applications, pendingId)
@@ -34,6 +35,7 @@ export function ApplicationsSummary({ applications, today, pendingId }: Applicat
     )
   }
   const counts = countStatuses(listed)
+  const isTruncated = total !== undefined && total > applications.length
   const interviews = counts.interview + counts.offer + counts.accepted
   const legend = [
     { key: 'waiting', label: words.summary.waiting, count: counts.waiting, tone: styles.waiting },
@@ -45,9 +47,10 @@ export function ApplicationsSummary({ applications, today, pendingId }: Applicat
     <section className={styles.summary}>
       <SectionLabel>{words.heading}</SectionLabel>
       <div className={styles.total}>
-        <span className={styles.count}>{listed.length}</span>
-        <span className={styles.since}>{sentSince(listed, today, text)}</span>
+        <span className={styles.count}>{isTruncated ? total : listed.length}</span>
+        <span className={styles.since}>{isTruncated ? words.summary.sentInAll : sentSince(listed, today, text)}</span>
       </div>
+      {isTruncated && <p className={styles.latest}>{words.summary.ofLatest(listed.length)}</p>}
       <div role="img" aria-label={words.summary.bar(counts.waiting, counts.rejected, interviews)} className={styles.bar}>
         <div className={styles.waiting} style={{ flexGrow: counts.waiting }} />
         <div className={styles.interviews} style={{ flexGrow: interviews }} />

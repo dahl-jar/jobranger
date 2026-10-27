@@ -25,6 +25,12 @@
   color: var(--ink2);
 }
 
+.latest {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
 .bar {
   display: flex;
   gap: 2px;

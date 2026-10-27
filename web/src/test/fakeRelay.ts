@@ -5,6 +5,12 @@ import { cliPairTag, FakeCli } from '@/test/fakeCli'
 
 export const TEST_CHANNEL = 'QzATLaCZ1ciBwANAgYReA3Np4WJ48r7ZPzlZsVwdxSQ'
 
+const REFILL_PERIOD_MS = 1000
+const RELAY_MESSAGES_BURST = 40
+const RELAY_MESSAGES_PER_SECOND = 20
+const RELAY_BYTES_BURST = 524_288
+const RELAY_BYTES_PER_SECOND = 262_144
+
 type BrowserStep = Record<string, string>
 
 export function readHello(ciphertext: string): BrowserStep {
@@ -19,8 +25,43 @@ export function helloText(step: Record<string, unknown>): string {
   return encodeBase64Url(new TextEncoder().encode(JSON.stringify(step)))
 }
 
+export class VirtualClock {
+  ms = 0
+
+  now = (): number => this.ms
+
+  wait = async (ms: number): Promise<void> => {
+    this.ms += ms
+  }
+}
+
+class RelayBucket {
+  readonly #burst: number
+  readonly #refill: number
+  #tokens: number
+  #lastRefill: number
+
+  constructor(burst: number, refill: number, now: number) {
+    this.#burst = burst
+    this.#refill = refill
+    this.#tokens = burst
+    this.#lastRefill = now
+  }
+
+  take(count: number, now: number): boolean {
+    const periods = Math.floor((now - this.#lastRefill) / REFILL_PERIOD_MS)
+    this.#tokens = Math.min(this.#burst, this.#tokens + periods * this.#refill)
+    this.#lastRefill += periods * REFILL_PERIOD_MS
+    if (count > this.#tokens) return false
+    this.#tokens -= count
+    return true
+  }
+}
+
 export class FakeRelay {
   readonly sent: Envelope[] = []
+  readonly clock = new VirtualClock()
+  limitRate = false
   readonly handles: string[] = []
   events: RelayEvents | undefined
   stopped = false
@@ -34,6 +75,8 @@ export class FakeRelay {
   connect: ConnectRelay = async (handle, events) => {
     this.handles.push(handle)
     this.events = events
+    const messages = new RelayBucket(RELAY_MESSAGES_BURST, RELAY_MESSAGES_PER_SECOND, this.clock.now())
+    const bytes = new RelayBucket(RELAY_BYTES_BURST, RELAY_BYTES_PER_SECOND, this.clock.now())
     if (this.onlineAtConnect) events.onPresence({ cli_online: true })
     return {
       send: async (envelope) => {
@@ -44,6 +87,8 @@ export class FakeRelay {
           throw new Error('relay refused the send')
         }
         if (this.failSends) throw new Error('relay refused the send')
+        const now = this.clock.now()
+        if (this.limitRate && !(messages.take(1, now) && bytes.take(envelope.ciphertext.length, now))) throw new Error('rate_limited')
         this.sent.push(envelope)
         await this.peer?.receive(envelope)
       },

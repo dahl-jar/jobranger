@@ -1,10 +1,6 @@
-import type { ClosedAd, Level, RoleOption, RoleType, YearBand } from '@/features/relay/contract/payload.gen'
+import type { ClosedAd, RoleOption, RoleType } from '@/features/relay/contract/payload.gen'
 import { en, type Messages } from '@/shared/i18n/en'
-import { SOURCE_NAMES } from '@/shared/sources'
-
-export const LEVELS: readonly Level[] = ['junior', 'mid', 'senior', 'lead', 'none']
-
-export const YEAR_BANDS: readonly YearBand[] = ['0-1', '1-3', '3-6', '6+']
+import { SOURCE_NAMES } from '@/shared/labels/sources'
 
 export function closedWhy(ad: ClosedAd, text: Messages = en): string {
   const why = text.jobs.closedWhy

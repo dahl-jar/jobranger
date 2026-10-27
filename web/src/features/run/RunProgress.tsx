@@ -29,7 +29,7 @@ export function RunProgress({ progress, editsDisabled, pending = false, onCancel
   return (
     <div className={styles.progress}>
       <div className={styles.head}>
-        <p role="status" className={styles.live}>
+        <p className={styles.live}>
           <span className={styles.title}>{runTitle(progress, text)}</span>
           <span className={styles.percent}>{text.numbers.percent(progress.percent)}</span>
         </p>

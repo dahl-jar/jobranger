@@ -1,4 +1,4 @@
-import { LEVELS, YEAR_BANDS } from '@/features/jobs/labels'
+import { LEVELS, YEAR_BANDS } from '@/shared/labels/targets'
 import type { Targets } from '@/features/relay/contract/payload.gen'
 import { en, type Messages } from '@/shared/i18n/en'
 

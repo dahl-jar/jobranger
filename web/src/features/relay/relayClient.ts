@@ -4,7 +4,8 @@ import type { Payload } from '@/features/relay/contract/payload.gen'
 import { TicketRejectedError } from '@/features/relay/handleClient'
 import type { StoredPairing } from '@/features/relay/keyStore'
 import { clearLastSeen, readLastSeen, type SeenStorage, writeLastSeen } from '@/features/relay/lastSeen'
-import { type CloseReason, type SessionEvent, SessionRunner } from '@/features/relay/sessionRunner'
+import type { PaceClock } from '@/features/relay/sendPacer'
+import { type CloseReason, type SendProgress, type SessionEvent, SessionRunner } from '@/features/relay/sessionRunner'
 import type { ConnectRelay, Presence } from '@/features/relay/transport'
 
 export interface RelayClientDeps {
@@ -16,6 +17,7 @@ export interface RelayClientDeps {
   retryDelay: (previousRetryCount: number) => number
   parseAssembled?: (text: string) => Promise<Payload | undefined>
   seenStorage?: SeenStorage
+  paceClock?: PaceClock
   onState: (state: ConnectionState) => void
   onMessage: (message: Payload) => void
   onDisconnect: () => void
@@ -69,9 +71,9 @@ export class RelayClient {
     await this.#connect()
   }
 
-  async send(message: Payload): Promise<void> {
+  async send(message: Payload, onProgress?: SendProgress): Promise<void> {
     if (!this.#runner) throw new Error('session is not ready')
-    await this.#runner.send(message)
+    await this.#runner.send(message, onProgress)
   }
 
   retryNow(): void {
@@ -165,6 +167,7 @@ export class RelayClient {
       agent: this.#deps.agent,
       onEvent: (event) => this.#onSession(runner, event),
       ...(this.#deps.parseAssembled && { parseAssembled: this.#deps.parseAssembled }),
+      ...(this.#deps.paceClock && { paceClock: this.#deps.paceClock }),
     })
     this.#runner = runner
     try {

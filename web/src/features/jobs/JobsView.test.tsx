@@ -30,7 +30,6 @@ function renderView(
         config={config ?? undefined}
         reason={undefined}
         movedIds={new Set()}
-        applications={3}
         errors={errors}
         disabled={false}
         onMark={vi.fn()}

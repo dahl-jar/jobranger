@@ -10,7 +10,7 @@ import styles from '@/features/settings/Settings.module.css'
 import type { Messages } from '@/shared/i18n/en'
 import { useText } from '@/shared/i18n/languageContext'
 import { Icon } from '@/shared/ui/Icon'
-import { SOURCE_NAMES } from '@/shared/sources'
+import { SOURCE_NAMES } from '@/shared/labels/sources'
 
 const EMAIL_PATTERN = new RegExp(payloadSchema.$defs.Email.pattern)
 const EMAIL_MAX_CHARS = payloadSchema.$defs.Email.maxLength

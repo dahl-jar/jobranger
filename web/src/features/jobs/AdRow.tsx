@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import { AdActions, type AdCallbacks } from '@/features/jobs/AdActions'
 import styles from '@/features/jobs/AdRow.module.css'
 import { AdFacts, AdSide, MarkError } from '@/features/jobs/AdSide'
+import { useAppBase } from '@/app/paths'
 import { detailPath } from '@/features/jobs/paths'
 import type { JobList } from '@/features/jobs/selectors'
 import type { ActiveAd, RoleOption } from '@/features/relay/contract/payload.gen'
@@ -22,6 +23,7 @@ interface AdRowProps extends AdCallbacks {
 export function AdRow({ ad, today, roles, from, disabled, error, onMark, onUnmark }: AdRowProps) {
   const titleId = useId()
   const details = useText().jobs.details
+  const base = useAppBase()
   const isDimmed = ad.mark !== null && ad.mark !== 'applied'
   return (
     <article aria-labelledby={titleId} className={`${styles.row} ${isDimmed ? styles.dimmed : ''}`}>
@@ -29,7 +31,7 @@ export function AdRow({ ad, today, roles, from, disabled, error, onMark, onUnmar
       <div className={styles.body}>
         <div className={styles.company}>{ad.company}</div>
         <h2 id={titleId} className={styles.title}>
-          <Link to={detailPath(ad.id)} state={{ from }} className={styles.titleLink}>
+          <Link to={detailPath(ad.id, base)} state={{ from }} className={styles.titleLink}>
             {ad.title}
           </Link>
         </h2>
@@ -43,7 +45,7 @@ export function AdRow({ ad, today, roles, from, disabled, error, onMark, onUnmar
           )}
         </div>
         <div className={styles.actions}>
-          <Link to={detailPath(ad.id)} state={{ from }} className={styles.details}>
+          <Link to={detailPath(ad.id, base)} state={{ from }} className={styles.details}>
             {details}
             <Icon name="forward" />
           </Link>

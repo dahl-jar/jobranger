@@ -5,6 +5,7 @@ import { payloadFixtures } from '@/features/relay/contract/fixtures.gen'
 import type { CvUpload, Payload } from '@/features/relay/contract/payload.gen'
 import { splitMessage } from '@/features/relay/chunks'
 import { generateWebKeys } from '@/features/relay/keyStore'
+import type { PaceClock } from '@/features/relay/sendPacer'
 import { FrameError } from '@/features/relay/session'
 import { RESTART_BACKOFF_MS, SessionRunner, type SessionEvent } from '@/features/relay/sessionRunner'
 import { CliPeer, FakeRelay, helloText, type PeerOptions, TEST_CHANNEL } from '@/test/fakeRelay'
@@ -13,19 +14,25 @@ import { drainTurns, flush, until } from '@/test/flush'
 const STATUS = JSON.stringify(payloadFixtures.status)
 const UNPAIR: Payload = { type: 'unpair', v: 1, id: '00000000-0000-4000-8000-000000000001' }
 const MS = 1000
+const MEGABYTE = 1024 * 1024
+const LARGE_UPLOAD_BYTES = 100 * 1024
+const KEY_BYTES = 32
 
 interface Options {
   paired?: boolean
+  limitRate?: boolean
   peer?: PeerOptions
   parseAssembled?: (text: string) => Promise<Payload | undefined>
+  paceClock?: PaceClock
 }
 
 const PAIR_CODE = 'KQFB-MXTW'
 
 type Context = Awaited<ReturnType<typeof setup>>
 
-async function setup({ paired = false, peer: peerOptions = {}, parseAssembled }: Options = {}) {
+async function setup({ paired = false, limitRate = false, peer: peerOptions = {}, parseAssembled, paceClock }: Options = {}) {
   const relay = new FakeRelay()
+  relay.limitRate = limitRate
   const peer = await CliPeer.attach(relay, peerOptions)
   const events: SessionEvent[] = []
   const runner = new SessionRunner({
@@ -35,10 +42,15 @@ async function setup({ paired = false, peer: peerOptions = {}, parseAssembled }:
     cliStatic: paired ? peer.cli.staticPublic : undefined,
     pairCode: paired ? undefined : PAIR_CODE,
     onEvent: (event) => events.push(event),
+    paceClock: paceClock ?? relay.clock,
     ...(parseAssembled && { parseAssembled }),
   })
   await runner.start(relay.connect, 'handle-one')
   return { relay, peer, runner, events, kinds: () => events.map((event) => event.kind) }
+}
+
+function largeUpload(bytes = LARGE_UPLOAD_BYTES): CvUpload {
+  return { ...(payloadFixtures['cv.upload'] as CvUpload), content_b64: 'A'.repeat(bytes) }
 }
 
 async function nextEvent(context: Context, act: () => unknown): Promise<void> {
@@ -386,6 +398,15 @@ describe('SessionRunner receiver rules', () => {
     expect(context.events.slice(-1)).toEqual([{ kind: 'closed', reason: 'broken' }])
   })
 
+  it('should report no ready when the first CLI data frame is not a contract payload', async () => {
+    const context = await answeredYes()
+
+    await nextEvent(context, () => context.peer.sendData('{"type":"status"}'))
+    await until(() => context.events.at(-1)?.kind === 'closed')
+
+    expect(context.kinds()).not.toContain('ready')
+  })
+
   it('should close the session on a data frame that is not a contract payload', async () => {
     const context = await pairingVerified()
 
@@ -522,7 +543,18 @@ describe('SessionRunner paired', () => {
     vi.advanceTimersByTime(STEP_TIMEOUT_SECONDS * MS)
     await until(() => context.events.at(-1)?.kind === 'failed')
 
-    expect([context.relay.sids().length, context.events.at(-1)]).toEqual([RESTART_BACKOFF_MS.length + 1, { kind: 'failed', reason: 'handshake' }])
+    expect([context.relay.sids().length, context.events.at(-1), context.relay.stopped]).toEqual([RESTART_BACKOFF_MS.length + 1, { kind: 'failed', reason: 'handshake' }, true])
+  })
+
+  it('should report no timeout when the CLI goes offline as the step timer fires', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const context = await commitSent()
+
+    context.relay.presence(false)
+    vi.advanceTimersByTime(STEP_TIMEOUT_SECONDS * MS)
+    await drainTurns()
+
+    expect(context.events.at(-1)).toEqual({ kind: 'offline' })
   })
 
   it('should reset the restart budget when the CLI comes back online', async () => {
@@ -599,11 +631,84 @@ describe('SessionRunner paired', () => {
 
   it('should send a 100 KB payload as chunk frames', async () => {
     const { peer, runner } = await pairedReady()
-    const upload: CvUpload = { ...(payloadFixtures['cv.upload'] as CvUpload), content_b64: 'A'.repeat(100 * 1024) }
-
-    await runner.send(upload)
+    await runner.send(largeUpload())
 
     expect(peer.received.map((text) => (JSON.parse(text) as Payload).type)).toEqual(['chunk', 'chunk', 'chunk', 'chunk'])
+  })
+
+  it('should report each chunk once it is written', async () => {
+    const { runner } = await pairedReady()
+    const progress: number[][] = []
+
+    await runner.send(largeUpload(), (sent, count) => progress.push([sent, count]))
+
+    expect(progress).toEqual([
+      [1, 4],
+      [2, 4],
+      [3, 4],
+      [4, 4],
+    ])
+  })
+
+  it('should send a 1 MB upload to the end under the relay rate limits', async () => {
+    const context = await setup({ paired: true, limitRate: true })
+    await online(context)
+    const upload = largeUpload(MEGABYTE)
+    const count = splitMessage(upload).length
+    const progress: number[][] = []
+
+    await context.runner.send(upload, (sent, total) => progress.push([sent, total]))
+
+    expect(progress.at(-1)).toEqual([count, count])
+  })
+
+  it('should hold the next frame while the pacer waits', async () => {
+    let isWaiting = false
+    const heldClock: PaceClock = {
+      now: () => 0,
+      wait: () => {
+        isWaiting = true
+        return new Promise(() => undefined)
+      },
+    }
+    const context = await setup({ paired: true, paceClock: heldClock })
+    await online(context)
+    void context.runner.send(largeUpload(MEGABYTE)).catch(() => undefined)
+    await until(() => isWaiting)
+    const sentAtWait = context.relay.sendCalls
+
+    await flush()
+
+    expect(context.relay.sendCalls).toBe(sentAtWait)
+  })
+
+  it('should report no progress for a chunk the relay refused', async () => {
+    const { relay, runner } = await pairedReady()
+    const progress: number[][] = []
+    relay.failNextSend = true
+
+    await expect(runner.send(largeUpload(), (sent, count) => progress.push([sent, count]))).rejects.toThrow('relay refused the send')
+
+    expect(progress).toEqual([])
+  })
+
+  it('should stop reporting progress once the runner stops', async () => {
+    const { relay, runner } = await pairedReady()
+    const progress: number[][] = []
+    let release = (): void => undefined
+    relay.sendGate = new Promise((resolve) => {
+      release = resolve
+    })
+    const before = relay.sendCalls
+    const sending = runner.send(largeUpload(), (sent, count) => progress.push([sent, count])).catch(() => undefined)
+    await until(() => relay.sendCalls > before)
+
+    const stopping = runner.stop()
+    await flush()
+    release()
+    await Promise.all([sending, stopping])
+
+    expect(progress).toEqual([])
   })
 
   it('should refuse to send before the session is ready', async () => {
@@ -661,6 +766,17 @@ describe('SessionRunner lifecycle', () => {
 
     context.relay.drop()
     context.relay.presence(false)
+    await drainTurns()
+
+    expect(context.events).toHaveLength(count)
+  })
+
+  it('should report nothing when the relay drops after stop', async () => {
+    const context = await pairedReady()
+    await context.runner.stop()
+    const count = context.events.length
+
+    context.relay.drop()
     await drainTurns()
 
     expect(context.events).toHaveLength(count)
@@ -758,6 +874,24 @@ describe('SessionRunner handshake rules', () => {
     expectBrokenAbort(context)
   })
 
+  it('should close as broken on a confirm before the offer', async () => {
+    const context = await commitSent()
+
+    await nextEvent(context, () => context.peer.sendHello({ t: 'confirm', mac: encodeBase64Url(new Uint8Array(KEY_BYTES)) }, context.relay.sids()[0]))
+
+    expectBrokenAbort(context)
+  })
+
+  it('should close as broken on a second offer after the reveal', async () => {
+    const context = await setup({ peer: { replyToReveal: false } })
+    context.relay.presence(true)
+    await until(() => context.relay.steps().length === 2)
+
+    await nextEvent(context, () => context.peer.sendHello({ t: 'offer', cli_static: encodeBase64Url(new Uint8Array(KEY_BYTES)), cli_eph: encodeBase64Url(new Uint8Array(KEY_BYTES)) }))
+
+    expectBrokenAbort(context)
+  })
+
   it('should abort when no CLI confirm comes within STEP_TIMEOUT_SECONDS of the reveal', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const context = await setup({ peer: { replyToReveal: false } })
@@ -825,7 +959,7 @@ describe('SessionRunner handshake rules', () => {
 
   it('should pass on a chunked CLI message once whole', async () => {
     const context = await pairingVerified()
-    const parts = splitMessage({ ...(payloadFixtures['cv.upload'] as CvUpload), content_b64: 'A'.repeat(100 * 1024) })
+    const parts = splitMessage(largeUpload())
     const count = context.events.length
 
     for (const part of parts) await context.peer.sendData(JSON.stringify(part))
@@ -835,12 +969,23 @@ describe('SessionRunner handshake rules', () => {
     expect(context.events.slice(count).map((event) => (event.kind === 'message' ? event.payload.type : event.kind))).toEqual(['cv.upload'])
   })
 
+  it('should close with an abort when the chunk parser fails', async () => {
+    const context = await setup({ paired: true, parseAssembled: async () => Promise.reject(new Error('parse failed')) })
+    await online(context)
+    const parts = splitMessage(largeUpload())
+
+    for (const part of parts) await context.peer.sendData(JSON.stringify(part))
+    await until(() => context.events.at(-1)?.kind === 'closed')
+
+    expectBrokenAbort(context)
+  })
+
   it('should parse a chunked CLI message with the given parser', async () => {
     const texts: string[] = []
     const parsed = payloadFixtures.status as Payload
     const context = await setup({ paired: true, parseAssembled: async (text) => (texts.push(text), parsed) })
     await online(context)
-    const message = { ...(payloadFixtures['cv.upload'] as CvUpload), content_b64: 'A'.repeat(100 * 1024) }
+    const message = largeUpload()
     const count = context.events.length
 
     for (const part of splitMessage(message)) await context.peer.sendData(JSON.stringify(part))

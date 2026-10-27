@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useLocation, useNavigate, useSearchParams } from 'react-router'
+import { useAppBase } from '@/app/paths'
 import { AddApplicationForm, type ApplicationDraft } from '@/features/applications/AddApplicationForm'
 import { APPLICATION_STATUSES, countStatuses, listedApplications, parseStatusFilter } from '@/features/applications/applicationStatus'
 import { applicationPath, FROM_LIST_STATE } from '@/features/applications/applicationsPath'
@@ -31,6 +32,7 @@ export function ApplicationsPage({ snapshot, today, editsDisabled, removal, onCr
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const location = useLocation()
+  const base = useAppBase()
   const [adding, setAdding] = useState(false)
   const text = useText()
   const words = text.applications
@@ -99,7 +101,7 @@ export function ApplicationsPage({ snapshot, today, editsDisabled, removal, onCr
         today={today}
         editsDisabled={editsDisabled}
         onSort={onSort}
-        onOpen={(applicationId) => void navigate(applicationPath(applicationId, location.search), { state: FROM_LIST_STATE })}
+        onOpen={(applicationId) => void navigate(applicationPath(applicationId, location.search, base), { state: FROM_LIST_STATE })}
         onStatusChange={onStatusChange}
       />
       {rows.length === 0 && <p className={styles.empty}>{words.empty}</p>}

@@ -1,4 +1,5 @@
 import { Link } from 'react-router'
+import { APP_BASE, DEMO_BASE } from '@/app/paths'
 import { ExampleMatch } from '@/features/landing/ExampleMatch'
 import { Faq } from '@/features/landing/Faq'
 import { InstallSteps } from '@/features/landing/InstallSteps'
@@ -16,7 +17,8 @@ const PRIVACY_ICON_SIZE = 16
 const HOW_NUMBER_DIGITS = 2
 
 function Hero() {
-  const words = useText().landing
+  const text = useText()
+  const words = text.landing
 
   return (
     <section className={styles.hero}>
@@ -31,6 +33,9 @@ function Hero() {
           <Link to="/setup" aria-label={words.installLabel} className={`${button.primary} ${button.large}`}>
             {words.install}
             <Icon name="forward" />
+          </Link>
+          <Link to={DEMO_BASE} className={`${button.outline} ${button.large}`}>
+            {text.app.demo.view}
           </Link>
           <a href="#how" className={styles.howLink}>
             {words.howLink}
@@ -136,7 +141,7 @@ function Footer() {
         <span className={styles.footerLinks}>
           <a href={SOURCE_URL}>{words.sourceCode}</a>
           <Link to="/setup">{words.setupWalkthrough}</Link>
-          <Link to="/app">{words.openApp}</Link>
+          <Link to={APP_BASE}>{words.openApp}</Link>
         </span>
       </div>
     </footer>

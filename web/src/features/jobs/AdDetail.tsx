@@ -3,13 +3,14 @@ import { Link } from 'react-router'
 import styles from '@/features/jobs/AdRow.module.css'
 import { AdActions, type AdCallbacks } from '@/features/jobs/AdActions'
 import { AdFacts, AdSide, MarkError } from '@/features/jobs/AdSide'
+import { useAppBase } from '@/app/paths'
 import { listPath } from '@/features/jobs/paths'
 import type { ActiveAd, RoleOption } from '@/features/relay/contract/payload.gen'
 import { useText } from '@/shared/i18n/languageContext'
 import { CheckList } from '@/shared/ui/CheckList'
 import { Icon } from '@/shared/ui/Icon'
 import { SectionLabel } from '@/shared/ui/SectionLabel'
-import { SOURCE_NAMES } from '@/shared/sources'
+import { SOURCE_NAMES } from '@/shared/labels/sources'
 
 type BackList = 'today' | 'active' | 'all'
 
@@ -40,17 +41,19 @@ export function AdDetail({ ad, today, roles, from, disabled, error, notice, onMa
   const back = backList(from)
   const titleId = useId()
   const words = useText().jobs
+  const base = useAppBase()
   return (
     <>
-      <Link to={listPath(back)} className={styles.back}>
+      <Link to={listPath(back, base)} className={styles.back}>
         <Icon name="back" />
         {words.backTo(words.lists[back])}
       </Link>
       {notice}
       {ad === undefined ? (
         <div className={styles.gone}>
+          <h1 className={styles.goneTitle}>{words.goneTitle}</h1>
           <p>{words.gone}</p>
-          <Link to={listPath('active')}>{words.seeActive}</Link>
+          <Link to={listPath('active', base)}>{words.seeActive}</Link>
         </div>
       ) : (
         <article className={`${styles.row} ${styles.detail}`}>

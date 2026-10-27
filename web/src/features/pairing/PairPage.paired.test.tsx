@@ -88,8 +88,8 @@ describe('PairPage with a stored pairing', () => {
   })
 
   it('should say the browser is offline', async () => {
-    await renderPaired()
-    await screen.findByText('Connecting to your machine...')
+    const { relay } = await renderPaired()
+    await until(() => relay.events !== undefined)
 
     window.dispatchEvent(new Event('offline'))
 

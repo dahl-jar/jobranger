@@ -1,9 +1,11 @@
-export const APPLICATIONS_PATH = '/app/applications'
-
 export const FROM_LIST_STATE = { fromList: true } as const
 
-export function applicationPath(applicationId: number, search: string): string {
-  return `${APPLICATIONS_PATH}/${applicationId}${search}`
+export function applicationsPath(base: string): string {
+  return `${base}/applications`
+}
+
+export function applicationPath(applicationId: number, search: string, base: string): string {
+  return `${applicationsPath(base)}/${applicationId}${search}`
 }
 
 export function openedFromList(state: unknown): boolean {

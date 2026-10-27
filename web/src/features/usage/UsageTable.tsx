@@ -2,16 +2,19 @@ import styles from '@/features/usage/usage.module.css'
 import { recentUsage, TABLE_DAYS, usageTotals } from '@/features/usage/usageSummary'
 import type { Day, UsageSnapshot } from '@/features/relay/contract/payload.gen'
 import { useText } from '@/shared/i18n/languageContext'
-import { SectionLabel } from '@/shared/ui/SectionLabel'
 
-export function UsageTable({ usage, today }: { usage: UsageSnapshot; today: Day }) {
+interface UsageTableProps {
+  usage: UsageSnapshot
+  today: Day
+}
+
+export function UsageTable({ usage, today }: UsageTableProps) {
   const text = useText()
   const words = text.usage
   const totals = usageTotals(usage, text)
   const recent = recentUsage(usage, today, text)
   return (
     <section>
-      <SectionLabel>{words.tableHeading}</SectionLabel>
       <dl className={styles.totals}>
         <div className={styles.total}>
           <dt>{words.month(usage.month_tokens, totals.monthTokens)}</dt>

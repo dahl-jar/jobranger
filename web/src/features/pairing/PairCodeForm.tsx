@@ -1,5 +1,6 @@
 import { type FormEvent, useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router'
+import { DEMO_BASE } from '@/app/paths'
 import buttons from '@/shared/ui/button.module.css'
 import { Icon } from '@/shared/ui/Icon'
 import { PAIR_CODE_LENGTH } from '@/features/pairing/pairCode'
@@ -46,6 +47,10 @@ export function PairCodeForm({ error, ended, busy, onSubmit }: PairCodeFormProps
         {words.titles.connect}
       </h1>
       <p className={styles.lead}>{words.form.lead}</p>
+      <p className={styles.demo}>
+        {words.form.justLooking}
+        <Link to={DEMO_BASE}>{words.form.viewDemo}</Link>
+      </p>
       <ol className={styles.steps}>
         <li className={styles.step}>
           <span className={styles.number}>1</span>

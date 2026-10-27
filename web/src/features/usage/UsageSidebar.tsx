@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { SETTINGS_PATH } from '@/app/paths'
+import { settingsPath, useAppBase } from '@/app/paths'
 import { UsageChart } from '@/features/usage/UsageChart'
 import styles from '@/features/usage/usage.module.css'
 import { CHART_DAYS, summarizeUsage } from '@/features/usage/usageSummary'
@@ -16,6 +16,7 @@ interface UsageSidebarProps {
 
 export function UsageSidebar({ usage, today, monthlyLimitUsd }: UsageSidebarProps) {
   const text = useText()
+  const base = useAppBase()
   const words = text.usage
   const summary = summarizeUsage(usage, today, monthlyLimitUsd, text)
   const { budget } = summary
@@ -37,7 +38,7 @@ export function UsageSidebar({ usage, today, monthlyLimitUsd }: UsageSidebarProp
           tone={budget.nearLimit ? 'near' : 'ok'}
           className={styles.track}
         />
-        <Link to={`${SETTINGS_PATH}/model`} className={styles.limitLink}>
+        <Link to={settingsPath(base, 'model')} className={styles.limitLink}>
           {budget.action}
         </Link>
       </div>

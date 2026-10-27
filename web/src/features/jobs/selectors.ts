@@ -11,6 +11,10 @@ import { en, type Messages } from '@/shared/i18n/en'
 
 export type JobList = 'today' | 'active' | 'hidden' | 'closed' | 'all'
 
+export const JOB_LISTS: readonly JobList[] = ['today', 'active', 'hidden', 'closed', 'all']
+
+export const DEFAULT_LIST: JobList = 'today'
+
 export interface HiddenPart {
   kind: HiddenKind
   label: string
@@ -30,7 +34,7 @@ const YEAR_BAND_CAPS: Record<YearBand, number | undefined> = {
 }
 const NO_YEARS = 0
 
-const HIDDEN_KINDS: readonly HiddenKind[] = ['senior', 'years', 'masters', 'role', 'place', 'other']
+export const HIDDEN_KINDS: readonly HiddenKind[] = ['senior', 'years', 'masters', 'role', 'place', 'other']
 
 function byDeadline(left: ActiveAd, right: ActiveAd): number {
   if (left.deadline !== right.deadline) {

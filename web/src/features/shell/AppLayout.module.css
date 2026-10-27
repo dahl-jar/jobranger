@@ -1,0 +1,57 @@
+.page {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 32px var(--gutter) 56px;
+  box-sizing: border-box;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 16px;
+  min-width: 0;
+}
+
+.logo {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+}
+
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+}
+
+.settings {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  font-size: 14px;
+  color: var(--ink2);
+  text-decoration: none;
+}
+
+.current {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.doubleRule {
+  height: 3px;
+  margin-top: 10px;
+  border-block: 1px solid var(--ink);
+}

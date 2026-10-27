@@ -5,11 +5,9 @@ import { ClosedTable } from '@/features/jobs/ClosedTable'
 import { HiddenSummary } from '@/features/jobs/HiddenSummary'
 import { HiddenTable } from '@/features/jobs/HiddenTable'
 import styles from '@/features/jobs/JobsView.module.css'
-import { ListTabs } from '@/features/jobs/ListTabs'
 import {
   hiddenBreakdown,
   type JobList,
-  listCounts,
   selectActive,
   selectToday,
 } from '@/features/jobs/selectors'
@@ -22,7 +20,6 @@ interface JobsViewProps extends AdCallbacks {
   config: ConfigSnapshot | undefined
   reason: HiddenKind | undefined
   movedIds: ReadonlySet<string>
-  applications: number | undefined
   errors: Readonly<Record<string, string>>
   disabled: boolean
   onShowAnyway: (adId: string, on: boolean) => void
@@ -79,7 +76,6 @@ export function JobsView(props: JobsViewProps) {
   const note = notes[props.list]
   return (
     <>
-      <ListTabs counts={listCounts(props.snapshot)} applications={props.applications} />
       {note !== undefined && <p className={styles.note}>{note}</p>}
       <ListBody {...props} />
     </>

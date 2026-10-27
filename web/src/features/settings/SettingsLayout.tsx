@@ -1,13 +1,11 @@
 import { useId, type ReactNode } from 'react'
 import { Link, Navigate, NavLink, useParams } from 'react-router'
-import { JOBS_PATH, SETTINGS_PATH } from '@/app/paths'
+import { jobsPath, settingsPath, useAppBase } from '@/app/paths'
 import { SavedLine, type SaveResult } from '@/features/settings/SavedLine'
-import { SETTINGS_SECTIONS, type SettingsSectionId } from '@/features/settings/settingsSections'
+import { DEFAULT_SECTION, SETTINGS_SECTIONS, type SettingsSectionId } from '@/features/settings/settingsSections'
 import styles from '@/features/settings/Settings.module.css'
 import { useText } from '@/shared/i18n/languageContext'
 import { Icon } from '@/shared/ui/Icon'
-
-const DEFAULT_SECTION: SettingsSectionId = 'search'
 
 interface SettingsLayoutProps {
   editsDisabled: boolean
@@ -19,19 +17,20 @@ export function SettingsLayout({ editsDisabled, saveResult, renderSection }: Set
   const titleId = useId()
   const words = useText().settings
   const { section } = useParams()
+  const base = useAppBase()
   const current = SETTINGS_SECTIONS.find((candidate) => candidate.id === section)
-  if (current === undefined) return <Navigate to={`${SETTINGS_PATH}/${DEFAULT_SECTION}`} replace />
+  if (current === undefined) return <Navigate to={settingsPath(base, DEFAULT_SECTION)} replace />
 
   return (
     <div className={styles.layout}>
       <nav aria-label={words.nav} className={styles.nav}>
-        <Link to={JOBS_PATH} className={styles.back}>
+        <Link to={jobsPath(base)} className={styles.back}>
           <Icon name="back" />
           {words.back}
         </Link>
         <div className={styles.navRule} />
         {SETTINGS_SECTIONS.map((entry) => (
-          <NavLink key={entry.id} to={`${SETTINGS_PATH}/${entry.id}`} className={styles.navLink ?? ''}>
+          <NavLink key={entry.id} to={settingsPath(base, entry.id)} className={styles.navLink ?? ''}>
             {words.sections[entry.id].label}
           </NavLink>
         ))}

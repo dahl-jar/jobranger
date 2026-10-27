@@ -1,4 +1,5 @@
 import { Link } from 'react-router'
+import { APP_BASE, jobsPath } from '@/app/paths'
 import buttons from '@/shared/ui/button.module.css'
 import { Icon } from '@/shared/ui/Icon'
 import styles from '@/features/pairing/PairPage.module.css'
@@ -8,7 +9,6 @@ import type { Messages } from '@/shared/i18n/en'
 import { useText } from '@/shared/i18n/languageContext'
 
 const CONNECTED_ICON_SIZE = 18
-const APP_HOME = '/app/today'
 
 function lastRunText(status: Status, text: Messages): string {
   const words = text.pairing
@@ -59,7 +59,7 @@ export function PairConnected({ status, connection, onUnpair }: PairConnectedPro
       )}
       <p className={styles.lead}>{words.applies}</p>
       <div className={styles.actions}>
-        <Link to={APP_HOME} className={`${buttons.primary} ${styles.large}`}>
+        <Link to={jobsPath(APP_BASE)} className={`${buttons.primary} ${styles.large}`}>
           {words.open}
           <Icon name="forward" />
         </Link>

@@ -14,3 +14,5 @@ export const SETTINGS_SECTIONS = [
 ] as const satisfies readonly SettingsSection[]
 
 export type SettingsSectionId = (typeof SETTINGS_SECTIONS)[number]['id']
+
+export const DEFAULT_SECTION: SettingsSectionId = 'search'

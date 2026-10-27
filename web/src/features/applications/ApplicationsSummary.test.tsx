@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { ApplicationsSummary } from '@/features/applications/ApplicationsSummary'
+import styles from '@/features/applications/ApplicationsSummary.module.css'
 import { foundApplication, handApplication, pinTimeZone, removedApplication, TODAY } from '@/features/applications/testData'
 import type { ApplicationStatus } from '@/features/relay/contract/payload.gen'
 
@@ -18,7 +19,7 @@ describe('ApplicationsSummary', () => {
   it('should leave removed applications out', () => {
     render(<ApplicationsSummary applications={[foundApplication, removedApplication]} today={TODAY} />)
 
-    expect(screen.getByText('sent since today').previousElementSibling).toHaveTextContent('1')
+    expect(screen.getByText('sent today').previousElementSibling).toHaveTextContent('1')
   })
 
   it('should count offers and accepted ones as interviews', () => {
@@ -58,10 +59,20 @@ describe('ApplicationsSummary', () => {
     expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toEqual(['Waiting1', 'Rejected0', 'Interviews1'])
   })
 
+  it('should color each legend swatch like its part of the bar', () => {
+    render(<ApplicationsSummary applications={[foundApplication, handApplication]} today={TODAY} />)
+
+    expect(screen.getAllByRole('listitem').map((item) => item.firstElementChild?.className)).toEqual([
+      `${styles.swatch} ${styles.waiting}`,
+      `${styles.swatch} ${styles.rejected}`,
+      `${styles.swatch} ${styles.interviews}`,
+    ])
+  })
+
   it('should leave out the application waiting for removal', () => {
     render(<ApplicationsSummary applications={[foundApplication, handApplication]} pendingId={handApplication.id} today={TODAY} />)
 
-    expect(screen.getByText('sent since today').previousElementSibling).toHaveTextContent('1')
+    expect(screen.getByText('sent today').previousElementSibling).toHaveTextContent('1')
   })
 
   it('should size the bar by waiting, interviews and rejected counts', () => {
@@ -73,5 +84,20 @@ describe('ApplicationsSummary', () => {
     )
 
     expect([...screen.getByRole('img').children].map((part) => (part instanceof HTMLElement ? part.style.flexGrow : ''))).toEqual(['2', '1', '3'])
+  })
+
+  it('should count the snapshot total when the list holds only the latest applications', () => {
+    render(<ApplicationsSummary applications={[foundApplication, handApplication]} total={212} today={TODAY} />)
+
+    expect([screen.getByText('sent in all').previousElementSibling?.textContent, screen.getByText('Counts cover the latest 2.')]).toEqual([
+      '212',
+      expect.anything(),
+    ])
+  })
+
+  it('should leave the latest line out when the list holds every application', () => {
+    render(<ApplicationsSummary applications={[foundApplication, handApplication]} total={2} today={TODAY} />)
+
+    expect(screen.queryByText(/latest/)).toBeNull()
   })
 })

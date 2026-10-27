@@ -3,12 +3,13 @@ import type { CommandDraft } from '@/features/relay/commands'
 import type { ConnectionState, ConnectionStore } from '@/features/relay/connectionStore'
 import type { Saved } from '@/features/relay/contract/payload.gen'
 import type { RelayClientDeps } from '@/features/relay/relayClient'
+import type { SendProgress } from '@/features/relay/sessionRunner'
 
 export type RelayDeps = Omit<RelayClientDeps, 'onState' | 'onMessage' | 'onDisconnect' | 'onSessionReset' | 'onReady'>
 
 export interface Relay {
   store: ConnectionStore
-  send(draft: CommandDraft): Promise<Saved>
+  send(draft: CommandDraft, onProgress?: SendProgress): Promise<Saved>
   unpair(): Promise<void>
   retryNow(): void
 }

@@ -46,6 +46,7 @@ export function relayDeps(relay: FakeRelay, overrides: Partial<RelayDeps> = {}):
     connect: relay.connect,
     agent: TEST_AGENT,
     retryDelay: () => LONG_DELAY_MS,
+    paceClock: relay.clock,
     ...overrides,
   }
 }

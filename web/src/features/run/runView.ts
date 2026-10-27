@@ -7,8 +7,9 @@ import type {
   Status,
 } from '@/features/relay/contract/payload.gen'
 import { formatClock } from '@/shared/format/dates'
+import { formatUsd } from '@/shared/format/money'
 import { en, type Messages } from '@/shared/i18n/en'
-import { SOURCE_NAMES } from '@/shared/sources'
+import { SOURCE_NAMES } from '@/shared/labels/sources'
 
 export type RunMessage = RunProgress | RunFinished | RunCancelled
 
@@ -99,4 +100,11 @@ function sourcesTitle(sources: SourceStep[], text: Messages): string {
 
 export function runTitle(progress: RunProgress, text: Messages = en): string {
   return modelTitle(progress.model, text) ?? sourcesTitle(progress.sources, text)
+}
+
+const COUNT_SEPARATOR = ' · '
+
+export function runCounts(result: RunFinished, text: Messages): string {
+  const words = text.run
+  return [words.newAds(result.new_ads), words.matches(result.matches), words.hidden(result.hidden), formatUsd(result.cost_usd, text)].join(COUNT_SEPARATOR)
 }

@@ -30,10 +30,10 @@ describe('RunProgress', () => {
     expect(screen.getByRole('progressbar', { name: 'Run progress' })).toHaveAttribute('aria-valuenow', '40')
   })
 
-  it('should announce only the stage and the percent', () => {
+  it('should leave announcements to the shell status region', () => {
     render(<RunProgress progress={progress} editsDisabled={false} onCancel={vi.fn()} />)
 
-    expect(screen.getByRole('status').textContent).toBe('Reading Teamtailor40%')
+    expect(screen.queryByRole('status')).toBeNull()
   })
 
   it.each([

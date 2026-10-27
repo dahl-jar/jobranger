@@ -1,4 +1,5 @@
 import { Link } from 'react-router'
+import { APP_BASE, DEMO_BASE } from '@/app/paths'
 import styles from '@/features/landing/LandingPage.module.css'
 import { NAV_SECTIONS } from '@/features/landing/landingContent'
 import { useText } from '@/shared/i18n/languageContext'
@@ -18,10 +19,17 @@ export function LandingNav() {
   )
 }
 
-export function OpenAppLink() {
+export function LandingActions() {
+  const text = useText()
+
   return (
-    <Link to="/app" className={`${button.outline} ${button.compact} ${button.medium}`}>
-      {useText().landing.openApp}
-    </Link>
+    <>
+      <Link to={DEMO_BASE} className={styles.navLink}>
+        {text.app.demo.link}
+      </Link>
+      <Link to={APP_BASE} className={`${button.outline} ${button.compact} ${button.medium}`}>
+        {text.landing.openApp}
+      </Link>
+    </>
   )
 }

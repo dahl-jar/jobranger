@@ -23,6 +23,17 @@
   color: var(--ink2);
 }
 
+.demo {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--ink2);
+}
+
+.demo a {
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
 .steps {
   margin: 28px 0 0;
   padding: 0;

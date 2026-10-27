@@ -1,0 +1,47 @@
+.note {
+  border-bottom: 1px solid var(--rule);
+  font-size: 13px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px 16px;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 8px var(--gutter);
+  box-sizing: border-box;
+}
+
+.text {
+  color: var(--ink2);
+}
+
+.label {
+  font-weight: 700;
+  color: var(--part);
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+
+.home,
+.install {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  text-underline-offset: 3px;
+}
+
+.home {
+  color: var(--ink2);
+}
+
+.install {
+  font-weight: 600;
+}

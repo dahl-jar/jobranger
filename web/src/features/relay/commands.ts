@@ -1,5 +1,6 @@
 import { CONTRACT_VERSION } from '@/features/relay/contract/limits'
 import type { ErrorMessage, Payload, Saved, Unpair } from '@/features/relay/contract/payload.gen'
+import type { SendProgress } from '@/features/relay/sessionRunner'
 
 export const COMMAND_TIMEOUT_MS = 15_000
 
@@ -32,8 +33,11 @@ export function disconnectedError(): CommandError {
 
 type Delivery = 'first' | 'held' | 'resent'
 
+type Deliver = (command: Command, onProgress: SendProgress) => Promise<void>
+
 interface Waiting {
   command: Command
+  onProgress: SendProgress | undefined
   delivery: Delivery
   resolve: (saved: Saved) => void
   reject: (error: CommandError) => void
@@ -41,18 +45,18 @@ interface Waiting {
 }
 
 export class CommandTracker {
-  readonly #deliver: (command: Command) => Promise<void>
+  readonly #deliver: Deliver
   readonly #waiting = new Map<string, Waiting>()
 
-  constructor(deliver: (command: Command) => Promise<void>) {
+  constructor(deliver: Deliver) {
     this.#deliver = deliver
   }
 
-  send(draft: CommandDraft): Promise<Saved> {
+  send(draft: CommandDraft, onProgress?: SendProgress): Promise<Saved> {
     const id = crypto.randomUUID()
     const command: Command = { ...draft, id }
     const reply = new Promise<Saved>((resolve, reject) => {
-      this.#waiting.set(id, { command, delivery: 'first', resolve, reject, timer: undefined })
+      this.#waiting.set(id, { command, onProgress, delivery: 'first', resolve, reject, timer: undefined })
     })
     this.#dispatch(command)
     return reply
@@ -90,7 +94,11 @@ export class CommandTracker {
   }
 
   #dispatch(command: Command): void {
-    this.#deliver(command).then(
+    const waiting = this.#waiting.get(command.id)
+    const report: SendProgress = (sent, count) => {
+      if (this.#waiting.get(command.id) === waiting) waiting?.onProgress?.(sent, count)
+    }
+    this.#deliver(command, report).then(
       () => this.#startTimer(command.id),
       () => this.#finish(command.id)?.reject(disconnectedError()),
     )

@@ -1,12 +1,13 @@
 import { Link } from 'react-router'
+import { settingsPath, useAppBase } from '@/app/paths'
 import { summarizeTargets } from '@/features/jobs/summarizeTargets'
+import { DEFAULT_SECTION } from '@/features/settings/settingsSections'
 import styles from '@/features/jobs/JobsView.module.css'
 import type { Targets } from '@/features/relay/contract/payload.gen'
 import { useText } from '@/shared/i18n/languageContext'
 import { Icon, type IconName } from '@/shared/ui/Icon'
 import { SectionLabel } from '@/shared/ui/SectionLabel'
 
-const SEARCH_SETTINGS_PATH = '/app/settings/search'
 const FACT_ICON_SIZE = 18
 
 function Fact({ icon, label, value }: { icon: IconName; label: string; value: string }) {
@@ -25,13 +26,14 @@ function Fact({ icon, label, value }: { icon: IconName; label: string; value: st
 
 export function ConfigSummary({ targets }: { targets: Targets }) {
   const text = useText()
+  const base = useAppBase()
   const words = text.jobs.config
   const summary = summarizeTargets(targets, text)
   return (
     <section className={styles.block}>
       <SectionLabel
         aside={
-          <Link to={SEARCH_SETTINGS_PATH} aria-label={words.editLabel} className={styles.edit}>
+          <Link to={settingsPath(base, DEFAULT_SECTION)} aria-label={words.editLabel} className={styles.edit}>
             <Icon name="pencil" />
             {text.common.edit}
           </Link>
