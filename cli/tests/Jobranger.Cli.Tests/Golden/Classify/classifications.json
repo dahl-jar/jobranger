@@ -392,7 +392,7 @@
       "Bachelor's degree in IT",
       "At least two years of professional development experience"
     ],
-    "assessment": "{\"status\": \"unsuitable\", \"reason\": \"The ad asks for at least 2 years of experience: \\\"minst to års profesjonell utviklererfaring\\\". The search accepts at most 1 years.\", \"evidence\": [\"work_frontend\", \"education\"], \"gaps\": [], \"blockers\": [\"Candidate does not have 2 years of experience\", \"Mandatory minimum of two years of professional development experience; the profile shows one year.\"], \"is_low_code\": false, \"required_experience_years\": 2.0, \"version\": \"test-version\", \"checks\": [{\"text\": \"Bachelor's degree in IT\", \"state\": \"met\"}, {\"text\": \"At least two years of professional development experience\", \"state\": \"missing\"}, {\"text\": \"React and TypeScript development\", \"state\": \"met\"}]}"
+    "assessment": "{\"status\": \"unsuitable\", \"reason\": \"The ad asks for at least 2 years of experience: \\\"minst to års profesjonell utviklererfaring\\\". The search accepts at most 1 year.\", \"evidence\": [\"work_frontend\", \"education\"], \"gaps\": [], \"blockers\": [\"Candidate does not have 2 years of experience\", \"Mandatory minimum of two years of professional development experience; the profile shows one year.\"], \"is_low_code\": false, \"required_experience_years\": 2.0, \"version\": \"test-version\", \"checks\": [{\"text\": \"Bachelor's degree in IT\", \"state\": \"met\"}, {\"text\": \"At least two years of professional development experience\", \"state\": \"missing\"}, {\"text\": \"React and TypeScript development\", \"state\": \"met\"}]}"
   },
   "over_two_years": {
     "label": "mid",

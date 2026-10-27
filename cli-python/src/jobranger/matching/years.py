@@ -40,7 +40,7 @@ YEAR_PHRASE = re.compile(
     r"|four|five|six|seven|eight|nine|ten))"
     r"(?: ?[-–] ?(?:[0-9]{1,2}|en|ett|to|tre|fire|fem|seks|sju|syv|åtte|ni|ti|one"
     r"|two|three|four|five|six|seven|eight|nine|ten))?\+?"
-    r"|([0-9]{1,2}) ?(?:\+|[-–] ?[0-9]{1,2})) (?:års|år|years|year|yrs)\b"
+    r"|([0-9]{1,2}) ?(?:\+|[-–] ?[0-9]{1,2})) (?:års|år|years|year|yrs)(?:['’]|\b)"
     r"(?: \S+){0,3}? (?:\S*erfaring|experience)",
     re.IGNORECASE,
 )
@@ -56,10 +56,12 @@ GRADUATE_ROUTE = re.compile(
 )
 EQUIVALENT_ROUTE = re.compile(r"\b(?:eller tilsvarende|or equivalent)\b", re.IGNORECASE)
 GUARD_REASON = (
-    'The ad asks for at least {years} years of experience: "{phrase}". '
-    "The search accepts at most {cap:g} years."
+    'The ad asks for at least {years} of experience: "{phrase}". '
+    "The search accepts at most {cap}."
 )
-GUARD_BLOCKER = "Candidate does not have {years} years of experience"
+GUARD_BLOCKER = "Candidate does not have {years} of experience"
+ONE_YEAR = 1
+WINDOW_WORDS = 6
 
 
 @dataclass(frozen=True)
@@ -75,9 +77,9 @@ def stated_years(text: str) -> StatedYears | None:
     for segment in ITEM_SPLIT.split(text):
         item = " ".join(segment.split())
         unfolded = _unfold(item)
-        if not item or _is_optional(unfolded):
-            continue
         for found in YEAR_PHRASE.finditer(unfolded):
+            if _is_optional(unfolded, found):
+                continue
             years = _years(found)
             if best is None or years < best.years:
                 best = StatedYears(years, item[found.start() : found.end()])
@@ -95,9 +97,10 @@ def apply_years_guard(
     cap = max_years(limits)
     if cap is None or found.years <= cap:
         return replace(match, required_experience_years=years)
-    blocker = clean_text(GUARD_BLOCKER.format(years=found.years))
+    stated = _year_count(found.years)
+    blocker = clean_text(GUARD_BLOCKER.format(years=stated))
     reason = clean_text(
-        GUARD_REASON.format(years=found.years, phrase=found.phrase, cap=cap)
+        GUARD_REASON.format(years=stated, phrase=found.phrase, cap=_year_count(cap))
     )
     blockers = (blocker, *(item for item in match.blockers if item != blocker))
     return replace(
@@ -109,9 +112,23 @@ def apply_years_guard(
     )
 
 
-def _is_optional(item: str) -> bool:
-    rest = SOFT_HEADING.sub("", item)
-    return bool(PREFERENCE_WORD.search(rest) or EQUIVALENT_ROUTE.search(rest))
+def _is_optional(item: str, found: re.Match[str]) -> bool:
+    before = " ".join(_words(item[: found.start()])[-WINDOW_WORDS:])
+    after = " ".join(_words(item[found.end() :])[:WINDOW_WORDS])
+    return bool(
+        PREFERENCE_WORD.search(before)
+        or PREFERENCE_WORD.search(after)
+        or EQUIVALENT_ROUTE.search(after)
+    )
+
+
+def _words(text: str) -> list[str]:
+    return SOFT_HEADING.sub(" ", text).split()
+
+
+def _year_count(years: float) -> str:
+    unit = "year" if years == ONE_YEAR else "years"
+    return f"{years:g} {unit}"
 
 
 def _unfold(text: str) -> str:

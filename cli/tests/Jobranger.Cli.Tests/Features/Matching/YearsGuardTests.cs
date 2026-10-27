@@ -51,9 +51,18 @@ public sealed class YearsGuardTests {
 
         Assert.Equal(
             "The ad asks for at least 3 years of experience: \"Minimum 3 års erfaring\". "
-            + "The search accepts at most 1 years.",
+            + "The search accepts at most 1 year.",
             result.Reason);
         Assert.Equal([guardBlocker, "Mandatory Java experience missing"], result.Blockers);
+    }
+
+    [Fact]
+    public void ShouldSayOneYearInBlocker_WhenAdAsksForOneYear() {
+        Limits noBands = new() { Years = [] };
+
+        Match result = YearsGuard.Apply(MatchingFixtures.StrongMatch, "Utvikler", "Minimum 1 års erfaring", noBands);
+
+        Assert.Equal("Candidate does not have 1 year of experience", result.Blockers[0]);
     }
 
     [Fact]

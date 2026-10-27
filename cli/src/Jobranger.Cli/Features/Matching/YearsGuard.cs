@@ -7,6 +7,8 @@ namespace Jobranger.Cli.Features.Matching;
 
 internal static partial class YearsGuard {
     private const RegexOptions ignoreCase = RegexOptions.IgnoreCase | RegexOptions.CultureInvariant;
+    private const double oneYear = 1;
+    private const int windowWords = 6;
 
     private static readonly Dictionary<string, int> writtenNumbers = new(StringComparer.Ordinal) {
         ["en"] = 1,
@@ -40,10 +42,10 @@ internal static partial class YearsGuard {
         StatedYears? best = null;
         foreach (string segment in ItemSplit().Split(text)) {
             string item = MatchText.CollapseSpace(segment);
-            if (item.Length == 0 || IsOptional(item)) {
-                continue;
-            }
             foreach (RegexMatch found in YearPhrase().Matches(item)) {
+                if (IsOptional(item, found)) {
+                    continue;
+                }
                 int years = Years(found);
                 if (best is null || years < best.Years) {
                     best = new StatedYears(years, found.Value);
@@ -61,11 +63,11 @@ internal static partial class YearsGuard {
         if (MatchRules.MaxYears(limits) is not double cap || found.Years <= cap) {
             return match with { RequiredExperienceYears = years };
         }
-        string stated = found.Years.ToString(CultureInfo.InvariantCulture);
-        string blocker = MatchRules.Clean($"Candidate does not have {stated} years of experience");
+        string stated = YearCount(found.Years);
+        string blocker = MatchRules.Clean($"Candidate does not have {stated} of experience");
         string reason = MatchRules.Clean(
-            $"The ad asks for at least {stated} years of experience: \"{found.Phrase}\". "
-            + $"The search accepts at most {MatchRules.YearsText(cap)} years.");
+            $"The ad asks for at least {stated} of experience: \"{found.Phrase}\". "
+            + $"The search accepts at most {YearCount(cap)}.");
         return match with {
             Status = Fit.Unsuitable,
             Reason = reason,
@@ -74,10 +76,17 @@ internal static partial class YearsGuard {
         };
     }
 
-    private static bool IsOptional(string item) {
-        string rest = SoftHeading().Replace(item, string.Empty);
-        return PreferenceWord().IsMatch(rest) || EquivalentRoute().IsMatch(rest);
+    private static bool IsOptional(string item, RegexMatch found) {
+        string before = string.Join(' ', Words(item[..found.Index]).TakeLast(windowWords));
+        string after = string.Join(' ', Words(item[(found.Index + found.Length)..]).Take(windowWords));
+        return PreferenceWord().IsMatch(before) || PreferenceWord().IsMatch(after) || EquivalentRoute().IsMatch(after);
     }
+
+    private static string[] Words(string text) =>
+        SoftHeading().Replace(text, " ").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+    private static string YearCount(double years) =>
+        $"{MatchRules.YearsText(years)} {(years == oneYear ? "year" : "years")}";
 
     private static int Years(RegexMatch found) {
         string raw = found.Groups[1].Success ? found.Groups[1].Value : found.Groups[2].Value;
@@ -93,7 +102,7 @@ internal static partial class YearsGuard {
         + @"|four|five|six|seven|eight|nine|ten))"
         + @"(?: ?[-–] ?(?:[0-9]{1,2}|en|ett|to|tre|fire|fem|seks|sju|syv|åtte|ni|ti|one"
         + @"|two|three|four|five|six|seven|eight|nine|ten))?\+?"
-        + @"|([0-9]{1,2}) ?(?:\+|[-–] ?[0-9]{1,2})) (?:års|år|years|year|yrs)\b"
+        + @"|([0-9]{1,2}) ?(?:\+|[-–] ?[0-9]{1,2})) (?:års|år|years|year|yrs)(?:['’]|\b)"
         + @"(?: \S+){0,3}? (?:\S*erfaring|experience)",
         ignoreCase)]
     private static partial Regex YearPhrase();

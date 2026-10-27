@@ -53,9 +53,19 @@ def test_should_name_phrase_in_reason_when_guard_blocks() -> None:
 
     assert (result.reason, result.blockers) == (
         'The ad asks for at least 3 years of experience: "Minimum 3 års erfaring". '
-        "The search accepts at most 1 years.",
+        "The search accepts at most 1 year.",
         (GUARD_BLOCKER, "Mandatory Java experience missing"),
     )
+
+
+def test_should_say_one_year_in_blocker_when_ad_asks_for_one_year() -> None:
+    no_bands = Limits(years=frozenset())
+
+    result = apply_years_guard(
+        make_match(), "Utvikler", "Minimum 1 års erfaring", no_bands
+    )
+
+    assert result.blockers[0] == "Candidate does not have 1 year of experience"
 
 
 def test_should_keep_five_blockers_when_guard_adds_one() -> None:
