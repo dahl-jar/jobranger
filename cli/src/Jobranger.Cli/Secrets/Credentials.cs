@@ -20,6 +20,8 @@ internal sealed class Credentials(IDictionary environment, ISecretStore? store, 
     private const int maskLength = 12;
     private const int visibleTail = 4;
 
+    public bool IsFileOnly => EnvironmentVariables.Read(environment, SecretStores.SelectVariable) == SecretStores.FileOnly;
+
     public static string Mask(string value) =>
         new string(maskChar, maskLength) + (value.Length >= KeyGuard.FragmentChars ? value[^visibleTail..] : string.Empty);
 
@@ -28,11 +30,23 @@ internal sealed class Credentials(IDictionary environment, ISecretStore? store, 
             && EnvironmentVariables.Read(environment, variable) is string fromEnv) {
             return fromEnv;
         }
-        if (store is not null && await store.ReadAsync(name, cancellationToken).ConfigureAwait(false) is string stored) {
+        if (store is not null
+            && await ReadFromAsync(SecretLocation.Store, name, cancellationToken).ConfigureAwait(false) is string stored) {
             return stored;
         }
-        return file.Read(name);
+        return await ReadFromAsync(SecretLocation.File, name, cancellationToken).ConfigureAwait(false);
     }
+
+    public async Task<string?> ReadFromAsync(SecretLocation location, string name, CancellationToken cancellationToken) {
+        if (location == SecretLocation.File) {
+            return file.Read(name);
+        }
+        return store is null
+            ? throw new SecretStoreMissingException(name)
+            : await store.ReadAsync(name, cancellationToken).ConfigureAwait(false);
+    }
+
+    public FileLock Lock(CancellationToken cancellationToken) => file.Lock(cancellationToken);
 
     public async Task<SecretLocation> SetSecretAsync(string name, string value, CancellationToken cancellationToken) {
         using FileLock held = file.Lock(cancellationToken);

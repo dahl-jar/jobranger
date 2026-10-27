@@ -32,6 +32,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\contracts\src\Jobranger.Contracts\Jobranger.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Remove="$(NuGetPackageRoot)microsoft.ml.onnxruntime\*\runtimes\win-*\native\*.dll" />
   </ItemGroup>
 

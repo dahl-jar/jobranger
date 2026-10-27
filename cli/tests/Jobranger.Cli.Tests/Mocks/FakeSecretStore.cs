@@ -9,14 +9,19 @@ internal sealed class FakeSecretStore : ISecretStore {
 
     public bool IsBroken { get; init; }
 
+    public Action? AfterWrite { get; set; }
+
+    public Queue<string> StaleReads { get; } = new();
+
     public Task<string?> ReadAsync(string name, CancellationToken cancellationToken) {
         ThrowIfBroken(name);
-        return Task.FromResult(Values.GetValueOrDefault(name));
+        return Task.FromResult(StaleReads.TryDequeue(out string? stale) ? stale : Values.GetValueOrDefault(name));
     }
 
     public Task WriteAsync(string name, string value, CancellationToken cancellationToken) {
         ThrowIfBroken(name);
         Values[name] = value;
+        AfterWrite?.Invoke();
         return Task.CompletedTask;
     }
 

@@ -48,10 +48,34 @@
         "resolved": "2.0.0",
         "contentHash": "iQb2Nm9WqPseGCxPcdeU5qMbWkxtSr1bmnliC7slitx7GOG8cKO2pKZUQ2Yl+DQQZQ7c8qIXe3k+zYE0f96dIA=="
       },
+      "Humanizer.Core": {
+        "type": "Transitive",
+        "resolved": "3.0.10",
+        "contentHash": "yZIhtw8sYuvsONzQbZxWpR60tMWYHXoo0DL6nyOqSFiU5POjBTSEyWFpTQtJEZuy+oqiYTXKXY/Mjx7KnqIQFw=="
+      },
       "JetBrains.Annotations": {
         "type": "Transitive",
         "resolved": "2026.2.0",
         "contentHash": "drvAEaI7Xf4wU6dx4UTB9MoZWXZlraaQ0qoeThPQ411FxNhId7QdUTukIC9I8aUHP0ycAaGwZNKqSvfOZQvUlg=="
+      },
+      "Json.More.Net": {
+        "type": "Transitive",
+        "resolved": "3.0.1",
+        "contentHash": "fRctF2J2SILYG6wqP21drmeEODmCVkVQ/b3MndDu2fT1swfySyUgq7ePCk+aENGlDcIm05fyfjh9vcuqDEfv3w=="
+      },
+      "JsonPointer.Net": {
+        "type": "Transitive",
+        "resolved": "7.0.3",
+        "contentHash": "It/10weZ3oA+BGL+Gqyw9M6wsi4Tc16vWwU+u7x6LBwty57Y3aUh7bfcn2VWAzgVTAfGuCPb5KUpsH6IFjR08A==",
+        "dependencies": {
+          "Humanizer.Core": "3.0.10",
+          "Json.More.Net": "3.0.1"
+        }
+      },
+      "libsodium": {
+        "type": "Transitive",
+        "resolved": "1.0.22",
+        "contentHash": "KPD9SloJFclrsjnhABu7dzWrcyYkwPbvx5l1gRSPAX/0n+OBtSiVCKtGFv4n+ecWUHU0tCG9LSSwoZZx673zBQ=="
       },
       "Microsoft.ApplicationInsights": {
         "type": "Transitive",
@@ -333,6 +357,7 @@
         "type": "Project",
         "dependencies": {
           "Ace4896.DBus.Services.Secrets": "[1.6.0, )",
+          "Jobranger.Contracts": "[1.0.0, )",
           "Microsoft.Data.Sqlite": "[10.0.13, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.13, )",
           "Microsoft.ML.OnnxRuntime": "[1.31.0, )",
@@ -344,6 +369,13 @@
           "YamlDotNet": "[18.1.0, )"
         }
       },
+      "jobranger.contracts": {
+        "type": "Project",
+        "dependencies": {
+          "JsonSchema.Net": "[9.4.1, )",
+          "NSec.Cryptography": "[26.4.0, )"
+        }
+      },
       "Ace4896.DBus.Services.Secrets": {
         "type": "CentralTransitive",
         "requested": "[1.6.0, )",
@@ -352,6 +384,15 @@
         "dependencies": {
           "Tmds.DBus.Generator": "0.92.0",
           "Tmds.DBus.Protocol": "0.92.0"
+        }
+      },
+      "JsonSchema.Net": {
+        "type": "CentralTransitive",
+        "requested": "[9.4.1, )",
+        "resolved": "9.4.1",
+        "contentHash": "7Nh0XyIse3a5nsc1nJJTECZVjxqHVE5jANGEPpQc2H+/M7u2sLueL93X6ZUuJLkLYy/pYzFmJhKYEpVIctaUZw==",
+        "dependencies": {
+          "JsonPointer.Net": "7.0.3"
         }
       },
       "Microsoft.Data.Sqlite": {
@@ -388,6 +429,15 @@
         "requested": "[3.0.0-preview.26513.4, )",
         "resolved": "3.0.0-preview.26513.4",
         "contentHash": "pAhmwJzOz+Ty04GFPAeg0WsdwbE8gFpKWCnhUr7z4Jn5VIzkNCAEEU5AKcRro+zKpwBA2Nd9p+lCVniJQZMw2A=="
+      },
+      "NSec.Cryptography": {
+        "type": "CentralTransitive",
+        "requested": "[26.4.0, )",
+        "resolved": "26.4.0",
+        "contentHash": "0vsCtY5f+YgQROiWNqzgWp+l2pddfk9FkWoGV/bEo0MuEYPKlJWuoA8aOfO6qp3f+EnObKE3zSJhn1PspJeJVg==",
+        "dependencies": {
+          "libsodium": "[1.0.22, 1.0.23)"
+        }
       },
       "PdfPig": {
         "type": "CentralTransitive",

@@ -15,8 +15,12 @@ TESTS = REPO_ROOT / "cli/tests/Jobranger.Cli.Tests"
 GOLDEN = TESTS / "Golden"
 STORE_DB = TESTS / "TestData/Db/python-v2.db"
 STORE_ROWS = GOLDEN / "Store/rows.json"
+LINK_KEYS = TESTS / "TestData/Link"
 SOURCE = GOLDEN / "SOURCE"
-DRIVERS = (("store_rows.py", ("--db", STORE_DB, "--out", STORE_ROWS)),)
+DRIVERS = (
+    ("store_rows.py", ("--db", STORE_DB, "--out", STORE_ROWS)),
+    ("link_keys.py", ("--out", LINK_KEYS)),
+)
 
 log = logging.getLogger("export_goldens")
 
@@ -59,7 +63,7 @@ def run_driver(project: Path, driver: str, arguments: tuple[object, ...]) -> Non
 def write_source() -> None:
     outputs = sorted(
         str(path.relative_to(TESTS))
-        for path in (*GOLDEN.rglob("*"), STORE_DB)
+        for path in (*GOLDEN.rglob("*"), *LINK_KEYS.rglob("*"), STORE_DB)
         if path.is_file() and path != SOURCE and "Embeddings" not in path.parts
     )
     lines = [
