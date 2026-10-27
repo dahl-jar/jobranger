@@ -1,0 +1,79 @@
+.summary {
+  font-size: 14px;
+}
+
+.empty {
+  margin: 14px 0 0;
+  color: var(--ink2);
+}
+
+.total {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.count {
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.since {
+  color: var(--ink2);
+}
+
+.bar {
+  display: flex;
+  gap: 2px;
+  height: 10px;
+  margin-top: 14px;
+}
+
+.bar > div {
+  flex-shrink: 1;
+  flex-basis: 0;
+}
+
+.waiting {
+  background: var(--wait);
+}
+
+.interviews {
+  background: var(--ok);
+}
+
+.rejected {
+  background: var(--miss);
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legendRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+}
+
+.legendLabel {
+  flex-grow: 1;
+  color: var(--ink2);
+}
+
+.legendCount {
+  font-weight: 700;
+}

@@ -1,0 +1,125 @@
+.wrap {
+  margin-top: 16px;
+  overflow: visible;
+}
+
+@media (max-width: 760px) {
+  .wrap {
+    overflow-x: auto;
+    padding-bottom: 220px;
+    margin-bottom: -220px;
+  }
+}
+
+.table {
+  min-width: 680px;
+  font-size: 14px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.6fr) 90px 140px minmax(0, 1.8fr);
+  gap: 12px;
+  margin: 0 -6px;
+}
+
+.head {
+  padding: 4px 6px;
+  border-bottom: 2px solid var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink2);
+}
+
+.body {
+  align-items: center;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--rule-soft);
+  cursor: pointer;
+}
+
+.body:hover {
+  background: rgb(127 127 127 / 6%);
+}
+
+.sortButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--ink2);
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.sortButton svg {
+  opacity: 0.35;
+}
+
+.sorted {
+  color: var(--ink);
+}
+
+.sorted svg {
+  opacity: 1;
+}
+
+.cell {
+  min-width: 0;
+}
+
+.company {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.role {
+  color: var(--ink2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.date {
+  color: var(--muted);
+}
+
+.note {
+  display: block;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-bottom-color: var(--rule);
+  background: transparent;
+  color: var(--ink2);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.noNote {
+  color: var(--faint);
+}

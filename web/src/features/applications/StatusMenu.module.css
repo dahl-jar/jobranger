@@ -1,0 +1,142 @@
+.wrap {
+  position: relative;
+  display: block;
+}
+
+.button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 8px 0 10px;
+  box-sizing: border-box;
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.open {
+  border-radius: 4px 4px 0 0;
+}
+
+.label {
+  flex-grow: 1;
+}
+
+.interview,
+.offer {
+  border-color: var(--ok);
+  background: var(--ok);
+  color: var(--bg);
+}
+
+.accepted {
+  border-color: var(--accepted);
+  background: var(--accepted);
+  color: var(--bg);
+}
+
+.rejected {
+  border-color: var(--miss);
+  background: var(--miss);
+  color: var(--bg);
+}
+
+.menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  box-sizing: border-box;
+  padding: 4px;
+  border: 1px solid var(--divider);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  background: var(--bg);
+  box-shadow: 0 10px 24px rgb(0 0 0 / 28%);
+}
+
+.item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.item:hover,
+.item:focus-visible {
+  background: rgb(127 127 127 / 12%);
+}
+
+.item[aria-checked='true'] {
+  font-weight: 600;
+}
+
+.waitingTone {
+  --tone: var(--ink2);
+}
+
+.interviewTone,
+.offerTone {
+  --tone: var(--ok);
+}
+
+.acceptedTone {
+  --tone: var(--accepted);
+}
+
+.rejectedTone {
+  --tone: var(--miss);
+}
+
+.itemIcon {
+  display: inline-flex;
+  color: var(--tone);
+}
+
+.itemLabel {
+  flex-grow: 1;
+}
+
+.radio {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border: 1.5px solid var(--tone);
+  border-radius: 50%;
+}
+
+.item[aria-checked='true'] .radio::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tone);
+}

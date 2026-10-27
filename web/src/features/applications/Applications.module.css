@@ -1,0 +1,124 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px 18px;
+  margin-top: 18px;
+}
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 13px;
+}
+
+.pill {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink2);
+  font: inherit;
+  cursor: pointer;
+}
+
+.pill[aria-pressed='true'] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.toolbar .openAdd {
+  gap: 6px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.addForm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 14px;
+  margin-top: 14px;
+  padding: 14px 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  font-size: 13px;
+}
+
+.field {
+  display: flex;
+  flex: 1 1 180px;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.roleField {
+  flex-basis: 200px;
+}
+
+.noteField {
+  flex: 2 1 260px;
+}
+
+.fieldLabel {
+  color: var(--muted);
+}
+
+.input {
+  min-height: 38px;
+  padding: 0 8px;
+  border: 1px solid var(--divider);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+}
+
+.input[aria-invalid='true'] {
+  border-color: var(--miss);
+}
+
+.cancelButton {
+  min-height: 40px;
+  padding: 0 6px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.formError {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--miss);
+}
+
+.footer,
+.empty {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.removal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  min-height: 24px;
+  margin: 14px 0 0;
+  font-size: 14px;
+  color: var(--ink2);
+}
+
+.limit {
+  font-size: 12px;
+  color: var(--part);
+}

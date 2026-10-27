@@ -8,6 +8,9 @@ interface Due {
   note: string
 }
 
+export const TODAY_LABEL = 'Today'
+export const YESTERDAY_LABEL = 'Yesterday'
+
 const NO_DEADLINE: Due = { due: 'No date', note: 'apply early' }
 
 function isRealDay(day: string): boolean {
@@ -63,10 +66,10 @@ export function formatDay(iso: string, today: string): string {
   const from = toLocalDate(today)
   const days = from === undefined ? undefined : daysBetween(from, date)
   if (days === 0) {
-    return 'Today'
+    return TODAY_LABEL
   }
   if (days === -1) {
-    return 'Yesterday'
+    return YESTERDAY_LABEL
   }
   return formatDayMonth(date)
 }
