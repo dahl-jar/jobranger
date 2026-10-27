@@ -13,6 +13,12 @@
           "Microsoft.Extensions.Telemetry.Abstractions": "10.10.0"
         }
       },
+      "Microsoft.Extensions.TimeProvider.Testing": {
+        "type": "Direct",
+        "requested": "[10.10.0, )",
+        "resolved": "10.10.0",
+        "contentHash": "8duZdxuO3Oo8tlyQXVq1drXee6GJC9DjUU97Pq3YaIqf92jrAHsWxbbRKwvjQI48Mer3IANwUKF0elqvHeY4Rw=="
+      },
       "TngTech.ArchUnitNET": {
         "type": "Direct",
         "requested": "[0.13.4, )",

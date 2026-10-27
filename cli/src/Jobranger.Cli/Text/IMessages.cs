@@ -66,4 +66,6 @@ internal interface IMessages {
     string ConfigRunTimesTooClose(int hours);
 
     string ConfigNotYaml(int line);
+
+    string UpdateAvailable(string latest, string current, string command);
 }

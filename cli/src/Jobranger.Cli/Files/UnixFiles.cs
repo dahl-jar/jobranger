@@ -15,6 +15,9 @@ internal static partial class UnixFiles {
     private const int fileTypeMask = 0xF000;
     private const int regularFile = 0x8000;
     private const int readWrite = 0x2;
+    private const int writeOnly = 0x1;
+    private const int macAppend = 0x8;
+    private const int linuxAppend = 0x400;
     private const int lockExclusive = 2;
     private const int lockNonBlocking = 4;
     private const int macNonBlock = 0x4;
@@ -34,12 +37,30 @@ internal static partial class UnixFiles {
     private static readonly int readNoFollowFlags = OperatingSystem.IsMacOS()
         ? macNonBlock | macNoFollow | macCloseOnExec
         : linuxNonBlock | LinuxNoFollow() | linuxCloseOnExec;
+    private static readonly int appendNoFollowFlags = OperatingSystem.IsMacOS()
+        ? writeOnly | macAppend | macNonBlock | macNoFollow | macCloseOnExec
+        : writeOnly | linuxAppend | linuxNonBlock | LinuxNoFollow() | linuxCloseOnExec;
 
     public static SafeFileHandle? OpenReadNoFollow(string path, out int error) =>
         Open(path, readNoFollowFlags, out error);
 
     public static SafeFileHandle? OpenLockNoFollow(string path, out int error) =>
         Open(path, readNoFollowFlags | readWrite, out error);
+
+    public static SafeFileHandle? OpenAppendNoFollow(string path, out int error) =>
+        Open(path, appendNoFollowFlags, out error);
+
+    public static bool Write(SafeFileHandle handle, ReadOnlySpan<byte> content) {
+        ReadOnlySpan<byte> rest = content;
+        while (!rest.IsEmpty) {
+            int written = NativeWrite(handle, rest, rest.Length);
+            if (written <= 0) {
+                return false;
+            }
+            rest = rest[written..];
+        }
+        return true;
+    }
 
     public static bool TryLockExclusive(SafeFileHandle handle, out int error) {
         int operation = lockExclusive | lockNonBlocking;
@@ -83,6 +104,9 @@ internal static partial class UnixFiles {
 
     [LibraryImport(linuxLibc, EntryPoint = "open", StringMarshalling = StringMarshalling.Utf8, SetLastError = true)]
     private static partial int LinuxOpen(string path, int flags);
+
+    [LibraryImport(runtimeNative, EntryPoint = "SystemNative_Write", SetLastError = true)]
+    private static partial int NativeWrite(SafeFileHandle handle, ReadOnlySpan<byte> buffer, int bufferSize);
 
     [LibraryImport(runtimeNative, EntryPoint = "SystemNative_FStat")]
     private static partial int FileStatus(SafeFileHandle handle, Span<byte> status);

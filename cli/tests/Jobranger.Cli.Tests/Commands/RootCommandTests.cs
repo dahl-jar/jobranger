@@ -1,11 +1,13 @@
 using System.CommandLine;
 using System.Reflection;
+using System.Runtime.Versioning;
 using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Cli.Text;
 using RootCommand = Jobranger.Cli.Commands.RootCommand;
 
 namespace Jobranger.Cli.Tests.Commands;
 
+[UnsupportedOSPlatform("windows")]
 public sealed class RootCommandTests {
     private const string versionLine = @"^jobranger \d+\.\d+\.\d+$";
     private const string countOption = "--count";
@@ -123,5 +125,6 @@ public sealed class RootCommandTests {
     }
 
     private static RootCommand CreateRoot(RecordingConsole console, string lang) =>
-        new(CliServices.Create(console.Console, console.ErrorConsole, Locales.EnvironmentWithoutConfig(lang)));
+        new(CliServices.Create(
+            TimeProvider.System, console.Console, console.ErrorConsole, Locales.EnvironmentWithoutConfig(lang)));
 }

@@ -20,6 +20,7 @@ internal sealed class Paths(IDictionary environment) {
     private const string profileFileName = "profile.yaml";
     private const string dbFileName = "jobranger.db";
     private const string runLockFileName = "run.lock";
+    private const string versionCheckFileName = "version_check.json";
     private const string logDirName = "logs";
 
     public string Home() {
@@ -48,6 +49,8 @@ internal sealed class Paths(IDictionary environment) {
     public string DbPath() => Path.Combine(DataDir(), dbFileName);
 
     public string RunLockPath() => Path.Combine(StateDir(), runLockFileName);
+
+    public string VersionCheckPath() => Path.Combine(StateDir(), versionCheckFileName);
 
     public string LogDir() => Path.Combine(StateDir(), logDirName);
 

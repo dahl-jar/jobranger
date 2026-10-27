@@ -73,4 +73,7 @@ internal sealed class EnglishMessages : IMessages {
         string.Create(CultureInfo.InvariantCulture, $"is not between 0 and {max}");
 
     public string ConfigRunTimesTooClose(int hours) => $"are less than {hours} hours apart";
+
+    public string UpdateAvailable(string latest, string current, string command) =>
+        $"jobranger {latest} is out (you have {current}). Upgrade: {command}";
 }

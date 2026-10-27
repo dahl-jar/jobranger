@@ -73,4 +73,7 @@ internal sealed class NorwegianMessages : IMessages {
         string.Create(CultureInfo.InvariantCulture, $"er ikke mellom 0 og {max}");
 
     public string ConfigRunTimesTooClose(int hours) => $"ligger mindre enn {hours} timer fra hverandre";
+
+    public string UpdateAvailable(string latest, string current, string command) =>
+        $"jobranger {latest} er ute (du har {current}). Oppgrader: {command}";
 }
