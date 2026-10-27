@@ -12,8 +12,10 @@ internal static partial class UnixFiles {
     private const int failed = -1;
     private const int fileStatusSize = 256;
     private const int modeOffset = 4;
+    private const int ownerOffset = 8;
     private const int fileTypeMask = 0xF000;
     private const int regularFile = 0x8000;
+    private const int directoryFile = 0x4000;
     private const int readWrite = 0x2;
     private const int writeOnly = 0x1;
     private const int macAppend = 0x8;
@@ -85,6 +87,15 @@ internal static partial class UnixFiles {
         return LinkStatus(path, status) != failed && IsRegular(status);
     }
 
+    public static uint EffectiveUserId() => GetEffectiveUserId();
+
+    public static bool IsOwnDirectory(string path, uint userId) {
+        Span<byte> status = stackalloc byte[fileStatusSize];
+        return LinkStatus(path, status) != failed
+            && (MemoryMarshal.Read<int>(status[modeOffset..]) & fileTypeMask) == directoryFile
+            && MemoryMarshal.Read<uint>(status[ownerOffset..]) == userId;
+    }
+
     public static bool TryLockExclusive(SafeFileHandle handle, out int error) {
         int operation = lockExclusive | lockNonBlocking;
         int result = OperatingSystem.IsMacOS() ? MacLock(handle, operation) : LinuxLock(handle, operation);
@@ -138,6 +149,9 @@ internal static partial class UnixFiles {
 
     [LibraryImport(runtimeNative, EntryPoint = "SystemNative_LStat", StringMarshalling = StringMarshalling.Utf8)]
     private static partial int LinkStatus(string path, Span<byte> status);
+
+    [LibraryImport(runtimeNative, EntryPoint = "SystemNative_GetEUid")]
+    private static partial uint GetEffectiveUserId();
 
     [LibraryImport(runtimeNative, EntryPoint = "SystemNative_FStat")]
     private static partial int FileStatus(SafeFileHandle handle, Span<byte> status);

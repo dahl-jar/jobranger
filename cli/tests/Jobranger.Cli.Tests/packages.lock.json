@@ -337,6 +337,7 @@
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.13, )",
           "Microsoft.ML.OnnxRuntime": "[1.31.0, )",
           "Microsoft.ML.Tokenizers": "[3.0.0-preview.26513.4, )",
+          "PdfPig": "[0.1.16, )",
           "Spectre.Console": "[0.57.2, )",
           "System.CommandLine": "[2.0.13, )",
           "System.Numerics.Tensors": "[10.0.13, )",
@@ -387,6 +388,12 @@
         "requested": "[3.0.0-preview.26513.4, )",
         "resolved": "3.0.0-preview.26513.4",
         "contentHash": "pAhmwJzOz+Ty04GFPAeg0WsdwbE8gFpKWCnhUr7z4Jn5VIzkNCAEEU5AKcRro+zKpwBA2Nd9p+lCVniJQZMw2A=="
+      },
+      "PdfPig": {
+        "type": "CentralTransitive",
+        "requested": "[0.1.16, )",
+        "resolved": "0.1.16",
+        "contentHash": "qQcbsNMYVY+K5ELptax2S8thNMk0+rSQq3H/KdYj3LLcko8yTCz8y5KIvsKxIyAuTN0ZYNnfsZkM+0EvxTwHVA=="
       },
       "Spectre.Console": {
         "type": "CentralTransitive",
