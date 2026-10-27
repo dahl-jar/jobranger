@@ -48,7 +48,7 @@ public sealed class LiveSecretStoreTests : IAsyncDisposable {
 
     [Fact]
     public async Task ShouldKeepOneItem_WhenWrittenTwice() {
-        Assert.SkipUnless(OperatingSystem.IsLinux() && LiveSecretStores.IsLive, LiveSecretStores.OffReason);
+        Assert.SkipUnless(LiveSecretStores.IsLiveLinux, LiveSecretStores.LinuxOffReason);
         ISecretStore store = await OpenAsync();
         await WriteAsync(store, value);
         await WriteAsync(store, otherValue);
@@ -93,13 +93,25 @@ public sealed class LiveSecretStoreTests : IAsyncDisposable {
     }
 
     [Fact]
+    public async Task ShouldRefuseWithoutPrompt_WhenKeychainIsLocked() {
+        Assert.SkipUnless(LiveSecretStores.IsLockedKeychain, LiveSecretStores.LockedOffReason);
+        ISecretStore store = await SecretStores.OpenAsync(new Hashtable(), canPrompt: false, Token)
+            ?? throw new InvalidOperationException("no OS secret store on this platform");
+
+        SecretStoreUnavailableException refused = await Assert.ThrowsAsync<SecretStoreUnavailableException>(
+            () => store.ReadAsync(SecretFixtures.SecretName, Token));
+
+        Assert.EndsWith(SecretFixtures.ApprovalError, refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ShouldOpenOsStore_WhenSecretStoreEnvIsUnset() {
         Assert.SkipUnless(LiveSecretStores.IsLive, LiveSecretStores.OffReason);
         Hashtable environment = new() {
             [SecretServiceStore.BusVariable] = Environment.GetEnvironmentVariable(SecretServiceStore.BusVariable),
         };
 
-        ISecretStore? store = await SecretStores.OpenAsync(environment, Token);
+        ISecretStore? store = await SecretStores.OpenAsync(environment, canPrompt: false, Token);
 
         Assert.IsType(OperatingSystem.IsMacOS() ? typeof(KeychainSecretStore) : typeof(SecretServiceStore), store);
     }

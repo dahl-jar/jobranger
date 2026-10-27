@@ -13,7 +13,6 @@ namespace Jobranger.Cli.Tests.Storage;
 public sealed class DatabaseTests : IDisposable {
     private const string schemaQuery =
         "SELECT type, name, tbl_name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY name";
-    private const long busyTimeoutMs = 5000;
     private const int pythonSchemaVersion = 2;
 
     private static readonly TimeSpan busyWait = TimeSpan.FromSeconds(5);
@@ -82,10 +81,10 @@ public sealed class DatabaseTests : IDisposable {
     }
 
     [Fact]
-    public void ShouldSetFiveSecondBusyTimeout_WhenOpened() {
+    public void ShouldLeaveNativeBusyTimeoutOff_WhenOpened() {
         using TestDatabase db = new();
 
-        Assert.Equal(busyTimeoutMs, db.Scalar("PRAGMA busy_timeout"));
+        Assert.Equal(0L, db.Scalar("PRAGMA busy_timeout"));
     }
 
     [Fact]

@@ -399,7 +399,10 @@ def ascii_domain(domain: str) -> str:
 def ascii_address(address: str) -> str:
     if any(char.isspace() for char in address):
         raise ValueError
-    parsed = Address(addr_spec=address)
+    try:
+        parsed = Address(addr_spec=address)
+    except IndexError as error:
+        raise ValueError from error
     return str(Address(username=parsed.username, domain=ascii_domain(parsed.domain)))
 
 
@@ -407,7 +410,10 @@ def ascii_mailbox(value: str) -> str:
     if value != value.strip() or "\t" in value:
         raise ValueError
     message = EmailMessage()
-    message["From"] = value
+    try:
+        message["From"] = value
+    except IndexError as error:
+        raise ValueError from error
     header = message["From"]
     if len(header.addresses) != 1 or header.defects:
         raise ValueError
