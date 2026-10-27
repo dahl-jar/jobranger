@@ -7,23 +7,34 @@ import pytest
 
 from jobranger.storage.migrations import (
     MIGRATIONS,
+    SCHEMA_VERSION_KEY,
     Migration,
     MigrationError,
     SchemaTooNewError,
     current_version,
     migrate,
 )
+from jobranger.storage.store import Store
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 FIRST = Migration(1, ("CREATE TABLE state (key TEXT PRIMARY KEY, value TEXT)",))
 SECOND = Migration(2, ("CREATE TABLE extra (id INTEGER PRIMARY KEY)",))
+CSHARP_VERSION = 3
+NEWER_VERSION = 4
 
 
 def _tables(conn: sqlite3.Connection) -> set[str]:
     rows = conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
     return {row[0] for row in rows}
+
+
+def _set_version(conn: sqlite3.Connection, version: int) -> None:
+    conn.execute(
+        "UPDATE state SET value = ? WHERE key = ?", (str(version), SCHEMA_VERSION_KEY)
+    )
+    conn.commit()
 
 
 def test_should_apply_only_migrations_above_stored_version(tmp_path: Path) -> None:
@@ -63,12 +74,32 @@ def test_should_roll_back_failed_migration_completely(tmp_path: Path) -> None:
 
 def test_should_refuse_database_newer_than_code(tmp_path: Path) -> None:
     conn = sqlite3.connect(tmp_path / "db.sqlite")
-    migrate(conn, (FIRST, SECOND))
+    migrate(conn)
+    _set_version(conn, NEWER_VERSION)
 
-    with pytest.raises(SchemaTooNewError, match=r"schema 2 is newer .*\(1\)") as raised:
-        migrate(conn, (FIRST,))
+    with pytest.raises(SchemaTooNewError, match=r"schema 4 is newer .*\(3\)") as raised:
+        migrate(conn)
 
-    assert (raised.value.found, raised.value.supported) == (2, 1)
+    assert (raised.value.found, raised.value.supported) == (
+        NEWER_VERSION,
+        CSHARP_VERSION,
+    )
+
+
+def test_should_read_ads_when_csharp_migrated_database(tmp_path: Path) -> None:
+    path = tmp_path / "db.sqlite"
+    conn = sqlite3.connect(path)
+    migrate(conn, MIGRATIONS[:2])
+    conn.execute(
+        "INSERT INTO ads (id, source, source_id, title, company, url, dedup_key, "
+        "first_seen) VALUES ('a', 'finn', '1', 't', 'c', 'u', 'k', 'seen-a')"
+    )
+    _set_version(conn, CSHARP_VERSION)
+    conn.close()
+
+    ads = Store(path).active_ads()
+
+    assert [ad.id for ad in ads] == ["a"]
 
 
 def test_should_stay_at_version_zero_without_migrations(tmp_path: Path) -> None:

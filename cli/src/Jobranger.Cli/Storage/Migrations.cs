@@ -124,7 +124,38 @@ internal static class Migrations {
         "UPDATE ads SET first_classified_at = COALESCE(classified_at, first_seen) WHERE label IS NOT NULL OR classified_at IS NOT NULL",
     ]);
 
-    public static readonly IReadOnlyList<Migration> All = [baseline, firstClassification];
+    private static readonly Migration decisions = new(3, [
+        """
+        CREATE TABLE decisions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ad_id TEXT NOT NULL UNIQUE,
+            dedup_key TEXT NOT NULL,
+            action TEXT NOT NULL CHECK (action IN ('applied', 'not_for_me', 'show_anyway')),
+            decided_at TEXT NOT NULL,
+            title TEXT NOT NULL,
+            company TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            requirements TEXT NOT NULL,
+            embed_text TEXT NOT NULL,
+            embedded_model TEXT
+        )
+        """,
+        """
+        CREATE TABLE classification_examples (
+            ad_id TEXT NOT NULL REFERENCES ads (id) ON DELETE CASCADE,
+            decision_id INTEGER NOT NULL REFERENCES decisions (id) ON DELETE CASCADE,
+            PRIMARY KEY (ad_id, decision_id)
+        ) WITHOUT ROWID
+        """,
+        """
+        CREATE TABLE decision_vectors (
+            decision_id INTEGER PRIMARY KEY REFERENCES decisions (id) ON DELETE CASCADE,
+            embedding BLOB NOT NULL
+        )
+        """,
+    ]);
+
+    public static readonly IReadOnlyList<Migration> All = [baseline, firstClassification, decisions];
 
     public static int CurrentVersion(SqliteConnection connection) => CurrentVersion(connection, null);
 

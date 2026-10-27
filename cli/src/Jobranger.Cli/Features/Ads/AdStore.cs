@@ -73,10 +73,7 @@ internal sealed partial class AdStore(SqliteConnection connection, TimeProvider 
     private const string activeWhere = "active = 1";
     private const string byIdWhere = "id IN (SELECT value FROM json_each($ids))";
     private const string refreshSql =
-        "UPDATE ads SET label = NULL, summary = NULL, requires_master = 0, "
-        + "is_programming_job = NULL, display_title = NULL, role_type = NULL, "
-        + "technologies = NULL, requirements = NULL, label_attempts = 0, "
-        + "assessment = NULL, assessment_version = $version, classified_at = NULL WHERE " + outdatedWhere;
+        "UPDATE ads SET " + ClassificationReset.Columns + ", assessment_version = $version WHERE " + outdatedWhere;
     private const string countOutdatedSql = "SELECT COUNT(*) FROM ads WHERE " + outdatedWhere;
     private const string idOrdering = "id";
     private const string newestFirst = "first_seen DESC";
