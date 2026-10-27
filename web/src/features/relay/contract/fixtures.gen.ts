@@ -1078,6 +1078,11 @@ export const payloadFixtures = {
     "v": 1,
     "id": "00000000-0000-4000-8000-000000000013",
     "summary": "Two years of backend work in Python and C#.",
+    "education": "BSc Computer Science",
+    "languages": [
+      "Norwegian",
+      "English"
+    ],
     "stack": [
       "Python",
       "TypeScript"
@@ -1091,11 +1096,6 @@ export const payloadFixtures = {
         "id": null,
         "name": "Relay"
       }
-    ],
-    "education": "BSc Computer Science",
-    "languages": [
-      "Norwegian",
-      "English"
     ]
   } satisfies Payload,
   "profile.update": {

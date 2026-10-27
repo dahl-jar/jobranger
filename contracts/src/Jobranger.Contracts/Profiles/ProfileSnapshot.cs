@@ -1,5 +1,3 @@
-using System.Text.Json.Serialization;
-using Jobranger.Contracts.Limits;
 using Jobranger.Contracts.Payloads;
 
 namespace Jobranger.Contracts.Profiles;
@@ -11,12 +9,6 @@ public sealed record ProfileSnapshot(
     string Education,
     IReadOnlyList<string> Languages,
     IReadOnlyList<string> Stack,
-    IReadOnlyList<ProjectRef> Projects) : IPayload {
+    IReadOnlyList<ProjectRef> Projects) : PayloadBase(Tag) {
     public const string Tag = "profile.snapshot";
-
-    [JsonPropertyOrder(PayloadOrder.Type)]
-    public string Type => Tag;
-
-    [JsonPropertyOrder(PayloadOrder.Version)]
-    public int V => ContractLimits.ContractVersion;
 }

@@ -1,5 +1,3 @@
-using System.Text.Json.Serialization;
-using Jobranger.Contracts.Limits;
 using Jobranger.Contracts.Payloads;
 
 namespace Jobranger.Contracts.Runs;
@@ -11,12 +9,6 @@ public sealed record UsageSnapshot(
     double MonthUsd,
     double TodayUsd,
     string ResetsOn,
-    IReadOnlyList<UsageDay> Days) : IPayload {
+    IReadOnlyList<UsageDay> Days) : PayloadBase(Tag) {
     public const string Tag = "usage.snapshot";
-
-    [JsonPropertyOrder(PayloadOrder.Type)]
-    public string Type => Tag;
-
-    [JsonPropertyOrder(PayloadOrder.Version)]
-    public int V => ContractLimits.ContractVersion;
 }

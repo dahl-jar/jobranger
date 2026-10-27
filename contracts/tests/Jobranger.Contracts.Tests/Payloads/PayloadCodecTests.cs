@@ -24,20 +24,24 @@ public sealed class PayloadCodecTests {
     private const int maxTitleChars = 200;
     private const int maxPlaces = 20;
     private const string messageId = "00000000-0000-4000-8000-000000000003";
+    private const byte quote = (byte)'"';
+    private const byte backslash = (byte)'\\';
 
     public static TheoryData<string> GoldenFixtures => PayloadFixtures.GoldenNames;
 
     public static TheoryData<string> InvalidFixtures => PayloadFixtures.InvalidNames;
 
+    private static ReadOnlySpan<byte> JsonWhiteSpace => " \n\r\t"u8;
+
     [Theory]
     [MemberData(nameof(GoldenFixtures))]
-    public void ShouldRoundTripPayload_WhenFixtureIsGolden(string fileName) {
+    public void ShouldWriteFixtureBytes_WhenFixtureIsGolden(string fileName) {
         byte[] golden = PayloadFixtures.Golden(fileName);
         IPayload decoded = PayloadCodec.DecodePayload(golden);
 
         byte[] encoded = PayloadCodec.Encode(decoded);
 
-        Assert.True(JsonNode.DeepEquals(JsonNode.Parse(golden), JsonNode.Parse(encoded)), Encoding.UTF8.GetString(encoded));
+        Assert.Equal(Encoding.UTF8.GetString(Minified(golden)), Encoding.UTF8.GetString(encoded));
     }
 
     [Theory]
@@ -376,6 +380,28 @@ public sealed class PayloadCodecTests {
         }
 
         Assert.Empty(mismatches);
+    }
+
+    private static byte[] Minified(byte[] json) {
+        List<byte> compact = new(json.Length);
+        bool inString = false;
+        bool escaped = false;
+        foreach (byte current in json) {
+            if (inString) {
+                compact.Add(current);
+                if (escaped) {
+                    escaped = false;
+                } else if (current == backslash) {
+                    escaped = true;
+                } else if (current == quote) {
+                    inString = false;
+                }
+            } else if (!JsonWhiteSpace.Contains(current)) {
+                compact.Add(current);
+                inString = current == quote;
+            }
+        }
+        return [.. compact];
     }
 
     private static string? Rejection(byte[] json) {
