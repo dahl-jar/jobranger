@@ -87,14 +87,14 @@ public sealed class PairCommandTests : IDisposable {
     [InlineData(false, true)]
     [InlineData(true, false)]
     public async Task ShouldAllowKeychainPrompt_WhenInputIsTerminal(bool inputRedirected, bool expected) {
-        bool? canPrompt = null;
+        bool? promptAllowed = null;
 
-        await RunAsync(inputRedirected, (env, paths, urls, logger, prompt, token) => {
-            canPrompt = prompt;
-            return Link.OpenAsync(env, paths, urls, logger, prompt, token);
+        await RunAsync(inputRedirected, (environment, paths, urls, logger, canPrompt, cancellationToken) => {
+            promptAllowed = canPrompt;
+            return Link.OpenAsync(environment, paths, urls, logger, canPrompt, cancellationToken);
         });
 
-        Assert.Equal(expected, canPrompt);
+        Assert.Equal(expected, promptAllowed);
     }
 
     [Fact]

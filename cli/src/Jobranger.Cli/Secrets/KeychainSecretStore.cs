@@ -10,7 +10,7 @@ internal sealed class KeychainSecretStore(
     private const int success = 0;
     private const int itemNotFound = -25300;
     private const int interactionNotAllowed = -25308;
-    private const int lockedWithoutPrompt = -25293;
+    private const int authFailed = -25293;
     private const string statusReason = "status=";
     private const string approvalReason = "keychain is locked or needs approval in a terminal";
 
@@ -80,7 +80,7 @@ internal sealed class KeychainSecretStore(
     }
 
     private static void Check(string name, int status) {
-        if (status is interactionNotAllowed or lockedWithoutPrompt) {
+        if (status is interactionNotAllowed or authFailed) {
             throw new SecretStoreUnavailableException(name, approvalReason);
         }
         if (status != success) {

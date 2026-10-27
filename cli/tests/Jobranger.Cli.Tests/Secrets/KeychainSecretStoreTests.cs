@@ -7,6 +7,7 @@ namespace Jobranger.Cli.Tests.Secrets;
 
 [SupportedOSPlatform("macos")]
 public sealed class KeychainSecretStoreTests {
+    private const int success = 0;
     private const int itemNotFound = -25300;
     private const int invalidOwnerEdit = -25244;
     private const int interactionNotAllowed = -25308;
@@ -26,10 +27,7 @@ public sealed class KeychainSecretStoreTests {
             () => KeychainSecretStore.ValueForStatus(
                 SecretFixtures.SecretName, invalidOwnerEdit, () => SecretFixtures.FileValue));
 
-        Assert.EndsWith(
-            "error=status=" + invalidOwnerEdit.ToString(CultureInfo.InvariantCulture),
-            refused.Message,
-            StringComparison.Ordinal);
+        Assert.EndsWith(StatusError(invalidOwnerEdit), refused.Message, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -50,4 +48,39 @@ public sealed class KeychainSecretStoreTests {
 
         Assert.Null(error);
     }
+
+    [Fact]
+    public void ShouldTurnInteractionOff_WhenStoreCannotPrompt() {
+        bool? interactionAllowed = null;
+        KeychainSecretStore store = new(SecretStores.ProductService, canPrompt: false, allowed => {
+            interactionAllowed = allowed;
+            return success;
+        }, () => true);
+
+        store.CheckAccess(SecretFixtures.SecretName);
+
+        Assert.False(interactionAllowed);
+    }
+
+    [Fact]
+    public void ShouldThrowStatus_WhenInteractionSwitchFails() {
+        KeychainSecretStore store = new(SecretStores.ProductService, canPrompt: false, _ => invalidOwnerEdit, () => true);
+
+        SecretStoreUnavailableException refused =
+            Assert.Throws<SecretStoreUnavailableException>(() => store.CheckAccess(SecretFixtures.SecretName));
+
+        Assert.EndsWith(StatusError(invalidOwnerEdit), refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldNameApproval_WhenKeychainIsLocked() {
+        KeychainSecretStore store = new(SecretStores.ProductService, canPrompt: false, _ => success, () => false);
+
+        SecretStoreUnavailableException refused =
+            Assert.Throws<SecretStoreUnavailableException>(() => store.CheckAccess(SecretFixtures.SecretName));
+
+        Assert.EndsWith(SecretFixtures.ApprovalError, refused.Message, StringComparison.Ordinal);
+    }
+
+    private static string StatusError(int status) => "error=status=" + status.ToString(CultureInfo.InvariantCulture);
 }
