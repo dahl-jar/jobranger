@@ -5,13 +5,18 @@ using System.Text;
 namespace Jobranger.Cli.Secrets;
 
 [SupportedOSPlatform("macos")]
-internal sealed class KeychainSecretStore(string service, bool canPrompt) : ISecretStore {
+internal sealed class KeychainSecretStore(
+    string service, bool canPrompt, Func<bool, int> allowInteraction, Func<bool> isUnlocked) : ISecretStore {
     private const int success = 0;
     private const int itemNotFound = -25300;
     private const int interactionNotAllowed = -25308;
     private const int lockedWithoutPrompt = -25293;
     private const string statusReason = "status=";
     private const string approvalReason = "keychain is locked or needs approval in a terminal";
+
+    public KeychainSecretStore(string service, bool canPrompt)
+        : this(service, canPrompt, MacSecurity.SetUserInteractionAllowed, MacSecurity.IsDefaultKeychainUnlocked) {
+    }
 
     public Task<string?> ReadAsync(string name, CancellationToken cancellationToken) {
         using MacSecurity.CoreFoundationObjects objects = new();
@@ -51,11 +56,18 @@ internal sealed class KeychainSecretStore(string service, bool canPrompt) : ISec
         }
     }
 
-    private nint Query(MacSecurity.CoreFoundationObjects objects, string name, params (nint Key, nint Value)[] extra) {
-        Check(name, MacSecurity.SetUserInteractionAllowed(canPrompt));
-        if (!canPrompt && !MacSecurity.IsDefaultKeychainUnlocked()) {
+    internal void CheckAccess(string name) {
+        if (canPrompt) {
+            return;
+        }
+        Check(name, allowInteraction(false));
+        if (!isUnlocked()) {
             throw new SecretStoreUnavailableException(name, approvalReason);
         }
+    }
+
+    private nint Query(MacSecurity.CoreFoundationObjects objects, string name, params (nint Key, nint Value)[] extra) {
+        CheckAccess(name);
         nint[] keys = [MacSecurity.ClassKey, MacSecurity.ServiceKey, MacSecurity.AccountKey, .. extra.Select(pair => pair.Key)];
         nint[] values = [
             MacSecurity.GenericPassword,

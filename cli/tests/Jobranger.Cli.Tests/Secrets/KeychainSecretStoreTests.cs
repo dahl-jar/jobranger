@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.Versioning;
 using Jobranger.Cli.Secrets;
 using Jobranger.Cli.Tests.Mocks;
@@ -7,7 +8,9 @@ namespace Jobranger.Cli.Tests.Secrets;
 [SupportedOSPlatform("macos")]
 public sealed class KeychainSecretStoreTests {
     private const int itemNotFound = -25300;
-    private const int ownerEditRefused = -25244;
+    private const int invalidOwnerEdit = -25244;
+    private const int interactionNotAllowed = -25308;
+    private const int authFailed = -25293;
 
     [Fact]
     public void ShouldReturnNoValue_WhenItemIsMissing() {
@@ -21,18 +24,30 @@ public sealed class KeychainSecretStoreTests {
     public void ShouldThrowUnavailable_WhenKeychainRefusesRead() {
         SecretStoreUnavailableException refused = Assert.Throws<SecretStoreUnavailableException>(
             () => KeychainSecretStore.ValueForStatus(
-                SecretFixtures.SecretName, ownerEditRefused, () => SecretFixtures.FileValue));
+                SecretFixtures.SecretName, invalidOwnerEdit, () => SecretFixtures.FileValue));
 
-        Assert.EndsWith("error=status=-25244", refused.Message, StringComparison.Ordinal);
+        Assert.EndsWith(
+            "error=status=" + invalidOwnerEdit.ToString(CultureInfo.InvariantCulture),
+            refused.Message,
+            StringComparison.Ordinal);
     }
 
     [Theory]
-    [InlineData(-25308)]
-    [InlineData(-25293)]
+    [InlineData(interactionNotAllowed)]
+    [InlineData(authFailed)]
     public void ShouldNameApproval_WhenKeychainCannotPrompt(int status) {
         SecretStoreUnavailableException refused = Assert.Throws<SecretStoreUnavailableException>(
             () => KeychainSecretStore.ValueForStatus(SecretFixtures.SecretName, status, () => SecretFixtures.FileValue));
 
-        Assert.EndsWith("error=keychain is locked or needs approval in a terminal", refused.Message, StringComparison.Ordinal);
+        Assert.EndsWith(SecretFixtures.ApprovalError, refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldLeaveInteractionSwitchAlone_WhenStoreCanPrompt() {
+        KeychainSecretStore store = new(SecretStores.ProductService, canPrompt: true, _ => authFailed, () => false);
+
+        Exception? error = Record.Exception(() => store.CheckAccess(SecretFixtures.SecretName));
+
+        Assert.Null(error);
     }
 }
