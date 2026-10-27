@@ -48,7 +48,7 @@ public sealed class LiveSecretStoreTests : IAsyncDisposable {
 
     [Fact]
     public async Task ShouldKeepOneItem_WhenWrittenTwice() {
-        Assert.SkipUnless(OperatingSystem.IsLinux() && LiveSecretStores.IsLive, LiveSecretStores.OffReason);
+        Assert.SkipUnless(LiveSecretStores.IsLiveLinux, LiveSecretStores.LinuxOffReason);
         ISecretStore store = await OpenAsync();
         await WriteAsync(store, value);
         await WriteAsync(store, otherValue);
