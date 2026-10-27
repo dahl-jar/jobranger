@@ -70,7 +70,7 @@ internal sealed class ClassifyStage(
         Progress progress = new(representatives.Count);
         try {
             while (true) {
-                progress.Stopped ??= StartCalls(calls, input, model, stage.Token, cancellationToken);
+                progress.Stopped ??= StartCalls(calls, input, model, groups, stage.Token, cancellationToken);
                 if (calls.Running > 0) {
                     await ReceiveAsync(calls, input, model, groups, progress, cancellationToken).ConfigureAwait(false);
                 } else if (progress.Stopped is not null || !calls.HasWaiting) {
@@ -89,7 +89,12 @@ internal sealed class ClassifyStage(
     }
 
     private StopReason? StartCalls(
-        ModelCalls calls, ClassifyInput input, RunModel model, CancellationToken stageToken, CancellationToken runToken) {
+        ModelCalls calls,
+        ClassifyInput input,
+        RunModel model,
+        Dictionary<string, IReadOnlyList<Ad>> groups,
+        CancellationToken stageToken,
+        CancellationToken runToken) {
         while (calls.CanStart) {
             if (runToken.IsCancellationRequested) {
                 return StopReason.Cancelled;
@@ -99,12 +104,24 @@ internal sealed class ClassifyStage(
                 ? budget.EstimateCallCost(
                     prices, text.System.Length + text.User.Length, RequestBodies.MaxOutputTokens, input.Today)
                 : 0m;
-            if (!budget.Allowed(input.Config, model.Prices, input.Today, calls.ReservedUsd, callUsd)) {
-                return calls.Running > 0 ? null : PauseBudget();
+            if (budget.ExceedsLimit(input.Config, model.Prices, input.Today, callUsd)) {
+                DropOverLimit(calls, groups);
+            } else if (budget.Allowed(input.Config, model.Prices, input.Today, calls.ReservedUsd, callUsd)) {
+                calls.Start(CallAsync(model, text, stageToken), callUsd);
+            } else if (calls.Running > 0) {
+                return null;
+            } else {
+                calls.SetAside();
             }
-            calls.Start(CallAsync(model, text, stageToken), callUsd);
         }
-        return null;
+        return calls.Running == 0 && !calls.HasWaiting && calls.HasSetAside ? PauseBudget() : null;
+    }
+
+    private void DropOverLimit(ModelCalls calls, Dictionary<string, IReadOnlyList<Ad>> groups) {
+        string adId = calls.Next.Id;
+        BumpAttempts(groups[adId]);
+        calls.Drop();
+        LogEvents.ClassifyAdOverLimit(logger, adId);
     }
 
     private StopReason PauseBudget() {

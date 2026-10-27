@@ -21,12 +21,21 @@ internal sealed class ModelCalls(IReadOnlyList<AdView> representatives, SharedBa
 
     public bool HasWaiting => waiting.Count > 0;
 
+    public bool HasSetAside { get; private set; }
+
     public bool CanStart => running.Count < width && waiting.Count > 0 && !backoff.Paused;
 
     public void Start(Task<ModelReply> call, decimal reservedUsd) {
         AdView representative = Next;
         waiting.RemoveFirst();
         running.Add(call, (representative, reservedUsd));
+    }
+
+    public void Drop() => waiting.RemoveFirst();
+
+    public void SetAside() {
+        waiting.RemoveFirst();
+        HasSetAside = true;
     }
 
     public async Task<(AdView Representative, Task<ModelReply> Call)> NextFinishedAsync() {

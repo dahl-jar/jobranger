@@ -46,6 +46,12 @@ public sealed class BudgetTests : IDisposable {
 
     public static TheoryData<decimal> ZeroLimits() => [0m, 0.0000005m];
 
+    public static TheoryData<decimal?, bool> FittingLimits() => new() {
+        { AdUsd + CacheWriteUsd + oneMicroUsd, true },
+        { 10m, false },
+        { null, true },
+    };
+
     public void Dispose() => db.Dispose();
 
     [Fact]
@@ -67,6 +73,28 @@ public sealed class BudgetTests : IDisposable {
         bool allowed = budget.Allowed(Config(inFlightUsd + AdUsd + oneMicroUsd), Prices, today, inFlightUsd, AdUsd);
 
         Assert.True(allowed);
+    }
+
+    [Fact]
+    public void ShouldFlagCallOverLimit_WhenCallAndCacheWriteReachLimit() {
+        bool exceeds = budget.ExceedsLimit(Config(AdUsd + CacheWriteUsd + oneMicroUsd), Prices, today, AdUsd + oneMicroUsd);
+
+        Assert.True(exceeds);
+    }
+
+    [Theory]
+    [MemberData(nameof(FittingLimits))]
+    public void ShouldNotFlagCallOverLimit_WhenCallCanFitLimit(decimal? limit, bool priced) {
+        bool exceeds = budget.ExceedsLimit(Config(limit), priced ? Prices : null, today, AdUsd);
+
+        Assert.False(exceeds);
+    }
+
+    [Fact]
+    public void ShouldNotFlagCallOverLimit_WhenTypicalAdCannotFitLimit() {
+        bool exceeds = budget.ExceedsLimit(Config(AdUsd + CacheWriteUsd), Prices, today, 1m);
+
+        Assert.False(exceeds);
     }
 
     [Fact]

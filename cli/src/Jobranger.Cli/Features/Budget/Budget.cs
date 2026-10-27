@@ -88,12 +88,15 @@ internal sealed class Budget(SqliteConnection connection) {
         if (IsFree(prices)) {
             return true;
         }
-        long cacheWrite = reservedUsd == 0 ? Micros(CacheWriteCost(prices)) : 0;
-        long needed = Micros(MonthSpend(today))
-            + Micros(reservedUsd)
-            + Micros(callUsd)
-            + cacheWrite;
-        return needed < Micros(limit);
+        return Fits(limit, prices, MonthSpend(today), reservedUsd, callUsd);
+    }
+
+    public bool ExceedsLimit(AppConfig config, ModelPrices? prices, DateOnly today, decimal callUsd) {
+        RequireAmount(callName, callUsd);
+        return config.Model.MonthlyLimitUsd is decimal limit
+            && prices is not null
+            && Fits(limit, prices, 0m, 0m, EstimateAdCost(prices, false, today))
+            && !Fits(limit, prices, 0m, 0m, callUsd);
     }
 
     public int? AffordableCount(AppConfig config, ModelPrices? prices, DateOnly today, decimal perAdUsd) {
@@ -160,6 +163,12 @@ internal sealed class Budget(SqliteConnection connection) {
         Cost(prices, new TokenCounts(0, 0, prefixTokensMean, 0, 0), batch: false);
 
     private static bool IsFree(ModelPrices prices) => prices == free;
+
+    private static bool Fits(decimal limit, ModelPrices prices, decimal spentUsd, decimal reservedUsd, decimal callUsd) {
+        long cacheWrite = reservedUsd == 0 ? Micros(CacheWriteCost(prices)) : 0;
+        long needed = Micros(spentUsd) + Micros(reservedUsd) + Micros(callUsd) + cacheWrite;
+        return needed < Micros(limit);
+    }
 
     private static void RequireAmount(string name, decimal usd) {
         if (usd < 0 || usd > AppConfigValidator.MaxAmountUsd) {

@@ -103,6 +103,12 @@ internal static partial class LogEvents {
     public static partial void ClassifyBudgetPaused(ILogger logger);
 
     [LoggerMessage(
+        EventName = "classify.ad_over_limit",
+        Level = LogLevel.Warning,
+        Message = "skipped an ad whose model call costs more than the monthly limit ad_id={AdId}")]
+    public static partial void ClassifyAdOverLimit(ILogger logger, string adId);
+
+    [LoggerMessage(
         EventName = "classify.provider.failed",
         Level = LogLevel.Warning,
         Message = "model call failed, classification stopped failure={Failure}")]

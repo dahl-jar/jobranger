@@ -31,7 +31,11 @@ public sealed class ClassifyStageTests : IDisposable {
     private const decimal shortCallUsd = 0.01m;
     private const decimal longCallUsd = 0.12m;
     private const decimal longLimitUsd = 0.26m;
+    private const decimal remainingLimitUsd = 0.14m;
+    private const int overLimitDescriptionChars = 800_000;
+    private const int attemptRuns = 3;
     private const int refusedRuns = 4;
+    private const string attemptsQuery = "SELECT COALESCE(label, 'NULL') || '|' || label_attempts FROM ads ORDER BY id";
 
     private static readonly ModelPrices prices = new(1m, 5m, 0.1m, 1.25m, 2m);
     private static readonly PromptSetup prompt =
@@ -358,6 +362,72 @@ public sealed class ClassifyStageTests : IDisposable {
 
         decimal spent = (decimal)(double)db.Scalar("SELECT cost_usd FROM usage_days")!;
         Assert.Equal((3, shortCallUsd + (2 * longCallUsd)), (client.Calls, spent));
+    }
+
+    [Fact]
+    public async Task ShouldClassifyLaterAds_WhenFirstAdCostsMoreThanLimit() {
+        ads.Upsert(Pending(1, "Utvikler", "Org1 AS") with { Description = new string('x', overLimitDescriptionChars) });
+        ads.Upsert(Pending(2, "Utvikler", "Org2 AS"));
+        ads.Upsert(Pending(3, "Utvikler", "Org3 AS"));
+        FakeModelClient client = FakeModelClient.Answering(JavaReply);
+
+        await stage.RunAsync(Input(client, limit: longLimitUsd), CancellationToken.None);
+
+        Assert.Equal("NULL,junior,junior", string.Join(',', TestDatabase.Rows(db.Connection,
+            "SELECT COALESCE(label, 'NULL') FROM ads ORDER BY id")));
+    }
+
+    [Fact]
+    public async Task ShouldKeepClassifying_WhenLongAdDoesNotFitRemainingBudget() {
+        UpsertAds(3);
+        ads.Upsert(Pending(4, "Utvikler", "Org4 AS") with { Description = new string('x', overLimitDescriptionChars) });
+        ads.Upsert(Pending(5, "Utvikler", "Org5 AS"));
+        FakeModelClient client = FakeModelClient.Answering(JavaReply);
+
+        await stage.RunAsync(Input(client, limit: longLimitUsd), CancellationToken.None);
+
+        Assert.Equal(4, client.Calls);
+    }
+
+    [Fact]
+    public async Task ShouldLabelError_WhenAdCostsMoreThanLimitInThreeRuns() {
+        ads.Upsert(Pending(1, "Utvikler", "Org One AS") with { Description = new string('x', overLimitDescriptionChars) });
+        FakeModelClient client = FakeModelClient.Answering(JavaReply);
+        FakeLogger logger = new();
+
+        for (int run = 0; run < attemptRuns; run++) {
+            await StageWith(events, logger).RunAsync(Input(client, limit: longLimitUsd), CancellationToken.None);
+        }
+
+        Assert.Equal(
+            ("error", 0, "classify.ad_over_limit"),
+            ((string?)db.Scalar("SELECT label FROM ads"), client.Calls, logger.LatestRecord.Id.Name));
+    }
+
+    [Fact]
+    public async Task ShouldKeepAdsPending_WhenLimitIsZero() {
+        UpsertAds(2);
+        FakeModelClient client = FakeModelClient.Answering(JavaReply);
+
+        for (int run = 0; run < attemptRuns; run++) {
+            await stage.RunAsync(Input(client, limit: 0m), CancellationToken.None);
+        }
+
+        Assert.Equal("NULL|0,NULL|0", string.Join(',', TestDatabase.Rows(db.Connection, attemptsQuery)));
+    }
+
+    [Fact]
+    public async Task ShouldKeepLongAdPending_WhenOnlyRemainingBudgetIsTooSmall() {
+        UpsertAds(1);
+        ads.Upsert(Pending(2, "Utvikler", "Org2 AS") with { Description = new string('x', longDescriptionChars) });
+        ads.Upsert(Pending(3, "Utvikler", "Org3 AS"));
+        FakeModelClient client = FakeModelClient.Answering(JavaReply);
+
+        ClassifyOutcome outcome = await stage.RunAsync(Input(client, limit: remainingLimitUsd), CancellationToken.None);
+
+        Assert.Equal(
+            ("junior|0,NULL|0,junior|0", StopReason.Budget),
+            (string.Join(',', TestDatabase.Rows(db.Connection, attemptsQuery)), outcome.Stopped));
     }
 
     [Theory]
