@@ -34,15 +34,24 @@ public sealed class LinkTests : IDisposable {
     private static readonly TimeSpan shortWait = TimeSpan.FromMilliseconds(200);
 
     private readonly TempDir temp = new();
+    private readonly TestDatabase db = new();
+    private readonly FakeRelay relay = new(TimeProvider.System);
+    private readonly HttpClient http;
+    private readonly LinkParts parts;
     private readonly FileSecretStore file;
 
     public LinkTests() {
         file = new FileSecretStore(temp.File(SecretFixtures.FileName), NullLogger.Instance);
+        http = relay.Client();
+        parts = new LinkParts(new DeviceStore(db.Connection), new RelayApiClient(http, FakeRelay.Address), relay);
     }
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     public void Dispose() {
+        http.Dispose();
+        relay.Dispose();
+        db.Dispose();
         File.SetUnixFileMode(temp.Path, FileModes.OwnerOnlyDir);
         temp.Dispose();
     }
@@ -440,5 +449,5 @@ public sealed class LinkTests : IDisposable {
         new(environment ?? new Hashtable(), store, file);
 
     private LinkEntry Build(ISecretStore? store, ILogger? logger = null, IDictionary? environment = null) =>
-        new(Credentials(store, environment), temp.Path, logger ?? NullLogger.Instance);
+        new(Credentials(store, environment), temp.Path, logger ?? NullLogger.Instance, parts);
 }

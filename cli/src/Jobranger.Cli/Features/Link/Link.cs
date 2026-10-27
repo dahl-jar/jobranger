@@ -1,16 +1,90 @@
+using System.Collections;
 using System.Runtime.Versioning;
+using Jobranger.Cli.Config;
 using Jobranger.Cli.Files;
 using Jobranger.Cli.Secrets;
+using Jobranger.Cli.Storage;
+using Jobranger.Contracts.Envelopes;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 
 namespace Jobranger.Cli.Features.Link;
 
 [UnsupportedOSPlatform("windows")]
-internal sealed partial class Link(Credentials credentials, string configDir, ILogger logger) {
-    private readonly FileSecretStore metadataFile = new(Path.Combine(configDir, LinkMetadata.FileName), logger);
+internal sealed partial class Link : IAsyncDisposable {
+    private static readonly TimeSpan relayRequestTimeout = TimeSpan.FromSeconds(15);
+
+    private readonly Credentials credentials;
+    private readonly ILogger logger;
+    private readonly FileSecretStore metadataFile;
+    private readonly LinkParts parts;
+    private readonly IDisposable[] owned;
+    private IRelayConnection? connection;
+
+    public Link(Credentials credentials, string configDir, ILogger logger, LinkParts parts)
+        : this(credentials, configDir, logger, parts, []) {
+    }
+
+    private Link(Credentials credentials, string configDir, ILogger logger, LinkParts parts, IDisposable[] owned) {
+        this.credentials = credentials;
+        this.logger = logger;
+        this.parts = parts;
+        this.owned = owned;
+        metadataFile = new FileSecretStore(Path.Combine(configDir, LinkMetadata.FileName), logger);
+    }
+
+    public static async Task<Link> OpenAsync(
+        IDictionary environment, Paths paths, ServiceUrls urls, ILogger logger, CancellationToken cancellationToken) {
+        ISecretStore? store = await SecretStores.OpenAsync(environment, cancellationToken).ConfigureAwait(false);
+        Credentials credentials = new(environment, store, new FileSecretStore(paths.SecretsPath(), logger));
+        SqliteConnection database = Database.Open(paths.DbPath(), logger);
+        HttpClient http = new(new SocketsHttpHandler { AllowAutoRedirect = false, UseCookies = false }) {
+            Timeout = relayRequestTimeout,
+        };
+        LinkParts parts = new(new DeviceStore(database), new RelayApiClient(http, urls.Relay), new NoHubConnector());
+        return new Link(credentials, paths.ConfigDir(), logger, parts, [http, database]);
+    }
 
     public Task<LinkKeyPair> LoadOrCreateKeysAsync(CancellationToken cancellationToken) =>
         TranslateAsync(() => LoadOrCreateAsync(cancellationToken));
+
+    public IReadOnlyList<Device> Devices() => parts.Devices.List();
+
+    public string AddDevice(byte[] publicKey, string name, DateTimeOffset pairedAt) =>
+        parts.Devices.Add(publicKey, name, pairedAt);
+
+    public bool RemoveDevice(string id) => parts.Devices.Remove(id);
+
+    public int RemoveAllDevices() => parts.Devices.RemoveAll();
+
+    public Task<PairingStart> StartPairingAsync(LinkKeyPair keys, CancellationToken cancellationToken) =>
+        parts.Api.StartPairingAsync(keys.Signing, cancellationToken);
+
+    public async Task ConnectAsync(string handle, CancellationToken cancellationToken) {
+        if (connection is not null) {
+            throw new InvalidOperationException("link is already connected to the relay");
+        }
+        connection = await parts.Connector.ConnectAsync(handle, cancellationToken).ConfigureAwait(false);
+    }
+
+    public Task SendAsync(Envelope envelope, CancellationToken cancellationToken) =>
+        Connected.SendAsync(envelope, cancellationToken);
+
+    public ValueTask<RelayEvent> ReceiveAsync(CancellationToken cancellationToken) =>
+        Connected.ReceiveAsync(cancellationToken);
+
+    public async ValueTask DisposeAsync() {
+        if (connection is not null) {
+            await connection.DisposeAsync().ConfigureAwait(false);
+            connection = null;
+        }
+        foreach (IDisposable resource in owned) {
+            resource.Dispose();
+        }
+    }
+
+    private IRelayConnection Connected =>
+        connection ?? throw new InvalidOperationException("link is not connected to the relay");
 
     public Task<LinkKeyPair> RotateKeysAsync(CancellationToken cancellationToken) =>
         TranslateAsync(() => RotateAsync(cancellationToken));
@@ -35,6 +109,9 @@ internal sealed partial class Link(Credentials credentials, string configDir, IL
         LinkKeyPair? locked = await LoadLockedAsync(cancellationToken).ConfigureAwait(false);
         if (locked is not null) {
             return locked;
+        }
+        if (parts.Devices.List().Count > 0) {
+            throw new LinkKeyException($"paired devices exist but link keys are missing, {LinkKeys.UnpairHint}");
         }
         LinkKeyPair created = await RecordAsync(LinkKeys.NewPair(), cancellationToken).ConfigureAwait(false);
         LogCreated(logger);

@@ -38,4 +38,22 @@ internal static partial class LogEvents {
 
     [LoggerMessage(EventName = "finn.ad_text.failed", Level = LogLevel.Warning, Message = "ad page read failed ad_id={AdId}")]
     public static partial void FinnAdTextFailed(ILogger logger, string adId, Exception error);
+
+    [LoggerMessage(EventName = "pairing.started", Level = LogLevel.Information, Message = "started pairing")]
+    public static partial void PairingStarted(ILogger logger);
+
+    [LoggerMessage(EventName = "pairing.paired", Level = LogLevel.Information, Message = "paired a browser")]
+    public static partial void PairingPaired(ILogger logger);
+
+    [LoggerMessage(
+        EventName = "pairing.failed",
+        Level = LogLevel.Warning,
+        Message = "pairing failed failure={Failure}")]
+    public static partial void PairingFailed(ILogger logger, string failure);
+
+    [LoggerMessage(
+        EventName = "pairing.refused",
+        Level = LogLevel.Warning,
+        Message = "relay refused pairing status={Status} error_type={ErrorType}")]
+    public static partial void PairingRefused(ILogger logger, int status, string errorType);
 }

@@ -21,8 +21,15 @@ if TYPE_CHECKING:
 
 FIRST = Migration(1, ("CREATE TABLE state (key TEXT PRIMARY KEY, value TEXT)",))
 SECOND = Migration(2, ("CREATE TABLE extra (id INTEGER PRIMARY KEY)",))
-CSHARP_VERSION = 3
-NEWER_VERSION = 4
+CSHARP_VERSION = 4
+NEWER_VERSION = 5
+DEVICE_COLUMNS = [
+    ("id", "TEXT", 0, 1),
+    ("name", "TEXT", 1, 0),
+    ("public_key", "BLOB", 1, 0),
+    ("paired_at", "TEXT", 1, 0),
+    ("last_seen", "TEXT", 0, 0),
+]
 
 
 def _tables(conn: sqlite3.Connection) -> set[str]:
@@ -77,7 +84,7 @@ def test_should_refuse_database_newer_than_code(tmp_path: Path) -> None:
     migrate(conn)
     _set_version(conn, NEWER_VERSION)
 
-    with pytest.raises(SchemaTooNewError, match=r"schema 4 is newer .*\(3\)") as raised:
+    with pytest.raises(SchemaTooNewError, match=r"schema 5 is newer .*\(4\)") as raised:
         migrate(conn)
 
     assert (raised.value.found, raised.value.supported) == (
@@ -100,6 +107,16 @@ def test_should_read_ads_when_csharp_migrated_database(tmp_path: Path) -> None:
     ads = Store(path).active_ads()
 
     assert [ad.id for ad in ads] == ["a"]
+
+
+def test_should_create_devices_table_like_csharp(tmp_path: Path) -> None:
+    conn = sqlite3.connect(tmp_path / "db.sqlite")
+
+    migrate(conn)
+
+    rows = conn.execute("PRAGMA table_info(devices)").fetchall()
+    columns = [(name, kind, notnull, key) for _, name, kind, notnull, _, key in rows]
+    assert columns == DEVICE_COLUMNS
 
 
 def test_should_stay_at_version_zero_without_migrations(tmp_path: Path) -> None:

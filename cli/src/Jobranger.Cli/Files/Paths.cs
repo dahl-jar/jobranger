@@ -21,6 +21,7 @@ internal sealed class Paths(IDictionary environment) {
     private const string secretsFileName = "secrets.json";
     private const string dbFileName = "jobranger.db";
     private const string runLockFileName = "run.lock";
+    private const string pairLockFileName = "pair.lock";
     private const string versionCheckFileName = "version_check.json";
     private const string logDirName = "logs";
 
@@ -52,6 +53,8 @@ internal sealed class Paths(IDictionary environment) {
     public string DbPath() => Path.Combine(DataDir(), dbFileName);
 
     public string RunLockPath() => Path.Combine(StateDir(), runLockFileName);
+
+    public string PairLockPath() => Path.Combine(StateDir(), pairLockFileName);
 
     public string VersionCheckPath() => Path.Combine(StateDir(), versionCheckFileName);
 

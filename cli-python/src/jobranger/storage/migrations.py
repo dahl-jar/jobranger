@@ -172,7 +172,20 @@ DECISIONS = Migration(
     ),
 )
 
-MIGRATIONS: tuple[Migration, ...] = (BASELINE, FIRST_CLASSIFICATION, DECISIONS)
+DEVICES = Migration(
+    4,
+    (
+        """CREATE TABLE devices (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    public_key BLOB NOT NULL,
+    paired_at TEXT NOT NULL,
+    last_seen TEXT
+)""",
+    ),
+)
+
+MIGRATIONS: tuple[Migration, ...] = (BASELINE, FIRST_CLASSIFICATION, DECISIONS, DEVICES)
 
 
 def current_version(conn: sqlite3.Connection) -> int:

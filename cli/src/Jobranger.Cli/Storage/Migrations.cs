@@ -155,7 +155,19 @@ internal static class Migrations {
         """,
     ]);
 
-    public static readonly IReadOnlyList<Migration> All = [baseline, firstClassification, decisions];
+    private static readonly Migration devices = new(4, [
+        """
+        CREATE TABLE devices (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            public_key BLOB NOT NULL,
+            paired_at TEXT NOT NULL,
+            last_seen TEXT
+        )
+        """,
+    ]);
+
+    public static readonly IReadOnlyList<Migration> All = [baseline, firstClassification, decisions, devices];
 
     public static int CurrentVersion(SqliteConnection connection) => CurrentVersion(connection, null);
 

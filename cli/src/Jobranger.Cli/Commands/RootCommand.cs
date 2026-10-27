@@ -22,6 +22,9 @@ internal sealed class RootCommand : System.CommandLine.RootCommand {
         versionOption.Description = services.Messages.VersionOptionDescription;
         versionOption.Action = new VersionAction(services.Console);
         Action = help;
+        if (!OperatingSystem.IsWindows()) {
+            Subcommands.Add(new PairCommand(services));
+        }
     }
 
     public async Task<int> RunAsync(IReadOnlyList<string> args, CancellationToken cancellationToken) {

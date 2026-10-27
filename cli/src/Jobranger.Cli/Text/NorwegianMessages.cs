@@ -76,4 +76,45 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string UpdateAvailable(string latest, string current, string command) =>
         $"jobranger {latest} er ute (du har {current}). Oppgrader: {command}";
+
+    public string PairDescription => "Koble nettsiden til denne maskinen.";
+
+    public string PairAlreadyRunning => "Tilkobling kjører allerede i en annen terminal.";
+
+    public string PairRelayUnreachable => "Får ikke kontakt med mellomtjeneren. Sjekk tilkoblingen og prøv igjen.";
+
+    public string PairRelayRefused => "Mellomtjeneren avviste forespørselen. Prøv igjen om et minutt.";
+
+    public string PairKeysBroken => "Koblingsnøklene kan ikke brukes. Kjør jobranger unpair for å lage nye.";
+
+    public string PairOpenPage => "Åpne denne siden i nettleseren:";
+
+    public string PairEnterCode => "og skriv inn denne koden:";
+
+    public string PairBrowserFallback => "en nettleser";
+
+    public string PairWebsiteWords => "Nettsiden viser disse ordene:";
+
+    public string PairWordsMatch => "Stemmer de? [j/N] ";
+
+    public IReadOnlyList<string> PairYesAnswers { get; } = ["j", "ja", "y", "yes"];
+
+    public string PairNotPaired => "Ikke koblet til.";
+
+    public string PairFailed => "Tilkoblingen feilet. Kjør jobranger pair på nytt.";
+
+    public string PairCodeExpired => "Koden har utløpt. Kjør jobranger pair på nytt.";
+
+    public string PairCodeExpiresIn(int minutes) =>
+        $"Koden utløper om {minutes} {(minutes == 1 ? "minutt" : "minutter")}. Venter på nettsiden ...";
+
+    public string PairWantsToPair(string agent) => $"{agent} vil koble seg til.";
+
+    public string PairBrowserWantsToPair => "En nettleser vil koble seg til.";
+
+    public string PairPaired(string agent) => $"\u2713 Koblet til {agent}.";
+
+    public string DatabaseTooNew => "Databasen er laget av en nyere jobranger. Oppdater jobranger og prøv igjen.";
+
+    public string DatabaseUnreadable(string path) => $"Kan ikke lese jobranger-databasen i {path}.";
 }

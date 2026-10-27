@@ -22,6 +22,8 @@ internal sealed record ServiceUrls(Uri Site, Uri Relay) {
         return new ServiceUrls(site, relay);
     }
 
+    public static Uri Join(Uri root, string path) => new($"{root.AbsoluteUri.TrimEnd(slash)}{slash}{path}");
+
     private static Uri Read(IDictionary environment, string name, string fallback, List<ConfigError> errors) {
         string text = EnvironmentVariables.Read(environment, name) ?? fallback;
         if (Uri.TryCreate(text.TrimEnd(slash), UriKind.Absolute, out Uri? url)

@@ -68,4 +68,44 @@ internal interface IMessages {
     string ConfigNotYaml(int line);
 
     string UpdateAvailable(string latest, string current, string command);
+
+    string PairDescription { get; }
+
+    string PairAlreadyRunning { get; }
+
+    string PairRelayUnreachable { get; }
+
+    string PairRelayRefused { get; }
+
+    string PairKeysBroken { get; }
+
+    string PairOpenPage { get; }
+
+    string PairEnterCode { get; }
+
+    string PairBrowserFallback { get; }
+
+    string PairWebsiteWords { get; }
+
+    string PairWordsMatch { get; }
+
+    IReadOnlyList<string> PairYesAnswers { get; }
+
+    string PairNotPaired { get; }
+
+    string PairFailed { get; }
+
+    string PairCodeExpired { get; }
+
+    string PairCodeExpiresIn(int minutes);
+
+    string PairWantsToPair(string agent);
+
+    string PairBrowserWantsToPair { get; }
+
+    string PairPaired(string agent);
+
+    string DatabaseTooNew { get; }
+
+    string DatabaseUnreadable(string path);
 }

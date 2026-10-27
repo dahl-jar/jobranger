@@ -9,7 +9,6 @@ using NSec.Cryptography;
 namespace Jobranger.Cli.Tests.Mocks;
 
 internal sealed class FakeBrowserPeer : IDisposable {
-    private const string defaultAgent = "Firefox on macOS";
     private const string label = "jobranger v1";
     private const byte cliToBrowser = 0x01;
     private const byte browserToCli = 0x02;
@@ -39,7 +38,7 @@ internal sealed class FakeBrowserPeer : IDisposable {
             Key.Create(x25519),
             RandomNumberGenerator.GetBytes(randomBytes),
             RandomNumberGenerator.GetBytes(randomBytes),
-            defaultAgent) {
+            DeviceFixtures.BrowserName) {
     }
 
     public FakeBrowserPeer(Key staticKey, Key ephemeralKey, byte[] sid, byte[] nonceB, string agent) {
