@@ -1,0 +1,51 @@
+name = "jobranger-edge"
+main = "src/index.ts"
+compatibility_date = "2026-10-12"
+workers_dev = false
+preview_urls = false
+
+[[routes]]
+pattern = "relay.jobranger.no/*"
+zone_name = "jobranger.no"
+
+[vars]
+SITE_ORIGIN = "https://jobranger.no"
+
+[observability]
+enabled = true
+
+[observability.logs]
+invocation_logs = false
+
+[observability.traces]
+enabled = false
+
+[[ratelimits]]
+name = "PAIR_CLIENT"
+namespace_id = "6601"
+simple = { limit = 6, period = 60 }
+
+[[ratelimits]]
+name = "PAIR_NETWORK"
+namespace_id = "6602"
+simple = { limit = 30, period = 60 }
+
+[[ratelimits]]
+name = "SESSION_CLIENT"
+namespace_id = "6603"
+simple = { limit = 30, period = 60 }
+
+[[ratelimits]]
+name = "SESSION_NETWORK"
+namespace_id = "6604"
+simple = { limit = 150, period = 60 }
+
+[[ratelimits]]
+name = "HUB_CLIENT"
+namespace_id = "6605"
+simple = { limit = 10, period = 60 }
+
+[[ratelimits]]
+name = "HUB_NETWORK"
+namespace_id = "6606"
+simple = { limit = 16, period = 60 }

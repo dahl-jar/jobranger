@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "oxc", "vitest"],
+  "rules": {
+    "vitest/expect-expect": "error",
+    "vitest/valid-expect": "error",
+    "vitest/no-conditional-expect": "error",
+    "no-console": ["error", { "allow": ["warn", "error"] }]
+  }
+}
