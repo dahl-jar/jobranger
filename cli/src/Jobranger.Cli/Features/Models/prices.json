@@ -1,0 +1,66 @@
+{
+  "anthropic:claude-sonnet-5-5": {
+    "input": 2,
+    "output": 10,
+    "cache_read": 0.1,
+    "cache_write_5m": 2.5,
+    "cache_write_1h": 4,
+    "supports_effort": true
+  },
+  "anthropic:claude-haiku-5-5": {
+    "input": 0.1,
+    "output": 0.5,
+    "cache_read": 0.01,
+    "cache_write_5m": 0.125,
+    "cache_write_1h": 0.2,
+    "supports_effort": true
+  },
+  "anthropic:claude-haiku-4-5": {
+    "input": 1,
+    "output": 5,
+    "cache_read": 0.1,
+    "cache_write_5m": 1.25,
+    "cache_write_1h": 2,
+    "supports_effort": false
+  },
+  "anthropic:claude-opus-5-5": {
+    "input": 4,
+    "output": 20,
+    "cache_read": 0.2,
+    "cache_write_5m": 5,
+    "cache_write_1h": 8,
+    "supports_effort": true
+  },
+  "openai:gpt-5-mini": {
+    "input": 0.25,
+    "output": 2.0,
+    "cache_read": 0.025,
+    "cache_write_5m": 0.25,
+    "cache_write_1h": 0.25,
+    "supports_effort": true
+  },
+  "openai:gpt-5-nano": {
+    "input": 0.05,
+    "output": 0.4,
+    "cache_read": 0.005,
+    "cache_write_5m": 0.05,
+    "cache_write_1h": 0.05,
+    "supports_effort": true
+  },
+  "openai:gpt-5": {
+    "input": 1.25,
+    "output": 10,
+    "cache_read": 0.125,
+    "cache_write_5m": 1.25,
+    "cache_write_1h": 1.25,
+    "supports_effort": true
+  },
+  "openai:gpt-5.5": {
+    "input": 5,
+    "output": 30,
+    "cache_read": 0.5,
+    "cache_write_5m": 5,
+    "cache_write_1h": 5,
+    "supports_effort": true
+  }
+}

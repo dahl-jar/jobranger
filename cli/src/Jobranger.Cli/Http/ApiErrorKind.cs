@@ -7,4 +7,5 @@ internal enum ApiErrorKind {
     RateLimit,
     Overloaded,
     Server,
+    Connection,
 }

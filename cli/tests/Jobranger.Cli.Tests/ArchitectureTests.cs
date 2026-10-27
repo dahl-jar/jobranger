@@ -53,6 +53,7 @@ public sealed class ArchitectureTests {
     [InlineData("Features.Runs.Runs", "Features.Ads.AdKind")]
     [InlineData("Features.Runs.Runs", "Features.Ads.AdPosition")]
     [InlineData("Features.Runs.Runs", "Features.Ads.AdMissingException")]
+    [InlineData("Features.Runs.Runs", "Features.Ads.IAdSource")]
     [InlineData("Features.Runs.Runs", "Features.Runs.RunClock")]
     [InlineData("Features.Ads.Ads", "Features.Ads.AdStore")]
     [InlineData("Features.Ads.Ads", "Http.SourceRequests")]
@@ -224,7 +225,7 @@ public sealed class ArchitectureTests {
         && NamespaceOf(type) == FeaturesPrefix(root) + feature;
 
     private static bool IsSharedType(IType type) =>
-        type is Struct or ArchUnitNET.Domain.Enum
+        type is Struct or ArchUnitNET.Domain.Enum or Interface
         || type is Class { IsRecord: true }
         || type is Class exception && exception.InheritedClasses.Any(parent => parent.FullName == exceptionType);
 

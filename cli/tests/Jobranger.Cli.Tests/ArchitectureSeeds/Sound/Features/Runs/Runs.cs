@@ -12,4 +12,6 @@ internal static class Runs {
     public static string Label(AdKind kind) => kind.ToString();
 
     public static string Explain(AdMissingException missing) => missing.Message;
+
+    public static int Count(IAdSource source) => source.Count();
 }

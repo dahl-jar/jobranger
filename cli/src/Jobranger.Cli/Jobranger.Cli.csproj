@@ -41,6 +41,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Catalogue\catalogue.json" LogicalName="catalogue.json" />
+    <EmbeddedResource Include="Features\Models\prices.json" LogicalName="Jobranger.Cli.Features.Models.prices.json" />
     <EmbeddedResource Include="Secrets\key-folds-*.json" LogicalName="Jobranger.Cli.Secrets.key-folds.json" />
     <EmbeddedResource Include="Text\entities.json" LogicalName="entities.json" />
     <EmbeddedResource Include="Text\python-text-15.0.0.json" LogicalName="python-text.json" />

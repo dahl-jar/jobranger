@@ -1,0 +1,4 @@
+{
+  "system": "Du vurderer stillingsannonser for en utvikler i Bergen.\nRegler: svar med JSON, bruk \"ja\" eller \"nei\", aldri <html> & aldri mer enn 300 tegn.\nProfil: Java, C#, Kotlin; ønsker backend.",
+  "user": "Dato: 2026-10-25\nAnnonse:\n{\"title\": \"Utvikler\", \"company\": \"Org One AS\", \"text\": \"Vi søker en utvikler\tmed erfaring i Java og Spring – gjerne fra Bærum.\"}"
+}

@@ -16,10 +16,13 @@ GOLDEN = TESTS / "Golden"
 STORE_DB = TESTS / "TestData/Db/python-v2.db"
 STORE_ROWS = GOLDEN / "Store/rows.json"
 LINK_KEYS = TESTS / "TestData/Link"
+PROVIDER_PROMPT = TESTS / "TestData/Providers/prompt.json"
+PROVIDER_REQUESTS = GOLDEN / "Requests"
 SOURCE = GOLDEN / "SOURCE"
 DRIVERS = (
     ("store_rows.py", ("--db", STORE_DB, "--out", STORE_ROWS)),
     ("link_keys.py", ("--out", LINK_KEYS)),
+    ("provider_requests.py", ("--prompt", PROVIDER_PROMPT, "--out", PROVIDER_REQUESTS)),
 )
 
 log = logging.getLogger("export_goldens")

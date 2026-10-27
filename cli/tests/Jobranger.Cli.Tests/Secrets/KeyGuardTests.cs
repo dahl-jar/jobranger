@@ -1,3 +1,4 @@
+using System.Globalization;
 using Jobranger.Cli.Secrets;
 using Jobranger.Cli.Tests.Mocks;
 
@@ -51,6 +52,19 @@ public sealed class KeyGuardTests {
         string mathBold = string.Concat(key.Select(MathBold));
 
         string? cleaned = KeyGuard.Clean("bad " + mathBold, key);
+
+        Assert.Null(cleaned);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ShouldDropDetail_WhenKeyIsWrittenInJsonEscapes(bool mathBold) {
+        string text = mathBold ? string.Concat(key.Select(MathBold)) : key;
+        string escaped = string.Concat(
+            text.Select(unit => string.Create(CultureInfo.InvariantCulture, $"\\u{(int)unit:X4}")));
+
+        string? cleaned = KeyGuard.Clean("Invalid key " + escaped, key);
 
         Assert.Null(cleaned);
     }

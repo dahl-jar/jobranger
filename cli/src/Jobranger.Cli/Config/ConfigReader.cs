@@ -1,15 +1,13 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
 using Jobranger.Cli.Catalogue;
+using Jobranger.Cli.Http;
 using Jobranger.Cli.Text;
 
 namespace Jobranger.Cli.Config;
 
 internal sealed class ConfigReader(string home) {
     public const int Version = 1;
-
-    private const string ollamaApiPath = "/v1";
-    private const char slash = '/';
 
     private static readonly string[] rootKeys = [
         ConfigKeys.Version,
@@ -145,7 +143,7 @@ internal sealed class ConfigReader(string home) {
         return new ModelConfig {
             Provider = section.Choice<ProviderName>(ConfigKeys.Provider),
             Model = section.Text(ConfigKeys.Model),
-            OllamaUrl = ollamaUrl is null ? defaults.OllamaUrl : OllamaRoot(ollamaUrl),
+            OllamaUrl = ollamaUrl is null ? defaults.OllamaUrl : OllamaUrls.Root(ollamaUrl),
             MonthlyLimitUsd = section.Number(ConfigKeys.MonthlyLimitUsd),
             Price = ReadPrice(section),
         };
@@ -196,15 +194,4 @@ internal sealed class ConfigReader(string home) {
 
     private static List<string>? Sorted(List<string>? values) =>
         values?.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
-
-    private static string OllamaRoot(string url) {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? parsed)) {
-            return url;
-        }
-        string path = parsed.AbsolutePath.TrimEnd(slash);
-        while (path.EndsWith(ollamaApiPath, StringComparison.Ordinal)) {
-            path = path[..^ollamaApiPath.Length].TrimEnd(slash);
-        }
-        return parsed.GetLeftPart(UriPartial.Authority) + path + parsed.Query + parsed.Fragment;
-    }
 }
