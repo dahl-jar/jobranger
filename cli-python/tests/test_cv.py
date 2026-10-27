@@ -57,6 +57,7 @@ CONCURRENT_UPLOADS = 2
 OVERLAP_WAIT_SECONDS = 0.5
 ESCAPED_CONTROL = "\x01"
 ESCAPED_CONTROL_BYTES = len(json.dumps(ESCAPED_CONTROL)) - 2
+HUGE_XREF_SIZE = b"50000000"
 
 
 def _plain_stream(content: bytes) -> bytes:
@@ -69,6 +70,14 @@ def _encrypted_pdf() -> bytes:
     out = io.BytesIO()
     writer.write(out)
     return out.getvalue()
+
+
+def _pdf_declaring_huge_xref() -> bytes:
+    data = pdf([flate_stream(PDF_TEXT_LINE * 20)])
+    head, _, tail = data.rpartition(b"xref\n0 ")
+    count, _, rest = tail.partition(b"\n")
+    rest = rest.replace(b"/Size " + count, b"/Size " + HUGE_XREF_SIZE)
+    return head + b"xref\n0 " + HUGE_XREF_SIZE + b"\n" + rest
 
 
 def _pdf_padded_to(size: int) -> bytes:
@@ -352,6 +361,7 @@ def test_should_reject_file_over_5_mb(
             lambda: codecs.BOM_UTF16_LE + NORWEGIAN_LINE.encode("utf-16-le") + b"x",
         ),
         ("pdf_as.txt", lambda: b"\n  " + pdf([_plain_stream(PDF_TEXT_LINE * 8)])),
+        ("huge_xref.pdf", _pdf_declaring_huge_xref),
     ],
 )
 def test_should_raise_unreadable_for_broken_file(

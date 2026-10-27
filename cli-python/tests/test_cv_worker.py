@@ -22,6 +22,7 @@ from cv_samples import (
     repeated_cv_pdf,
     word_part,
 )
+from pypdf import get_configuration
 
 from jobranger import child_process, cv, cv_worker
 
@@ -159,6 +160,15 @@ def test_should_report_unreadable_when_extraction_runs_out_of_memory(
     reply = cv_worker.extract(".pdf", b"")
 
     assert reply == UNREADABLE
+
+
+def test_should_report_too_large_when_pdf_stream_passes_decompression_limit() -> None:
+    limit = get_configuration().zlib_maximum_output_length
+    data = pdf([flate_stream(b" " * (limit + 1))])
+
+    reply = cv_worker.extract(".pdf", data)
+
+    assert reply == TOO_LARGE
 
 
 @pytest.mark.parametrize(

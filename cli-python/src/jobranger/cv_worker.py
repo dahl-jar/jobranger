@@ -50,6 +50,10 @@ NOTE_PARTS = ("word/footnotes.xml", "word/endnotes.xml")
 HEADER_PART = re.compile(r"word/header\d*\.xml")
 FOOTER_PART = re.compile(r"word/footer\d*\.xml")
 XML_EVENTS = ("start", "end")
+WORK_LIMIT_MESSAGES = (
+    "Reached maximum number of tokens",
+    "Limit reached while decompressing",
+)
 
 
 class TooLargeError(Exception):
@@ -66,7 +70,7 @@ def main() -> None:
 def extract(suffix: str, data: bytes) -> dict[str, str]:
     try:
         return {TEXT_KEY: EXTRACTORS[suffix](data)}
-    except (TooLargeError, LimitReachedError):
+    except TooLargeError:
         return {REASON_KEY: "too_large"}
     except Exception:
         return {REASON_KEY: "unreadable"}
@@ -137,6 +141,15 @@ class _CappedReader:
 
 
 def _pdf_text(data: bytes) -> str:
+    try:
+        return _read_pdf_text(data)
+    except LimitReachedError as error:
+        if str(error).startswith(WORK_LIMIT_MESSAGES):
+            raise TooLargeError from error
+        raise
+
+
+def _read_pdf_text(data: bytes) -> str:
     reader = PdfReader(io.BytesIO(data))
     if len(reader.pages) > MAX_PDF_PAGES:
         raise TooLargeError
