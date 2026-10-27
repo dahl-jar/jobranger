@@ -44,7 +44,7 @@ internal static class SessionEndpoints
         DateTimeOffset handleExpires = Expiry.After(time, RelayLimits.HandleLifetime);
         logger.SessionStarted(RelayRole.Cli, proof.Channel.Value);
         return TypedResults.Ok(new CliSessionResponse(
-            proof.Channel.Value, handles.Sign(proof.Channel, RelayRole.Cli, handleExpires), handleExpires));
+            proof.Channel.Value, handles.SignCli(proof.Channel, handleExpires), handleExpires));
     }
 
     private static Results<Ok<WebSessionResponse>, ProblemHttpResult> StartWebSession(
@@ -58,7 +58,7 @@ internal static class SessionEndpoints
     {
         ILogger logger = RelayLog.For(loggers);
         TicketCheck check = handles.VerifyTicket(request.Ticket);
-        if (check is not { Outcome: TicketOutcome.Valid, Channel: { } channel })
+        if (check is not { Outcome: TicketOutcome.Valid, Channel: { } channel, Grant: { } grant })
         {
             return Failed(
                 http, logger, check.Outcome == TicketOutcome.Expired ? RelayProblems.TicketExpired : RelayProblems.InvalidTicket);
@@ -71,7 +71,7 @@ internal static class SessionEndpoints
         }
 
         logger.SessionStarted(RelayRole.Web, channel.Value);
-        return TypedResults.Ok(WebSession.Open(channel, handles, time));
+        return TypedResults.Ok(WebSession.Open(channel, grant, handles, time));
     }
 
     private static ProblemHttpResult Failed(HttpContext http, ILogger logger, RelayProblem problem) =>

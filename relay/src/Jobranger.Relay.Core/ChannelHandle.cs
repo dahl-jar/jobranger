@@ -8,36 +8,45 @@ public sealed class ChannelHandle(HandleKeys keys, TimeProvider time)
 {
     private const string handleKind = "h";
     private const string ticketKind = "t";
+    private const int grantBytes = 16;
 
-    public string Sign(ChannelId channel, RelayRole role, DateTimeOffset expires) =>
-        Seal(new TokenPayload(handleKind, channel.Value, RelayRoles.Wire(role), expires.ToUnixTimeSeconds()));
+    public static string NewGrant() => Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(grantBytes));
 
-    public string SignTicket(ChannelId channel, DateTimeOffset expires) =>
-        Seal(new TokenPayload(ticketKind, channel.Value, RelayRoles.Wire(RelayRole.Web), expires.ToUnixTimeSeconds()));
+    public string SignCli(ChannelId channel, DateTimeOffset expires) => SignHandle(channel, RelayRole.Cli, expires, null);
+
+    public string SignWeb(ChannelId channel, DateTimeOffset expires, string grant) =>
+        SignHandle(channel, RelayRole.Web, expires, grant);
+
+    public string SignTicket(ChannelId channel, DateTimeOffset expires, string grant) =>
+        Seal(new TokenPayload(ticketKind, channel.Value, RelayRoles.Wire(RelayRole.Web), expires.ToUnixTimeSeconds(), grant));
 
     public HandleClaims? Verify(string? handle)
     {
         if (Open(handle) is not { Kind: handleKind } payload
             || !RelayRoles.TryParse(payload.Role, out RelayRole role)
+            || (role == RelayRole.Web && payload.Grant is null)
             || !IsLive(payload))
         {
             return null;
         }
 
-        return new HandleClaims(new ChannelId(payload.Channel), role);
+        return new HandleClaims(new ChannelId(payload.Channel), role, payload.Grant);
     }
 
     public TicketCheck VerifyTicket(string? ticket)
     {
-        if (Open(ticket) is not { Kind: ticketKind } payload)
+        if (Open(ticket) is not { Kind: ticketKind, Grant: not null } payload)
         {
             return new TicketCheck(TicketOutcome.Invalid, null);
         }
 
         return IsLive(payload)
-            ? new TicketCheck(TicketOutcome.Valid, new ChannelId(payload.Channel))
+            ? new TicketCheck(TicketOutcome.Valid, new ChannelId(payload.Channel), payload.Grant)
             : new TicketCheck(TicketOutcome.Expired, null);
     }
+
+    private string SignHandle(ChannelId channel, RelayRole role, DateTimeOffset expires, string? grant) =>
+        Seal(new TokenPayload(handleKind, channel.Value, RelayRoles.Wire(role), expires.ToUnixTimeSeconds(), grant));
 
     private static bool Matches(byte[] key, byte[] body, byte[] mac) =>
         CryptographicOperations.FixedTimeEquals(HMACSHA256.HashData(key, body), mac);

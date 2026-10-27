@@ -88,6 +88,15 @@ public sealed class PairingStore(
         }
     }
 
+    public bool IsPending(ChannelId channel)
+    {
+        lock (gate)
+        {
+            Drain(time.GetUtcNow());
+            return pendingByChannel.ContainsKey(channel);
+        }
+    }
+
     public void Sweep()
     {
         lock (gate)

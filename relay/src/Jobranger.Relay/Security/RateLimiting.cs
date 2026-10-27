@@ -15,10 +15,11 @@ internal static class RateLimiting
     public const string PairClaim = "pair-claim";
     public const string Session = "session";
     public const string SessionChannel = "session-channel";
+    public const string HubSockets = "hub-sockets";
 
     private const int minRetryAfterSeconds = 1;
 
-    public static readonly string[] Policies = [Nonce, PairStart, PairClaim, Session];
+    public static readonly string[] Policies = [Nonce, PairStart, PairClaim, Session, HubSockets];
 
     public static IServiceCollection AddRelayRateLimits(this IServiceCollection services)
     {
@@ -47,7 +48,13 @@ internal static class RateLimiting
         Session => new WindowLimiter(RelayLimits.FailedSessionsPerWindow * scale, RelayLimits.SessionRequestWindow, time),
         SessionChannel => new WindowLimiter(RelayLimits.SessionsPerChannelWindow * scale, RelayLimits.SessionRequestWindow, time),
         Nonce => new WindowLimiter(RelayLimits.NonceRequestsPerWindow * scale, RelayLimits.NonceRequestWindow, time),
-        _ => throw new ArgumentOutOfRangeException(nameof(policy), policy, "policy must be nonce, pair-start, pair-claim, session or session-channel"),
+        HubSockets => new ConcurrencyLimiter(new ConcurrencyLimiterOptions
+        {
+            PermitLimit = RelayLimits.HubSocketsPerClient * scale,
+            QueueLimit = 0,
+        }),
+        _ => throw new ArgumentOutOfRangeException(
+            nameof(policy), policy, "policy must be nonce, pair-start, pair-claim, session, session-channel or hub-sockets"),
     };
 
     public static ProblemHttpResult? Throttle(

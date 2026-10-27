@@ -73,7 +73,7 @@ internal static class PairingEndpoints
         }
 
         DateTimeOffset handleExpires = Expiry.After(time, RelayLimits.HandleLifetime);
-        string handle = handles.Sign(proof.Channel, RelayRole.Cli, handleExpires);
+        string handle = handles.SignCli(proof.Channel, handleExpires);
         logger.PairingStarted(proof.Channel.Value);
         return TypedResults.Ok(new PairStartResponse(
             pending.Code.ToString(), Expiry.WholeSeconds(pending.ExpiresAt), proof.Channel.Value, handle, handleExpires));
@@ -102,6 +102,6 @@ internal static class PairingEndpoints
 
         paired.Record(channel);
         logger.PairingClaimed(channel.Value);
-        return TypedResults.Ok(WebSession.Open(channel, handles, time));
+        return TypedResults.Ok(WebSession.Open(channel, ChannelHandle.NewGrant(), handles, time));
     }
 }

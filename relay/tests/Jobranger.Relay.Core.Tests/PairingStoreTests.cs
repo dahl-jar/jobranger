@@ -57,6 +57,27 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
+    public void ShouldReportChannelPendingAfterStart()
+    {
+        Started(store, Channels.One);
+
+        bool pending = store.IsPending(Channels.One);
+
+        Assert.True(pending);
+    }
+
+    [Fact]
+    public void ShouldNotReportChannelPendingAfterCodeExpires()
+    {
+        Started(store, Channels.One);
+        time.Advance(codeLifetime);
+
+        bool pending = store.IsPending(Channels.One);
+
+        Assert.False(pending);
+    }
+
+    [Fact]
     public void ShouldAnswerWrongCodeForWrongVerifier()
     {
         PendingPairing pending = Started(store, Channels.One);

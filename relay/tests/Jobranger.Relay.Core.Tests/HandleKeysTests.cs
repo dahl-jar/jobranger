@@ -30,7 +30,7 @@ public sealed class HandleKeysTests
         FakeTimeProvider time = new();
         byte[] current = RandomNumberGenerator.GetBytes(RelayLimits.MinHandleKeyBytes);
         ChannelHandle handles = new(new HandleKeys(current, null), time);
-        string handle = handles.Sign(Channels.One, RelayRole.Cli, time.GetUtcNow() + handleLifetime);
+        string handle = handles.SignCli(Channels.One, time.GetUtcNow() + handleLifetime);
         Array.Clear(current);
 
         HandleClaims? claims = handles.Verify(handle);

@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Jobranger.Relay;
 using Jobranger.Relay.Core;
+using Jobranger.Relay.Hubs;
 using Jobranger.Relay.Options;
 using Jobranger.Relay.Pairing;
 using Jobranger.Relay.Security;
@@ -37,17 +38,23 @@ try
     builder.Services.AddSiteCors();
     builder.Services.AddRelayRateLimits();
     builder.AddRelayRedaction();
+    builder.AddRelayHub();
 
     WebApplication app = builder.Build();
 
+    app.Use(HubSetup.HideNegotiate);
     app.UseForwardedHeaders();
     app.UseExceptionHandler();
     app.UseStatusCodePages();
     app.UseCors();
     app.UseRateLimiter();
     app.Use(FailureCharge.ChargeBadRequests);
+    app.UseAuthentication();
+    app.UseAuthorization();
+    app.Use(HubAdmission.Check);
     app.MapPairing();
     app.MapSessions();
+    app.MapRelayHub();
 
     app.Run();
     return 0;

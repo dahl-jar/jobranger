@@ -26,6 +26,29 @@ public static class RelayLimits
     public const int MaxPairedChannels = 20_000;
     public const int SessionRoles = 2;
     public const int MaxChannelPartitions = MaxPairedChannels * SessionRoles;
+    public const int MaxSocketsPerChannel = 8;
+    public const int MaxBrowsersPerChannel = MaxSocketsPerChannel - 1;
+    public const int MaxSocketsPerTicket = 2;
+    public const int MaxHubSocketsPerNetwork = 16;
+    public const int MaxSidsPerConnection = 32;
+    public const int ChannelBytesPerSecond = 262_144;
+    public const int ChannelBytesBurst = 524_288;
+    public const int MessagesPerSecond = 20;
+    public const int MessagesBurst = 40;
+    public const int MaxFrameBytes = 65_536;
+    public const int HubSocketsPerClient = 10;
+    public const int KestrelInputBufferBytes = 65_536;
+    public const int KestrelOutputBufferBytes = 16_384;
+    public const int KernelSocketBufferBytes = 32_768;
+    public const int HubApplicationBufferBytes = MaxFrameBytes;
+    public const int HubTransportBufferBytes = 16_384;
+    public const long PodMemoryLimitBytes = 512L * 1024 * 1024;
+    public const long PeakSharePercent = 80;
+    public const long PeakBudgetBytes = PodMemoryLimitBytes * PeakSharePercent / 100;
+    public const long RelayBaselineBytes = 40L * 1024 * 1024;
+    public const long StoresBudgetBytes = 140L * 1024 * 1024;
+    public const long HubSocketBudgetBytes = 896L * 1024;
+    public const int MaxHubSockets = (int)((PeakBudgetBytes - RelayBaselineBytes - StoresBudgetBytes) / HubSocketBudgetBytes);
 
     public static readonly TimeSpan CodeLifetime = TimeSpan.FromMinutes(10);
     public static readonly TimeSpan TombstoneRetention = TimeSpan.FromMinutes(10);
@@ -39,4 +62,10 @@ public static class RelayLimits
     public static readonly TimeSpan ClaimRefillPeriod = TimeSpan.FromSeconds(30);
     public static readonly TimeSpan PartitionSweepInterval = TimeSpan.FromSeconds(1);
     public static readonly TimeSpan RefusalLogInterval = TimeSpan.FromSeconds(1);
+    public static readonly TimeSpan HubRefillPeriod = TimeSpan.FromSeconds(1);
+    public static readonly TimeSpan HubKeepAlive = TimeSpan.FromSeconds(15);
+    public static readonly TimeSpan HubClientTimeout = TimeSpan.FromSeconds(30);
+    public static readonly TimeSpan HubHandshakeTimeout = TimeSpan.FromSeconds(15);
+    public static readonly TimeSpan HubSendTimeout = TimeSpan.FromSeconds(5);
+    public static readonly TimeSpan HubFullRetryAfter = TimeSpan.FromSeconds(30);
 }

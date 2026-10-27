@@ -12,6 +12,8 @@ public static class RelayRoles
         _ => throw new ArgumentOutOfRangeException(nameof(role), role, "role must be Cli or Web"),
     };
 
+    public static RelayRole Other(RelayRole role) => role == RelayRole.Cli ? RelayRole.Web : RelayRole.Cli;
+
     public static bool TryParse(string? value, out RelayRole role)
     {
         switch (value)

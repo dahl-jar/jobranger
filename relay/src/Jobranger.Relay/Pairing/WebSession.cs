@@ -4,15 +4,15 @@ namespace Jobranger.Relay.Pairing;
 
 internal static class WebSession
 {
-    public static WebSessionResponse Open(ChannelId channel, ChannelHandle handles, TimeProvider time)
+    public static WebSessionResponse Open(ChannelId channel, string grant, ChannelHandle handles, TimeProvider time)
     {
         DateTimeOffset handleExpires = Expiry.After(time, RelayLimits.HandleLifetime);
         DateTimeOffset ticketExpires = Expiry.After(time, RelayLimits.TicketLifetime);
         return new WebSessionResponse(
             channel.Value,
-            handles.Sign(channel, RelayRole.Web, handleExpires),
+            handles.SignWeb(channel, handleExpires, grant),
             handleExpires,
-            handles.SignTicket(channel, ticketExpires),
+            handles.SignTicket(channel, ticketExpires, grant),
             ticketExpires);
     }
 }

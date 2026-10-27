@@ -11,6 +11,7 @@ public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassF
 {
     private const string vectorSeed = "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60";
     private const string vectorChannel = "sVpCkQYZPnMOnyB34PLScKMrmg2wDUTIPjk5VO0U880";
+    private const int grantChars = 22;
 
     private static readonly TimeSpan nonceLifetime = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan codeLifetime = TimeSpan.FromMinutes(10);
@@ -167,9 +168,10 @@ public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassF
         ChannelId channel = new((string)started["channel"]!);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(started["channel"]!.ToString(), (string)body["channel"]!);
-        Assert.Equal(new HandleClaims(channel, RelayRole.Web), Handles().Verify((string)body["handle"]!));
+        TicketCheck ticket = Handles().VerifyTicket((string)body["ticket"]!);
+        Assert.Equal(new HandleClaims(channel, RelayRole.Web, ticket.Grant), Handles().Verify((string)body["handle"]!));
         Assert.Equal(now + handleLifetime, (DateTimeOffset)body["handleExpiresAt"]!);
-        Assert.Equal(new TicketCheck(TicketOutcome.Valid, channel), Handles().VerifyTicket((string)body["ticket"]!));
+        Assert.Equal((TicketOutcome.Valid, channel, grantChars), (ticket.Outcome, ticket.Channel, ticket.Grant?.Length));
         Assert.Equal(now + ticketLifetime, (DateTimeOffset)body["ticketExpiresAt"]!);
     }
 

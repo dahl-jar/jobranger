@@ -56,10 +56,26 @@ public sealed class SessionEndpointTests(RelayFactory factory) : IClassFixture<R
         ChannelId channel = new((string)paired["channel"]!);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(channel.Value, (string)body["channel"]!);
-        Assert.Equal(new HandleClaims(channel, RelayRole.Web), Handles().Verify((string)body["handle"]!));
+        TicketCheck later = Handles().VerifyTicket((string)body["ticket"]!);
+        Assert.Equal(new HandleClaims(channel, RelayRole.Web, later.Grant), Handles().Verify((string)body["handle"]!));
         Assert.Equal(now + handleLifetime, (DateTimeOffset)body["handleExpiresAt"]!);
         Assert.Equal(now + ticketLifetime, (DateTimeOffset)body["ticketExpiresAt"]!);
-        Assert.Equal(new TicketCheck(TicketOutcome.Valid, channel), Handles().VerifyTicket((string)body["ticket"]!));
+        Assert.Equal((TicketOutcome.Valid, channel), (later.Outcome, later.Channel));
+    }
+
+    [Fact]
+    public async Task ShouldKeepTicketGrantAcrossRefresh()
+    {
+        using CliKey key = new();
+        JsonObject paired = await api.Paired(key);
+        string? grant = Handles().VerifyTicket((string)paired["ticket"]!).Grant;
+
+        using HttpResponseMessage response = await api.WebSession((string)paired["ticket"]!);
+
+        JsonObject body = await RelayApi.Json(response);
+        Assert.Equal(
+            (grant, grant),
+            (Handles().Verify((string)body["handle"]!)?.Grant, Handles().VerifyTicket((string)body["ticket"]!).Grant));
     }
 
     [Fact]
@@ -98,7 +114,7 @@ public sealed class SessionEndpointTests(RelayFactory factory) : IClassFixture<R
         });
         using RelayApi rotatedApi = RelayApi.For(rotated, Addresses.Next());
         ChannelHandle previous = new(new HandleKeys(previousKey, null), factory.Time);
-        string ticket = previous.SignTicket(new ChannelId("channel-one"), factory.Time.GetUtcNow() + ticketLifetime);
+        string ticket = previous.SignTicket(new ChannelId("channel-one"), factory.Time.GetUtcNow() + ticketLifetime, ChannelHandle.NewGrant());
 
         using HttpResponseMessage response = await rotatedApi.WebSession(ticket);
 
