@@ -1,9 +1,10 @@
 import { act, screen } from '@testing-library/react'
 import type { RouteObject } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { PublicLayout, type PublicLayoutHandle } from '@/app/PublicLayout'
 import styles from '@/app/PublicLayout.module.css'
 import { renderRoutes } from '@/test/render'
+import { blockStorage } from '@/test/stubs'
 
 const PATH = '/page'
 const SUBTITLE = 'Setup walkthrough'
@@ -11,6 +12,28 @@ const PAGE: RouteObject = { path: PATH, handle: { subtitle: SUBTITLE } satisfies
 
 function renderLayout(page: RouteObject) {
   return renderRoutes([{ Component: PublicLayout, children: [page] }], PATH)
+}
+
+const BUSY_DELAY_MS = 300
+
+async function startSlowNavigation() {
+  let finish: () => void = () => undefined
+  const slow: RouteObject = {
+    path: '/slow',
+    lazy: () => new Promise((resolve) => {
+      finish = () => resolve({ Component: () => <h1>Slow page</h1> })
+    }),
+  }
+  const { router } = renderRoutes([{ Component: PublicLayout, children: [PAGE, slow] }], PATH)
+  const page = (await screen.findByRole('banner')).parentElement
+  vi.useFakeTimers()
+  onTestFinished(() => {
+    vi.useRealTimers()
+  })
+  await act(async () => {
+    void router.navigate('/slow')
+  })
+  return { page, finish: () => finish() }
 }
 
 async function pageClasses() {
@@ -97,5 +120,55 @@ describe('PublicLayout', () => {
     await act(() => router.navigate('/other'))
 
     expect(await screen.findByText('Other page')).toBeInTheDocument()
+  })
+
+  it('should show loading on a page that takes long to open', async () => {
+    const { page } = await startSlowNavigation()
+
+    await act(() => vi.advanceTimersByTimeAsync(BUSY_DELAY_MS))
+
+    expect(screen.getByRole('status')).toHaveTextContent('Loading...')
+    expect(page).toHaveAttribute('aria-busy', 'true')
+  })
+
+  it('should wait before showing loading', async () => {
+    const { page } = await startSlowNavigation()
+
+    await act(() => vi.advanceTimersByTimeAsync(BUSY_DELAY_MS - 1))
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(page).not.toHaveAttribute('aria-busy', 'true')
+  })
+
+  it('should drop loading once the page opens', async () => {
+    const { page, finish } = await startSlowNavigation()
+    await act(() => vi.advanceTimersByTimeAsync(BUSY_DELAY_MS))
+
+    await act(async () => finish())
+
+    expect(screen.getByRole('heading', { name: 'Slow page' })).toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(page).not.toHaveAttribute('aria-busy', 'true')
+  })
+
+  it('should not warn about scroll positions when storage is blocked', async () => {
+    const warn = vi.spyOn(console, 'warn')
+    blockStorage('setItem')
+    renderLayout(PAGE)
+    await screen.findByText(SUBTITLE)
+
+    window.dispatchEvent(new PageTransitionEvent('pagehide'))
+
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('should skip loading when the page opens before the delay', async () => {
+    const { finish } = await startSlowNavigation()
+    await act(() => vi.advanceTimersByTimeAsync(BUSY_DELAY_MS - 1))
+    await act(async () => finish())
+
+    await act(() => vi.advanceTimersByTimeAsync(BUSY_DELAY_MS))
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })

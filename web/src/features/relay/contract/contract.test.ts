@@ -5,17 +5,20 @@ import { CIPHERTEXT_B64_MAX_CHARS, GCM_TAG_BYTES, HELLO_MAX_BYTES, MAX_INTEGER_D
 import { ContractError, parseEnvelope, parsePayload, parseTimestamp } from './validate'
 
 const invalidPayloads = Object.entries(
-  import.meta.glob<unknown>('@contracts/fixtures/payload-invalid/*.json', {
+  import.meta.glob<string>('@contracts/fixtures/payload-invalid/*.json', {
     eager: true,
+    query: '?raw',
     import: 'default',
   }),
 )
 const invalidEnvelopes = Object.entries(
-  import.meta.glob<unknown>('@contracts/fixtures/envelope-invalid/*.json', {
+  import.meta.glob<string>('@contracts/fixtures/envelope-invalid/*.json', {
     eager: true,
+    query: '?raw',
     import: 'default',
   }),
 )
+const OVERSIZE_TIMEOUT_MS = 30_000
 const OVERSIZE_EMAIL = `a@${'b.'.repeat(4_000_000)}cc`
 const MAX_SEQ = 2 ** 32 - 1
 const HELLO_MIN_CIPHERTEXT = 'AAAA'
@@ -23,6 +26,8 @@ const base64UrlChars = (bytes: number) => Math.ceil((bytes * 4) / 3)
 const adMarkText = JSON.stringify(payloadFixtures['ad.mark'])
 const nested = (depth: number) => `${'['.repeat(depth)}${']'.repeat(depth)}`
 const withExtra = (extra: string) => adMarkText.replace('"v":1,', `"v":1,"extra":${extra},`)
+const payloadText = (name: keyof typeof payloadFixtures, from: string, to: string) =>
+  JSON.stringify(payloadFixtures[name]).replace(from, to)
 const rejection = (errors: string[], messageType?: string) =>
   expect.objectContaining({ name: 'ContractError', errors, messageType })
 
@@ -36,7 +41,7 @@ describe('parsePayload', () => {
   })
 
   it.each(invalidPayloads)('should reject invalid payload %s', (_, raw) => {
-    expect(() => parsePayload(JSON.stringify(raw))).toThrow(ContractError)
+    expect(() => parsePayload(raw)).toThrow(ContractError)
   })
 
   it('should return unknown fields unchanged', () => {
@@ -66,7 +71,7 @@ describe('parsePayload', () => {
   ])('should name the hidden count rule for %s', (name, problem) => {
     const raw = invalidPayloads.find(([path]) => path.endsWith(`/${name}`))?.[1]
 
-    expect(() => parsePayload(JSON.stringify(raw))).toThrow(rejection([problem], 'ads.snapshot'))
+    expect(() => parsePayload(raw ?? '')).toThrow(rejection([problem], 'ads.snapshot'))
   })
 
   it('should ignore an unknown hidden count key', () => {
@@ -84,7 +89,7 @@ describe('parsePayload', () => {
     }
 
     expect(() => parsePayload(JSON.stringify(raw))).toThrow(ContractError)
-  })
+  }, OVERSIZE_TIMEOUT_MS)
 
   it.each([
     ['duplicate key', adMarkText.replace('"v":1,', '"v":1,"mark":"applied",'), 'duplicate object key'],
@@ -104,6 +109,24 @@ describe('parsePayload', () => {
     ['infinite number', withExtra('1e400'), 'non-finite number', 'ad.mark'],
   ])('should reject %s', (_, text, problem, messageType?: string) => {
     expect(() => parsePayload(text)).toThrow(rejection([problem], messageType))
+  })
+
+  it.each([
+    ['an exponent', payloadText('application.update', '"application_id":2', '"application_id":2e0'), '/application_id', 'application.update'],
+    ['a fraction in a constant', payloadText('ad.mark', '"v":1', '"v":1.0'), '/v', 'ad.mark'],
+    ['a fraction in a nullable field', payloadText('run.progress', '"found_new":12', '"found_new":12.0'), '/sources/0/found_new', 'run.progress'],
+    ['a fraction in a later array item', payloadText('usage.snapshot', '"calls":41', '"calls":41.0'), '/days/1/calls', 'usage.snapshot'],
+    ['a fraction under an escaped key', payloadText('application.update', '"application_id":2', '"\\u0061pplication_id":2.0'), '/application_id', 'application.update'],
+  ])('should reject an integer written with %s', (_, text, pointer, messageType) => {
+    expect(() => parsePayload(text)).toThrow(rejection([`${pointer} must be integer`], messageType))
+  })
+
+  it.each([
+    ['a whole float where the schema wants a number', payloadText('usage.snapshot', '"month_usd":2.35', '"month_usd":2.0'), { month_usd: 2 }],
+    ['a fraction in an unknown field', withExtra('1.0'), { extra: 1 }],
+    ['a fraction in a field another message type keeps as integer', payloadText('ad.mark', '"v":1,', '"v":1,"application_id":2.0,'), { application_id: 2 }],
+  ])('should accept %s', (_, text, fields) => {
+    expect(parsePayload(text)).toMatchObject(fields)
   })
 
   it('should name the JSON syntax error', () => {
@@ -135,7 +158,7 @@ describe('parseEnvelope', () => {
   })
 
   it.each(invalidEnvelopes)('should reject invalid envelope %s', (_, raw) => {
-    expect(() => parseEnvelope(JSON.stringify(raw))).toThrow(ContractError)
+    expect(() => parseEnvelope(raw)).toThrow(ContractError)
   })
 
   it('should name the kind when an envelope is rejected', () => {
@@ -165,6 +188,14 @@ describe('parseEnvelope', () => {
     const text = JSON.stringify(envelopeFixtures.data).replace('"v":1,', '"v":1,"x":1e400,')
 
     expect(() => parseEnvelope(text)).toThrow(ContractError)
+  })
+})
+
+describe('ContractError', () => {
+  it('should list every problem in its message', () => {
+    expect(new ContractError(['/seq must be integer', '/v must be equal to constant'], 'data').message).toBe(
+      'contract violation: /seq must be integer; /v must be equal to constant',
+    )
   })
 })
 

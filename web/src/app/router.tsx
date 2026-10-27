@@ -3,6 +3,7 @@ import { NotFound } from '@/app/NotFound'
 import { PageLoading } from '@/app/PageLoading'
 import { PublicLayout, type PublicLayoutHandle } from '@/app/PublicLayout'
 import { RouteError } from '@/app/RouteError'
+import { routeImport } from '@/app/routeImport'
 import { LandingNav, OpenAppLink } from '@/features/landing/LandingHeader'
 import { LandingPage } from '@/features/landing/LandingPage'
 
@@ -20,7 +21,7 @@ export const routes: RouteObject[] = [
           },
           {
             path: 'setup',
-            lazy: async () => ({ Component: (await import('@/features/setup/SetupPage')).SetupPage }),
+            lazy: routeImport(async () => ({ Component: (await import('@/features/setup/SetupPage')).SetupPage })),
             HydrateFallback: PageLoading,
             handle: { subtitle: 'Setup walkthrough', showHome: true, wide: true } satisfies PublicLayoutHandle,
           },

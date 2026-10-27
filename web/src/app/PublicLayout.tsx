@@ -1,7 +1,8 @@
-import { isValidElement, useEffect, useRef, type ReactElement } from 'react'
-import { Link, Outlet, ScrollRestoration, useLocation, useMatches } from 'react-router'
+import { isValidElement, useEffect, useRef, useState, type ReactElement } from 'react'
+import { Link, Outlet, ScrollRestoration, useLocation, useMatches, useNavigation } from 'react-router'
+import { PageLoading } from '@/app/PageLoading'
 import styles from '@/app/PublicLayout.module.css'
-import { scrollKey } from '@/app/scrollPositions'
+import { canStoreScroll, scrollKey } from '@/app/scrollPositions'
 import { ThemeSwitch } from '@/app/theme/ThemeSwitch'
 import { Icon } from '@/shared/ui/Icon'
 
@@ -23,6 +24,7 @@ interface LayoutOptions {
 
 const BACK_ICON_SIZE = 15
 const PAGE_HEADING_SELECTOR = 'main h1'
+const BUSY_DELAY_MS = 300
 
 function useHeadingFocus(): void {
   const { pathname } = useLocation()
@@ -33,6 +35,22 @@ function useHeadingFocus(): void {
     shownPath.current = pathname
     document.querySelector<HTMLElement>(PAGE_HEADING_SELECTOR)?.focus({ preventScroll: true })
   }, [pathname])
+}
+
+function useSlowNavigation(): boolean {
+  const loading = useNavigation().state === 'loading'
+  const [slow, setSlow] = useState(false)
+
+  useEffect(() => {
+    if (!loading) return undefined
+    const timer = window.setTimeout(() => setSlow(true), BUSY_DELAY_MS)
+    return () => {
+      window.clearTimeout(timer)
+      setSlow(false)
+    }
+  }, [loading])
+
+  return slow
 }
 
 function readHandle(handle: unknown): LayoutOptions {
@@ -49,9 +67,11 @@ function readHandle(handle: unknown): LayoutOptions {
 export function PublicLayout() {
   const { subtitle, showHome, wide, nav, action } = readHandle(useMatches().at(-1)?.handle)
   useHeadingFocus()
+  const busy = useSlowNavigation()
+  const [storesScroll] = useState(canStoreScroll)
 
   return (
-    <div className={`${styles.page} ${wide ? styles.wide : ''}`}>
+    <div className={`${styles.page} ${wide ? styles.wide : ''}`} aria-busy={busy}>
       <header className={styles.header}>
         <div className={styles.brand}>
           <Link to="/" className={styles.logo}>
@@ -72,8 +92,9 @@ export function PublicLayout() {
         </div>
       </header>
       <div className={styles.doubleRule} />
+      {busy && <PageLoading />}
       <Outlet />
-      <ScrollRestoration getKey={scrollKey} />
+      {storesScroll && <ScrollRestoration getKey={scrollKey} />}
     </div>
   )
 }

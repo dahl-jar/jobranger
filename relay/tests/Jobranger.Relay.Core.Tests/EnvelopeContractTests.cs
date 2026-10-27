@@ -84,7 +84,7 @@ public sealed class EnvelopeContractTests
     [Fact]
     public void ShouldFindEveryInvalidFixture()
     {
-        Assert.Equal(37, InvalidFixtures.Count);
+        Assert.Equal(38, InvalidFixtures.Count);
     }
 
     [Theory]

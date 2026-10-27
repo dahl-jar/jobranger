@@ -26,6 +26,7 @@ for weight in "${weights[@]}"; do
     --unicodes="$unicodes" \
     --flavor=woff2 \
     --layout-features='*' \
+    --drop-tables+=PfEd \
     --output-file="$out/JetBrainsMonoNerdFont-$weight.woff2"
 done
 

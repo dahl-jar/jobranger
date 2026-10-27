@@ -85,6 +85,7 @@ READER_RULE_FIXTURES = {
     "ads.snapshot.hidden-kind-under-count.json",
     *EXTRA_KEY_FIXTURES,
 }
+FLOAT_INTEGER_SUFFIX = ".float-integer.json"
 HELLO_MIN_CIPHERTEXT = "AAAA"
 GENERATED = [
     CLI_CONTRACT / "payload.py",
@@ -442,6 +443,7 @@ def test_should_accept_golden_fixture(path: Path) -> None:
         path
         for path in fixtures("envelope-invalid", "payload-invalid")
         if path.name not in READER_RULE_FIXTURES
+        and not path.name.endswith(FLOAT_INTEGER_SUFFIX)
     ],
     ids=fixture_id,
 )

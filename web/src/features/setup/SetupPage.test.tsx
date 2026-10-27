@@ -98,6 +98,12 @@ describe('SetupPage', () => {
     expect(screen.queryByRole('link', { name: 'enter the code' })).not.toBeInTheDocument()
   })
 
+  it('should keep the terminal output silent for screen readers', async () => {
+    renderSetup('?step=2')
+
+    expect(await screen.findByRole('log', { name: 'Terminal output' })).toHaveAttribute('aria-live', 'off')
+  })
+
   it('should list the seven roles in the roles step', async () => {
     renderSetup('?step=3')
 

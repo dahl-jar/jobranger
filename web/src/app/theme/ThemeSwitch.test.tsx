@@ -7,6 +7,7 @@ import { ThemeSwitch } from '@/app/theme/ThemeSwitch'
 import styles from '@/app/theme/ThemeSwitch.module.css'
 import { Icon } from '@/shared/ui/Icon'
 import { setPrefersLight } from '@/test/matchMedia'
+import { blockStorage } from '@/test/stubs'
 
 function renderSwitch(variant: 'icons' | 'labeled' = 'icons') {
   return render(
@@ -122,9 +123,7 @@ describe('ThemeSwitch', () => {
 
   it('should still switch the theme when storage is blocked', async () => {
     const user = userEvent.setup()
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new DOMException('blocked', 'SecurityError')
-    })
+    blockStorage('setItem')
     renderSwitch()
 
     await user.click(screen.getByRole('button', { name: 'Light theme' }))

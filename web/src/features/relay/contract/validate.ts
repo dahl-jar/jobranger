@@ -1,8 +1,9 @@
 import type { ErrorObject } from 'ajv'
 import type { Envelope } from './envelope.gen'
 import type { AdsSnapshot, HiddenKind, Payload } from './payload.gen'
-import { scanJson, structureProblem } from './scan'
-import { payloadSchema } from './schemas.gen'
+import { type JsonPath, scanJson, structureProblem } from './scan'
+import { isIntegerPath, type SchemaNode } from './schemaIntegers'
+import { envelopeSchema, payloadSchema } from './schemas.gen'
 import { type StandaloneValidator, validateEnvelope, validatePayload } from './validate.gen'
 
 const MIN_YEAR = 1
@@ -34,27 +35,40 @@ function tagOf(raw: unknown, tag: string): string | undefined {
   return typeof value === 'string' ? value : undefined
 }
 
-function parseJson(text: string): unknown {
-  const problem = scanJson(text)
+interface ParsedJson {
+  raw: unknown
+  floatPaths: readonly JsonPath[]
+}
+
+function pointerOf(path: JsonPath): string {
+  return path.map((segment) => `/${segment}`).join('')
+}
+
+function parseJson(text: string): ParsedJson {
+  const { problem, floatPaths } = scanJson(text)
   if (problem) {
     throw new ContractError([problem], undefined)
   }
   try {
-    return JSON.parse(text)
+    return { raw: JSON.parse(text), floatPaths }
   } catch (error: unknown) {
     throw new ContractError([`invalid JSON: ${error instanceof Error ? error.message : String(error)}`], undefined)
   }
 }
 
-function decodeWith<T>(raw: unknown, validate: StandaloneValidator<T>, tag: string): T {
+function decodeWith<T>({ raw, floatPaths }: ParsedJson, validate: StandaloneValidator<T>, schema: SchemaNode, tag: string): T {
   const problem = structureProblem(raw)
   if (problem) {
     throw new ContractError([problem], tagOf(raw, tag))
   }
-  if (validate(raw)) {
-    return raw
+  if (!validate(raw)) {
+    throw new ContractError(errorMessages(validate.errors), tagOf(raw, tag))
   }
-  throw new ContractError(errorMessages(validate.errors), tagOf(raw, tag))
+  const floatPath = floatPaths.find((path) => isIntegerPath(schema, raw, path))
+  if (floatPath) {
+    throw new ContractError([`${pointerOf(floatPath)} must be integer`], tagOf(raw, tag))
+  }
+  return raw
 }
 
 function hiddenCountProblem(snapshot: AdsSnapshot): string | undefined {
@@ -74,7 +88,7 @@ function hiddenCountProblem(snapshot: AdsSnapshot): string | undefined {
 }
 
 export function parsePayload(text: string): Payload {
-  const payload = decodeWith(parseJson(text), validatePayload, 'type')
+  const payload = decodeWith(parseJson(text), validatePayload, payloadSchema, 'type')
   const problem = payload.type === 'ads.snapshot' ? hiddenCountProblem(payload) : undefined
   if (problem) {
     throw new ContractError([problem], payload.type)
@@ -83,7 +97,7 @@ export function parsePayload(text: string): Payload {
 }
 
 export function parseEnvelope(text: string): Envelope {
-  return decodeWith(parseJson(text), validateEnvelope, 'kind')
+  return decodeWith(parseJson(text), validateEnvelope, envelopeSchema, 'kind')
 }
 
 function isCalendarDate(year: number, month: number, day: number): boolean {

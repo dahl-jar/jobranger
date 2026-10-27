@@ -2,6 +2,7 @@ import type { Location } from 'react-router'
 
 const SCROLL_POSITIONS_KEY = 'react-router-scroll-positions'
 
+const STORAGE_PROBE_KEY = 'jobranger-storage-probe'
 const FIRST_ENTRY_KEY = 'default'
 const RESTORING_LOADS: ReadonlySet<string | undefined> = new Set(['reload', 'back_forward'])
 
@@ -23,4 +24,14 @@ export function forgetScroll(url: PageUrl, navigationType: string | undefined): 
     const kept = Object.fromEntries(Object.entries(saved).filter(([key]) => key !== urlKey(url)))
     sessionStorage.setItem(SCROLL_POSITIONS_KEY, JSON.stringify(kept))
   } catch {}
+}
+
+export function canStoreScroll(): boolean {
+  try {
+    sessionStorage.setItem(STORAGE_PROBE_KEY, STORAGE_PROBE_KEY)
+    sessionStorage.removeItem(STORAGE_PROBE_KEY)
+    return true
+  } catch {
+    return false
+  }
 }

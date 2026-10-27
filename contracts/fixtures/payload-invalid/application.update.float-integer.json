@@ -1,0 +1,8 @@
+{
+  "type": "application.update",
+  "v": 1,
+  "id": "00000000-0000-4000-8000-000000000007",
+  "application_id": 2.0,
+  "status": "interview",
+  "note": "Second round on Friday"
+}
