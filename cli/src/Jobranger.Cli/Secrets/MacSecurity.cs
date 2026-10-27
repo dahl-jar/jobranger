@@ -8,6 +8,8 @@ internal static partial class MacSecurity {
     private const string securityPath = "/System/Library/Frameworks/Security.framework/Security";
     private const string coreFoundationPath = "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation";
     private const uint utf8Encoding = 0x08000100;
+    private const int success = 0;
+    private const uint unlockedStatus = 1;
 
     private static readonly nint security = NativeLibrary.Load(securityPath);
     private static readonly nint coreFoundation = NativeLibrary.Load(coreFoundationPath);
@@ -46,6 +48,17 @@ internal static partial class MacSecurity {
     [LibraryImport(securityPath, EntryPoint = "SecKeychainSetUserInteractionAllowed")]
     public static partial int SetUserInteractionAllowed([MarshalAs(UnmanagedType.U1)] bool allowed);
 
+    public static bool IsDefaultKeychainUnlocked() {
+        if (CopyDefaultKeychain(out nint keychain) != success) {
+            return false;
+        }
+        try {
+            return GetKeychainStatus(keychain, out uint status) == success && (status & unlockedStatus) != 0;
+        } finally {
+            Release(keychain);
+        }
+    }
+
     [LibraryImport(coreFoundationPath, EntryPoint = "CFDictionaryCreate")]
     public static partial nint CreateDictionary(
         nint allocator, nint[] keys, nint[] values, nint count, nint keyCallbacks, nint valueCallbacks);
@@ -63,6 +76,12 @@ internal static partial class MacSecurity {
 
     [LibraryImport(coreFoundationPath, EntryPoint = "CFDataGetLength")]
     private static partial nint DataLength(nint data);
+
+    [LibraryImport(securityPath, EntryPoint = "SecKeychainCopyDefault")]
+    private static partial int CopyDefaultKeychain(out nint keychain);
+
+    [LibraryImport(securityPath, EntryPoint = "SecKeychainGetStatus")]
+    private static partial int GetKeychainStatus(nint keychain, out uint status);
 
     [LibraryImport(coreFoundationPath, EntryPoint = "CFRelease")]
     private static partial void Release(nint value);

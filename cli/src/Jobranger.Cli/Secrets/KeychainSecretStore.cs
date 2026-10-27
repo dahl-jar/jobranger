@@ -53,6 +53,9 @@ internal sealed class KeychainSecretStore(string service, bool canPrompt) : ISec
 
     private nint Query(MacSecurity.CoreFoundationObjects objects, string name, params (nint Key, nint Value)[] extra) {
         Check(name, MacSecurity.SetUserInteractionAllowed(canPrompt));
+        if (!canPrompt && !MacSecurity.IsDefaultKeychainUnlocked()) {
+            throw new SecretStoreUnavailableException(name, approvalReason);
+        }
         nint[] keys = [MacSecurity.ClassKey, MacSecurity.ServiceKey, MacSecurity.AccountKey, .. extra.Select(pair => pair.Key)];
         nint[] values = [
             MacSecurity.GenericPassword,
