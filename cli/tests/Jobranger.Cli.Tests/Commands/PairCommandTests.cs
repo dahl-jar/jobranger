@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Runtime.Versioning;
 using System.Text;
 using Jobranger.Cli.Commands;
+using Jobranger.Cli.Features.Link;
 using Jobranger.Cli.Storage;
 using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Cli.Text;
@@ -82,6 +83,20 @@ public sealed class PairCommandTests : IDisposable {
         Assert.Equal((CliExitCodes.Failure, string.Format(line, DatabasePath())), (exit, console.Output.TrimEnd()));
     }
 
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task ShouldAllowKeychainPrompt_WhenInputIsTerminal(bool inputRedirected, bool expected) {
+        bool? promptAllowed = null;
+
+        await RunAsync(inputRedirected, (environment, paths, urls, logger, canPrompt, cancellationToken) => {
+            promptAllowed = canPrompt;
+            return Link.OpenAsync(environment, paths, urls, logger, canPrompt, cancellationToken);
+        });
+
+        Assert.Equal(expected, promptAllowed);
+    }
+
     [Fact]
     public void ShouldOfferPairCommand_WhenRootIsBuilt() {
         RootCommand root = new(CliServices.Create(TimeProvider.System, console.Console, console.ErrorConsole, environment));
@@ -89,9 +104,12 @@ public sealed class PairCommandTests : IDisposable {
         Assert.Contains(PairCommand.CommandName, root.Subcommands.Select(command => command.Name));
     }
 
-    private Task<int> RunAsync() {
+    private Task<int> RunAsync() => RunAsync(inputRedirected: true, Link.OpenAsync);
+
+    private Task<int> RunAsync(bool inputRedirected, PairCommand.LinkOpener openLink) {
         CliServices services = CliServices.Create(TimeProvider.System, console.Console, console.ErrorConsole, environment);
-        System.CommandLine.RootCommand root = [new PairCommand(services, environment, TimeProvider.System)];
+        System.CommandLine.RootCommand root =
+            [new PairCommand(services, environment, TimeProvider.System, inputRedirected, openLink)];
         return root.Parse([PairCommand.CommandName]).InvokeAsync(null, TestContext.Current.CancellationToken);
     }
 

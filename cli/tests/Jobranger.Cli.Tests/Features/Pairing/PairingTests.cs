@@ -503,6 +503,7 @@ public sealed class PairingTests : IAsyncDisposable {
             ColorSystem = ColorSystemSupport.Standard,
             Interactive = InteractionSupport.No,
             Out = new AnsiConsoleOutput(writer),
+            EnvironmentVariables = [],
         });
 
     private static Task<int> Finished(Task<int> run) => run.WaitAsync(TestWaits.Step, TestContext.Current.CancellationToken);
