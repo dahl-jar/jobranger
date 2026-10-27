@@ -1,0 +1,32 @@
+summary: 1 year, data and frontend developer
+professional_years: 1
+has_master: false
+education:
+  - id: education
+    name: IT bachelor's degree
+    facts: Bachelor in information technology, 2025. No master's degree.
+experience:
+  - id: work_frontend
+    name: Employer One frontend work
+    facts: Python, TypeScript, React, PySpark, AWS, Terraform listed for the role. Built React screens for the shift-planning tool used by mine supervisors.
+  - id: work_data
+    name: Employer One data engineering
+    facts: Built a PySpark batch job on AWS Glue that turns ore-sensor readings into daily production reports. Wrote the AWS infrastructure for it in Terraform.
+projects:
+  - id: java_project
+    name: Java project
+    facts: Java, Spring Boot, React, TypeScript, PostgreSQL. Reading-list web app with a Spring Boot REST API, a React front end and login with refresh tokens.
+  - id: cloud_project
+    name: Cloud project
+    facts: Docker, Terraform, Azure, GitHub Actions. Budget-tracking API in a container on Azure Container Apps, provisioned with Terraform; GitHub Actions runs the tests and deploys each merge.
+  - id: django_project
+    name: Django project
+    facts: University group project with Django, Python and PostgreSQL. Built the booking pages and the permission checks that limit which staff can edit a roster.
+  - id: android_project
+    name: Android project
+    facts: Android phone app in Kotlin with Jetpack Compose and Room that logs hiking routes offline and syncs them later. No iOS, Play Store publication or server-side Kotlin.
+  - id: cpp_project
+    name: C++ project
+    facts: Linux C++17 command-line tool, built with CMake and tested with GoogleTest, that converts map files between formats. No FPGA, RTOS, electronics design, Windows or GUI work.
+languages: [Norwegian, English]
+stack: [Python, TypeScript, React, Java, Spring Boot, PySpark, AWS, Terraform, Docker, Azure, Django, Kotlin, C++]

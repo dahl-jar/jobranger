@@ -19,12 +19,14 @@ LINK_KEYS = TESTS / "TestData/Link"
 PROVIDER_PROMPT = TESTS / "TestData/Providers/prompt.json"
 PROVIDER_REQUESTS = GOLDEN / "Requests"
 BUDGET_ESTIMATES = GOLDEN / "Budget/estimates.json"
+MATCHING_INPUTS = TESTS / "TestData/Matching"
 SOURCE = GOLDEN / "SOURCE"
 DRIVERS = (
     ("store_rows.py", ("--db", STORE_DB, "--out", STORE_ROWS)),
     ("link_keys.py", ("--out", LINK_KEYS)),
     ("provider_requests.py", ("--prompt", PROVIDER_PROMPT, "--out", PROVIDER_REQUESTS)),
     ("budget_estimates.py", ("--out", BUDGET_ESTIMATES)),
+    ("matching.py", ("--inputs", MATCHING_INPUTS, "--out", GOLDEN)),
 )
 
 log = logging.getLogger("export_goldens")

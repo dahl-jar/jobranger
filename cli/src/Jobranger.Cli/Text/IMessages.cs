@@ -59,6 +59,14 @@ internal interface IMessages {
 
     string ConfigNotServiceUrl { get; }
 
+    string ConfigNotEvidenceId { get; }
+
+    string ConfigNotMonth { get; }
+
+    string ConfigBelowZero { get; }
+
+    string ConfigUnreadable { get; }
+
     string ConfigNotChoice(string allowed);
 
     string ConfigAmountOutOfRange(decimal max);
@@ -66,6 +74,8 @@ internal interface IMessages {
     string ConfigRunTimesTooClose(int hours);
 
     string ConfigNotYaml(int line);
+
+    string ConfigTooLong(int limit);
 
     string UpdateAvailable(string latest, string current, string command);
 

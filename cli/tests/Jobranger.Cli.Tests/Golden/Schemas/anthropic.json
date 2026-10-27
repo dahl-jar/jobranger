@@ -1,0 +1,200 @@
+{
+  "$defs": {
+    "Check": {
+      "type": "object",
+      "title": "Check",
+      "properties": {
+        "text": {
+          "type": "string",
+          "title": "Text"
+        },
+        "state": {
+          "$ref": "#/$defs/CheckState"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "state"
+      ]
+    },
+    "CheckState": {
+      "type": "string",
+      "enum": [
+        "met",
+        "partly",
+        "missing"
+      ]
+    },
+    "Fit": {
+      "type": "string",
+      "enum": [
+        "strong",
+        "stretch",
+        "unsuitable",
+        "unknown"
+      ]
+    },
+    "Level": {
+      "type": "string",
+      "enum": [
+        "junior",
+        "mid",
+        "senior",
+        "lead",
+        "none"
+      ]
+    },
+    "MatchAssessment": {
+      "type": "object",
+      "title": "MatchAssessment",
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/Fit"
+        },
+        "reason": {
+          "type": "string",
+          "title": "Reason"
+        },
+        "evidence": {
+          "type": "array",
+          "title": "Evidence",
+          "items": {
+            "type": "string"
+          }
+        },
+        "gaps": {
+          "type": "array",
+          "title": "Gaps",
+          "items": {
+            "type": "string"
+          }
+        },
+        "blockers": {
+          "type": "array",
+          "title": "Blockers",
+          "items": {
+            "type": "string"
+          }
+        },
+        "is_low_code": {
+          "type": "boolean",
+          "title": "Is Low Code"
+        },
+        "required_experience_years": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Required Experience Years"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "reason",
+        "evidence",
+        "gaps",
+        "blockers",
+        "is_low_code",
+        "required_experience_years"
+      ]
+    },
+    "RoleType": {
+      "type": "string",
+      "enum": [
+        "backend",
+        "frontend",
+        "fullstack",
+        "mobile",
+        "data_engineering",
+        "devops_platform",
+        "ml_ai",
+        "embedded",
+        "game",
+        "general_software"
+      ]
+    }
+  },
+  "type": "object",
+  "title": "AdAssessment",
+  "properties": {
+    "is_programming_job": {
+      "type": "boolean",
+      "title": "Is Programming Job"
+    },
+    "label": {
+      "$ref": "#/$defs/Level"
+    },
+    "summary": {
+      "type": "string",
+      "title": "Summary"
+    },
+    "requires_master": {
+      "type": "boolean",
+      "title": "Requires Master"
+    },
+    "display_title": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Display Title"
+    },
+    "role_type": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RoleType"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "technologies": {
+      "type": "array",
+      "title": "Technologies",
+      "items": {
+        "type": "string"
+      }
+    },
+    "requirements": {
+      "type": "array",
+      "title": "Requirements",
+      "items": {
+        "type": "string"
+      }
+    },
+    "checks": {
+      "type": "array",
+      "title": "Checks",
+      "items": {
+        "$ref": "#/$defs/Check"
+      }
+    },
+    "match": {
+      "$ref": "#/$defs/MatchAssessment"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "is_programming_job",
+    "label",
+    "summary",
+    "requires_master",
+    "display_title",
+    "role_type",
+    "technologies",
+    "requirements",
+    "checks",
+    "match"
+  ]
+}

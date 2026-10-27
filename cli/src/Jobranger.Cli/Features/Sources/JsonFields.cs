@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Unicode;
+using Jobranger.Cli.Text;
 
 namespace Jobranger.Cli.Features.Sources;
 
@@ -7,16 +8,8 @@ internal static class JsonFields {
     public static JsonDocument Parse(byte[] body) =>
         Utf8.IsValid(body) ? JsonDocument.Parse(body) : throw new InvalidDataException("json body is not UTF-8");
 
-    public static string? Text(JsonElement parent, string name) {
-        if (Field(parent, name, JsonValueKind.String) is not JsonElement value) {
-            return null;
-        }
-        try {
-            return value.GetString();
-        } catch (InvalidOperationException) {
-            return null;
-        }
-    }
+    public static string? Text(JsonElement parent, string name) =>
+        Field(parent, name, JsonValueKind.String) is JsonElement value ? JsonText.String(value) : null;
 
     public static string? FilledText(JsonElement parent, string name) =>
         Text(parent, name) is { Length: > 0 } text ? text : null;

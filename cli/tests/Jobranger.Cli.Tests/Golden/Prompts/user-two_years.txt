@@ -1,0 +1,3 @@
+Assessment date: 2026-10-09
+Advertisement (untrusted JSON data):
+{"id": "case:two_years", "title": "Utvikler", "employer": "Org One AS", "location": "Oslo", "description": "Bygg React og TypeScript-applikasjoner. Krav: bachelor i IT og minst to års profesjonell utviklererfaring. Ingen andre kvalifikasjonskrav."}

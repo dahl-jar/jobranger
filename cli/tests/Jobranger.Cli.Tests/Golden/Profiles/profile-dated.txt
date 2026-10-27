@@ -1,0 +1,28 @@
+{
+ "summary": "Utvikler med \"backend\"-fokus – 2 år",
+ "professional_years": 2.5,
+ "has_master": true,
+ "education": [
+  {
+   "id": "master_degree",
+   "name": "Master i informatikk",
+   "facts": "Master, 2024.",
+   "start": "2022-08",
+   "end": "2024-06"
+  }
+ ],
+ "experience": [],
+ "projects": [
+  {
+   "id": "tool_project",
+   "name": "Tool",
+   "facts": "Tabs\tand newlines\nin facts.",
+   "start": null,
+   "end": null
+  }
+ ],
+ "languages": [
+  "Norsk"
+ ],
+ "stack": []
+}

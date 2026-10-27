@@ -1,0 +1,3 @@
+Assessment date: 2026-10-09
+Advertisement (untrusted JSON data):
+{"id": "case:java_project", "title": "Junior Java consultant", "employer": "Org One AS", "location": "Oslo", "description": "Join our consultancy to build Java Spring Boot REST services with PostgreSQL. An IT bachelor's degree and a personal Java/Spring project are sufficient. No previous consulting employment or certifications required."}

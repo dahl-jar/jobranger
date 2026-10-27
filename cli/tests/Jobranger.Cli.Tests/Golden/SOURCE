@@ -1,12 +1,30 @@
 cli-python commit cb67b6236db52bc278f44469d62a89009cd9c0ef
 exported by scripts/golden/export_goldens.py
 Golden/Budget/estimates.json
+Golden/Classify/classifications.json
+Golden/Profiles/profile-dated.txt
+Golden/Prompts/system-accents-narrow.txt
+Golden/Prompts/system-accents-wide.txt
+Golden/Prompts/system-empty-lead.txt
+Golden/Prompts/system-empty-narrow.txt
+Golden/Prompts/system-empty-none.txt
+Golden/Prompts/system-empty-wide.txt
+Golden/Prompts/system-plain-narrow.txt
+Golden/Prompts/system-plain-wide.txt
+Golden/Prompts/user-generic_utvikler.txt
+Golden/Prompts/user-java_project.txt
+Golden/Prompts/user-no-description.txt
+Golden/Prompts/user-two_years.txt
+Golden/Prompts/versions.json
 Golden/Requests/anthropic-schema.json
 Golden/Requests/anthropic.json
 Golden/Requests/ollama.json
 Golden/Requests/openai-schema.json
 Golden/Requests/openai.json
 Golden/Requests/openrouter.json
+Golden/Rules/rules.json
+Golden/Schemas/anthropic.json
+Golden/Schemas/openai.json
 Golden/Store/rows.json
 TestData/Db/python-v2.db
 TestData/Link/link.json

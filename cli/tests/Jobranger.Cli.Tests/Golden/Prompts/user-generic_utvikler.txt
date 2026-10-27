@@ -1,0 +1,3 @@
+Assessment date: 2026-10-09
+Advertisement (untrusted JSON data):
+{"id": "case:generic_utvikler", "title": "Utvikler", "employer": "Org One AS", "location": "Oslo", "description": "Utvikle React og TypeScript-applikasjoner. Bachelor innen IT og praktisk React-erfaring fra egne prosjekter er nok. Ingen krav til antall år i arbeid. Nyutdannede kan søke."}

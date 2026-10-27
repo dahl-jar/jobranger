@@ -65,9 +65,20 @@ internal sealed class NorwegianMessages : IMessages {
     public string ConfigNotServiceUrl =>
         "er ikke en http- eller https-adresse med vertsnavn og uten bruker, spørring eller fragment";
 
+    public string ConfigNotEvidenceId =>
+        "er ikke en id på 2 til 40 små bokstaver, sifre eller _ som starter med en bokstav";
+
+    public string ConfigNotMonth => "er ikke en måned på formen ÅÅÅÅ-MM";
+
+    public string ConfigBelowZero => "er under 0";
+
+    public string ConfigUnreadable => "kunne ikke leses";
+
     public string ConfigNotChoice(string allowed) => $"er ikke en av: {allowed}";
 
     public string ConfigNotYaml(int line) => $"er ikke gyldig YAML (linje {line})";
+
+    public string ConfigTooLong(int limit) => $"er lengre enn {limit} tegn";
 
     public string ConfigAmountOutOfRange(decimal max) =>
         string.Create(CultureInfo.InvariantCulture, $"er ikke mellom 0 og {max}");

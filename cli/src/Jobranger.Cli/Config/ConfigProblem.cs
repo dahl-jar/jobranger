@@ -23,4 +23,9 @@ internal enum ConfigProblem {
     NotYaml,
     NotUtf8,
     NotServiceUrl,
+    TooLong,
+    NotEvidenceId,
+    NotMonth,
+    BelowZero,
+    Unreadable,
 }

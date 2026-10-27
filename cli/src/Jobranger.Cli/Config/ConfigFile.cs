@@ -15,7 +15,7 @@ internal static class ConfigFile {
         new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
     public static AppConfig Load(string path, string home) {
-        YamlTree tree = ParseFile(path);
+        YamlTree tree = ReadTree(path);
         ConfigReader reader = new(home);
         AppConfig? config = tree.Errors.Count == 0 ? reader.Read(tree.Root, Path.GetFileName(path)) : null;
         List<ConfigError> errors = [.. tree.Errors, .. reader.Errors];
@@ -36,7 +36,7 @@ internal static class ConfigFile {
         }
         YamlTree? previous = null;
         if (File.Exists(path)) {
-            previous = ParseFile(path);
+            previous = ReadTree(path);
             if (previous.Errors.Count > 0) {
                 throw new ConfigInvalidException(path, previous.Errors);
             }
@@ -47,14 +47,14 @@ internal static class ConfigFile {
 
     public static Language? ReadLanguage(string path) {
         try {
-            return ConfigReader.ReadLanguage(ParseFile(path).Root);
+            return ConfigReader.ReadLanguage(ReadTree(path).Root);
         } catch (Exception error) when (error is ConfigMissingException or ConfigInvalidException
             or IOException or UnauthorizedAccessException) {
             return null;
         }
     }
 
-    private static YamlTree ParseFile(string path) => new YamlReader(ReadText(path), Path.GetFileName(path)).Read();
+    public static YamlTree ReadTree(string path) => new YamlReader(ReadText(path), Path.GetFileName(path)).Read();
 
     private static string ReadText(string path) {
         byte[] bytes = [];
@@ -62,6 +62,8 @@ internal static class ConfigFile {
             bytes = File.ReadAllBytes(path);
         } catch (Exception error) when (error is FileNotFoundException or DirectoryNotFoundException) {
             throw new ConfigMissingException(path, error);
+        } catch (Exception error) when (error is IOException or UnauthorizedAccessException) {
+            throw new ConfigInvalidException(path, [new ConfigError(Path.GetFileName(path), ConfigProblem.Unreadable)]);
         }
         try {
             string text = strictUtf8.GetString(bytes);

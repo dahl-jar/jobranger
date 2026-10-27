@@ -65,9 +65,20 @@ internal sealed class EnglishMessages : IMessages {
     public string ConfigNotServiceUrl =>
         "is not an http or https URL with a host and no user, query or fragment";
 
+    public string ConfigNotEvidenceId =>
+        "is not an id of 2 to 40 lowercase letters, digits or _ that starts with a letter";
+
+    public string ConfigNotMonth => "is not a month in YYYY-MM form";
+
+    public string ConfigBelowZero => "is below 0";
+
+    public string ConfigUnreadable => "could not be read";
+
     public string ConfigNotChoice(string allowed) => $"is not one of: {allowed}";
 
     public string ConfigNotYaml(int line) => $"is not valid YAML (line {line})";
+
+    public string ConfigTooLong(int limit) => $"is longer than {limit} characters";
 
     public string ConfigAmountOutOfRange(decimal max) =>
         string.Create(CultureInfo.InvariantCulture, $"is not between 0 and {max}");

@@ -46,6 +46,10 @@
     <EmbeddedResource Include="Text\entities.json" LogicalName="entities.json" />
     <EmbeddedResource Include="Text\python-text-15.0.0.json" LogicalName="python-text.json" />
     <EmbeddedResource Include="Features\Sessions\wordlist.txt" LogicalName="Jobranger.Cli.Features.Sessions.wordlist.txt" />
+    <EmbeddedResource Include="Features\Matching\prompt_header.txt" LogicalName="Jobranger.Cli.Features.Matching.prompt_header.txt" />
+    <EmbeddedResource Include="Features\Matching\base_rules.txt" LogicalName="Jobranger.Cli.Features.Matching.base_rules.txt" />
+    <EmbeddedResource Include="Features\Matching\assessment_anthropic.json" LogicalName="Jobranger.Cli.Features.Matching.assessment_anthropic.json" />
+    <EmbeddedResource Include="Features\Matching\assessment_openai.json" LogicalName="Jobranger.Cli.Features.Matching.assessment_openai.json" />
   </ItemGroup>
 
   <ItemGroup>

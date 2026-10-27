@@ -1,0 +1,207 @@
+{
+  "type": "json_schema",
+  "json_schema": {
+    "schema": {
+      "$defs": {
+        "Check": {
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "title": "Text",
+              "type": "string"
+            },
+            "state": {
+              "$ref": "#/$defs/CheckState"
+            }
+          },
+          "required": [
+            "text",
+            "state"
+          ],
+          "title": "Check",
+          "type": "object"
+        },
+        "CheckState": {
+          "enum": [
+            "met",
+            "partly",
+            "missing"
+          ],
+          "type": "string"
+        },
+        "Fit": {
+          "enum": [
+            "strong",
+            "stretch",
+            "unsuitable",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "Level": {
+          "enum": [
+            "junior",
+            "mid",
+            "senior",
+            "lead",
+            "none"
+          ],
+          "type": "string"
+        },
+        "MatchAssessment": {
+          "additionalProperties": false,
+          "properties": {
+            "status": {
+              "$ref": "#/$defs/Fit"
+            },
+            "reason": {
+              "title": "Reason",
+              "type": "string"
+            },
+            "evidence": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Evidence",
+              "type": "array"
+            },
+            "gaps": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Gaps",
+              "type": "array"
+            },
+            "blockers": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Blockers",
+              "type": "array"
+            },
+            "is_low_code": {
+              "title": "Is Low Code",
+              "type": "boolean"
+            },
+            "required_experience_years": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Required Experience Years"
+            }
+          },
+          "required": [
+            "status",
+            "reason",
+            "evidence",
+            "gaps",
+            "blockers",
+            "is_low_code",
+            "required_experience_years"
+          ],
+          "title": "MatchAssessment",
+          "type": "object"
+        },
+        "RoleType": {
+          "enum": [
+            "backend",
+            "frontend",
+            "fullstack",
+            "mobile",
+            "data_engineering",
+            "devops_platform",
+            "ml_ai",
+            "embedded",
+            "game",
+            "general_software"
+          ],
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "is_programming_job": {
+          "title": "Is Programming Job",
+          "type": "boolean"
+        },
+        "label": {
+          "$ref": "#/$defs/Level"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "requires_master": {
+          "title": "Requires Master",
+          "type": "boolean"
+        },
+        "display_title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Display Title"
+        },
+        "role_type": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RoleType"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "technologies": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Technologies",
+          "type": "array"
+        },
+        "requirements": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Requirements",
+          "type": "array"
+        },
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/Check"
+          },
+          "title": "Checks",
+          "type": "array"
+        },
+        "match": {
+          "$ref": "#/$defs/MatchAssessment"
+        }
+      },
+      "required": [
+        "is_programming_job",
+        "label",
+        "summary",
+        "requires_master",
+        "display_title",
+        "role_type",
+        "technologies",
+        "requirements",
+        "checks",
+        "match"
+      ],
+      "title": "AdAssessment",
+      "type": "object"
+    },
+    "name": "AdAssessment",
+    "strict": true
+  }
+}

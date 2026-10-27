@@ -33,6 +33,11 @@ internal sealed record ConfigError(string Location, ConfigProblem Problem, strin
         ConfigProblem.NotYaml => messages.ConfigNotYaml(int.Parse(Detail, CultureInfo.InvariantCulture)),
         ConfigProblem.NotUtf8 => messages.ConfigNotUtf8,
         ConfigProblem.NotServiceUrl => messages.ConfigNotServiceUrl,
+        ConfigProblem.TooLong => messages.ConfigTooLong(int.Parse(Detail, CultureInfo.InvariantCulture)),
+        ConfigProblem.NotEvidenceId => messages.ConfigNotEvidenceId,
+        ConfigProblem.NotMonth => messages.ConfigNotMonth,
+        ConfigProblem.BelowZero => messages.ConfigBelowZero,
+        ConfigProblem.Unreadable => messages.ConfigUnreadable,
         _ => throw new InvalidOperationException($"config problem has no text problem={Problem}"),
     };
 }

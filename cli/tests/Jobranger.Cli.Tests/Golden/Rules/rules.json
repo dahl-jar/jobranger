@@ -1,0 +1,410 @@
+{
+  "java_project": {
+    "narrow": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "strong"
+    },
+    "wide": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "strong"
+    }
+  },
+  "cloud_project": {
+    "narrow": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "strong"
+    },
+    "wide": {
+      "hidden": "role",
+      "reportable": false,
+      "display_fit": "strong"
+    }
+  },
+  "django_project": {
+    "narrow": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "strong"
+    },
+    "wide": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "strong"
+    }
+  },
+  "android_project": {
+    "narrow": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "strong"
+    },
+    "wide": {
+      "hidden": "role",
+      "reportable": false,
+      "display_fit": "strong"
+    }
+  },
+  "cpp_project": {
+    "narrow": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "strong"
+    },
+    "wide": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "strong"
+    }
+  },
+  "work_data": {
+    "narrow": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "strong"
+    },
+    "wide": {
+      "hidden": "role",
+      "reportable": false,
+      "display_fit": "strong"
+    }
+  },
+  "mandatory_master": {
+    "narrow": {
+      "hidden": "masters",
+      "reportable": false,
+      "display_fit": "on_request"
+    },
+    "wide": {
+      "hidden": "role",
+      "reportable": false,
+      "display_fit": "on_request"
+    }
+  },
+  "preferred_master": {
+    "narrow": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "partial"
+    },
+    "wide": {
+      "hidden": "senior",
+      "reportable": false,
+      "display_fit": "partial"
+    }
+  },
+  "degree_alternative": {
+    "narrow": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "strong"
+    },
+    "wide": {
+      "hidden": "senior",
+      "reportable": false,
+      "display_fit": "strong"
+    }
+  },
+  "experience_alternative": {
+    "narrow": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "strong"
+    },
+    "wide": {
+      "hidden": "role",
+      "reportable": false,
+      "display_fit": "strong"
+    }
+  },
+  "low_code": {
+    "narrow": {
+      "hidden": "other",
+      "reportable": false,
+      "display_fit": "on_request"
+    },
+    "wide": {
+      "hidden": "other",
+      "reportable": false,
+      "display_fit": "on_request"
+    }
+  },
+  "functional_consultant": {
+    "narrow": {
+      "hidden": "other",
+      "reportable": false,
+      "display_fit": "on_request"
+    },
+    "wide": {
+      "hidden": "other",
+      "reportable": false,
+      "display_fit": "on_request"
+    }
+  },
+  "professional_years": {
+    "narrow": {
+      "hidden": "senior",
+      "reportable": false,
+      "display_fit": "on_request"
+    },
+    "wide": {
+      "hidden": "years",
+      "reportable": false,
+      "display_fit": "on_request"
+    }
+  },
+  "android_years": {
+    "narrow": {
+      "hidden": "years",
+      "reportable": false,
+      "display_fit": "on_request"
+    },
+    "wide": {
+      "hidden": "role",
+      "reportable": false,
+      "display_fit": "on_request"
+    }
+  },
+  "embedded_specialist": {
+    "narrow": {
+      "hidden": "other",
+      "reportable": false,
+      "display_fit": "on_request"
+    },
+    "wide": {
+      "hidden": "role",
+      "reportable": false,
+      "display_fit": "on_request"
+    }
+  },
+  "unknown": {
+    "narrow": {
+      "hidden": "other",
+      "reportable": false,
+      "display_fit": "on_request"
+    },
+    "wide": {
+      "hidden": "other",
+      "reportable": false,
+      "display_fit": "on_request"
+    }
+  },
+  "injection": {
+    "narrow": {
+      "hidden": "masters",
+      "reportable": false,
+      "display_fit": "on_request"
+    },
+    "wide": {
+      "hidden": "other",
+      "reportable": false,
+      "display_fit": "on_request"
+    }
+  },
+  "language_unverified": {
+    "narrow": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "partial"
+    },
+    "wide": {
+      "hidden": "senior",
+      "reportable": false,
+      "display_fit": "partial"
+    }
+  },
+  "preferred_years": {
+    "narrow": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "partial"
+    },
+    "wide": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "partial"
+    }
+  },
+  "incidental_low_code": {
+    "narrow": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "strong"
+    },
+    "wide": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "strong"
+    }
+  },
+  "generic_utvikler": {
+    "narrow": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "strong"
+    },
+    "wide": {
+      "hidden": "role",
+      "reportable": false,
+      "display_fit": "strong"
+    }
+  },
+  "one_year": {
+    "narrow": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "strong"
+    },
+    "wide": {
+      "hidden": "role",
+      "reportable": false,
+      "display_fit": "strong"
+    }
+  },
+  "two_years": {
+    "narrow": {
+      "hidden": "years",
+      "reportable": false,
+      "display_fit": "on_request"
+    },
+    "wide": {
+      "hidden": "role",
+      "reportable": false,
+      "display_fit": "on_request"
+    }
+  },
+  "over_two_years": {
+    "narrow": {
+      "hidden": "years",
+      "reportable": false,
+      "display_fit": "on_request"
+    },
+    "wide": {
+      "hidden": "role",
+      "reportable": false,
+      "display_fit": "on_request"
+    }
+  },
+  "senior_generic_skills": {
+    "narrow": {
+      "hidden": "senior",
+      "reportable": false,
+      "display_fit": "on_request"
+    },
+    "wide": {
+      "hidden": "other",
+      "reportable": false,
+      "display_fit": "on_request"
+    }
+  },
+  "non_coding_support": {
+    "narrow": {
+      "hidden": "other",
+      "reportable": false,
+      "display_fit": "on_request"
+    },
+    "wide": {
+      "hidden": "other",
+      "reportable": false,
+      "display_fit": "on_request"
+    }
+  },
+  "unrelated_sales": {
+    "narrow": {
+      "hidden": "other",
+      "reportable": false,
+      "display_fit": "on_request"
+    },
+    "wide": {
+      "hidden": "other",
+      "reportable": false,
+      "display_fit": "on_request"
+    }
+  },
+  "graduate_alternative": {
+    "narrow": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "strong"
+    },
+    "wide": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "strong"
+    }
+  },
+  "graduate_2027": {
+    "narrow": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "strong"
+    },
+    "wide": {
+      "hidden": "role",
+      "reportable": false,
+      "display_fit": "strong"
+    }
+  },
+  "study_years": {
+    "narrow": {
+      "hidden": "other",
+      "reportable": false,
+      "display_fit": "on_request"
+    },
+    "wide": {
+      "hidden": "role",
+      "reportable": false,
+      "display_fit": "on_request"
+    }
+  },
+  "master_or_bachelor_years": {
+    "narrow": {
+      "hidden": "years",
+      "reportable": false,
+      "display_fit": "on_request"
+    },
+    "wide": {
+      "hidden": "role",
+      "reportable": false,
+      "display_fit": "on_request"
+    }
+  },
+  "significant_experience": {
+    "narrow": {
+      "hidden": "years",
+      "reportable": false,
+      "display_fit": "on_request"
+    },
+    "wide": {
+      "hidden": "senior",
+      "reportable": false,
+      "display_fit": "on_request"
+    }
+  },
+  "several_years_advantage": {
+    "narrow": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "partial"
+    },
+    "wide": {
+      "hidden": "role",
+      "reportable": false,
+      "display_fit": "partial"
+    }
+  },
+  "preferred_three_years": {
+    "narrow": {
+      "hidden": null,
+      "reportable": true,
+      "display_fit": "partial"
+    },
+    "wide": {
+      "hidden": "role",
+      "reportable": false,
+      "display_fit": "partial"
+    }
+  }
+}
