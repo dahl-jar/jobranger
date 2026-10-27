@@ -20,7 +20,6 @@ internal sealed class Budget(SqliteConnection connection) {
     private const long adTokensHigh = 2_000;
     private const long outputTokensHigh = 1_600;
     private const int charsPerToken = 2;
-    private const int promptCharsPerToken = 4;
     private const string reservedName = "reserved_usd";
     private const string callName = "call_usd";
     private const string perAdName = "per_ad_usd";
@@ -118,7 +117,7 @@ internal sealed class Budget(SqliteConnection connection) {
         Math.Max(ConstantAdCost(prices, batch), HistoryAdCost(today));
 
     public decimal EstimateCallCost(ModelPrices prices, long promptChars, long outputTokens, DateOnly today) {
-        TokenCounts tokens = new(promptChars / promptCharsPerToken, 0, 0, 0, outputTokens);
+        TokenCounts tokens = new(promptChars / charsPerToken, 0, 0, 0, outputTokens);
         return Math.Max(EstimateAdCost(prices, false, today), Cost(prices, tokens, batch: false));
     }
 

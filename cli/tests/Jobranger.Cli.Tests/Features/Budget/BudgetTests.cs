@@ -13,7 +13,7 @@ public sealed class BudgetTests : IDisposable {
     private const decimal oneMicroUsd = 0.000001m;
     private const int windowAds = 12;
     private const long oneMtok = 1_000_000;
-    private const long promptCharsPerMtok = 4_000_000;
+    private const long promptCharsPerMtok = 2_000_000;
 
     private static readonly DateOnly today = new(2026, 10, 15);
     private static readonly ModelPrices free = new(0m, 0m, 0m, 0m, 0m);

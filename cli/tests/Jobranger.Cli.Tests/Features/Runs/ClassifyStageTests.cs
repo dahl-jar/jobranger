@@ -26,9 +26,11 @@ public sealed class ClassifyStageTests : IDisposable {
     private const string labelsQuery = "SELECT label FROM ads ORDER BY id";
     private const string assessedQuery = "SELECT label || '|' || assessment_version FROM ads";
     private const string busyAd = "finn:2";
-    private const int longDescriptionChars = 600_000;
-    private const decimal longCallUsd = 0.16m;
-    private const decimal longLimitUsd = 0.30m;
+    private const string rejectedAd = "finn:5";
+    private const int longDescriptionChars = 200_000;
+    private const decimal shortCallUsd = 0.01m;
+    private const decimal longCallUsd = 0.12m;
+    private const decimal longLimitUsd = 0.26m;
     private const int refusedRuns = 4;
 
     private static readonly ModelPrices prices = new(1m, 5m, 0.1m, 1.25m, 2m);
@@ -350,12 +352,12 @@ public sealed class ClassifyStageTests : IDisposable {
             });
         }
         FakeModelClient client = new((prompt, _) => Task.FromResult(FakeModelClient.Reply(
-            JavaReply, cost: prompt.User.Length > longDescriptionChars ? longCallUsd : 0.01m)));
+            JavaReply, cost: prompt.User.Length > longDescriptionChars ? longCallUsd : shortCallUsd)));
 
         await stage.RunAsync(Input(client, limit: longLimitUsd), CancellationToken.None);
 
         decimal spent = (decimal)(double)db.Scalar("SELECT cost_usd FROM usage_days")!;
-        Assert.True(spent < longLimitUsd, $"spent {spent} USD of a {longLimitUsd} USD limit");
+        Assert.Equal((3, shortCallUsd + (2 * longCallUsd)), (client.Calls, spent));
     }
 
     [Theory]
@@ -409,6 +411,27 @@ public sealed class ClassifyStageTests : IDisposable {
         ClassifyOutcome outcome = await stage.RunAsync(Input(client), CancellationToken.None);
 
         Assert.Equal((new ClassifyOutcome(2, StopReason.ProviderDown), 3), (outcome, client.Calls));
+    }
+
+    [Fact]
+    public async Task ShouldUseAttempt_WhenProviderRejectsAdAfterStop() {
+        UpsertAds(5);
+        FakeLogger logger = new();
+        FakeModelClient client = new(async (prompt, _) => {
+            string adId = FakeModelClient.AdId(prompt);
+            if (adId == rejectedAd) {
+                await TestWaits.UntilAsync(() => logger.Collector.GetSnapshot()
+                    .Any(record => record.Id.Name == "classify.provider.failed"));
+                throw new ApiException(ApiErrorKind.BadRequest, "model call failed");
+            }
+            return adId == "finn:1"
+                ? FakeModelClient.Reply(JavaReply)
+                : throw new ApiException(ApiErrorKind.Server, "model call failed");
+        });
+
+        await StageWith(events, logger).RunAsync(Input(client), CancellationToken.None);
+
+        Assert.Equal(1L, db.Scalar("SELECT label_attempts FROM ads WHERE id = $0", rejectedAd));
     }
 
     [Fact]
@@ -551,7 +574,7 @@ public sealed class ClassifyStageTests : IDisposable {
 
         await stage.RunAsync(Input(client), CancellationToken.None);
 
-        Assert.NotEqual("finn:1", FakeModelClient.AdId(client.Prompts[0]));
+        Assert.Equal("finn:2", FakeModelClient.AdId(client.Prompts[0]));
     }
 
     [Fact]

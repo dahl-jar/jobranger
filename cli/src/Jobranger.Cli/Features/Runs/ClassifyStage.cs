@@ -124,7 +124,10 @@ internal sealed class ClassifyStage(
         try {
             reply = await call.ConfigureAwait(false);
         } catch (ApiException error) {
-            progress.Stopped ??= Fail(calls, representative, error, groups[representative.Id]);
+            if (error.Kind == ApiErrorKind.BadRequest) {
+                BumpAttempts(groups[representative.Id]);
+            }
+            progress.Stopped ??= Fail(calls, representative, error);
             return;
         } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
             progress.Stopped ??= StopReason.Cancelled;
@@ -140,16 +143,13 @@ internal sealed class ClassifyStage(
         events.Emit(new RunEvent(RunStage.Model, Checked: progress.Done, Total: progress.Total));
     }
 
-    private StopReason? Fail(ModelCalls calls, AdView representative, ApiException error, IReadOnlyList<Ad> group) {
+    private StopReason? Fail(ModelCalls calls, AdView representative, ApiException error) {
         string failure = WireNames.Of(error.Kind);
         if (IsRetryable(error.Kind) && calls.TryRequeue(representative, error)) {
             LogEvents.ClassifyCallRetried(logger, failure);
             return null;
         }
         LogEvents.ClassifyProviderFailed(logger, failure);
-        if (error.Kind == ApiErrorKind.BadRequest) {
-            BumpAttempts(group);
-        }
         return error.Kind == ApiErrorKind.Auth ? StopReason.Auth : StopReason.ProviderDown;
     }
 
