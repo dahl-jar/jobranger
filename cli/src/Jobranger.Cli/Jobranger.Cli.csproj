@@ -37,6 +37,8 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Secrets\key-folds-*.json" LogicalName="Jobranger.Cli.Secrets.key-folds.json" />
+    <EmbeddedResource Include="Text\entities.json" LogicalName="entities.json" />
+    <EmbeddedResource Include="Text\python-text-15.0.0.json" LogicalName="python-text.json" />
   </ItemGroup>
 
   <ItemGroup>
