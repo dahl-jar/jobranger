@@ -21,6 +21,7 @@ internal sealed partial class YamlReader(string text, string fileName) {
     private readonly List<(int Start, int End)> scalarSpans = [];
     private readonly List<(string Path, bool KeepsComments, int Start)> keys = [];
     private readonly Dictionary<string, string> inlineComments = [];
+    private readonly Dictionary<string, YamlScalar> scalars = new(StringComparer.Ordinal);
     private readonly List<ConfigError> errors = [];
     private int lastEnd;
     private ConfigError? alias;
@@ -58,6 +59,7 @@ internal sealed partial class YamlReader(string text, string fileName) {
                 parser.MoveNext();
                 lastEnd = At(scalar.End);
                 scalarSpans.Add((At(scalar.Start), lastEnd));
+                scalars.TryAdd(path, new YamlScalar(scalar.Value, scalar.Style, TagText(scalar.Tag)));
                 return scalar.Style == ScalarStyle.Plain && YamlNull.Literals.Contains(scalar.Value)
                     ? null
                     : JsonValue.Create(scalar.Value);
@@ -156,7 +158,7 @@ internal sealed partial class YamlReader(string text, string fileName) {
             comments[path] = new KeyComments(
                 leading.GetValueOrDefault(path) ?? [], inlineComments.GetValueOrDefault(path));
         }
-        return new YamlTree(root, comments, KeyOrder(), trailing, errors);
+        return new YamlTree(root, comments, KeyOrder(), trailing, errors, scalars);
     }
 
     private Dictionary<string, int> KeyOrder() {
@@ -206,7 +208,15 @@ internal sealed partial class YamlReader(string text, string fileName) {
     }
 
     private static YamlTree Failed(ConfigError error) =>
-        new(null, new Dictionary<string, KeyComments>(), new Dictionary<string, int>(), [], [error]);
+        new(
+            null,
+            new Dictionary<string, KeyComments>(),
+            new Dictionary<string, int>(),
+            [],
+            [error],
+            new Dictionary<string, YamlScalar>());
+
+    private static string? TagText(TagName tag) => tag.IsEmpty ? null : tag.Value;
 
     private ConfigError NotYaml(long line) =>
         new(fileName, ConfigProblem.NotYaml, line.ToString(CultureInfo.InvariantCulture));

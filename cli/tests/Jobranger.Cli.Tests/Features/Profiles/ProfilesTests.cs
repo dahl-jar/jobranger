@@ -24,8 +24,29 @@ public sealed class ProfilesTests : IDisposable {
         """;
 
     private const string contextPath = "/config/context.yaml";
+    private const string profileName = "profile.yaml";
+    private const string idSuffix = ".id";
+    private const string rejected = "rejected";
+    private const string jsonNull = "null";
+
+    private static readonly JsonArray profileForms = LaxGolden.Rows("profile.json");
+    private static readonly Dictionary<string, ConfigProblem> pythonProblems = new(StringComparer.Ordinal) {
+        ["string_type"] = ConfigProblem.NotText,
+        ["float_type"] = ConfigProblem.NotNumber,
+        ["float_parsing"] = ConfigProblem.NotNumber,
+        ["bool_type"] = ConfigProblem.NotBoolean,
+        ["bool_parsing"] = ConfigProblem.NotBoolean,
+        ["greater_than_equal"] = ConfigProblem.BelowZero,
+        ["missing"] = ConfigProblem.Required,
+        ["extra_forbidden"] = ConfigProblem.UnknownKey,
+        ["tuple_type"] = ConfigProblem.NotList,
+        ["model_type"] = ConfigProblem.NotSection,
+        ["string_too_long"] = ConfigProblem.TooLong,
+    };
 
     private readonly TempDir temp = new();
+
+    public static TheoryData<int> ProfileFormRows => LaxGolden.Indexes(profileForms);
 
     public void Dispose() => temp.Dispose();
 
@@ -175,6 +196,46 @@ public sealed class ProfilesTests : IDisposable {
         Assert.Equal(rejected, error is ConfigInvalidException { Errors: [{ Problem: ConfigProblem.TooLong }] });
     }
 
+    [Theory]
+    [MemberData(nameof(ProfileFormRows))]
+    public void ShouldMatchPython_WhenProfileFieldUsesYamlForm(int row) {
+        JsonNode golden = profileForms[row]!;
+        string id = golden["id"]!.GetValue<string>();
+        string field = golden["field"]!.GetValue<string>();
+        JsonObject expect = golden["expect"]!.AsObject();
+        string path = Write(golden["yaml"]!.GetValue<string>());
+
+        string outcome = Outcome(path, field, expect.ContainsKey("crash"));
+
+        Assert.Equal((id, Expected(id, field, expect)), (id, outcome));
+    }
+
+    [Theory]
+    [InlineData("summary: s\nprofessional_years: 1\nhas_master: !!bool 1\n", "has_master", nameof(ConfigProblem.NotBoolean))]
+    [InlineData("summary: s\nprofessional_years: !!int abc\n", "professional_years", nameof(ConfigProblem.NotNumber))]
+    [InlineData("summary: s\nprofessional_years: 2024-02-30\n", "professional_years", nameof(ConfigProblem.NotNumber))]
+    [InlineData("summary: s\nprofessional_years: !!int ' 5'\n", "professional_years", nameof(ConfigProblem.NotNumber))]
+    [InlineData("summary: !!binary aGk=\nprofessional_years: 1\n", "summary", nameof(ConfigProblem.NotText))]
+    public void ShouldRejectProfile_WhenValueDivergesFromPython(string yaml, string location, string problem) {
+        string path = Write(yaml);
+
+        ConfigInvalidException error = Assert.Throws<ConfigInvalidException>(() => ProfilesEntry.Load(path));
+
+        Assert.Equal(
+            [(location, Enum.Parse<ConfigProblem>(problem))],
+            error.Errors.Select(item => (item.Location, item.Problem)));
+    }
+
+    [Fact]
+    public void ShouldWriteNullYears_WhenYearsAreInfinite() {
+        Profile profile = ProfilesEntry.Load(
+            Write(valid.Replace("professional_years: 1", "professional_years: .inf", StringComparison.Ordinal)));
+
+        string text = ProfilesEntry.Text(profile);
+
+        Assert.Contains("\"professional_years\": null", text, StringComparison.Ordinal);
+    }
+
     private static string? MatchStatus(string evidenceId) {
         Profile profile = ProfilesEntry.Load(MatchingFixtures.TestData("profile_user.yaml"));
         UserContext context = ProfilesEntry.WithDoc(
@@ -193,6 +254,65 @@ public sealed class ProfilesTests : IDisposable {
             MatchingFixtures.Version);
         return result?.Match?.Status;
     }
+
+    private static string Expected(string id, string field, JsonObject expect) {
+        if (expect.ContainsKey("crash")) {
+            return rejected;
+        }
+        if (expect["errors"] is JsonArray errors) {
+            return Errors(errors.Select(item => PythonError(
+                id, item!["loc"]!.GetValue<string>(), item["type"]!.GetValue<string>())));
+        }
+        JsonNode? value = expect["value"];
+        return field switch {
+            "document" => string.Empty,
+            "professional_years" => LaxGolden.ReprBits(value!.GetValue<string>()).ToString()!,
+            _ => value?.ToJsonString() ?? jsonNull,
+        };
+    }
+
+    private static (string Location, ConfigProblem Problem) PythonError(string id, string location, string type) {
+        ConfigProblem problem = type switch {
+            "string_pattern_mismatch" when location.EndsWith(idSuffix, StringComparison.Ordinal) =>
+                ConfigProblem.NotEvidenceId,
+            "string_pattern_mismatch" => ConfigProblem.NotMonth,
+            _ when pythonProblems.TryGetValue(type, out ConfigProblem mapped) => mapped,
+            _ => throw new InvalidOperationException(id + ": no C# problem for Python error type " + type),
+        };
+        return (location.Length == 0 ? profileName : location, problem);
+    }
+
+    private static string Outcome(string path, string field, bool rejectedOnly) {
+        Profile profile;
+        try {
+            profile = ProfilesEntry.Load(path);
+        } catch (ConfigInvalidException error) {
+            return rejectedOnly ? rejected : Errors(error.Errors.Select(item => (item.Location, item.Problem)));
+        }
+        Evidence? evidence = profile.Projects.Count > 0 ? profile.Projects[0] : null;
+        return field switch {
+            "document" => string.Empty,
+            "professional_years" => LaxGolden.Bits(profile.ProfessionalYears).ToString()!,
+            "summary" => Json(profile.Summary),
+            "has_master" => JsonValue.Create(profile.HasMaster).ToJsonString(),
+            "languages" => Texts(profile.Languages),
+            "stack" => Texts(profile.Stack),
+            "evidence.id" => Json(evidence?.Id),
+            "evidence.name" => Json(evidence?.Name),
+            "evidence.facts" => Json(evidence?.Facts),
+            "evidence.start" => Json(evidence?.Start),
+            "evidence.end" => Json(evidence?.End),
+            _ => throw new InvalidOperationException("no profile field " + field),
+        };
+    }
+
+    private static string Json(string? text) => JsonValue.Create(text)?.ToJsonString() ?? jsonNull;
+
+    private static string Texts(IReadOnlyList<string> items) =>
+        new JsonArray([.. items.Select(item => (JsonNode?)JsonValue.Create(item))]).ToJsonString();
+
+    private static string Errors(IEnumerable<(string Location, ConfigProblem Problem)> errors) =>
+        string.Join("; ", errors.Select(error => error.Location + " " + error.Problem).Order(StringComparer.Ordinal));
 
     private string Write(string text) {
         string path = temp.File("profile.yaml");
