@@ -25,7 +25,7 @@ export const DEMO_HAVBRIS: DemoAd = {
   checks: [
     { text: 'Requires 1–3 years of experience', state: 'met' },
     { text: 'Bachelor in IT', state: 'met' },
-    { text: 'Azure preferred, not in your CV', state: 'partial' },
+    { text: 'Azure preferred, not in your CV', state: 'partly' },
   ],
 }
 

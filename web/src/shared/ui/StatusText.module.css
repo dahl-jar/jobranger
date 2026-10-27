@@ -1,0 +1,15 @@
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.saved {
+  color: var(--ok);
+}
+
+.error {
+  color: var(--miss);
+}

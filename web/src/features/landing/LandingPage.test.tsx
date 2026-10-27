@@ -70,9 +70,9 @@ describe('LandingPage', () => {
     const ad = await exampleAd('Data Engineer')
 
     expect(ad.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
-      'Requires 1–3 years of experience',
-      'Bachelor in IT',
-      'Azure preferred, not in your CV',
+      'Requires 1–3 years of experience met',
+      'Bachelor in IT met',
+      'Azure preferred, not in your CV partly',
     ])
   })
 

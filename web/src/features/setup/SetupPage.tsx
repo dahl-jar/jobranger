@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router'
 import styles from '@/features/setup/SetupPage.module.css'
 import { setupSteps, type SetupStep } from '@/features/setup/setupSteps'
 import { Terminal } from '@/features/setup/Terminal'
+import { Button } from '@/shared/ui/Button'
 import button from '@/shared/ui/button.module.css'
 import { Icon } from '@/shared/ui/Icon'
 import { usePageTitle } from '@/shared/usePageTitle'
@@ -79,20 +80,20 @@ export function SetupPage() {
         </div>
         <Terminal command={step.command} lines={step.lines} />
         <div className={styles.controls}>
-          <button type="button" className={`${button.quiet} ${button.compact}`} disabled={number === 1} onClick={() => goTo(number - 1)}>
+          <Button variant="quiet" className={button.compact} disabled={number === 1} onClick={() => goTo(number - 1)}>
             <Icon name="back" />
             Back
-          </button>
+          </Button>
           {nextStep === undefined ? (
             <Link to={PAIR_PATH} className={`${button.primary} ${button.compact} ${button.roomy}`}>
               Connect the website
               <Icon name="forward" />
             </Link>
           ) : (
-            <button type="button" className={`${button.primary} ${button.compact} ${button.roomy}`} onClick={() => goTo(number + 1)}>
+            <Button className={`${button.compact} ${button.roomy}`} onClick={() => goTo(number + 1)}>
               Next: {nextStep.title}
               <Icon name="forward" />
-            </button>
+            </Button>
           )}
         </div>
         {step.id === 'pair' && (

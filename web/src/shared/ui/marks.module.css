@@ -11,8 +11,17 @@
   color: var(--ok);
 }
 
-.partial {
+.partial,
+.partly {
   color: var(--part);
+}
+
+.missing {
+  color: var(--miss);
+}
+
+.on_request {
+  color: var(--muted);
 }
 
 .checks {
@@ -36,4 +45,9 @@
   display: inline-flex;
   flex-shrink: 0;
   padding-top: 2px;
+}
+
+.word {
+  font-size: 12px;
+  color: var(--muted);
 }
