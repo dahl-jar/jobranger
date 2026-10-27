@@ -1,3 +1,4 @@
+using Jobranger.Contracts.Channels;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Jobranger.Relay.Core.Tests;

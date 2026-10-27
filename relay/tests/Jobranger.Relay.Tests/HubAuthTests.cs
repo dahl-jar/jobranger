@@ -1,4 +1,5 @@
 using System.Net;
+using Jobranger.Contracts.Channels;
 using Jobranger.Relay.Core;
 using Jobranger.Relay.Hubs;
 using Jobranger.Relay.Security;

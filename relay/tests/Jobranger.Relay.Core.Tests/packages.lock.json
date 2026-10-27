@@ -184,11 +184,17 @@
           "xunit.v3.runner.common": "[4.0.1]"
         }
       },
+      "jobranger.contracts": {
+        "type": "Project",
+        "dependencies": {
+          "NSec.Cryptography": "[26.4.0, )"
+        }
+      },
       "jobranger.relay.core": {
         "type": "Project",
         "dependencies": {
+          "Jobranger.Contracts": "[1.0.0, )",
           "Microsoft.Extensions.Hosting.Abstractions": "[10.0.13, )",
-          "NSec.Cryptography": "[26.4.0, )",
           "System.Threading.RateLimiting": "[10.0.13, )"
         }
       },

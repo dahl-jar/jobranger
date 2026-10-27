@@ -52,7 +52,6 @@ FIXTURES = CONTRACTS / "fixtures"
 WEB_CONTRACT = ROOT / "web" / "src" / "features" / "relay" / "contract"
 CLI_CONTRACT = ROOT / "cli-python" / "src" / "jobranger" / "contract"
 WORKFLOWS = ROOT / ".github" / "workflows"
-RELAY_LIMITS = ROOT / "relay" / "src" / "Jobranger.Relay.Core" / "ContractLimits.cs"
 SESSION_SPEC = CONTRACTS / "session" / "v1.md"
 IGNORABLES = CONTRACTS / "unicode" / "default-ignorable-15.0.0.json"
 BMP_MAX = 0xFFFF
@@ -122,8 +121,6 @@ USERINFO_MESSAGE = "invalid url: url userinfo is not printable ASCII without bac
 URL_PREFIX = "https://jobs.example.test/"
 MAX_LENGTH_URL = URL_PREFIX + "a" * (limits.URL_MAX_CHARS - len(URL_PREFIX))
 PATTERN_LENGTH = re.compile(r"\{[0-9]+,([0-9]+)\}\$$")
-RELAY_LIMIT = re.compile(r"public const (?:int|long) ([A-Za-z0-9]+) = ([0-9_]+);")
-PASCAL_WORD = re.compile(r"(?<!^)(?=[A-Z])")
 SPEC_CONSTANT = re.compile(r"`([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)`")
 SPEC_VALUE = re.compile(r"`([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)` \(([0-9,]+)\)")
 WEB_LIMIT = re.compile(r"^export const ([A-Z][A-Z0-9_]*) = ([0-9_]+)$", re.MULTILINE)
@@ -945,18 +942,6 @@ def test_should_match_web_limits_with_cli_limits() -> None:
     assert web == cli
 
 
-def test_should_match_relay_limits_with_cli_limits() -> None:
-    text = RELAY_LIMITS.read_text(encoding="utf-8")
-
-    relay = {
-        PASCAL_WORD.sub("_", name).upper(): int(value)
-        for name, value in RELAY_LIMIT.findall(text)
-    }
-
-    assert relay
-    assert relay == {name: getattr(limits, name) for name in relay}
-
-
 def test_should_define_every_limit_named_in_session_spec() -> None:
     named = set(SPEC_CONSTANT.findall(SESSION_SPEC.read_text(encoding="utf-8")))
 
@@ -1246,8 +1231,7 @@ def test_should_not_mark_hand_written_code_as_generated(path: Path) -> None:
         ("web.yml", "contracts/**"),
         ("contracts.yml", "web/scripts/**"),
         ("contracts.yml", "scripts/codegen/**"),
-        ("contracts.yml", "relay/src/Jobranger.Relay.Core/ContractLimits.cs"),
-        ("cli-python.yml", "relay/src/Jobranger.Relay.Core/ContractLimits.cs"),
+        ("contracts.yml", "contracts/**"),
         ("relay.yml", "contracts/**"),
         ("contracts.yml", "cli-python/pyproject.toml"),
         ("contracts.yml", "cli-python/uv.lock"),
@@ -1266,3 +1250,22 @@ def test_should_run_workflow_on_contract_change(workflow: str, path: str) -> Non
     paths = [triggers[event]["paths"] for event in ("push", "pull_request")]
 
     assert all(path in event_paths for event_paths in paths)
+
+
+@pytest.mark.parametrize("workflow", ["cli-python.yml", "web.yml"])
+@pytest.mark.parametrize(
+    "path",
+    ["contracts/src/**", "contracts/tests/**", "contracts/stryker-config.json"],
+)
+def test_should_skip_workflow_on_csharp_contract_change(
+    workflow: str, path: str
+) -> None:
+    triggers = YAML(typ="safe").load((WORKFLOWS / workflow).read_text("utf-8"))["on"]
+
+    paths = [triggers[event]["paths"] for event in ("push", "pull_request")]
+
+    assert all(
+        f"!{path}" in event_paths
+        and event_paths.index(f"!{path}") > event_paths.index("contracts/**")
+        for event_paths in paths
+    )

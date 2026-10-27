@@ -1,5 +1,6 @@
 using System.Net;
 using System.Threading.RateLimiting;
+using Jobranger.Contracts.Channels;
 using Jobranger.Relay.Core;
 
 namespace Jobranger.Relay.Security;

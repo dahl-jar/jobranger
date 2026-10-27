@@ -1,3 +1,6 @@
+using Jobranger.Contracts.Channels;
+using Jobranger.Contracts.Fields;
+using Jobranger.Contracts.Proofs;
 using Jobranger.Relay.Core;
 
 namespace Jobranger.Relay.Pairing;

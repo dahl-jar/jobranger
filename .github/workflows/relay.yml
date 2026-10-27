@@ -43,5 +43,6 @@ jobs:
       - run: dotnet restore Jobranger.slnx --locked-mode
       - run: dotnet format Jobranger.slnx --verify-no-changes --no-restore
       - run: dotnet build Jobranger.slnx -c Release --no-restore -warnaserror
+      - run: dotnet test --project contracts/tests/Jobranger.Contracts.Tests -c Release --no-build
       - run: dotnet test --project relay/tests/Jobranger.Relay.Core.Tests -c Release --no-build
       - run: dotnet test --project relay/tests/Jobranger.Relay.Tests -c Release --no-build

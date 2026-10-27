@@ -1,7 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
+using Jobranger.Contracts.Fields;
+using Jobranger.Contracts.Limits;
 
-namespace Jobranger.Relay.Core;
+namespace Jobranger.Contracts.Envelopes;
 
 public static class EnvelopeRules {
     private const int envelopeVersion = 1;
@@ -22,7 +24,7 @@ public static class EnvelopeRules {
             if (!HasSafeTokens(utf8)) {
                 return false;
             }
-            parsed = JsonSerializer.Deserialize(utf8, EnvelopeJsonContext.Default.Envelope);
+            parsed = JsonSerializer.Deserialize(utf8, ContractsJsonContext.Default.Envelope);
         } catch (JsonException) {
             return false;
         }

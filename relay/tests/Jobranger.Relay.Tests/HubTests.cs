@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using Jobranger.Contracts.Channels;
 using Jobranger.Relay.Core;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;

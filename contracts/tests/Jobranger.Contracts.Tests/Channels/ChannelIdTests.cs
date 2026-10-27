@@ -1,6 +1,8 @@
 using System.Buffers.Text;
+using Jobranger.Contracts.Channels;
+using Jobranger.Contracts.Tests.Proofs;
 
-namespace Jobranger.Relay.Core.Tests;
+namespace Jobranger.Contracts.Tests.Channels;
 
 public sealed class ChannelIdTests {
     [Fact]

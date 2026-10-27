@@ -48,6 +48,7 @@ dotnet build Jobranger.slnx -c Release --no-restore -warnaserror
 dotnet test --solution Jobranger.slnx -c Release --no-build
 dotnet tool restore
 (cd relay && dotnet stryker)
+(cd contracts && dotnet stryker)
 ```
 
 Each .NET project has a committed `packages.lock.json`. After a package change in `Directory.Packages.props`, run `dotnet restore Jobranger.slnx --force-evaluate` and commit the updated lock files with it.
@@ -122,20 +123,20 @@ The web tests cover the validators, from source and from the built bundle:
 pnpm --dir web exec vitest run src/features/relay/contract tests
 ```
 
-The relay tests cover the envelope rules:
+The C# contracts library tests cover the envelope rules, proofs and limits:
 
 ```bash
-dotnet test --project relay/tests/Jobranger.Relay.Core.Tests -c Release --filter-class "*EnvelopeContractTests"
+dotnet test --project contracts/tests/Jobranger.Contracts.Tests -c Release
 ```
 
-Every schema guard needs one invalid fixture in `contracts/fixtures/payload-invalid` or `contracts/fixtures/envelope-invalid`. The fixture changes one leaf of its golden, so the guard is the only reason it fails. Name it `<type>.<rule>.json`. A new fixture also raises the counts in `web/src/test/fixtureCounts.ts`, and an envelope fixture raises the count in `ShouldFindEveryInvalidFixture` in the relay tests.
+Every schema guard needs one invalid fixture in `contracts/fixtures/payload-invalid` or `contracts/fixtures/envelope-invalid`. The fixture changes one leaf of its golden, so the guard is the only reason it fails. Name it `<type>.<rule>.json`. A new fixture also raises the counts in `web/src/test/fixtureCounts.ts`, and an envelope fixture raises the count in `ShouldFindEveryInvalidFixture` in the contracts tests.
 
 Mutation runs scoped to the contract code:
 
 ```bash
 (cd cli-python && uv run python scripts/mutate.py "jobranger.contract*")
 (cd web && pnpm mutate --mutate "src/features/relay/contract/*.ts,!src/features/relay/contract/*.test.ts,!src/features/relay/contract/*.gen.*")
-(cd relay && dotnet stryker --mutate "**/EnvelopeRules.cs")
+(cd contracts && dotnet stryker --mutate "**/EnvelopeRules.cs")
 ```
 
 ## Mutation runs

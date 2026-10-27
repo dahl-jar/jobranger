@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using Jobranger.Contracts.Channels;
 using Jobranger.Relay.Core;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;

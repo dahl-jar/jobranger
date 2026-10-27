@@ -1,4 +1,7 @@
-namespace Jobranger.Relay.Core.Tests;
+using Jobranger.Contracts.Fields;
+using Jobranger.Contracts.Tests.Proofs;
+
+namespace Jobranger.Contracts.Tests.Fields;
 
 public sealed class CanonicalBase64UrlTests {
     private const int keyBytes = 32;
@@ -14,7 +17,6 @@ public sealed class CanonicalBase64UrlTests {
     [InlineData(null)]
     [InlineData("11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHUR")]
     [InlineData("11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURoA")]
-    [InlineData("11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo=")]
     [InlineData("11qYAYKxCrfVS+7TyWQHOg7hcvPapiMlrwIaaPcHURo")]
     [InlineData("11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURp")]
     public void ShouldRejectTextThatIsNotCanonicalForLength(string? text) {

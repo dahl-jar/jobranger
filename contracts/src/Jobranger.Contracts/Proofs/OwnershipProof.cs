@@ -1,7 +1,7 @@
 using System.Text;
 using NSec.Cryptography;
 
-namespace Jobranger.Relay.Core;
+namespace Jobranger.Contracts.Proofs;
 
 public static class OwnershipProof {
     public const string PairStartPurpose = "pair.start";

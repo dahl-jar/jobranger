@@ -1,6 +1,7 @@
 using System.Buffers.Text;
 using System.Text;
 using System.Text.Json.Nodes;
+using Jobranger.Contracts.Channels;
 using Jobranger.Relay.Core;
 using NSec.Cryptography;
 

@@ -1,6 +1,8 @@
 using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text.Json;
+using Jobranger.Contracts.Channels;
+using Jobranger.Contracts.Fields;
 
 namespace Jobranger.Relay.Core;
 

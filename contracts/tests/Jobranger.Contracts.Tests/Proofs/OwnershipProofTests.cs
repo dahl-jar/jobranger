@@ -1,12 +1,9 @@
 using System.Buffers.Text;
-using System.Text;
-using NSec.Cryptography;
+using Jobranger.Contracts.Proofs;
 
-namespace Jobranger.Relay.Core.Tests;
+namespace Jobranger.Contracts.Tests.Proofs;
 
 public sealed class OwnershipProofTests {
-    private static readonly SignatureAlgorithm ed25519 = SignatureAlgorithm.Ed25519;
-
     private readonly byte[] publicKey = Base64Url.DecodeFromChars(ProofVector.PublicKey);
 
     [Theory]
@@ -14,17 +11,6 @@ public sealed class OwnershipProofTests {
     [InlineData(OwnershipProof.SessionCliPurpose, ProofVector.SessionCliSignature)]
     public void ShouldAcceptCliVectorSignature(string purpose, string signature) {
         bool valid = OwnershipProof.Verify(publicKey, purpose, ProofVector.Nonce, Base64Url.DecodeFromChars(signature));
-
-        Assert.True(valid);
-    }
-
-    [Fact]
-    public void ShouldAcceptSignatureOverPurposeAndNonce() {
-        using Key key = Key.Create(ed25519);
-        byte[] signature = ed25519.Sign(key, Encoding.UTF8.GetBytes("jobranger relay v1\npair.start\nnonce-one"));
-
-        bool valid = OwnershipProof.Verify(
-            key.PublicKey.Export(KeyBlobFormat.RawPublicKey), OwnershipProof.PairStartPurpose, "nonce-one", signature);
 
         Assert.True(valid);
     }

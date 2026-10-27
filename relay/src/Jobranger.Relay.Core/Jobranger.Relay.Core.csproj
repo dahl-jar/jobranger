@@ -10,8 +10,11 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
-    <PackageReference Include="NSec.Cryptography" />
     <PackageReference Include="System.Threading.RateLimiting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\contracts\src\Jobranger.Contracts\Jobranger.Contracts.csproj" />
   </ItemGroup>
 
 </Project>

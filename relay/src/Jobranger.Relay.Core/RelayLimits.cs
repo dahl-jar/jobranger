@@ -1,3 +1,5 @@
+using Jobranger.Contracts.Limits;
+
 namespace Jobranger.Relay.Core;
 
 public static class RelayLimits {
@@ -32,7 +34,7 @@ public static class RelayLimits {
     public const int ChannelBytesBurst = 524_288;
     public const int MessagesPerSecond = 20;
     public const int MessagesBurst = 40;
-    public const int MaxFrameBytes = 65_536;
+    public const int MaxFrameBytes = ContractLimits.FrameMaxBytes;
     public const int HubSocketsPerClient = 10;
     public const int KestrelInputBufferBytes = 65_536;
     public const int KestrelOutputBufferBytes = 16_384;

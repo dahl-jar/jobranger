@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Threading.RateLimiting;
+using Jobranger.Contracts.Channels;
 using Jobranger.Relay.Core;
 using Jobranger.Relay.Pairing;
 using Jobranger.Relay.Telemetry;

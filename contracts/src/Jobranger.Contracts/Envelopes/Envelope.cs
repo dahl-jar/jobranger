@@ -1,3 +1,3 @@
-namespace Jobranger.Relay.Core;
+namespace Jobranger.Contracts.Envelopes;
 
 public sealed record Envelope(int V, string Channel, string Sid, long Seq, string Kind, string Ciphertext);

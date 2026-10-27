@@ -1,3 +1,5 @@
+using Jobranger.Contracts.Channels;
+
 namespace Jobranger.Relay.Core.Tests;
 
 internal static class Channels {

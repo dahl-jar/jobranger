@@ -1,6 +1,7 @@
 using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text.Json.Nodes;
+using Jobranger.Contracts.Channels;
 using Jobranger.Relay.Core;
 
 namespace Jobranger.Relay.Tests;

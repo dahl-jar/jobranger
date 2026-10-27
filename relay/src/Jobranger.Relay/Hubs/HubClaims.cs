@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Jobranger.Contracts.Channels;
 using Jobranger.Relay.Core;
 using Microsoft.AspNetCore.SignalR;
 

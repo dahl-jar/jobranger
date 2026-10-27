@@ -1,3 +1,5 @@
+using Jobranger.Contracts.Channels;
+using Jobranger.Contracts.Proofs;
 using Jobranger.Relay.Core;
 using Jobranger.Relay.Security;
 using Jobranger.Relay.Telemetry;

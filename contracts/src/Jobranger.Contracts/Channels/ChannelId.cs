@@ -1,7 +1,7 @@
 using System.Buffers.Text;
 using System.Security.Cryptography;
 
-namespace Jobranger.Relay.Core;
+namespace Jobranger.Contracts.Channels;
 
 public readonly record struct ChannelId(string Value) {
     private static ReadOnlySpan<byte> Prefix => "jobranger-chan"u8;

@@ -1,7 +1,7 @@
 using System.Buffers;
 using System.Buffers.Text;
 
-namespace Jobranger.Relay.Core;
+namespace Jobranger.Contracts.Fields;
 
 public static class CanonicalBase64Url {
     private static readonly SearchValues<char> alphabet =

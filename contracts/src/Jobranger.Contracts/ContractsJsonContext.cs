@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
+using Jobranger.Contracts.Envelopes;
 
-namespace Jobranger.Relay.Core;
+namespace Jobranger.Contracts;
 
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.SnakeCaseLower,
@@ -8,4 +9,4 @@ namespace Jobranger.Relay.Core;
     RespectNullableAnnotations = true,
     RespectRequiredConstructorParameters = true)]
 [JsonSerializable(typeof(Envelope))]
-public sealed partial class EnvelopeJsonContext : JsonSerializerContext;
+public sealed partial class ContractsJsonContext : JsonSerializerContext;

@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Jobranger.Contracts.Channels;
 using Jobranger.Relay.Core;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;

@@ -1,12 +1,13 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Xunit;
+using Jobranger.Contracts.Envelopes;
+using Jobranger.Contracts.Limits;
 
-namespace Jobranger.Relay.Core.Tests;
+namespace Jobranger.Contracts.Tests.Envelopes;
 
 public sealed class EnvelopeContractTests {
-    private static readonly string contracts = Path.Combine(AppContext.BaseDirectory, "contracts");
+    private static readonly string contracts = Path.Combine(AppContext.BaseDirectory, "TestData", "Contracts");
     private static readonly string goldenFolder = Path.Combine(contracts, "fixtures", "envelope");
     private static readonly string invalidFolder = Path.Combine(contracts, "fixtures", "envelope-invalid");
     private const string missingPropertyPattern = "*-without-*.json";
@@ -25,9 +26,9 @@ public sealed class EnvelopeContractTests {
     [MemberData(nameof(GoldenFixtures))]
     public void ShouldRoundTripEnvelopeFixture(string fileName) {
         string json = File.ReadAllText(Path.Combine(goldenFolder, fileName));
-        Envelope? envelope = JsonSerializer.Deserialize(json, EnvelopeJsonContext.Default.Envelope);
+        Envelope? envelope = JsonSerializer.Deserialize(json, ContractsJsonContext.Default.Envelope);
 
-        string serialized = JsonSerializer.Serialize(envelope!, EnvelopeJsonContext.Default.Envelope);
+        string serialized = JsonSerializer.Serialize(envelope!, ContractsJsonContext.Default.Envelope);
 
         Assert.True(JsonNode.DeepEquals(JsonNode.Parse(json), JsonNode.Parse(serialized)), serialized);
     }
@@ -41,7 +42,7 @@ public sealed class EnvelopeContractTests {
             .Distinct()
             .Order();
 
-        IEnumerable<string> recordNames = EnvelopeJsonContext.Default.Envelope.Properties
+        IEnumerable<string> recordNames = ContractsJsonContext.Default.Envelope.Properties
             .Select(property => property.Name)
             .Order();
 
@@ -53,7 +54,7 @@ public sealed class EnvelopeContractTests {
     public void ShouldRejectEnvelopeWithoutRequiredProperty(string fileName) {
         string json = File.ReadAllText(Path.Combine(invalidFolder, fileName));
 
-        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize(json, EnvelopeJsonContext.Default.Envelope));
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize(json, ContractsJsonContext.Default.Envelope));
     }
 
     [Theory]

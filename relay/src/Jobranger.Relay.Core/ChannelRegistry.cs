@@ -1,3 +1,5 @@
+using Jobranger.Contracts.Channels;
+
 namespace Jobranger.Relay.Core;
 
 public sealed class ChannelRegistry(TimeProvider time) : IDisposable {

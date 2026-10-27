@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading.RateLimiting;
+using Jobranger.Contracts.Envelopes;
 using Jobranger.Relay.Core;
 using Jobranger.Relay.Security;
 using Jobranger.Relay.Telemetry;

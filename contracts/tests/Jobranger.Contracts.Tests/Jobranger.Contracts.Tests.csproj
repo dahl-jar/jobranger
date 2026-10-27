@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3.mtp-v2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Jobranger.Contracts\Jobranger.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\envelope.schema.json" Link="TestData\Contracts\envelope.schema.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\payload.schema.json" Link="TestData\Contracts\payload.schema.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\fixtures\envelope\*.json" LinkBase="TestData\Contracts\fixtures\envelope" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\fixtures\envelope-invalid\*.json" LinkBase="TestData\Contracts\fixtures\envelope-invalid" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\web\src\features\relay\contract\limits.ts" Link="TestData\Web\limits.ts" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -1,4 +1,4 @@
-namespace Jobranger.Relay.Core.Tests;
+namespace Jobranger.Contracts.Tests.Proofs;
 
 internal static class ProofVector {
     public const string PublicKey = "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo";

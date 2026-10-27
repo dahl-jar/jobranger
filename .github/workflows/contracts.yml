@@ -4,15 +4,12 @@ on:
   push:
     branches: [main]
     paths:
-      - relay/src/Jobranger.Relay.Core/ContractLimits.cs
       - web/scripts/**
       - scripts/codegen/**
       - contracts/**
       - cli-python/src/jobranger/contract/**
       - cli-python/tests/contract/**
       - web/src/features/relay/contract/**
-      - relay/src/Jobranger.Relay.Core/Envelope*.cs
-      - relay/tests/Jobranger.Relay.Core.Tests/EnvelopeContractTests.cs
       - Jobranger.slnx
       - Directory.*.props
       - global.json
@@ -25,15 +22,12 @@ on:
       - .gitattributes
   pull_request:
     paths:
-      - relay/src/Jobranger.Relay.Core/ContractLimits.cs
       - web/scripts/**
       - scripts/codegen/**
       - contracts/**
       - cli-python/src/jobranger/contract/**
       - cli-python/tests/contract/**
       - web/src/features/relay/contract/**
-      - relay/src/Jobranger.Relay.Core/Envelope*.cs
-      - relay/tests/Jobranger.Relay.Core.Tests/EnvelopeContractTests.cs
       - Jobranger.slnx
       - Directory.*.props
       - global.json
@@ -86,4 +80,4 @@ jobs:
       - run: pnpm --dir web exec tsc -b
       - run: pnpm --dir web exec vitest run src/features/relay/contract tests --passWithNoTests=false
       - run: dotnet restore Jobranger.slnx --locked-mode
-      - run: dotnet test --project relay/tests/Jobranger.Relay.Core.Tests -c Release --no-restore --filter-class "*EnvelopeContractTests" --minimum-expected-tests 1
+      - run: dotnet test --project contracts/tests/Jobranger.Contracts.Tests -c Release --no-restore --minimum-expected-tests 96

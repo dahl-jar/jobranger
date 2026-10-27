@@ -1,5 +1,6 @@
 using System.Buffers.Text;
 using System.Security.Cryptography;
+using Jobranger.Contracts.Channels;
 
 namespace Jobranger.Relay.Core;
 

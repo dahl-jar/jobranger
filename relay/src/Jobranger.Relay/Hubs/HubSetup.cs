@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
+using Jobranger.Contracts;
+using Jobranger.Contracts.Channels;
 using Jobranger.Relay.Core;
 using Jobranger.Relay.Security;
 using Microsoft.AspNetCore.Authentication;
@@ -53,7 +55,7 @@ internal static class HubSetup {
             hub.AddFilter<HubErrorFilter>();
         }).AddJsonProtocol(json => {
             json.PayloadSerializerOptions.TypeInfoResolverChain.Insert(0, RelayJsonContext.Default);
-            json.PayloadSerializerOptions.TypeInfoResolverChain.Insert(0, EnvelopeJsonContext.Default);
+            json.PayloadSerializerOptions.TypeInfoResolverChain.Insert(0, ContractsJsonContext.Default);
         });
         return builder;
     }
