@@ -67,6 +67,12 @@ internal interface IMessages {
 
     string ConfigUnreadable { get; }
 
+    string ConfigNotDocId { get; }
+
+    string ConfigReservedId { get; }
+
+    string ConfigNotDate { get; }
+
     string ConfigNotChoice(string allowed);
 
     string ConfigAmountOutOfRange(decimal max);
@@ -76,6 +82,8 @@ internal interface IMessages {
     string ConfigNotYaml(int line);
 
     string ConfigTooLong(int limit);
+
+    string ConfigTooMany(int limit);
 
     string UpdateAvailable(string latest, string current, string command);
 

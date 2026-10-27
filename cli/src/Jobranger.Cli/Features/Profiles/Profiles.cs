@@ -1,7 +1,9 @@
+using System.Runtime.Versioning;
 using System.Text;
 using Jobranger.Cli.Config;
 using Jobranger.Cli.Config.Yaml;
 using Jobranger.Cli.Text;
+using Microsoft.Extensions.Logging;
 
 namespace Jobranger.Cli.Features.Profiles;
 
@@ -42,6 +44,46 @@ internal static class Profiles {
     public static IReadOnlySet<string> EducationIds(Profile profile) =>
         new HashSet<string>(profile.Education.Select(item => item.Id), StringComparer.Ordinal);
 
+    public static IReadOnlySet<string> CandidateEvidence(Profile profile, UserContext context, string contextPath) {
+        IReadOnlySet<string> profileIds = EvidenceIds(profile);
+        IReadOnlySet<string> contextIds = ContextEdits.Ids(context);
+        List<ConfigError> clashes = [
+            .. contextIds.Where(profileIds.Contains).Order(StringComparer.Ordinal)
+                .Select(id => new ConfigError(id, ConfigProblem.DuplicateKey)),
+        ];
+        if (clashes.Count > 0) {
+            throw new ConfigInvalidException(contextPath, clashes);
+        }
+        return new HashSet<string>(profileIds.Concat(contextIds), StringComparer.Ordinal);
+    }
+
+    public static UserContext LoadContext(string path) => ContextFile.Load(path);
+
+    [UnsupportedOSPlatform("windows")]
+    public static void SaveContext(string path, UserContext context, ILogger logger) =>
+        ContextFile.Save(path, context, logger);
+
+    public static UserContext WithAbout(UserContext context, string text) => ContextEdits.WithAbout(context, text);
+
+    public static UserContext WithDoc(UserContext context, string name, string text, DateOnly today) =>
+        ContextEdits.WithDoc(context, name, text, today);
+
+    public static UserContext WithoutDoc(UserContext context, string id) => ContextEdits.WithoutDoc(context, id);
+
+    public static IReadOnlySet<string> ContextIds(UserContext context) => ContextEdits.Ids(context);
+
+    public static string? ContextText(UserContext context) {
+        if (ContextEdits.Ids(context).Count == 0) {
+            return null;
+        }
+        StringBuilder json = new();
+        AppendObject(json, 0, [
+            (ContextFile.AboutKey, (text, _) => PythonJson.AppendString(text, context.About)),
+            (ContextFile.DocsKey, (text, level) => AppendItems(text, level, '[', ']', context.Docs, AppendDoc)),
+        ]);
+        return json.ToString();
+    }
+
     private static void AppendEvidence(StringBuilder json, int depth, IReadOnlyList<Evidence> items) =>
         AppendItems(json, depth, '[', ']', items, (text, level, item) => AppendObject(text, level, [
             (ProfileFile.IdKey, (field, _) => PythonJson.AppendString(field, item.Id)),
@@ -50,6 +92,13 @@ internal static class Profiles {
             (ProfileFile.StartKey, (field, _) => AppendOptional(field, item.Start)),
             (ProfileFile.EndKey, (field, _) => AppendOptional(field, item.End)),
         ]));
+
+    private static void AppendDoc(StringBuilder json, int depth, ContextDoc doc) =>
+        AppendObject(json, depth, [
+            (ContextFile.IdKey, (field, _) => PythonJson.AppendString(field, doc.Id)),
+            (ContextFile.NameKey, (field, _) => PythonJson.AppendString(field, doc.Name)),
+            (ContextFile.TextKey, (field, _) => PythonJson.AppendString(field, doc.Text)),
+        ]);
 
     private static void AppendStrings(StringBuilder json, int depth, IReadOnlyList<string> items) =>
         AppendItems(json, depth, '[', ']', items, (text, _, item) => PythonJson.AppendString(text, item));

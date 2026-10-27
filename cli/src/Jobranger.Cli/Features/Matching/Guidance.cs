@@ -4,12 +4,13 @@ using System.Text;
 using Jobranger.Cli.Config;
 using Jobranger.Cli.Files;
 using Jobranger.Cli.Text;
+using Jobranger.Contracts.Limits;
 using Microsoft.Extensions.Logging;
 
 namespace Jobranger.Cli.Features.Matching;
 
 internal static class Guidance {
-    private const int limit = 12_000;
+    private const int limit = ContractLimits.GuidanceLimit;
     private const string byteOrderMark = "\uFEFF";
     private const string windowsNewLine = "\r\n";
     private const string carriageReturn = "\r";

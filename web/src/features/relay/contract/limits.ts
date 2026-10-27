@@ -19,3 +19,6 @@ export const COMMAND_DEDUPE_SECONDS = 600
 export const CONTRACT_VERSION = 1
 export const MAX_JSON_DEPTH = 64
 export const MAX_INTEGER_DIGITS = 16
+export const GUIDANCE_LIMIT = 12000
+export const ABOUT_LIMIT = 4000
+export const DOCS_LIMIT = 10

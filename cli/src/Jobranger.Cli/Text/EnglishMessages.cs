@@ -74,11 +74,20 @@ internal sealed class EnglishMessages : IMessages {
 
     public string ConfigUnreadable => "could not be read";
 
+    public string ConfigNotDocId =>
+        "is not a document id: doc_ and then 1 to 36 lowercase letters, digits or _";
+
+    public string ConfigReservedId => "is reserved for context ids: about_me and doc_ ids";
+
+    public string ConfigNotDate => "is not a date in YYYY-MM-DD form";
+
     public string ConfigNotChoice(string allowed) => $"is not one of: {allowed}";
 
     public string ConfigNotYaml(int line) => $"is not valid YAML (line {line})";
 
     public string ConfigTooLong(int limit) => $"is longer than {limit} characters";
+
+    public string ConfigTooMany(int limit) => $"has more than {limit} entries";
 
     public string ConfigAmountOutOfRange(decimal max) =>
         string.Create(CultureInfo.InvariantCulture, $"is not between 0 and {max}");

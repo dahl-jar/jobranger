@@ -74,11 +74,20 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string ConfigUnreadable => "kunne ikke leses";
 
+    public string ConfigNotDocId =>
+        "er ikke en dokument-id: doc_ og så 1 til 36 små bokstaver, sifre eller _";
+
+    public string ConfigReservedId => "er reservert for kontekst-id-er: about_me og doc_-id-er";
+
+    public string ConfigNotDate => "er ikke en dato på formen ÅÅÅÅ-MM-DD";
+
     public string ConfigNotChoice(string allowed) => $"er ikke en av: {allowed}";
 
     public string ConfigNotYaml(int line) => $"er ikke gyldig YAML (linje {line})";
 
     public string ConfigTooLong(int limit) => $"er lengre enn {limit} tegn";
+
+    public string ConfigTooMany(int limit) => $"har mer enn {limit} oppføringer";
 
     public string ConfigAmountOutOfRange(decimal max) =>
         string.Create(CultureInfo.InvariantCulture, $"er ikke mellom 0 og {max}");

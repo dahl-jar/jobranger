@@ -3,13 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from jobranger.contract.limits import GUIDANCE_LIMIT
 from jobranger.paths import config_dir, write_private
 from jobranger.settings import ConfigInvalidError
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-GUIDANCE_LIMIT = 12_000
 GUIDANCE_FILE_NAME = "guidance.md"
 DEFAULT_TEXT = ""
 LIMIT_ERROR = "guidance has {length} characters, the limit is {limit}"

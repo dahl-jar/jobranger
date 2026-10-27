@@ -38,6 +38,10 @@ internal sealed record ConfigError(string Location, ConfigProblem Problem, strin
         ConfigProblem.NotMonth => messages.ConfigNotMonth,
         ConfigProblem.BelowZero => messages.ConfigBelowZero,
         ConfigProblem.Unreadable => messages.ConfigUnreadable,
+        ConfigProblem.NotDocId => messages.ConfigNotDocId,
+        ConfigProblem.ReservedId => messages.ConfigReservedId,
+        ConfigProblem.NotDate => messages.ConfigNotDate,
+        ConfigProblem.TooMany => messages.ConfigTooMany(int.Parse(Detail, CultureInfo.InvariantCulture)),
         _ => throw new InvalidOperationException($"config problem has no text problem={Problem}"),
     };
 }

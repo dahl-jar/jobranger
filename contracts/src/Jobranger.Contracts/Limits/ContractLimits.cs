@@ -22,4 +22,7 @@ public static class ContractLimits {
     public const int ContractVersion = 1;
     public const int MaxJsonDepth = 64;
     public const int MaxIntegerDigits = 16;
+    public const int GuidanceLimit = 12000;
+    public const int AboutLimit = 4000;
+    public const int DocsLimit = 10;
 }

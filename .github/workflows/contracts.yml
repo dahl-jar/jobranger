@@ -85,4 +85,4 @@ jobs:
       - run: dotnet restore Jobranger.slnx --locked-mode
       - name: Check payload records cover the schema
         run: dotnet test --project contracts/tests/Jobranger.Contracts.Tests -c Release --no-restore --filter-method "*.ShouldCoverEverySchemaProperty_WhenPayloadRecordsAreChecked" --minimum-expected-tests 1
-      - run: dotnet test --project contracts/tests/Jobranger.Contracts.Tests -c Release --no-restore --minimum-expected-tests 563
+      - run: dotnet test --project contracts/tests/Jobranger.Contracts.Tests -c Release --no-restore --minimum-expected-tests 568

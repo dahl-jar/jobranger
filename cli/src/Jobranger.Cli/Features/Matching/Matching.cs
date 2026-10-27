@@ -9,8 +9,8 @@ internal static class Matching {
 
     public static double? MaxYears(Limits limits) => MatchRules.MaxYears(limits);
 
-    public static string BuildSystem(string guidance, string limits, string profileText) =>
-        SystemPrompt.Build(guidance, limits, profileText);
+    public static string BuildSystem(string guidance, string limits, string profileText, string? contextText) =>
+        SystemPrompt.Build(guidance, limits, profileText, contextText);
 
     public static string AssessmentVersion(string system) => SystemPrompt.Version(system);
 

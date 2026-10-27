@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING
 import pytest
 from factories import GUIDANCE
 
+from jobranger.contract.limits import GUIDANCE_LIMIT
 from jobranger.matching.guidance import (
     BYTE_ORDER_MARK,
-    GUIDANCE_LIMIT,
     Guidance,
     load_guidance,
     reset_guidance,

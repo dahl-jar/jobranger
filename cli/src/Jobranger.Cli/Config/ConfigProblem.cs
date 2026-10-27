@@ -28,4 +28,8 @@ internal enum ConfigProblem {
     NotMonth,
     BelowZero,
     Unreadable,
+    NotDocId,
+    TooMany,
+    ReservedId,
+    NotDate,
 }

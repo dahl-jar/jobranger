@@ -107,10 +107,15 @@ public sealed class PathsTests(TestIsolation isolation) {
             ["JOBRANGER_STATE_DIR"] = "/state",
         });
 
-        string[] files = [paths.ConfigPath(), paths.ProfilePath(), paths.DbPath(), paths.RunLockPath(), paths.LogDir()];
+        string[] files = [
+            paths.ConfigPath(), paths.ProfilePath(), paths.ContextPath(), paths.DbPath(), paths.RunLockPath(), paths.LogDir(),
+        ];
 
         Assert.Equal(
-            ["/config/config.yaml", "/config/profile.yaml", "/data/jobranger.db", "/state/run.lock", "/state/logs"],
+            [
+                "/config/config.yaml", "/config/profile.yaml", "/config/context.yaml", "/data/jobranger.db",
+                "/state/run.lock", "/state/logs",
+            ],
             files);
     }
 

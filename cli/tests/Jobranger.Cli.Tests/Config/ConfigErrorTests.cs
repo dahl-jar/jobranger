@@ -33,6 +33,7 @@ public sealed class ConfigErrorTests {
     [InlineData(
         "model.monthly_limit_usd", nameof(ConfigProblem.AmountOutOfRange), "1000000",
         "model.monthly_limit_usd: is not between 0 and 1000000")]
+    [InlineData("docs", nameof(ConfigProblem.TooMany), "10", "docs: has more than 10 entries")]
     public void ShouldNameLimit_WhenValueBreaksLimit(string location, string problem, string limit, string expected) {
         ConfigError error = new(location, Enum.Parse<ConfigProblem>(problem), limit);
 

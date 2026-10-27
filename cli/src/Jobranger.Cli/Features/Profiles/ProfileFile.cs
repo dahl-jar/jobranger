@@ -1,8 +1,6 @@
-using System.Globalization;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Jobranger.Cli.Config;
-using Jobranger.Cli.Text;
 
 namespace Jobranger.Cli.Features.Profiles;
 
@@ -34,7 +32,7 @@ internal static partial class ProfileFile {
             return null;
         }
         ConfigSection section = new(values, string.Empty, profileKeys, errors);
-        string? summary = RequiredText(section, string.Empty, SummaryKey, errors);
+        string? summary = section.RequiredText(SummaryKey, blankAllowed: true);
         decimal? years = section.RequiredNumber(YearsKey);
         if (years < 0) {
             errors.Add(new ConfigError(YearsKey, ConfigProblem.BelowZero));
@@ -66,20 +64,17 @@ internal static partial class ProfileFile {
     }
 
     private static Evidence ReadEvidence(ConfigSection item, string location, List<ConfigError> errors) {
-        string id = RequiredText(item, location, IdKey, errors) ?? string.Empty;
+        string id = item.RequiredText(IdKey, blankAllowed: true) ?? string.Empty;
         if (id.Length > 0 && !EvidenceIdPattern().IsMatch(id)) {
             errors.Add(new ConfigError(ConfigLocation.Join(location, IdKey), ConfigProblem.NotEvidenceId));
+        } else if (ContextEdits.IsReserved(id)) {
+            errors.Add(new ConfigError(ConfigLocation.Join(location, IdKey), ConfigProblem.ReservedId));
         }
-        string facts = RequiredText(item, location, FactsKey, errors) ?? string.Empty;
-        if (CodePoints.Count(facts) > factsLimit) {
-            errors.Add(new ConfigError(
-                ConfigLocation.Join(location, FactsKey),
-                ConfigProblem.TooLong,
-                factsLimit.ToString(CultureInfo.InvariantCulture)));
-        }
+        string facts = item.RequiredText(FactsKey, blankAllowed: true) ?? string.Empty;
+        ConfigSection.CheckLength(facts, ConfigLocation.Join(location, FactsKey), factsLimit, errors);
         return new Evidence(
             id,
-            RequiredText(item, location, NameKey, errors) ?? string.Empty,
+            item.RequiredText(NameKey, blankAllowed: true) ?? string.Empty,
             facts,
             Month(item, location, StartKey, errors),
             Month(item, location, EndKey, errors));
@@ -91,15 +86,6 @@ internal static partial class ProfileFile {
             errors.Add(new ConfigError(ConfigLocation.Join(location, key), ConfigProblem.NotMonth));
         }
         return month;
-    }
-
-    private static string? RequiredText(ConfigSection section, string location, string key, List<ConfigError> errors) {
-        int before = errors.Count;
-        string? text = section.Text(key);
-        if (text is null && errors.Count == before) {
-            errors.Add(new ConfigError(ConfigLocation.Join(location, key), ConfigProblem.Required));
-        }
-        return text;
     }
 
     private static void CheckUniqueIds(Dictionary<string, List<Evidence>> lists, List<ConfigError> errors) {

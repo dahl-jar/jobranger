@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json.Nodes;
+using Jobranger.Cli.Text;
 
 namespace Jobranger.Cli.Config;
 
@@ -53,8 +54,14 @@ internal sealed class ConfigSection {
         return null;
     }
 
-    public string? RequiredText(string key) {
-        if (IsMissing(key) || IsBlank(key)) {
+    public static void CheckLength(string text, string location, int limit, List<ConfigError> errors) {
+        if (CodePoints.Count(text) > limit) {
+            errors.Add(new ConfigError(location, ConfigProblem.TooLong, limit.ToString(CultureInfo.InvariantCulture)));
+        }
+    }
+
+    public string? RequiredText(string key, bool blankAllowed = false) {
+        if (IsMissing(key) || (!blankAllowed && IsBlank(key))) {
             Fail(key, ConfigProblem.Required);
             return null;
         }

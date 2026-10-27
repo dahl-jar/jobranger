@@ -1,6 +1,6 @@
 summary: "Utvikler med \"backend\"-fokus – 2 år"
 professional_years: 2.5
-has_master: true
+has_master: false
 education:
   - id: master_degree
     name: Master i informatikk
@@ -12,4 +12,8 @@ projects:
   - id: tool_project
     name: Tool
     facts: "Tabs\tand newlines\nin facts."
+  - id: cli_project
+    name: CLI
+    facts: Go.
+    start: 2023-01
 languages: [Norsk]

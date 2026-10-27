@@ -30,7 +30,6 @@ from jobranger.contract.codec import (
 from jobranger.contract.envelope import Envelope, EnvelopeData
 from jobranger.contract.fields import decode_base64, encode_url, parse_timestamp
 from jobranger.contract.payload import Chunk, Payload
-from jobranger.matching.guidance import GUIDANCE_LIMIT
 from jobranger.matching.rules import DisplayFit
 
 CONTRACTS_DIR = "contracts"
@@ -903,11 +902,11 @@ def test_should_fit_largest_single_payload_in_one_frame() -> None:
         ),
         (limits.URL_MAX_CHARS, payload_defs()["Url"]["maxLength"]),
         (
-            GUIDANCE_LIMIT,
+            limits.GUIDANCE_LIMIT,
             payload_defs()["GuidanceUpdate"]["properties"]["text"]["maxLength"],
         ),
         (
-            GUIDANCE_LIMIT,
+            limits.GUIDANCE_LIMIT,
             payload_defs()["GuidanceSnapshot"]["properties"]["text"]["maxLength"],
         ),
         (
