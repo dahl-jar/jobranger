@@ -15,15 +15,17 @@ internal sealed class RelayJsonFormatter() : ConsoleFormatter(Name) {
             writer.WriteNumber("EventId", logEntry.EventId.Id);
             writer.WriteString("LogLevel", logEntry.LogLevel.ToString());
             writer.WriteString("Category", logEntry.Category);
-            writer.WriteString("Message", logEntry.Formatter(logEntry.State, logEntry.Exception));
+            string message = logEntry.Formatter(logEntry.State, logEntry.Exception);
+            writer.WriteString("Message", RedactionSetup.RedactAccessTokens(message));
             if (logEntry.Exception is { } exception) {
-                writer.WriteString("Exception", exception.ToString());
+                writer.WriteString("Exception", RedactionSetup.RedactAccessTokens(exception.ToString()));
             }
 
             if (logEntry.State is IReadOnlyCollection<KeyValuePair<string, object?>> fields) {
                 writer.WriteStartObject("State");
                 foreach (KeyValuePair<string, object?> field in fields) {
-                    writer.WriteString(field.Key, Convert.ToString(field.Value, System.Globalization.CultureInfo.InvariantCulture));
+                    string? value = Convert.ToString(field.Value, System.Globalization.CultureInfo.InvariantCulture);
+                    writer.WriteString(field.Key, RedactionSetup.RedactAccessTokens(value));
                 }
 
                 writer.WriteEndObject();

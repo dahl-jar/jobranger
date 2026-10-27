@@ -31,7 +31,7 @@ public sealed partial class LoggingTests(RelayFactory factory) : IClassFixture<R
 
         IReadOnlyList<FakeLogRecord> records = factory.Logs.GetSnapshot();
 
-        string written = string.Join('\n', records.Select(Written));
+        string written = LogText.Written(records);
         Assert.Contains(records, record => record.Message.StartsWith("pairing started", StringComparison.Ordinal));
         Assert.Contains(records, record => record.Message.StartsWith("pairing claimed", StringComparison.Ordinal));
         Assert.Contains(records, record => record.Message.StartsWith("session started role=Web", StringComparison.Ordinal));
@@ -57,7 +57,4 @@ public sealed partial class LoggingTests(RelayFactory factory) : IClassFixture<R
     private static string Pseudonym(IReadOnlyList<FakeLogRecord> records, string message) =>
         records.Last(record => record.Message.StartsWith(message, StringComparison.Ordinal))
             .StructuredState!.Single(pair => pair.Key == "Channel").Value!;
-
-    private static string Written(FakeLogRecord record) =>
-        $"{record.Message} {string.Join(' ', record.StructuredState?.Select(pair => $"{pair.Key}={pair.Value}") ?? [])}";
 }
