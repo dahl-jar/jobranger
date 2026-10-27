@@ -43,6 +43,9 @@ internal static partial class MacSecurity {
     [LibraryImport(securityPath, EntryPoint = "SecItemDelete")]
     public static partial int DeleteItem(nint query);
 
+    [LibraryImport(securityPath, EntryPoint = "SecKeychainSetUserInteractionAllowed")]
+    public static partial int SetUserInteractionAllowed([MarshalAs(UnmanagedType.U1)] bool allowed);
+
     [LibraryImport(coreFoundationPath, EntryPoint = "CFDictionaryCreate")]
     public static partial nint CreateDictionary(
         nint allocator, nint[] keys, nint[] values, nint count, nint keyCallbacks, nint valueCallbacks);

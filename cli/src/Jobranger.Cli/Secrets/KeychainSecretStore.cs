@@ -5,10 +5,13 @@ using System.Text;
 namespace Jobranger.Cli.Secrets;
 
 [SupportedOSPlatform("macos")]
-internal sealed class KeychainSecretStore(string service) : ISecretStore {
+internal sealed class KeychainSecretStore(string service, bool canPrompt) : ISecretStore {
     private const int success = 0;
     private const int itemNotFound = -25300;
+    private const int interactionNotAllowed = -25308;
+    private const int lockedWithoutPrompt = -25293;
     private const string statusReason = "status=";
+    private const string approvalReason = "keychain is locked or needs approval in a terminal";
 
     public Task<string?> ReadAsync(string name, CancellationToken cancellationToken) {
         using MacSecurity.CoreFoundationObjects objects = new();
@@ -49,6 +52,7 @@ internal sealed class KeychainSecretStore(string service) : ISecretStore {
     }
 
     private nint Query(MacSecurity.CoreFoundationObjects objects, string name, params (nint Key, nint Value)[] extra) {
+        Check(name, MacSecurity.SetUserInteractionAllowed(canPrompt));
         nint[] keys = [MacSecurity.ClassKey, MacSecurity.ServiceKey, MacSecurity.AccountKey, .. extra.Select(pair => pair.Key)];
         nint[] values = [
             MacSecurity.GenericPassword,
@@ -61,6 +65,9 @@ internal sealed class KeychainSecretStore(string service) : ISecretStore {
     }
 
     private static void Check(string name, int status) {
+        if (status is interactionNotAllowed or lockedWithoutPrompt) {
+            throw new SecretStoreUnavailableException(name, approvalReason);
+        }
         if (status != success) {
             throw new SecretStoreUnavailableException(name, statusReason + status.ToString(CultureInfo.InvariantCulture));
         }

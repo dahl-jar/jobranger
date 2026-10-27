@@ -64,6 +64,11 @@ jobs:
       - run: dotnet test --project cli/tests/Jobranger.Cli.Tests -c Release --no-build --filter-namespace Jobranger.Cli.Tests.Secrets --long-running 30 --timeout 5m
         env:
           JOBRANGER_SECRET_STORE_LIVE: "1"
+      - run: security lock-keychain "$RUNNER_TEMP/ci.keychain-db"
+      - run: dotnet test --project cli/tests/Jobranger.Cli.Tests -c Release --no-build --filter-method "*.ShouldRefuseWithoutPrompt_WhenKeychainIsLocked" --minimum-expected-tests 1 --fail-skips on --timeout 2m
+        env:
+          JOBRANGER_SECRET_STORE_LIVE: "1"
+          JOBRANGER_KEYCHAIN_LOCKED: "1"
 
   secrets-linux:
     name: Secret store on Linux
@@ -115,7 +120,7 @@ jobs:
   image:
     name: Build image
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 

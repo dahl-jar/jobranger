@@ -38,8 +38,9 @@ internal sealed class PairCommand : Command {
         Paths paths = new(environment);
         try {
             ServiceUrls urls = ServiceUrls.From(environment);
+            bool canPrompt = services.Console.Profile.Capabilities.Interactive;
             await using Link link =
-                await Link.OpenAsync(environment, paths, urls, logger, cancellationToken).ConfigureAwait(false);
+                await Link.OpenAsync(environment, paths, urls, logger, canPrompt, cancellationToken).ConfigureAwait(false);
             Pairing pairing = new(link, messages, urls, paths, Environment.MachineName, time, logger);
             return await pairing.RunAsync(services.Console, prompt => Ask(output, prompt), cancellationToken)
                 .ConfigureAwait(false);
