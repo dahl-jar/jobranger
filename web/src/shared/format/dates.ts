@@ -71,6 +71,10 @@ export function formatDay(iso: string, today: string): string {
   return formatDayMonth(date)
 }
 
+export function shiftDay(day: string, offset: number): string {
+  return new Date(Date.parse(day) + offset * DAY_MS).toISOString().slice(0, DAY_TEXT_LENGTH)
+}
+
 export function formatClock(iso: string): string {
   const date = toLocalDate(iso)
   return date === undefined ? '' : date.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })

@@ -1,0 +1,13 @@
+.track {
+  background: var(--rule-soft);
+}
+
+.ok {
+  height: 100%;
+  background: var(--ok);
+}
+
+.near {
+  composes: ok;
+  background: var(--part);
+}

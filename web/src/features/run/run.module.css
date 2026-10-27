@@ -1,0 +1,132 @@
+.line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.offline {
+  color: var(--miss);
+}
+
+button.small {
+  gap: 6px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.progress {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.live {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.percent {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.track {
+  height: 4px;
+  margin-top: 12px;
+}
+
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.step {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.done {
+  color: var(--ink2);
+}
+
+.active {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.pending,
+.skipped {
+  color: var(--muted);
+}
+
+.failed {
+  color: var(--miss);
+}
+
+.banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 14px;
+}
+
+.outcome {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--ok);
+}
+
+.summary {
+  flex-grow: 1;
+  margin: 0;
+  color: var(--ink2);
+}
+
+.note {
+  flex-basis: 100%;
+  order: 1;
+  margin: 0;
+  font-size: 13px;
+  color: var(--part);
+}
+
+a.seeNew {
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+button.dismiss {
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-left: auto;
+  color: var(--muted);
+}

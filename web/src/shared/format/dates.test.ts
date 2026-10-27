@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { formatClock, formatDay, formatDue } from '@/shared/format/dates'
+import { formatClock, formatDay, formatDue, shiftDay } from '@/shared/format/dates'
 
 const TODAY = '2026-10-08'
 const OSLO = 'Europe/Oslo'
@@ -88,5 +88,11 @@ describe('formatClock', () => {
 
   it('should show nothing when the time part is invalid', () => {
     expect(formatClock('2026-10-08Tgarbage')).toBe('')
+  })
+})
+
+describe('shiftDay', () => {
+  it('should move a day back across the start of a month', () => {
+    expect(shiftDay('2026-10-01', -1)).toBe('2026-09-30')
   })
 })
