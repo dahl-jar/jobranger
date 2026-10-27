@@ -33,6 +33,12 @@ internal static partial class UnixFiles {
     private const int linuxLinkLoop = 40;
     private const int macWouldBlock = 35;
     private const int linuxWouldBlock = 11;
+    private const int palWriteOnly = 0x0001;
+    private const int palCloseOnExec = 0x0010;
+    private const int palCreate = 0x0020;
+    private const int palExclusive = 0x0040;
+    private const int palCreateNewFlags = palWriteOnly | palCloseOnExec | palCreate | palExclusive;
+    private const int ownerReadWriteMode = 0x180;
 
     private static readonly int readNoFollowFlags = OperatingSystem.IsMacOS()
         ? macNonBlock | macNoFollow | macCloseOnExec
@@ -62,6 +68,21 @@ internal static partial class UnixFiles {
         return true;
     }
 
+    public static SafeFileHandle? CreateNewPrivate(string path, out int error) {
+        nint descriptor = RuntimeOpen(path, palCreateNewFlags, ownerReadWriteMode);
+        if (descriptor == failed) {
+            error = Marshal.GetLastPInvokeError();
+            return null;
+        }
+        error = 0;
+        return new SafeFileHandle(descriptor, ownsHandle: true);
+    }
+
+    public static bool IsRegularPath(string path) {
+        Span<byte> status = stackalloc byte[fileStatusSize];
+        return LinkStatus(path, status) != failed && IsRegular(status);
+    }
+
     public static bool TryLockExclusive(SafeFileHandle handle, out int error) {
         int operation = lockExclusive | lockNonBlocking;
         int result = OperatingSystem.IsMacOS() ? MacLock(handle, operation) : LinuxLock(handle, operation);
@@ -80,9 +101,11 @@ internal static partial class UnixFiles {
 
     public static bool IsRegularFile(SafeFileHandle handle) {
         Span<byte> status = stackalloc byte[fileStatusSize];
-        return FileStatus(handle, status) != failed
-            && (MemoryMarshal.Read<int>(status[modeOffset..]) & fileTypeMask) == regularFile;
+        return FileStatus(handle, status) != failed && IsRegular(status);
     }
+
+    private static bool IsRegular(ReadOnlySpan<byte> status) =>
+        (MemoryMarshal.Read<int>(status[modeOffset..]) & fileTypeMask) == regularFile;
 
     private static SafeFileHandle? Open(string path, int flags, out int error) {
         int descriptor = OperatingSystem.IsMacOS() ? MacOpen(path, flags) : LinuxOpen(path, flags);
@@ -107,6 +130,13 @@ internal static partial class UnixFiles {
 
     [LibraryImport(runtimeNative, EntryPoint = "SystemNative_Write", SetLastError = true)]
     private static partial int NativeWrite(SafeFileHandle handle, ReadOnlySpan<byte> buffer, int bufferSize);
+
+    [LibraryImport(runtimeNative, EntryPoint = "SystemNative_Open", StringMarshalling = StringMarshalling.Utf8,
+        SetLastError = true)]
+    private static partial nint RuntimeOpen(string path, int flags, int mode);
+
+    [LibraryImport(runtimeNative, EntryPoint = "SystemNative_LStat", StringMarshalling = StringMarshalling.Utf8)]
+    private static partial int LinkStatus(string path, Span<byte> status);
 
     [LibraryImport(runtimeNative, EntryPoint = "SystemNative_FStat")]
     private static partial int FileStatus(SafeFileHandle handle, Span<byte> status);

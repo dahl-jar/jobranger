@@ -1,0 +1,412 @@
+{
+  "actions": {
+    "finn:1": [
+      "show_anyway"
+    ],
+    "finn:3": [
+      "applied"
+    ],
+    "finn:4": [
+      "not_for_me"
+    ],
+    "nav:2": [
+      "skipped"
+    ]
+  },
+  "ads": [
+    {
+      "apply_checked_at": "2026-10-09T10:00:00+00:00",
+      "apply_status": "active",
+      "apply_url": "https://jobs.example.test/apply/1",
+      "assessment": "{\"status\": \"strong\", \"reason\": \"Java project shows backend work.\", \"evidence\": [\"java_project\"], \"gaps\": [], \"blockers\": [], \"is_low_code\": false, \"required_experience_years\": 2.0, \"version\": \"golden-version\"}",
+      "assessment_version": "golden-version",
+      "closed_at": null,
+      "company": "Org  One ASA",
+      "deadline": "2026-12-01",
+      "dedup_key": "org one:backend utvikler",
+      "description": "Bygg tjenester i Java.",
+      "display_title": "Backend Developer",
+      "first_classified_at": null,
+      "first_seen": "2026-10-24T15:18:13.411165+00:00",
+      "id": "finn:1",
+      "is_programming_job": true,
+      "label": "junior",
+      "location": "Bergen",
+      "published": "2026-09-24T00:00:00+00:00",
+      "republished": false,
+      "requirements": [
+        "Bachelor",
+        "line\nbreak",
+        "back\\slash"
+      ],
+      "requires_master": true,
+      "role_type": "backend",
+      "source": "finn",
+      "source_id": "1",
+      "summary": "Backend work.",
+      "technologies": [
+        "Java",
+        "Søk",
+        "C\"#"
+      ],
+      "title": "Backend  Utvikler",
+      "url": "https://jobs.example.test/ad/1"
+    },
+    {
+      "apply_checked_at": null,
+      "apply_status": null,
+      "apply_url": null,
+      "assessment": "{\"status\": \"strong\", \"reason\": \"Java project shows backend work.\", \"evidence\": [\"java_project\"], \"gaps\": [], \"blockers\": [], \"is_low_code\": false, \"required_experience_years\": 2.0, \"version\": \"old-version\"}",
+      "assessment_version": "old-version",
+      "closed_at": "2026-10-05",
+      "company": "Org One AS",
+      "deadline": "2026-10-01",
+      "dedup_key": "org one:utvikler",
+      "description": null,
+      "display_title": null,
+      "first_classified_at": null,
+      "first_seen": "2026-10-24T15:18:13.411980+00:00",
+      "id": "finn:3",
+      "is_programming_job": null,
+      "label": null,
+      "location": "Bergen",
+      "published": "2026-09-24T00:00:00+00:00",
+      "republished": false,
+      "requirements": [],
+      "requires_master": false,
+      "role_type": null,
+      "source": "finn",
+      "source_id": "3",
+      "summary": null,
+      "technologies": [],
+      "title": "Utvikler",
+      "url": "https://jobs.example.test/ad/3"
+    },
+    {
+      "apply_checked_at": null,
+      "apply_status": null,
+      "apply_url": null,
+      "assessment": null,
+      "assessment_version": null,
+      "closed_at": "2026-10-24T15:18:13.415051+00:00",
+      "company": "Org One AS",
+      "deadline": null,
+      "dedup_key": "org one:utvikler",
+      "description": "Gone soon.",
+      "display_title": null,
+      "first_classified_at": null,
+      "first_seen": "2026-10-24T15:18:13.412292+00:00",
+      "id": "finn:4",
+      "is_programming_job": null,
+      "label": null,
+      "location": "Bergen",
+      "published": "2026-09-24T00:00:00+00:00",
+      "republished": false,
+      "requirements": [],
+      "requires_master": false,
+      "role_type": null,
+      "source": "finn",
+      "source_id": "4",
+      "summary": null,
+      "technologies": [],
+      "title": "Utvikler",
+      "url": "https://jobs.example.test/ad/4"
+    },
+    {
+      "apply_checked_at": "2026-10-10T10:00:00.250000+00:00",
+      "apply_status": "expired",
+      "apply_url": "https://jobs.example.test/apply/5",
+      "assessment": null,
+      "assessment_version": null,
+      "closed_at": "2026-10-10T10:00:00.250000+00:00",
+      "company": "Org One AS",
+      "deadline": null,
+      "dedup_key": "org one:utvikler",
+      "description": null,
+      "display_title": null,
+      "first_classified_at": null,
+      "first_seen": "2026-10-24T15:18:13.412668+00:00",
+      "id": "finn:5",
+      "is_programming_job": null,
+      "label": null,
+      "location": "Bergen",
+      "published": "2026-09-24T00:00:00+00:00",
+      "republished": true,
+      "requirements": [],
+      "requires_master": false,
+      "role_type": null,
+      "source": "finn",
+      "source_id": "5",
+      "summary": null,
+      "technologies": [],
+      "title": "Utvikler",
+      "url": "https://jobs.example.test/ad/5"
+    },
+    {
+      "apply_checked_at": null,
+      "apply_status": null,
+      "apply_url": null,
+      "assessment": null,
+      "assessment_version": null,
+      "closed_at": null,
+      "company": "Org One AS",
+      "deadline": null,
+      "dedup_key": "org one:senior utvikler",
+      "description": null,
+      "display_title": null,
+      "first_classified_at": null,
+      "first_seen": "2026-10-24T15:18:13.413021+00:00",
+      "id": "finn:6",
+      "is_programming_job": false,
+      "label": "senior",
+      "location": "Bergen",
+      "published": "2026-09-24T00:00:00+00:00",
+      "republished": false,
+      "requirements": [],
+      "requires_master": false,
+      "role_type": null,
+      "source": "finn",
+      "source_id": "6",
+      "summary": null,
+      "technologies": [],
+      "title": "Senior Utvikler",
+      "url": "https://jobs.example.test/ad/6"
+    },
+    {
+      "apply_checked_at": null,
+      "apply_status": null,
+      "apply_url": null,
+      "assessment": "{\"status\": \"strong\", \"reason\": \"Java project shows backend work.\", \"evidence\": [\"java_project\"], \"gaps\": [], \"blockers\": [\"Needs five years\"], \"is_low_code\": false, \"required_experience_years\": 2.0, \"version\": \"golden-version\", \"checks\": [{\"text\": \"Kubernetes\", \"state\": \"met\"}]}",
+      "assessment_version": "golden-version",
+      "closed_at": null,
+      "company": "Org Two",
+      "deadline": null,
+      "dedup_key": "org two:ærlig utvikler",
+      "description": null,
+      "display_title": "Platform Developer",
+      "first_classified_at": "2026-10-24T15:18:13.413585+00:00",
+      "first_seen": "2026-10-24T15:18:13.413272+00:00",
+      "id": "finn:7",
+      "is_programming_job": true,
+      "label": "mid",
+      "location": "Bergen",
+      "published": "2026-09-24T00:00:00+00:00",
+      "republished": false,
+      "requirements": [],
+      "requires_master": false,
+      "role_type": "devops_platform",
+      "source": "finn",
+      "source_id": "7",
+      "summary": "Platform work.",
+      "technologies": [
+        "Kubernetes"
+      ],
+      "title": "Ærlig utvikler",
+      "url": "https://jobs.example.test/ad/7"
+    },
+    {
+      "apply_checked_at": null,
+      "apply_status": null,
+      "apply_url": null,
+      "assessment": null,
+      "assessment_version": null,
+      "closed_at": null,
+      "company": "Org One AS",
+      "deadline": null,
+      "dedup_key": "org one:utvikler",
+      "description": null,
+      "display_title": null,
+      "first_classified_at": null,
+      "first_seen": "2026-10-24T15:18:13.411705+00:00",
+      "id": "nav:2",
+      "is_programming_job": null,
+      "label": null,
+      "location": "",
+      "published": null,
+      "republished": false,
+      "requirements": [],
+      "requires_master": false,
+      "role_type": null,
+      "source": "nav",
+      "source_id": "2",
+      "summary": null,
+      "technologies": [],
+      "title": "Utvikler",
+      "url": "https://jobs.example.test/ad/2"
+    }
+  ],
+  "applications": [
+    {
+      "ad_id": null,
+      "applied_at": "2026-10-10T10:00:00.250000+00:00",
+      "company": "Org Four",
+      "cv_name": "cv-two.docx",
+      "deadline": null,
+      "events": [
+        {
+          "at": "2026-10-10T10:00:00.250000+00:00",
+          "text": "Applied"
+        }
+      ],
+      "id": 3,
+      "note": "Old",
+      "place": "",
+      "removed_at": "2026-10-10T10:00:00.250000+00:00",
+      "role": "Tester",
+      "status": "waiting"
+    },
+    {
+      "ad_id": null,
+      "applied_at": "2026-10-09T10:00:00+00:00",
+      "company": "Org Three AS",
+      "cv_name": null,
+      "deadline": "2026-11-01",
+      "events": [
+        {
+          "at": "2026-10-09T10:00:00+00:00",
+          "text": "Applied"
+        },
+        {
+          "at": "2026-10-10T10:00:00.250000+00:00",
+          "text": "Status: Interview"
+        },
+        {
+          "at": "2026-10-10T10:00:00.250000+00:00",
+          "text": "Phone screen"
+        }
+      ],
+      "id": 2,
+      "note": "Called back",
+      "place": "Oslo",
+      "removed_at": null,
+      "role": "Developer",
+      "status": "interview"
+    },
+    {
+      "ad_id": "finn:3",
+      "applied_at": "2026-10-09T10:00:00+00:00",
+      "company": "Org One AS",
+      "cv_name": "cv.pdf",
+      "deadline": "2026-10-01",
+      "events": [
+        {
+          "at": "2026-10-09T10:00:00+00:00",
+          "text": "Applied"
+        }
+      ],
+      "id": 1,
+      "note": "",
+      "place": "Bergen",
+      "removed_at": null,
+      "role": "Utvikler",
+      "status": "waiting"
+    }
+  ],
+  "closed": [
+    {
+      "closed_on": "2026-10-24",
+      "id": "finn:4",
+      "why": "removed",
+      "you": "not_for_me"
+    },
+    {
+      "closed_on": "2026-10-10",
+      "id": "finn:5",
+      "why": "filled",
+      "you": null
+    },
+    {
+      "closed_on": "2026-10-05",
+      "id": "finn:3",
+      "why": "deadline",
+      "you": "applied"
+    }
+  ],
+  "closed_as_of": "2026-10-20",
+  "cursors": {
+    "finn_since": "2026-10-09T10:00:00+00:00",
+    "nav_position": "https://feed.example.test/page/2"
+  },
+  "runs": [
+    {
+      "ads_read": 0,
+      "failed_sources": [],
+      "finished_at": null,
+      "hidden": 0,
+      "id": 3,
+      "matches": 0,
+      "new_ads": 0,
+      "started_at": "2026-10-11T10:00:00+00:00",
+      "status": "running"
+    },
+    {
+      "ads_read": 7,
+      "failed_sources": [
+        "nav",
+        "linkedin"
+      ],
+      "finished_at": "2026-10-10T10:05:00+00:00",
+      "hidden": 2,
+      "id": 2,
+      "matches": 3,
+      "new_ads": 5,
+      "started_at": "2026-10-10T10:00:00.250000+00:00",
+      "status": "completed"
+    },
+    {
+      "ads_read": 0,
+      "failed_sources": [],
+      "finished_at": "2026-10-10T10:00:00.250000+00:00",
+      "hidden": 0,
+      "id": 1,
+      "matches": 0,
+      "new_ads": 0,
+      "started_at": "2026-10-09T10:00:00+00:00",
+      "status": "failed"
+    }
+  ],
+  "spend": {
+    "end": "2026-11-01",
+    "start": "2026-10-01",
+    "usd": 1000000.25
+  },
+  "usage_days": [
+    {
+      "ads_checked": 2,
+      "ads_read": 0,
+      "calls": 2,
+      "cost_usd": 0.25,
+      "day": "2026-10-09",
+      "input_tokens": 110,
+      "output_tokens": 50
+    },
+    {
+      "ads_checked": 0,
+      "ads_read": 7,
+      "calls": 0,
+      "cost_usd": 0.0,
+      "day": "2026-10-10",
+      "input_tokens": 0,
+      "output_tokens": 0
+    },
+    {
+      "ads_checked": 0,
+      "ads_read": 0,
+      "calls": 0,
+      "cost_usd": 0.0,
+      "day": "2026-10-11",
+      "input_tokens": 0,
+      "output_tokens": 3
+    },
+    {
+      "ads_checked": 0,
+      "ads_read": 0,
+      "calls": 0,
+      "cost_usd": 1000000.0,
+      "day": "2026-10-12",
+      "input_tokens": 0,
+      "output_tokens": 0
+    }
+  ],
+  "usage_since": "2026-01-01"
+}

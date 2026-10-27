@@ -4,7 +4,8 @@ using System.Text.RegularExpressions;
 namespace Jobranger.Cli.Config;
 
 internal static partial class AppConfigValidator {
-    private const decimal maxAmount = 1_000_000m;
+    public const decimal MaxAmountUsd = 1_000_000m;
+
     private const int minutesPerHour = 60;
     private const int minutesPerDay = 24 * minutesPerHour;
     private const int minRunGapHours = 2;
@@ -66,9 +67,9 @@ internal static partial class AppConfigValidator {
     }
 
     private static void CheckAmount(decimal? amount, string location, List<ConfigError> errors) {
-        if (amount is decimal value && (value < 0 || value > maxAmount)) {
+        if (amount is decimal value && (value < 0 || value > MaxAmountUsd)) {
             errors.Add(new ConfigError(
-                location, ConfigProblem.AmountOutOfRange, maxAmount.ToString(CultureInfo.InvariantCulture)));
+                location, ConfigProblem.AmountOutOfRange, MaxAmountUsd.ToString(CultureInfo.InvariantCulture)));
         }
     }
 
