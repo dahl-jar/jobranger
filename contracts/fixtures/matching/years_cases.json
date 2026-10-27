@@ -586,7 +586,7 @@
     "years": 3
   },
   {
-    "id": "preference_beyond_window",
+    "id": "adverb_after",
     "title": "Developer",
     "description": "Minimum 5 years working experience with network design and/or cyber security preferably in oil and gas projects",
     "bands": [
@@ -599,9 +599,87 @@
     "years": 5
   },
   {
-    "id": "preference_window_edge",
+    "id": "preference_er_en_fordel_long",
     "title": "Utvikler",
-    "description": "Minimum 3 års erfaring med Java og Kotlin er fordel",
+    "description": "Minimum 3 års erfaring med Java og Kotlin er en fordel",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "preference_before_long",
+    "title": "Utvikler",
+    "description": "Vi ser det som en fordel dersom du også kan vise til minimum 3 års erfaring som utvikler",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "preferred_long_tail_en",
+    "title": "Developer",
+    "description": "At least 3 years of professional experience building distributed systems in Go or Rust is preferred",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "compensation_route",
+    "title": "Utvikler",
+    "description": "Bachelor i informatikk. Minimum 2 års relevant erfaring kan etter vurdering kompensere for manglende utdanning",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "clause_after_comma",
+    "title": "Utvikler",
+    "description": "Videre har du minst 8 års erfaring som utvikler med Java eller .NET, og det er også ønskelig med skyteknologi",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 8,
+    "phrase": "minst 8 års erfaring",
+    "status": "unsuitable",
+    "years": 8
+  },
+  {
+    "id": "flat_list_preference_before_noun",
+    "title": "Utvikler",
+    "description": "Det er en fordel med kunnskap om Kafka Minimum 4 års erfaring som utvikler",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 4,
+    "phrase": "Minimum 4 års erfaring",
+    "status": "unsuitable",
+    "years": 4
+  },
+  {
+    "id": "adverb_before",
+    "title": "Utvikler",
+    "description": "Du har helst minimum 3 års erfaring som utvikler",
     "bands": [
       "0-1"
     ],

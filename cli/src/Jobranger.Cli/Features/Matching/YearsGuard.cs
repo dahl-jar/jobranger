@@ -7,7 +7,6 @@ namespace Jobranger.Cli.Features.Matching;
 
 internal static partial class YearsGuard {
     private const RegexOptions ignoreCase = RegexOptions.IgnoreCase | RegexOptions.CultureInvariant;
-    private const int windowWords = 6;
 
     private static readonly Dictionary<string, int> writtenNumbers = new(StringComparer.Ordinal) {
         ["en"] = 1,
@@ -76,13 +75,17 @@ internal static partial class YearsGuard {
     }
 
     private static bool IsOptional(string item, RegexMatch found) {
-        string before = string.Join(' ', Words(item[..found.Index]).TakeLast(windowWords));
-        string after = string.Join(' ', Words(item[(found.Index + found.Length)..]).Take(windowWords));
-        return PreferenceWord().IsMatch(before) || PreferenceWord().IsMatch(after) || EquivalentRoute().IsMatch(after);
+        string before = item[..found.Index];
+        string after = item[(found.Index + found.Length)..];
+        int start = WindowEnd().Matches(before).LastOrDefault() is { } end ? end.Index + end.Length : 0;
+        RegexMatch stop = WindowEnd().Match(after);
+        string lead = SoftHeading().Replace(before[start..], " ");
+        string tail = stop.Success ? after[..stop.Index] : after;
+        return PreferenceWord().IsMatch(lead)
+            || PreferenceAdverb().IsMatch(lead)
+            || PreferenceWord().IsMatch(tail)
+            || EquivalentRoute().IsMatch(tail);
     }
-
-    private static string[] Words(string text) =>
-        SoftHeading().Replace(text, " ").Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
     private static int Years(RegexMatch found) {
         string raw = found.Groups[1].Success ? found.Groups[1].Value : found.Groups[2].Value;
@@ -109,14 +112,21 @@ internal static partial class YearsGuard {
     [GeneratedRegex(@"\bvi ser gjerne at du(?: har)?\b", ignoreCase)]
     private static partial Regex SoftHeading();
 
-    [GeneratedRegex(
-        @"\b(?:gjerne|helst|fordel|ønskelig|preferred|preferably|desirable|advantage|a plus|nice to have)\b",
-        ignoreCase)]
+    [GeneratedRegex(@"\b(?:fordel|ønskelig|preferred|desirable|advantage|a plus|nice to have)\b", ignoreCase)]
     private static partial Regex PreferenceWord();
+
+    [GeneratedRegex(@"\b(?:gjerne|helst|preferably)\b", ignoreCase)]
+    private static partial Regex PreferenceAdverb();
+
+    [GeneratedRegex(
+        @"(?:erfaring|kompetanse|kunnskap|kjennskap|experience|knowledge)"
+        + @"|, (?:og|and|men|but)\b",
+        ignoreCase)]
+    private static partial Regex WindowEnd();
 
     [GeneratedRegex(@"\b(?:nyutdannede?|new graduates?|recent graduates?)\b", ignoreCase)]
     private static partial Regex GraduateRoute();
 
-    [GeneratedRegex(@"\b(?:eller tilsvarende|or equivalent)\b", ignoreCase)]
+    [GeneratedRegex(@"\b(?:eller tilsvarende|or equivalent|kompensere|compensate)\b", ignoreCase)]
     private static partial Regex EquivalentRoute();
 }

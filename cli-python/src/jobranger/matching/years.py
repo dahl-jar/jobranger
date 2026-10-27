@@ -53,20 +53,26 @@ YEAR_PHRASE = re.compile(
 ITEM_SPLIT = re.compile(r"[\r\n•·▪●◦]|[.!?;](?=[ \t])")
 SOFT_HEADING = re.compile(r"\bvi ser gjerne at du(?: har)?\b", re.IGNORECASE)
 PREFERENCE_WORD = re.compile(
-    r"\b(?:gjerne|helst|fordel|ønskelig|preferred|preferably|desirable|advantage"
-    r"|a plus|nice to have)\b",
+    r"\b(?:fordel|ønskelig|preferred|desirable|advantage|a plus|nice to have)\b",
+    re.IGNORECASE,
+)
+PREFERENCE_ADVERB = re.compile(r"\b(?:gjerne|helst|preferably)\b", re.IGNORECASE)
+WINDOW_END = re.compile(
+    r"(?:erfaring|kompetanse|kunnskap|kjennskap|experience|knowledge)"
+    r"|, (?:og|and|men|but)\b",
     re.IGNORECASE,
 )
 GRADUATE_ROUTE = re.compile(
     r"\b(?:nyutdannede?|new graduates?|recent graduates?)\b", re.IGNORECASE
 )
-EQUIVALENT_ROUTE = re.compile(r"\b(?:eller tilsvarende|or equivalent)\b", re.IGNORECASE)
+EQUIVALENT_ROUTE = re.compile(
+    r"\b(?:eller tilsvarende|or equivalent|kompensere|compensate)\b", re.IGNORECASE
+)
 GUARD_REASON = (
     'The ad asks for at least {years} of experience: "{phrase}". '
     "The search accepts at most {cap}."
 )
 GUARD_BLOCKER = "Candidate does not have {years} of experience"
-WINDOW_WORDS = 6
 
 
 @dataclass(frozen=True)
@@ -118,17 +124,18 @@ def apply_years_guard(
 
 
 def _is_optional(item: str, found: re.Match[str]) -> bool:
-    before = " ".join(_words(item[: found.start()])[-WINDOW_WORDS:])
-    after = " ".join(_words(item[found.end() :])[:WINDOW_WORDS])
+    before = item[: found.start()]
+    after = item[found.end() :]
+    start = max((end.end() for end in WINDOW_END.finditer(before)), default=0)
+    stop = WINDOW_END.search(after)
+    lead = SOFT_HEADING.sub(" ", before[start:])
+    tail = after if stop is None else after[: stop.start()]
     return bool(
-        PREFERENCE_WORD.search(before)
-        or PREFERENCE_WORD.search(after)
-        or EQUIVALENT_ROUTE.search(after)
+        PREFERENCE_WORD.search(lead)
+        or PREFERENCE_ADVERB.search(lead)
+        or PREFERENCE_WORD.search(tail)
+        or EQUIVALENT_ROUTE.search(tail)
     )
-
-
-def _words(text: str) -> list[str]:
-    return SOFT_HEADING.sub(" ", text).split()
 
 
 def _unfold(text: str) -> str:
