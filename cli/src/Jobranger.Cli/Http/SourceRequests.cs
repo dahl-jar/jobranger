@@ -55,8 +55,9 @@ internal static class SourceRequests {
         using CancellationTokenSource deadline = new(attemptDeadline, options.Time);
         using CancellationTokenSource linked =
             CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
+        HostLimitHandler.SlotDeadline slotDeadline = new(deadline, attemptDeadline);
         try {
-            return await FollowHopsAsync(client, url, options, linked.Token).ConfigureAwait(false);
+            return await FollowHopsAsync(client, url, options, slotDeadline, linked.Token).ConfigureAwait(false);
         } catch (OperationCanceledException) when (deadline.IsCancellationRequested
             && !cancellationToken.IsCancellationRequested) {
             throw new IOException(string.Create(
@@ -65,11 +66,13 @@ internal static class SourceRequests {
     }
 
     private static async Task<SourceResponse> FollowHopsAsync(
-        HttpClient client, Uri url, SourceRequestOptions options, CancellationToken cancellationToken) {
+        HttpClient client, Uri url, SourceRequestOptions options, HostLimitHandler.SlotDeadline deadline,
+        CancellationToken cancellationToken) {
         Uri current = url;
         for (int hop = 0; hop <= maxRedirects; hop++) {
             Check(current);
             using HttpRequestMessage request = new(HttpMethod.Get, current);
+            request.Options.Set(HostLimitHandler.DeadlineKey, deadline);
             if (IsSameOrigin(current, url)) {
                 foreach (KeyValuePair<string, string> header in options.Headers) {
                     request.Headers.TryAddWithoutValidation(header.Key, header.Value);

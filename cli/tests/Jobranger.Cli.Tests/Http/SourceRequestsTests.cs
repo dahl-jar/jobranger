@@ -19,6 +19,7 @@ public sealed class SourceRequestsTests {
     private const string locationHeader = "Location";
 
     private static readonly TimeSpan attemptDeadline = TimeSpan.FromSeconds(120);
+    private static readonly TimeSpan retryAfterWait = TimeSpan.FromSeconds(300);
     private static readonly TimeSpan failurePenalty = TimeSpan.FromSeconds(10);
     private static readonly Uri start = new("https://jobs.example.test/feed");
     private static readonly byte[] page = "{\"ads\":[]}"u8.ToArray();
@@ -253,6 +254,40 @@ public sealed class SourceRequestsTests {
             client, start, new SourceRequestOptions { Time = time }, TestContext.Current.CancellationToken);
 
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
+            await requested.WaitAsync(TestContext.Current.CancellationToken);
+            time.Advance(attemptDeadline);
+        }
+
+        await Assert.ThrowsAsync<IOException>(() => response);
+    }
+
+    [Fact(Timeout = testTimeoutMs)]
+    public async Task ShouldReturnOk_WhenRetryAfterPassesDeadline() {
+        FakeTimeProvider time = new();
+        FakeSourceHandler inner = new(index => index == 0 ? RateLimited() : Ok());
+        using HttpClient client = LimitedClient(inner, time);
+
+        Task<SourceResponse> response = SourceRequests.GetAsync(
+            client, start, new SourceRequestOptions { Time = time }, TestContext.Current.CancellationToken);
+
+        Assert.Equal((false, true), await LimiterTiming.StateAroundAsync(time, response, retryAfterWait));
+    }
+
+    [Fact(Timeout = testTimeoutMs)]
+    public async Task ShouldEndStalledBody_WhenDeadlinePassesAfterSlot() {
+        FakeTimeProvider time = new();
+        using SemaphoreSlim requested = new(0);
+        FakeSourceHandler inner = new(index => {
+            requested.Release();
+            return index == 0 ? RateLimited() : OpenBody();
+        });
+        using HttpClient client = LimitedClient(inner, time);
+        Task<SourceResponse> response = SourceRequests.GetAsync(
+            client, start, new SourceRequestOptions { Time = time }, TestContext.Current.CancellationToken);
+        await requested.WaitAsync(TestContext.Current.CancellationToken);
+        time.Advance(retryAfterWait);
+
+        for (int attempt = 1; attempt < maxAttempts; attempt++) {
             await requested.WaitAsync(TestContext.Current.CancellationToken);
             time.Advance(attemptDeadline);
         }

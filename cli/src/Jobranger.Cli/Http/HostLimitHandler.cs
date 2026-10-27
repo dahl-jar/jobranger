@@ -5,13 +5,18 @@ namespace Jobranger.Cli.Http;
 internal sealed class HostLimitHandler(HostLimiter limiter, TimeProvider time) : DelegatingHandler {
     private const string retryAfterHeader = "Retry-After";
 
+    public static readonly HttpRequestOptionsKey<SlotDeadline> DeadlineKey = new(nameof(SlotDeadline));
+
     private static readonly TimeSpan rateLimitPenalty = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan failurePenalty = TimeSpan.FromSeconds(10);
 
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken) {
         string host = request.RequestUri?.IdnHost ?? "";
+        request.Options.TryGetValue(DeadlineKey, out SlotDeadline? deadline);
+        deadline?.Stop();
         await limiter.AcquireAsync(host, cancellationToken).ConfigureAwait(false);
+        deadline?.Start();
         HttpResponseMessage response;
         try {
             response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
@@ -48,5 +53,11 @@ internal sealed class HostLimitHandler(HostLimiter limiter, TimeProvider time) :
             ? values.FirstOrDefault()
             : null;
         return RetryAfter.Parse(header, time.GetUtcNow()) ?? (rateLimited ? rateLimitPenalty : failurePenalty);
+    }
+
+    internal sealed class SlotDeadline(CancellationTokenSource source, TimeSpan limit) {
+        public void Start() => source.CancelAfter(limit);
+
+        public void Stop() => source.CancelAfter(Timeout.InfiniteTimeSpan);
     }
 }
