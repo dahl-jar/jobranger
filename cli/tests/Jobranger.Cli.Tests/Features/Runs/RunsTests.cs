@@ -20,11 +20,8 @@ namespace Jobranger.Cli.Tests.Features.Runs;
 [UnsupportedOSPlatform("windows")]
 public sealed class RunsTests : IDisposable {
     private const string runsQuery = "SELECT status, finished_at IS NOT NULL FROM runs";
-    private const string applyUrl = "https://apply.example.test/jobs/1";
 
     private static readonly string profilePath = MatchingFixtures.TestData("profile_user.yaml");
-    private static readonly string javaReply = MatchingCases.Replies()["java_project"];
-    private static readonly EmployerFeed feed = new("teamtailor", "computas", "Computas", "https://careers.example.test/jobs.rss");
 
     private readonly TestDatabase db = new();
     private readonly TempDir dir = new();
@@ -46,7 +43,7 @@ public sealed class RunsTests : IDisposable {
     public async Task ShouldSkipRun_WhenLockIsHeld() {
         using FileLock? held = FileLock.TryAcquire(paths.RunLockPath(), NullLogger.Instance);
 
-        RunResult result = await RunAsync(Answering(), [], null, null, TestContext.Current.CancellationToken);
+        RunResult result = await RunAsync(FakeModelClient.Answering(JavaReply), [], null, null, TestContext.Current.CancellationToken);
 
         Assert.Equal((RunStatus.Locked, (long?)null, 0), (result.Status, result.RunId, RunRows().Count));
     }
@@ -58,7 +55,7 @@ public sealed class RunsTests : IDisposable {
         ads.Upsert(Pending(1, "Utvikler", "Org One AS"));
         ads.Upsert(Pending(2, "Tester", "Org Two AS") with { Deadline = "2026-10-26" });
         db.Execute("UPDATE ads SET label = 'junior', is_programming_job = 0 WHERE id = 'finn:2'");
-        FakeModelClient client = Answering();
+        FakeModelClient client = FakeModelClient.Answering(JavaReply);
 
         await RunAsync(client, [], null, null, TestContext.Current.CancellationToken);
 
@@ -78,7 +75,7 @@ public sealed class RunsTests : IDisposable {
         ads.Upsert(Pending(1, "Utvikler", "Org One AS"));
         ads.SetClassification("finn:1", AdFixtures.Classification, "old-version");
         ads.Upsert(Pending(2, "Tester", "Org Two AS"));
-        FakeModelClient client = Answering();
+        FakeModelClient client = FakeModelClient.Answering(JavaReply);
 
         RunResult result = await RunAsync(client, [source], null, null, run.Token);
 
@@ -91,7 +88,7 @@ public sealed class RunsTests : IDisposable {
     public async Task ShouldStoreFailedRun_WhenProfileIsMissing() {
         AppConfig config = RunFixtures.Config(Path.Combine(dir.Path, "missing.yaml"));
 
-        await Assert.ThrowsAsync<ConfigMissingException>(() => RunAsync(Answering(), [], config, null, TestContext.Current.CancellationToken));
+        await Assert.ThrowsAsync<ConfigMissingException>(() => RunAsync(FakeModelClient.Answering(JavaReply), [], config, null, TestContext.Current.CancellationToken));
 
         Assert.Equal(["failed|1"], RunRows());
     }
@@ -108,13 +105,13 @@ public sealed class RunsTests : IDisposable {
     [Fact]
     public async Task ShouldEndCancelled_WhenCancelledDuringApplyChecks() {
         using CancellationTokenSource run = new();
-        ads.Upsert(Pending(1, "Utvikler", "Org One AS") with { ApplyUrl = applyUrl });
+        ads.Upsert(Pending(1, "Utvikler", "Org One AS") with { ApplyUrl = ApplyUrl });
         FakeSiteHandler site = new(_ => {
             run.Cancel();
             throw new OperationCanceledException(run.Token);
         });
 
-        RunResult result = await RunAsync(Answering(), [], null, site, run.Token);
+        RunResult result = await RunAsync(FakeModelClient.Answering(JavaReply), [], null, site, run.Token);
 
         Assert.Equal((RunStatus.Cancelled, "cancelled|1"), (result.Status, string.Join(',', RunRows())));
     }
@@ -124,7 +121,7 @@ public sealed class RunsTests : IDisposable {
         ads.Upsert(Pending(1, "Utvikler", "Org One AS"));
         ProfilesEntry.SaveContext(
             paths.ContextPath(), ProfilesEntry.WithAbout(new(), ContextFixtures.About), NullLogger.Instance);
-        FakeModelClient client = Answering();
+        FakeModelClient client = FakeModelClient.Answering(JavaReply);
 
         await RunAsync(client, [], null, null, TestContext.Current.CancellationToken);
 
@@ -133,9 +130,9 @@ public sealed class RunsTests : IDisposable {
 
     [Fact]
     public async Task ShouldKeepAd_WhenEmployerFeedWasNotRead() {
-        ads.Upsert(Pending(1, "Kotlin-utvikler", "Computas") with { Id = "nav:1", Source = "nav" });
-        ScriptedSource failing = new(feed.Source, _ => throw new SourceException("feed failed", null));
-        AppConfig config = RunFixtures.Config(profilePath, new SourcesConfig { Nav = false, Employers = true, EmployerFeeds = [feed] });
+        ads.Upsert(Pending(1, "Kotlin-utvikler", "Example Tech AS") with { Id = "nav:1", Source = "nav" });
+        ScriptedSource failing = new(Feed.Source, _ => throw new SourceException("feed failed", null));
+        AppConfig config = RunFixtures.Config(profilePath, new SourcesConfig { Nav = false, Employers = true, EmployerFeeds = [Feed] });
 
         await RunAsync(null, [failing], config, null, TestContext.Current.CancellationToken);
 
@@ -144,16 +141,36 @@ public sealed class RunsTests : IDisposable {
 
     [Fact]
     public async Task ShouldKeepAdOpen_WhenFeedFailsWithPartialBatch() {
-        ads.Upsert(Pending(1, "Kotlin-utvikler", "Computas") with { Id = "teamtailor:computas:1", Source = feed.Source });
-        SourceBatch partial = Batch(feed.Source) with { ListedIds = new HashSet<string>() };
-        ScriptedSource failing = new(feed.Source, _ => throw new SourceException("feed failed", partial));
+        ads.Upsert(Pending(1, "Kotlin-utvikler", "Example Tech AS") with { Id = "teamtailor:example-tech:1", Source = Feed.Source });
+        SourceBatch partial = Batch(Feed.Source) with { ListedIds = new HashSet<string>() };
+        ScriptedSource failing = new(Feed.Source, _ => throw new SourceException("feed failed", partial));
 
         await RunAsync(null, [failing], null, null, TestContext.Current.CancellationToken);
 
-        Assert.Equal(1L, db.Scalar("SELECT active FROM ads WHERE id = 'teamtailor:computas:1'"));
+        Assert.Equal(1L, db.Scalar("SELECT active FROM ads WHERE id = 'teamtailor:example-tech:1'"));
     }
 
-    private static FakeModelClient Answering() => new((_, _) => Task.FromResult(FakeModelClient.Reply(javaReply)));
+    [Fact]
+    public async Task ShouldCloseAd_WhenFeedNoLongerListsIt() {
+        ads.Upsert(Pending(1, "Kotlin-utvikler", "Example Tech AS") with { Id = "teamtailor:example-tech:1", Source = Feed.Source });
+        SourceBatch listed = Batch(Feed.Source) with { ListedIds = new HashSet<string>() };
+
+        await RunAsync(null, [ScriptedSource.Done(Feed.Source, listed)], null, null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(0L, db.Scalar("SELECT active FROM ads WHERE id = 'teamtailor:example-tech:1'"));
+    }
+
+    [Fact]
+    public async Task ShouldExpireAd_WhenReadFeedMissesItsTitle() {
+        ads.Upsert(Pending(1, "Kotlin-utvikler", "Example Tech AS") with { Id = "nav:1", Source = "nav" });
+        ads.Upsert(Pending(9, "Java-utvikler", "Example Tech AS") with { Id = "teamtailor:example-tech:9", Source = Feed.Source });
+        SourceBatch listed = Batch(Feed.Source) with { ListedIds = new HashSet<string> { "teamtailor:example-tech:9" } };
+        AppConfig config = RunFixtures.Config(profilePath, new SourcesConfig { Nav = false, Employers = true, EmployerFeeds = [Feed] });
+
+        await RunAsync(null, [ScriptedSource.Done(Feed.Source, listed)], config, null, TestContext.Current.CancellationToken);
+
+        Assert.Equal("expired", db.Scalar("SELECT apply_status FROM ads WHERE id = 'nav:1'"));
+    }
 
     private List<string> RunRows() => TestDatabase.Rows(db.Connection, runsQuery);
 
@@ -166,6 +183,6 @@ public sealed class RunsTests : IDisposable {
         using HttpClient http = new(site ?? new FakeSiteHandler(_ => FakeSiteHandler.Body("<html>Søk nå</html>")));
         RunsEntry runs = Create(db, paths, http, client, sources, time);
         return await runs.RunAsync(
-            new RunRequest(config ?? RunFixtures.Config(profilePath), new RecordingRunEvents(), RunMode.Manual), cancellationToken);
+            new RunRequest(config ?? RunFixtures.Config(profilePath), new RecordingRunEvents()), cancellationToken);
     }
 }

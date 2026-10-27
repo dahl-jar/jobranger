@@ -29,7 +29,7 @@ internal sealed class Runs(
             using FileLock? held = FileLock.TryAcquire(paths.RunLockPath(), logger);
             if (held is null) {
                 LogEvents.RunLocked(logger);
-                return RunResult.Locked(request.Mode);
+                return RunResult.Locked();
             }
             RunPass pass = new(
                 new AdsEntry(connection, time),

@@ -17,13 +17,11 @@ namespace Jobranger.Cli.Tests.Features.Runs;
 [UnsupportedOSPlatform("windows")]
 public sealed class ReportStageTests : IDisposable {
     private const string version = MatchingFixtures.Version;
-    private const string applyUrl = "https://apply.example.test/jobs/1";
     private const string finnAdId = "finn:1";
-    private const string finnHeading = ".NET-utvikler – moderne samfunnsnyttige løsninger";
+    private const string finnHeading = ".NET-utvikler til team for betalingstjenester";
     private const string jobTitle = ".NET-utvikler";
     private const string statusQuery = "SELECT apply_status, closed_reason FROM ads WHERE id = 'finn:1'";
 
-    private static readonly EmployerFeed feed = new("teamtailor", "computas", "Computas", "https://careers.example.test/jobs.rss");
     private static readonly IReadOnlyDictionary<string, string> jobTitles =
         new Dictionary<string, string> { [finnAdId] = jobTitle };
 
@@ -40,32 +38,42 @@ public sealed class ReportStageTests : IDisposable {
 
     [Fact]
     public async Task ShouldKeepFinnAd_WhenApplyLinkIsActive() {
-        Classified(Pending(1, finnHeading, "Computas AS") with { ApplyUrl = applyUrl });
+        Classified(Pending(1, finnHeading, "Example Tech AS") with { ApplyUrl = ApplyUrl });
         FeedAd("Kotlin-utvikler");
 
-        await RunAsync(Input([feed]), new FakeSiteHandler(_ => FakeSiteHandler.Body("<html>Søk nå</html>")));
+        await RunAsync(Input([Feed]), new FakeSiteHandler(_ => FakeSiteHandler.Body("<html>Søk nå</html>")));
 
         Assert.Equal(["active|NULL"], TestDatabase.Rows(db.Connection, statusQuery));
     }
 
     [Fact]
     public async Task ShouldKeepFinnAd_WhenFeedListsJobTitle() {
-        Classified(Pending(1, finnHeading, "Computas AS"));
+        Classified(Pending(1, finnHeading, "Example Tech AS"));
         FeedAd(jobTitle);
 
-        await RunAsync(Input([feed]));
+        await RunAsync(Input([Feed]));
 
         Assert.Equal(["NULL|NULL"], TestDatabase.Rows(db.Connection, statusQuery));
     }
 
     [Fact]
     public async Task ShouldExpireFinnAd_WhenFeedMissesJobTitle() {
-        Classified(Pending(1, finnHeading, "Computas AS"));
+        Classified(Pending(1, finnHeading, "Example Tech AS"));
         FeedAd("Kotlin-utvikler");
 
-        await RunAsync(Input([feed]));
+        await RunAsync(Input([Feed]));
 
         Assert.Equal(["expired|filled"], TestDatabase.Rows(db.Connection, statusQuery));
+    }
+
+    [Fact]
+    public async Task ShouldKeepFinnAd_WhenFeedListsGroupedDuplicate() {
+        ads.Upsert(Pending(1, "Kotlin-utvikler", "Example Tech AS"));
+        ads.Upsert(Pending(9, "Kotlin-utvikler", "Example Tech") with { Id = "teamtailor:example-tech:9", Source = Feed.Source });
+
+        await RunAsync(Input([Feed]));
+
+        Assert.Equal(["NULL|NULL"], TestDatabase.Rows(db.Connection, statusQuery));
     }
 
     [Fact]
@@ -113,7 +121,7 @@ public sealed class ReportStageTests : IDisposable {
     [Theory]
     [InlineData(30, false)]
     [InlineData(100, true)]
-    public async Task ShouldSilenceAd_WhenSameVacancyWasReported(int daysAgo, bool reported) {
+    public async Task ShouldSilenceAd_WhenSameVacancyWasReportedWithinLookback(int daysAgo, bool reported) {
         Classified(Pending(1, "Utvikler", "Org One AS"));
         Classified(Pending(2, "Utvikler", "Org One AS") with { Id = "nav:2", Source = "nav" });
         store.MarkReported(["nav:2"], Now.AddDays(-daysAgo));
@@ -147,9 +155,9 @@ public sealed class ReportStageTests : IDisposable {
         }, version);
     }
 
-    private void FeedAd(string title) => ads.Upsert(Pending(9, title, "Computas") with {
-        Id = "teamtailor:computas:9",
-        Source = "teamtailor:computas",
+    private void FeedAd(string title) => ads.Upsert(Pending(9, title, "Example Tech") with {
+        Id = "teamtailor:example-tech:9",
+        Source = Feed.Source,
         Location = "Oslo",
     });
 

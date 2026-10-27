@@ -28,7 +28,6 @@ internal sealed class RunPass(
     ILogger logger) {
     private const int applyUrlBackfillLimit = 60;
 
-    private static readonly FetchTally noFetch = new(0, 0, [], [], false);
     private static readonly IReadOnlyDictionary<string, string> noJobTitles = new Dictionary<string, string>();
 
     public async Task<RunResult> RunAsync(RunRequest request, RunModel? model, CancellationToken cancellationToken) {
@@ -45,7 +44,6 @@ internal sealed class RunPass(
                 status = await StagesAsync(request, model, prompt, started, today, progress, cancellationToken)
                     .ConfigureAwait(false);
             } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-                progress.Report = ReportOutcome.Empty;
                 status = RunStatus.Cancelled;
             }
         } finally {
@@ -61,7 +59,6 @@ internal sealed class RunPass(
         return new RunResult {
             RunId = runId,
             Status = status,
-            Mode = request.Mode,
             AdsRead = progress.Tally.AdsRead,
             NewAds = progress.Tally.NewAds,
             FailedSources = progress.Tally.Failed,
@@ -127,7 +124,7 @@ internal sealed class RunPass(
         AppConfig config = request.Config;
         IReadOnlyList<ISource> sources = enabledSources(config.Sources);
         if (sources.Count == 0) {
-            return (noFetch, noJobTitles);
+            return (FetchTally.Empty, noJobTitles);
         }
         SourcePlan plan = CatalogueEntry.Load().PlanFor(config.Targets);
         IEnumerable<Ad> pending = [
@@ -151,7 +148,7 @@ internal sealed class RunPass(
     }
 
     private sealed class Progress {
-        public FetchTally Tally { get; set; } = noFetch;
+        public FetchTally Tally { get; set; } = FetchTally.Empty;
 
         public ClassifyOutcome Classified { get; set; } = new(0, null);
 

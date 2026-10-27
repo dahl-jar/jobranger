@@ -24,7 +24,7 @@ internal sealed class FetchStage(TimeProvider time, IRunEvents events, TimeSpan 
         using CancellationTokenSource stage = CancellationTokenSource.CreateLinkedTokenSource(runToken);
         Task[] fetches = [.. sources.Select(source =>
             Task.Run(() => FetchOneAsync(source, context, outcomes.Writer, stage.Token), CancellationToken.None))];
-        FetchTally tally = new(0, 0, [], [], false);
+        FetchTally tally = FetchTally.Empty;
         try {
             for (int received = 0; received < sources.Count; received++) {
                 SourceOutcome outcome = await outcomes.Reader.ReadAsync(CancellationToken.None).ConfigureAwait(false);

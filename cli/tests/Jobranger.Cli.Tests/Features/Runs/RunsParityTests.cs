@@ -1,4 +1,6 @@
 using System.Runtime.Versioning;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Jobranger.Cli.Config;
 using Jobranger.Cli.Features.Matching;
@@ -16,6 +18,10 @@ namespace Jobranger.Cli.Tests.Features.Runs;
 public sealed class RunsParityTests {
     private static readonly DateTimeOffset runStart = new(2026, 10, 9, 12, 0, 0, TimeSpan.Zero);
     private static readonly string inputs = Path.Combine(AppContext.BaseDirectory, "TestData", "RunPass");
+    private static readonly JsonSerializerOptions jsonOptions = new() {
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
 
     [Fact]
     public async Task ShouldStoreSameRows_WhenPythonRanSameInput() {
@@ -28,17 +34,17 @@ public sealed class RunsParityTests {
             Profile = new ProfileRef(MatchingFixtures.TestData("profile_user.yaml")),
         };
         using HttpClient http = new(SiteRoutes.Load(Path.Combine(inputs, "routes.json")));
-        FakeModelClient client = FakeModelClient.Keyed(Strings(JsonNode.Parse(File.ReadAllText(Path.Combine(inputs, "replies.json")))!));
+        string repliesJson = File.ReadAllText(Path.Combine(inputs, "replies.json"));
+        FakeModelClient client = FakeModelClient.Keyed(Strings(JsonNode.Parse(repliesJson)!));
         RunsEntry runs = new(
             db.Connection, paths, http, (_, _, _) => Task.FromResult<Jobranger.Cli.Features.Providers.IModelClient>(client),
             SourcesEntry.Enabled, time, NullLogger.Instance);
 
         RunResult result = await runs.RunAsync(
-            new RunRequest(config, new RecordingRunEvents(), RunMode.Manual), TestContext.Current.CancellationToken);
+            new RunRequest(config, new RecordingRunEvents()), TestContext.Current.CancellationToken);
+        string actual = Projection(db, result).ToJsonString(jsonOptions);
 
-        Assert.Equal(
-            MatchingFixtures.GoldenText("RunPass", "rows.json").TrimEnd(),
-            Projection(db, result).ToJsonString(new() { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping }));
+        Assert.Equal(MatchingFixtures.GoldenText("RunPass", "rows.json").TrimEnd(), actual);
     }
 
     private static Dictionary<string, string> Strings(JsonNode node) =>

@@ -22,7 +22,8 @@ internal sealed class ClassifyStage(AdsEntry ads, BudgetEntry budget, IRunEvents
         if (ads.RefreshAssessments(version)) {
             LogEvents.AssessmentsRefreshed(logger);
         }
-        (IReadOnlyList<AdView> representatives, Dictionary<string, IReadOnlyList<Ad>> groups) = Prepare(version);
+        (IReadOnlyList<AdView> representatives, Dictionary<string, IReadOnlyList<Ad>> groups) =
+            ReuseOrPickRepresentatives(version);
         ClassifyOutcome outcome = input.Model is RunModel model
             ? await ClassifyAsync(input, model, representatives, groups, cancellationToken).ConfigureAwait(false)
             : new ClassifyOutcome(representatives.Count, StopReason.Auth);
@@ -65,7 +66,7 @@ internal sealed class ClassifyStage(AdsEntry ads, BudgetEntry budget, IRunEvents
             }
             done++;
             Record(input.Today, model, reply);
-            Store(input, representative, reply, groups[representative.Id]);
+            StoreReply(input, representative, reply, groups[representative.Id]);
             events.Emit(new RunEvent(RunStage.Model, Checked: done, Total: representatives.Count));
         }
         return new ClassifyOutcome(stopped is null ? 0 : representatives.Count - done, stopped);
@@ -78,7 +79,7 @@ internal sealed class ClassifyStage(AdsEntry ads, BudgetEntry budget, IRunEvents
         budget.Record(new SpendRecord(today, tokens, cost));
     }
 
-    private void Store(ClassifyInput input, AdView representative, ModelReply reply, IReadOnlyList<Ad> group) {
+    private void StoreReply(ClassifyInput input, AdView representative, ModelReply reply, IReadOnlyList<Ad> group) {
         Classification? classification = reply.Stop == StopKind.Done
             && MatchingEntry.ParseAssessment(reply.Text) is AdAssessment assessment
             ? MatchingEntry.ToClassification(
@@ -91,7 +92,8 @@ internal sealed class ClassifyStage(AdsEntry ads, BudgetEntry budget, IRunEvents
         }
     }
 
-    private (IReadOnlyList<AdView> Representatives, Dictionary<string, IReadOnlyList<Ad>> Groups) Prepare(string version) {
+    private (IReadOnlyList<AdView> Representatives, Dictionary<string, IReadOnlyList<Ad>> Groups) ReuseOrPickRepresentatives(
+        string version) {
         HashSet<string> pending = [.. ads.Pending(labelMaxAttempts).Select(ad => ad.Id)];
         List<AdView> representatives = [];
         Dictionary<string, IReadOnlyList<Ad>> groups = new(StringComparer.Ordinal);

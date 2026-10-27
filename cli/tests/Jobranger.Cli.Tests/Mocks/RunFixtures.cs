@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Globalization;
 using System.Runtime.Versioning;
+using Jobranger.Cli.Catalogue;
 using Jobranger.Cli.Config;
 using Jobranger.Cli.Features.Ads;
 using Jobranger.Cli.Features.Providers;
@@ -14,6 +15,11 @@ namespace Jobranger.Cli.Tests.Mocks;
 
 internal static class RunFixtures {
     public const string Description = "Build Java services for a public client.";
+    public const string ApplyUrl = "https://apply.example.test/jobs/1";
+
+    public static readonly EmployerFeed Feed =
+        new("teamtailor", "example-tech", "Example Tech AS", "https://careers.example.test/jobs.rss");
+    public static readonly string JavaReply = MatchingCases.Replies()["java_project"];
 
     public static Paths TempPaths(TempDir dir) => new(new Hashtable {
         ["JOBRANGER_CONFIG_DIR"] = Path.Combine(dir.Path, "config"),

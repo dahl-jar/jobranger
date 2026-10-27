@@ -17,10 +17,12 @@ internal sealed class FakeModelClient(Func<ClassifyPrompt, CancellationToken, Ta
     public static ModelReply Reply(string text, StopKind stop = StopKind.Done, decimal? cost = 0.01m) =>
         new(text, new TokenUsage(100, 0, 0, 0, 20), stop, cost);
 
+    public static FakeModelClient Answering(string reply) => new((_, _) => Task.FromResult(Reply(reply)));
+
     public static FakeModelClient Keyed(IReadOnlyDictionary<string, string> replies) =>
         new((prompt, _) => Task.FromResult(Reply(replies[AdId(prompt)])));
 
-    public static string AdId(ClassifyPrompt prompt) =>
+    private static string AdId(ClassifyPrompt prompt) =>
         JsonNode.Parse(prompt.User.TrimEnd().Split(lineBreak)[^1])![idKey]!.GetValue<string>();
 
     public Task<ModelReply> ClassifyAsync(ClassifyPrompt prompt, JsonObject schema, CancellationToken cancellationToken) {

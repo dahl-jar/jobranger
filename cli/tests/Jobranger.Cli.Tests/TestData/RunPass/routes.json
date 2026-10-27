@@ -24,6 +24,12 @@
     "file": "site/nav_entry_2.json"
   },
   {
+    "url": "https://pam-stilling-feed.nav.no/api/v1/feedentry/00000000-0000-4000-8000-0000000000a3",
+    "status": 200,
+    "type": "application/json",
+    "file": "site/nav_entry_3.json"
+  },
+  {
     "url": "https://www.finn.no/job/search?sort=PUBLISHED_DESC&page=1",
     "status": 200,
     "type": "text/html",

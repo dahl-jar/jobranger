@@ -91,7 +91,7 @@ internal static partial class LogEvents {
     public static partial void AssessmentsRefreshed(ILogger logger);
 
     [LoggerMessage(
-        EventName = "classify.provider_failed",
+        EventName = "classify.provider.failed",
         Level = LogLevel.Warning,
         Message = "model call failed, classification stopped failure={Failure}")]
     public static partial void ClassifyProviderFailed(ILogger logger, string failure);

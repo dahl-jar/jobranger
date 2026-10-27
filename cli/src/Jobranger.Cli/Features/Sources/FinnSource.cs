@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text;
 using Jobranger.Cli.Http;
@@ -72,9 +73,7 @@ internal sealed class FinnSource : ISource {
             FinnSearchPage result = await SearchAsync(context.Http, $"sort={recentSort}&page={page}", cancellationToken)
                 .ConfigureAwait(false);
             listings.AddRange(result.Listings);
-            foreach ((string id, string jobTitle) in result.JobTitles) {
-                jobTitles[id] = jobTitle;
-            }
+            AddTitles(jobTitles, result.JobTitles);
             string? oldest = Oldest(listings);
             if ((oldest is not null && DateTimeOffset.Parse(oldest, CultureInfo.InvariantCulture) < since)
                 || page >= result.LastPage) {
@@ -103,9 +102,7 @@ internal sealed class FinnSource : ISource {
         for (int page = 1; page <= maxCategoryPages; page++) {
             FinnSearchPage result = await SearchAsync(context.Http, $"{occupations}&page={page}", cancellationToken)
                 .ConfigureAwait(false);
-            foreach ((string id, string jobTitle) in result.JobTitles) {
-                jobTitles[id] = jobTitle;
-            }
+            AddTitles(jobTitles, result.JobTitles);
             foreach (SourceListing listing in result.Listings) {
                 active.Add(listing.Id);
                 if (!known.Contains(listing.Id)) {
@@ -200,12 +197,15 @@ internal sealed class FinnSource : ISource {
 
     private static Dictionary<string, string> JobTitles(Scan scan) {
         Dictionary<string, string> jobTitles = new(StringComparer.Ordinal);
-        IEnumerable<KeyValuePair<string, string>> recent = scan.Recent?.JobTitles ?? new Dictionary<string, string>();
-        IEnumerable<KeyValuePair<string, string>> category = scan.Category?.JobTitles ?? new Dictionary<string, string>();
-        foreach ((string id, string jobTitle) in recent.Concat(category)) {
-            jobTitles[id] = jobTitle;
-        }
+        AddTitles(jobTitles, scan.Recent?.JobTitles);
+        AddTitles(jobTitles, scan.Category?.JobTitles);
         return jobTitles;
+    }
+
+    private static void AddTitles(Dictionary<string, string> target, IReadOnlyDictionary<string, string>? titles) {
+        foreach ((string id, string jobTitle) in titles ?? ReadOnlyDictionary<string, string>.Empty) {
+            target[id] = jobTitle;
+        }
     }
 
     private sealed record RecentScan(

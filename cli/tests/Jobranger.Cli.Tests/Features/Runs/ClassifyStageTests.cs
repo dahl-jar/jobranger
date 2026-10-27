@@ -7,6 +7,7 @@ using Jobranger.Cli.Features.Runs;
 using Jobranger.Cli.Http;
 using Jobranger.Cli.Tests.Mocks;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging.Testing;
 using static Jobranger.Cli.Tests.Mocks.RunFixtures;
 using AdsEntry = Jobranger.Cli.Features.Ads.Ads;
 using BudgetEntry = Jobranger.Cli.Features.Budget.Budget;
@@ -22,7 +23,6 @@ public sealed class ClassifyStageTests : IDisposable {
     private static readonly ModelPrices prices = new(1m, 5m, 0.1m, 1.25m, 2m);
     private static readonly PromptSetup prompt =
         new("system text", version, MatchingFixtures.EvidenceIds, MatchingFixtures.EducationIds);
-    private static readonly string javaReply = MatchingCases.Replies()["java_project"];
 
     private readonly TestDatabase db = new();
     private readonly AdsEntry ads;
@@ -46,7 +46,7 @@ public sealed class ClassifyStageTests : IDisposable {
             if (client.Calls == 2) {
                 await gate.Task;
             }
-            return FakeModelClient.Reply(javaReply);
+            return FakeModelClient.Reply(JavaReply);
         });
 
         Task<ClassifyOutcome> running = stage.RunAsync(Input(client), CancellationToken.None);
@@ -62,7 +62,7 @@ public sealed class ClassifyStageTests : IDisposable {
     public async Task ShouldClassifyWholeGroup_WhenDuplicatesArePending() {
         ads.Upsert(Pending(1, "Utvikler", "Org One AS"));
         ads.Upsert(Pending(2, "Utvikler", "Org One AS") with { Id = "nav:2", Source = "nav" });
-        FakeModelClient client = Answering(javaReply);
+        FakeModelClient client = FakeModelClient.Answering(JavaReply);
 
         await stage.RunAsync(Input(client), CancellationToken.None);
 
@@ -76,11 +76,30 @@ public sealed class ClassifyStageTests : IDisposable {
             Assessment = MatchingEntry.EncodeMatch(MatchingFixtures.StrongMatch, []),
         }, version);
         ads.Upsert(Pending(2, "Utvikler", "Org One AS") with { Id = "nav:2", Source = "nav" });
-        FakeModelClient client = Answering(javaReply);
+        FakeModelClient client = FakeModelClient.Answering(JavaReply);
 
         await stage.RunAsync(Input(client), CancellationToken.None);
 
         Assert.Equal((0, "junior,junior"), (client.Calls, Labels()));
+    }
+
+    [Theory]
+    [InlineData("error", 1, version)]
+    [InlineData("junior", null, version)]
+    [InlineData("junior", 1, "old-version")]
+    public async Task ShouldCallModel_WhenStoredDuplicateIsNotReusable(string label, int? isProgrammingJob, string matchVersion) {
+        ads.Upsert(Pending(1, "Utvikler", "Org One AS"));
+        ads.SetClassification("finn:1", AdFixtures.Classification with {
+            Label = label,
+            Assessment = MatchingEntry.EncodeMatch(MatchingFixtures.StrongMatch with { Version = matchVersion }, []),
+        }, version);
+        db.Execute("UPDATE ads SET is_programming_job = $0 WHERE id = 'finn:1'", isProgrammingJob);
+        ads.Upsert(Pending(2, "Utvikler", "Org One AS") with { Id = "nav:2", Source = "nav" });
+        FakeModelClient client = FakeModelClient.Answering(JavaReply);
+
+        await stage.RunAsync(Input(client), CancellationToken.None);
+
+        Assert.Equal(1, client.Calls);
     }
 
     [Theory]
@@ -90,10 +109,14 @@ public sealed class ClassifyStageTests : IDisposable {
         ads.Upsert(Pending(1, "Utvikler", "Org One AS"));
         ads.Upsert(Pending(2, "Tester", "Org Two AS"));
         FakeModelClient client = new((_, _) => throw new ApiException(Enum.Parse<ApiErrorKind>(kind), "model call failed"));
+        FakeLogger logger = new();
+        ClassifyStage logged = new(ads, new BudgetEntry(db.Connection), events, logger);
 
-        ClassifyOutcome outcome = await stage.RunAsync(Input(client), CancellationToken.None);
+        ClassifyOutcome outcome = await logged.RunAsync(Input(client), CancellationToken.None);
 
-        Assert.Equal(new ClassifyOutcome(2, Enum.Parse<StopReason>(expected)), outcome);
+        Assert.Equal(
+            (new ClassifyOutcome(2, Enum.Parse<StopReason>(expected)), "classify.provider.failed"),
+            (outcome, logger.LatestRecord.Id.Name));
     }
 
     [Fact]
@@ -108,7 +131,7 @@ public sealed class ClassifyStageTests : IDisposable {
     [Fact]
     public async Task ShouldBumpAttempts_WhenReplyIsTruncated() {
         ads.Upsert(Pending(1, "Utvikler", "Org One AS"));
-        FakeModelClient client = new((_, _) => Task.FromResult(FakeModelClient.Reply(javaReply, StopKind.Truncated)));
+        FakeModelClient client = new((_, _) => Task.FromResult(FakeModelClient.Reply(JavaReply, StopKind.Truncated)));
 
         await stage.RunAsync(Input(client), CancellationToken.None);
 
@@ -131,7 +154,7 @@ public sealed class ClassifyStageTests : IDisposable {
     public async Task ShouldRecordCost_WhenReplyArrives(string? reported, string expected) {
         ads.Upsert(Pending(1, "Utvikler", "Org One AS"));
         decimal? cost = reported is null ? null : decimal.Parse(reported, System.Globalization.CultureInfo.InvariantCulture);
-        FakeModelClient client = new((_, _) => Task.FromResult(FakeModelClient.Reply(javaReply, cost: cost)));
+        FakeModelClient client = new((_, _) => Task.FromResult(FakeModelClient.Reply(JavaReply, cost: cost)));
 
         await stage.RunAsync(Input(client), CancellationToken.None);
 
@@ -146,7 +169,7 @@ public sealed class ClassifyStageTests : IDisposable {
         FakeModelClient client = new(async (_, token) => {
             await run.CancelAsync();
             token.ThrowIfCancellationRequested();
-            return FakeModelClient.Reply(javaReply);
+            return FakeModelClient.Reply(JavaReply);
         });
 
         ClassifyOutcome outcome = await stage.RunAsync(Input(client), run.Token);
@@ -161,7 +184,7 @@ public sealed class ClassifyStageTests : IDisposable {
         using CancellationTokenSource run = new();
         FakeModelClient client = new(async (_, _) => {
             await run.CancelAsync();
-            return FakeModelClient.Reply(javaReply);
+            return FakeModelClient.Reply(JavaReply);
         });
 
         ClassifyOutcome outcome = await stage.RunAsync(Input(client), run.Token);
@@ -174,7 +197,7 @@ public sealed class ClassifyStageTests : IDisposable {
         ads.Upsert(Pending(1, "Utvikler", "Org One AS"));
         ads.Upsert(Pending(2, "Tester", "Org Two AS"));
 
-        await stage.RunAsync(Input(Answering(javaReply)), CancellationToken.None);
+        await stage.RunAsync(Input(FakeModelClient.Answering(JavaReply)), CancellationToken.None);
 
         Assert.Equal(
             [new RunEvent(RunStage.Model, Checked: 1, Total: 2), new RunEvent(RunStage.Model, Checked: 2, Total: 2)],
@@ -191,8 +214,6 @@ public sealed class ClassifyStageTests : IDisposable {
 
         Assert.Equal("error", Labels());
     }
-
-    private static FakeModelClient Answering(string reply) => new((_, _) => Task.FromResult(FakeModelClient.Reply(reply)));
 
     private static ClassifyInput Input(IModelClient? client) => new(
         client is null ? null : new RunModel(client, new JsonObject(), prices),

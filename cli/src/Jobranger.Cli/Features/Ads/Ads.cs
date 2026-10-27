@@ -90,7 +90,7 @@ internal sealed class Ads(SqliteConnection connection, TimeProvider time) {
         foreach (Ad ad in store.PendingApplyCheck(today, now - applyRecheckAge, applyCheckLimit, targets)) {
             if (ad.ApplyUrl is string url) {
                 ApplyStatus status = await CheckAsync(client, url, cancellationToken).ConfigureAwait(false);
-                store.SetApplyStatus(ad.Id, WireNames.Of(status), now);
+                SetApplyStatus(ad.Id, status, now);
                 counts[status] = counts.GetValueOrDefault(status) + 1;
             }
         }

@@ -7,8 +7,6 @@ internal sealed record RunResult {
 
     public required RunStatus Status { get; init; }
 
-    public required RunMode Mode { get; init; }
-
     public int AdsRead { get; init; }
 
     public int NewAds { get; init; }
@@ -31,9 +29,5 @@ internal sealed record RunResult {
 
     public string? Version { get; init; }
 
-    public int Matches => ReportedIds.Count;
-
-    public int Hidden => HiddenCounts.Values.Sum();
-
-    public static RunResult Locked(RunMode mode) => new() { Status = RunStatus.Locked, Mode = mode };
+    public static RunResult Locked() => new() { Status = RunStatus.Locked };
 }

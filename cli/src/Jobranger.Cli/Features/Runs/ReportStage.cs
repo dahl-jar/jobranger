@@ -62,12 +62,13 @@ internal sealed class ReportStage(AdsEntry ads, HttpClient http, TimeProvider ti
 
     private void VetoMissingListings(ReportInput input, DateTimeOffset now) {
         IReadOnlyList<Ad> active = ads.Active();
-        foreach (IReadOnlyList<Ad> group in AdsEntry.GroupDuplicates(active)) {
-            foreach (EmployerFeed feed in input.ReadFeeds) {
+        IReadOnlyList<IReadOnlyList<Ad>> groups = AdsEntry.GroupDuplicates(active);
+        foreach (EmployerFeed feed in input.ReadFeeds) {
+            List<string> feedTitles = [.. active.Where(ad => ad.Source == feed.Source).Select(ad => ad.Title)];
+            foreach (IReadOnlyList<Ad> group in groups) {
                 if (group.Any(ad => ad.Source == feed.Source)) {
                     continue;
                 }
-                List<string> feedTitles = [.. active.Where(ad => ad.Source == feed.Source).Select(ad => ad.Title)];
                 foreach (Ad ad in group.Where(ad => IsVetoed(ad, feed, feedTitles, input.JobTitles))) {
                     ads.SetApplyStatus(ad.Id, ApplyStatus.Expired, now);
                     LogEvents.ApplyVetoed(logger, ad.Id, feed.Source);

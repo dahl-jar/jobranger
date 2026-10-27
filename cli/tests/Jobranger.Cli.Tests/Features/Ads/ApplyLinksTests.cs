@@ -15,7 +15,6 @@ namespace Jobranger.Cli.Tests.Features.Ads;
 
 [UnsupportedOSPlatform("windows")]
 public sealed class ApplyLinksTests {
-    private const string applyUrl = "https://apply.example.test/jobs/1";
     private const string otherApplyUrl = "https://apply.example.test/jobs/2";
     private const string dataUrl = "data:text/html,hi";
     private const string activePage = "<html>Søk nå</html>";
@@ -41,7 +40,7 @@ public sealed class ApplyLinksTests {
     public async Task ShouldReturnBlocked_WhenApplyLinkRedirectsToDataUrl() {
         FakeSourceHandler handler = new(_ => HttpFixtures.RawRedirect(dataUrl));
 
-        ApplyStatus status = await CheckAsync(handler, applyUrl);
+        ApplyStatus status = await CheckAsync(handler, RunFixtures.ApplyUrl);
 
         Assert.Equal(ApplyStatus.Blocked, status);
     }
@@ -50,7 +49,7 @@ public sealed class ApplyLinksTests {
     public async Task ShouldReturnBlocked_WhenRedirectHasNoLocation() {
         FakeSourceHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.Found));
 
-        ApplyStatus status = await CheckAsync(handler, applyUrl);
+        ApplyStatus status = await CheckAsync(handler, RunFixtures.ApplyUrl);
 
         Assert.Equal(ApplyStatus.Blocked, status);
     }
@@ -60,7 +59,7 @@ public sealed class ApplyLinksTests {
         FakeSourceHandler handler = new(_ => throw new HttpRequestException(
             HttpRequestError.ConnectionError, null, new RefusedRequestException("private address")));
 
-        ApplyStatus status = await CheckAsync(handler, applyUrl);
+        ApplyStatus status = await CheckAsync(handler, RunFixtures.ApplyUrl);
 
         Assert.Equal(ApplyStatus.Blocked, status);
     }
@@ -71,7 +70,7 @@ public sealed class ApplyLinksTests {
     public async Task ShouldReturnExpired_WhenPageIsGone(HttpStatusCode code) {
         FakeSourceHandler handler = new(_ => new HttpResponseMessage(code));
 
-        ApplyStatus status = await CheckAsync(handler, applyUrl);
+        ApplyStatus status = await CheckAsync(handler, RunFixtures.ApplyUrl);
 
         Assert.Equal(ApplyStatus.Expired, status);
     }
@@ -82,7 +81,7 @@ public sealed class ApplyLinksTests {
     public async Task ShouldReturnUnknown_WhenPageAnswersError(HttpStatusCode code) {
         FakeSourceHandler handler = new(_ => new HttpResponseMessage(code));
 
-        ApplyStatus status = await CheckAsync(handler, applyUrl);
+        ApplyStatus status = await CheckAsync(handler, RunFixtures.ApplyUrl);
 
         Assert.Equal(ApplyStatus.Unknown, status);
     }
@@ -94,7 +93,7 @@ public sealed class ApplyLinksTests {
     public async Task ShouldReturnSkipped_WhenRedirectEndsOnFinn(string location) {
         FakeSourceHandler handler = new(index => index == 0 ? HttpFixtures.RawRedirect(location) : Page(activePage));
 
-        ApplyStatus status = await CheckAsync(handler, applyUrl);
+        ApplyStatus status = await CheckAsync(handler, RunFixtures.ApplyUrl);
 
         Assert.Equal(ApplyStatus.Skipped, status);
     }
@@ -115,7 +114,7 @@ public sealed class ApplyLinksTests {
     public async Task ShouldReturnActive_WhenMarkerIsOnOtherHost() {
         FakeSourceHandler handler = new(_ => Page("<script>{" + expiredMarker + "}</script>"));
 
-        ApplyStatus status = await CheckAsync(handler, applyUrl);
+        ApplyStatus status = await CheckAsync(handler, RunFixtures.ApplyUrl);
 
         Assert.Equal(ApplyStatus.Active, status);
     }
@@ -155,7 +154,7 @@ public sealed class ApplyLinksTests {
             Content = new StreamContent(new LargeBodyStream(hostileBodyBytes)),
         });
 
-        ApplyStatus status = await CheckAsync(handler, applyUrl);
+        ApplyStatus status = await CheckAsync(handler, RunFixtures.ApplyUrl);
 
         Assert.Equal(ApplyStatus.Unknown, status);
     }
@@ -164,7 +163,7 @@ public sealed class ApplyLinksTests {
     public async Task ShouldReturnUnknown_WhenPageDoesNotAnswer() {
         FakeSourceHandler handler = new(_ => throw new HttpRequestException(HttpRequestError.ConnectionError));
 
-        ApplyStatus status = await CheckAsync(handler, applyUrl);
+        ApplyStatus status = await CheckAsync(handler, RunFixtures.ApplyUrl);
 
         Assert.Equal(ApplyStatus.Unknown, status);
     }
@@ -173,7 +172,7 @@ public sealed class ApplyLinksTests {
     public async Task ShouldReturnUnknown_WhenRequestThrowsIOException() {
         FakeSourceHandler handler = new(_ => throw new IOException("connection reset"));
 
-        ApplyStatus status = await CheckAsync(handler, applyUrl);
+        ApplyStatus status = await CheckAsync(handler, RunFixtures.ApplyUrl);
 
         Assert.Equal(ApplyStatus.Unknown, status);
     }
@@ -182,7 +181,7 @@ public sealed class ApplyLinksTests {
     public async Task ShouldReturnUnknown_WhenConnectTimesOut() {
         FakeSourceHandler handler = new(_ => throw HttpFixtures.ConnectTimeout());
 
-        ApplyStatus status = await CheckAsync(handler, applyUrl);
+        ApplyStatus status = await CheckAsync(handler, RunFixtures.ApplyUrl);
 
         Assert.Equal(ApplyStatus.Unknown, status);
     }
@@ -195,7 +194,7 @@ public sealed class ApplyLinksTests {
             Content = new StreamContent(CorruptBody(encoding)),
         });
 
-        ApplyStatus status = await CheckAsync(handler, applyUrl);
+        ApplyStatus status = await CheckAsync(handler, RunFixtures.ApplyUrl);
 
         Assert.Equal(ApplyStatus.Unknown, status);
     }
@@ -208,7 +207,7 @@ public sealed class ApplyLinksTests {
         await cancel.CancelAsync();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => ApplyLinks.CheckAsync(client, applyUrl, TimeProvider.System, cancel.Token));
+            () => ApplyLinks.CheckAsync(client, RunFixtures.ApplyUrl, TimeProvider.System, cancel.Token));
     }
 
     [Fact]
@@ -236,7 +235,7 @@ public sealed class ApplyLinksTests {
         FakeSourceHandler inner = new(_ => Unavailable());
         using HttpClient client = new(new HostLimitHandler(new HostLimiter(time), time) { InnerHandler = inner });
 
-        ApplyStatus status = await ApplyLinks.CheckAsync(client, applyUrl, time, TestContext.Current.CancellationToken)
+        ApplyStatus status = await ApplyLinks.CheckAsync(client, RunFixtures.ApplyUrl, time, TestContext.Current.CancellationToken)
             .WaitAsync(settle, TestContext.Current.CancellationToken);
 
         Assert.Equal(ApplyStatus.Unknown, status);
@@ -246,9 +245,9 @@ public sealed class ApplyLinksTests {
     public async Task ShouldCheckNextAd_WhenApplyLinkRedirectsToDataUrl() {
         using TestDatabase db = new();
         AdsEntry ads = new(db.Connection, Clock());
-        ads.Upsert(Numbered(1) with { ApplyUrl = applyUrl });
+        ads.Upsert(Numbered(1) with { ApplyUrl = RunFixtures.ApplyUrl });
         ads.Upsert(Numbered(2) with { ApplyUrl = otherApplyUrl });
-        FakeSourceHandler handler = new((_, url) => url.AbsoluteUri == applyUrl
+        FakeSourceHandler handler = new((_, url) => url.AbsoluteUri == RunFixtures.ApplyUrl
             ? HttpFixtures.RawRedirect(dataUrl)
             : Page(activePage));
         using HttpClient client = new(handler);
@@ -264,9 +263,9 @@ public sealed class ApplyLinksTests {
     public async Task ShouldStoreUnknown_WhenCheckThrowsUnexpectedError() {
         using TestDatabase db = new();
         AdsEntry ads = new(db.Connection, Clock());
-        ads.Upsert(Numbered(1) with { ApplyUrl = applyUrl });
+        ads.Upsert(Numbered(1) with { ApplyUrl = RunFixtures.ApplyUrl });
         ads.Upsert(Numbered(2) with { ApplyUrl = otherApplyUrl });
-        FakeSourceHandler handler = new((_, url) => url.AbsoluteUri == applyUrl
+        FakeSourceHandler handler = new((_, url) => url.AbsoluteUri == RunFixtures.ApplyUrl
             ? throw new NotSupportedException("unexpected handler failure")
             : Page(activePage));
         using HttpClient client = new(handler);
@@ -282,7 +281,7 @@ public sealed class ApplyLinksTests {
     public async Task ShouldStopChecks_WhenCallerCancels() {
         using TestDatabase db = new();
         AdsEntry ads = new(db.Connection, Clock());
-        ads.Upsert(Numbered(1) with { ApplyUrl = applyUrl });
+        ads.Upsert(Numbered(1) with { ApplyUrl = RunFixtures.ApplyUrl });
         FakeSourceHandler handler = new(_ => Page(activePage));
         using HttpClient client = new(handler);
         using CancellationTokenSource cancel = new();
@@ -297,7 +296,7 @@ public sealed class ApplyLinksTests {
         using TestDatabase db = new();
         AdsEntry ads = new(db.Connection, Clock());
         AdStore store = new(db.Connection, Clock());
-        ads.Upsert(Numbered(1) with { ApplyUrl = applyUrl });
+        ads.Upsert(Numbered(1) with { ApplyUrl = RunFixtures.ApplyUrl });
         ads.Upsert(Numbered(2) with { ApplyUrl = otherApplyUrl });
         store.SetApplyStatus("finn:1", "active", Now.AddDays(-6));
         store.SetApplyStatus("finn:2", "active", Now.AddDays(-8));
@@ -314,7 +313,7 @@ public sealed class ApplyLinksTests {
         using TestDatabase db = new();
         AdsEntry ads = new(db.Connection, Clock());
         foreach (int index in Enumerable.Range(1, applyCheckLimit + 1)) {
-            ads.Upsert(Numbered(index) with { ApplyUrl = applyUrl + "?n=" + index });
+            ads.Upsert(Numbered(index) with { ApplyUrl = RunFixtures.ApplyUrl + "?n=" + index });
         }
         FakeSourceHandler handler = new(_ => Page(activePage));
         using HttpClient client = new(handler);
@@ -328,7 +327,7 @@ public sealed class ApplyLinksTests {
     public async Task ShouldSkipApplyCheck_WhenDeadlinePassedInLocalDay() {
         using TestDatabase db = new();
         AdsEntry ads = new(db.Connection, Clock());
-        ads.Upsert(Numbered(1) with { ApplyUrl = applyUrl, Deadline = "2026-10-26" });
+        ads.Upsert(Numbered(1) with { ApplyUrl = RunFixtures.ApplyUrl, Deadline = "2026-10-26" });
         FakeSourceHandler handler = new(_ => Page(activePage));
         using HttpClient client = new(handler);
 
@@ -353,7 +352,7 @@ public sealed class ApplyLinksTests {
             return answer();
         });
         using HttpClient client = new(handler);
-        Task<ApplyStatus> check = ApplyLinks.CheckAsync(client, applyUrl, time, TestContext.Current.CancellationToken);
+        Task<ApplyStatus> check = ApplyLinks.CheckAsync(client, RunFixtures.ApplyUrl, time, TestContext.Current.CancellationToken);
         await requested.WaitAsync(TestContext.Current.CancellationToken);
 
         (bool Early, bool OnTime) timing = await LimiterTiming.StateAroundAsync(time, check, checkDeadline);
