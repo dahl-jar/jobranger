@@ -7,7 +7,18 @@ internal static class HtmlText {
     private const char tagClose = '>';
     private const char space = ' ';
 
+    private static readonly (string Character, string Entity)[] escapes = [
+        ("&", "&amp;"),
+        ("<", "&lt;"),
+        (">", "&gt;"),
+        ("\"", "&quot;"),
+        ("'", "&#x27;"),
+    ];
+
     public static string Strip(string html) => CollapseSpace(HtmlEntities.Decode(ReplaceTags(html)));
+
+    public static string Escape(string text) =>
+        escapes.Aggregate(text, (escaped, pair) => escaped.Replace(pair.Character, pair.Entity, StringComparison.Ordinal));
 
     private static string ReplaceTags(string html) {
         StringBuilder text = new(html.Length);

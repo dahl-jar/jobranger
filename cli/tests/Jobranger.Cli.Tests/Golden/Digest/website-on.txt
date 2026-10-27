@@ -1,0 +1,50 @@
+jobranger · Thursday 8 October
+
+Four strong fits this afternoon, picked from 30 new ads.
+
+APPLY THIS WEEK
+
+13 Oct, in 5 days · ✓ Strong fit
+Company One
+Developer One
+Oslo · Backend · FINN
+Build backend services.
+Open the ad ↗: https://ads.example.test/job/1
+Mark applied: https://site.example.test/base/app/ad?id=finn%3A3&action=applied
+Not for me: https://site.example.test/base/app/ad?id=finn%3A3&action=not_for_me
+
+9 Oct, tomorrow · ✓ Strong fit
+Company One
+Developer One
+Oslo · Backend · FINN
+Build backend services.
+Open the ad ↗: https://ads.example.test/job/1
+Mark applied: https://site.example.test/base/app/ad?id=finn%3A2&action=applied
+Not for me: https://site.example.test/base/app/ad?id=finn%3A2&action=not_for_me
+
+8 Oct, today · ✓ Strong fit
+Company One
+Developer One
+Oslo · Backend · FINN
+Build backend services.
+Open the ad ↗: https://ads.example.test/job/1
+Mark applied: https://site.example.test/base/app/ad?id=finn%3A1&action=applied
+Not for me: https://site.example.test/base/app/ad?id=finn%3A1&action=not_for_me
+
+NEW TODAY
+
+20 Oct, in 12 days · ✓ Strong fit
+Company One
+Developer One
+Oslo · Backend · Career page
+Build backend services.
+Open the ad ↗: https://ads.example.test/job/1
+Mark applied: https://site.example.test/base/app/ad?id=teamtailor%3Aacme%3A4&action=applied
+Not for me: https://site.example.test/base/app/ad?id=teamtailor%3Aacme%3A4&action=not_for_me
+
+10 hidden: 3 senior · 3 master's · 2 need 2+ yrs · 1 other role · 1 other reason · view: https://site.example.test/base/app/hidden
+
+Read FINN and 2 company career pages today.
+Open jobranger: https://site.example.test/base/app
+Settings: https://site.example.test/base/app/settings
+Unsubscribe: https://site.example.test/base/app/settings/delivery

@@ -126,4 +126,102 @@ internal interface IMessages {
     string DatabaseTooNew { get; }
 
     string DatabaseUnreadable(string path);
+
+    Language Language { get; }
+
+    string DigestSubject(int matches, string date);
+
+    string DigestLongDate(DateOnly day);
+
+    string DigestShortDate(DateOnly day);
+
+    string DigestNoDate { get; }
+
+    string DigestDueNote(int? daysLeft);
+
+    string DigestStrongLabel { get; }
+
+    string DigestPartialLabel { get; }
+
+    string DigestOnRequestLabel { get; }
+
+    string DigestApplySoonTitle { get; }
+
+    string DigestNewTodayTitle { get; }
+
+    string DigestCarriedTitle { get; }
+
+    string DigestStrongFits(int count);
+
+    string DigestPartialFits(int count);
+
+    string DigestShownOnRequest(int count);
+
+    string DigestThisMorning { get; }
+
+    string DigestThisAfternoon { get; }
+
+    string DigestThisEvening { get; }
+
+    string DigestLead(string fits, string when, int newAds);
+
+    string DigestNoNewMatches(string when, int newAds);
+
+    string DigestJoin(string items, string last);
+
+    string DigestMoreSources(int count);
+
+    string DigestCareerPage { get; }
+
+    string DigestCareerPageOf(string key);
+
+    string DigestCareerPages(int count);
+
+    string DigestReadNote(string sources, bool overnight);
+
+    string DigestClosedNote(int count);
+
+    string DigestCouldNotRead(string sources);
+
+    string DigestPausedNote(int pending);
+
+    string DigestKeyRefusedNote(int pending);
+
+    string DigestProviderDownNote(int pending);
+
+    string DigestMoreOnWebsite { get; }
+
+    string DigestMoreInReport { get; }
+
+    string DigestOpenAd { get; }
+
+    string DigestMarkApplied { get; }
+
+    string DigestNotForMe { get; }
+
+    string DigestOpenApp { get; }
+
+    string DigestSettings { get; }
+
+    string DigestUnsubscribe { get; }
+
+    string DigestViewHidden { get; }
+
+    string DigestStopEmails { get; }
+
+    string HiddenLine(int total, string parts);
+
+    string HiddenSenior(int count);
+
+    string HiddenMasters(int count);
+
+    string HiddenRole(int count);
+
+    string HiddenPlace(int count);
+
+    string HiddenOther(int count);
+
+    string HiddenYearsAbove(int count, int cap);
+
+    string HiddenYearsUnknown(int count);
 }

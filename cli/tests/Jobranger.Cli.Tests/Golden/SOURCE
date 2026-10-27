@@ -2,6 +2,23 @@ cli-python commit cb67b6236db52bc278f44469d62a89009cd9c0ef
 exported by scripts/golden/export_goldens.py
 Golden/Budget/estimates.json
 Golden/Classify/classifications.json
+Golden/Digest/budget-paused.html
+Golden/Digest/budget-paused.txt
+Golden/Digest/carried.html
+Golden/Digest/carried.txt
+Golden/Digest/cut-for-size.html
+Golden/Digest/cut-for-size.txt
+Golden/Digest/email-only.html
+Golden/Digest/email-only.txt
+Golden/Digest/empty.html
+Golden/Digest/empty.txt
+Golden/Digest/failed-sources.html
+Golden/Digest/failed-sources.txt
+Golden/Digest/model-stopped.html
+Golden/Digest/model-stopped.txt
+Golden/Digest/subjects.json
+Golden/Digest/website-on.html
+Golden/Digest/website-on.txt
 Golden/Profiles/profile-dated.txt
 Golden/Prompts/system-accents-narrow.txt
 Golden/Prompts/system-accents-wide.txt

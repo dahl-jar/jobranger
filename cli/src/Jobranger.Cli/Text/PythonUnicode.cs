@@ -15,11 +15,17 @@ internal static class PythonUnicode {
     private const string ignoreCaseLettersKey = "ignore_case_letters";
     private const string invalidCharrefsKey = "charrefs";
     private const string droppedCharrefsKey = "dropped_charrefs";
+    private const string hiddenKey = "hidden";
+    private const string unprintableKey = "unprintable";
+    private const string nfkcDelimitersKey = "nfkc_delimiters";
     private const char sequenceSeparator = ' ';
 
     private static readonly CodeRanges word;
     private static readonly CodeRanges space;
     private static readonly CodeRanges droppedCharrefs;
+    private static readonly CodeRanges hidden;
+    private static readonly CodeRanges unprintable;
+    private static readonly CodeRanges nfkcDelimiters;
     private static readonly FrozenDictionary<int, string> caseFold;
     private static readonly FrozenDictionary<int, string> invalidCharrefs;
     private static readonly FrozenDictionary<int, char> ignoreCase;
@@ -32,6 +38,9 @@ internal static class PythonUnicode {
         word = Ranges(root, wordKey);
         space = Ranges(root, spaceKey);
         droppedCharrefs = Ranges(root, droppedCharrefsKey);
+        hidden = Ranges(root, hiddenKey);
+        unprintable = Ranges(root, unprintableKey);
+        nfkcDelimiters = Ranges(root, nfkcDelimitersKey);
         caseFold = Mappings(root, caseFoldKey).ToFrozenDictionary(row => row.Code, row => row.Text);
         invalidCharrefs = Mappings(root, invalidCharrefsKey).ToFrozenDictionary(row => row.Code, row => row.Text);
         ignoreCase = Mappings(root, ignoreCaseKey).ToFrozenDictionary(row => row.Code, row => row.Text[0]);
@@ -41,6 +50,12 @@ internal static class PythonUnicode {
     public static bool IsWord(int code) => word.Contains(code);
 
     public static bool IsSpace(int code) => space.Contains(code);
+
+    public static bool IsHidden(int code) => hidden.Contains(code);
+
+    public static bool IsPrintable(int code) => !unprintable.Contains(code);
+
+    public static bool ExpandsToUrlDelimiter(int code) => nfkcDelimiters.Contains(code);
 
     public static string CaseFold(string text) {
         StringBuilder folded = new(text.Length);

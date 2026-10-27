@@ -3,6 +3,12 @@ using System.Globalization;
 namespace Jobranger.Cli.Text;
 
 internal sealed class EnglishMessages : IMessages {
+    private const string longDateFormat = "dddd d MMMM";
+    private const string shortDateFormat = "d MMM";
+
+    private static readonly string[] numberWords =
+        ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+
     public string RootDescription =>
         "Finds job ads on FINN, NAV, LinkedIn and employer job boards that fit your profile.";
 
@@ -137,4 +143,124 @@ internal sealed class EnglishMessages : IMessages {
     public string DatabaseTooNew => "The database was made by a newer jobranger. Update jobranger and try again.";
 
     public string DatabaseUnreadable(string path) => $"Cannot read the jobranger database at {path}.";
+
+    public Language Language => Language.En;
+
+    public string DigestSubject(int matches, string date) =>
+        $"jobranger: {matches} {(matches == 1 ? "match" : "matches")}, {date}";
+
+    public string DigestLongDate(DateOnly day) => day.ToString(longDateFormat, CultureInfo.InvariantCulture);
+
+    public string DigestShortDate(DateOnly day) => day.ToString(shortDateFormat, CultureInfo.InvariantCulture);
+
+    public string DigestNoDate => "No date";
+
+    public string DigestDueNote(int? daysLeft) => daysLeft switch {
+        null => "apply early",
+        0 => "today",
+        1 => "tomorrow",
+        _ => $"in {daysLeft} days",
+    };
+
+    public string DigestStrongLabel => "Strong fit";
+
+    public string DigestPartialLabel => "Partial fit";
+
+    public string DigestOnRequestLabel => "Shown on request";
+
+    public string DigestApplySoonTitle => "Apply this week";
+
+    public string DigestNewTodayTitle => "New today";
+
+    public string DigestCarriedTitle => "Still waiting from earlier";
+
+    public string DigestStrongFits(int count) => $"{Number(count)} strong {(count == 1 ? "fit" : "fits")}";
+
+    public string DigestPartialFits(int count) => $"{Number(count)} partial {(count == 1 ? "fit" : "fits")}";
+
+    public string DigestShownOnRequest(int count) => $"{Number(count)} {(count == 1 ? "ad" : "ads")} shown on request";
+
+    public string DigestThisMorning => "this morning";
+
+    public string DigestThisAfternoon => "this afternoon";
+
+    public string DigestThisEvening => "this evening";
+
+    public string DigestLead(string fits, string when, int newAds) =>
+        $"{Capitalized(fits)} {when}, picked from {newAds} {(newAds == 1 ? "new ad" : "new ads")}.";
+
+    public string DigestNoNewMatches(string when, int newAds) =>
+        $"No new matches {when}, from {newAds} {(newAds == 1 ? "new ad" : "new ads")}.";
+
+    public string DigestJoin(string items, string last) => $"{items} and {last}";
+
+    public string DigestMoreSources(int count) => $"{count} more";
+
+    public string DigestCareerPage => "Career page";
+
+    public string DigestCareerPageOf(string key) => $"the {key} career page";
+
+    public string DigestCareerPages(int count) =>
+        $"{count} {(count == 1 ? "company career page" : "company career pages")}";
+
+    public string DigestReadNote(string sources, bool overnight) =>
+        $"Read {sources} {(overnight ? "overnight" : "today")}.";
+
+    public string DigestClosedNote(int count) =>
+        $"{Capitalized(Number(count))} {(count == 1 ? "earlier job" : "earlier jobs")} closed since the last run.";
+
+    public string DigestCouldNotRead(string sources) => $"Could not read {sources}.";
+
+    public string DigestPausedNote(int pending) =>
+        $"AI checks are paused until next month: {pending} {AdsWait(pending)}.";
+
+    public string DigestKeyRefusedNote(int pending) =>
+        $"AI checks stopped: the provider refused the API key. {pending} {AdsWait(pending)}. "
+        + "Set a new key with: jobranger init";
+
+    public string DigestProviderDownNote(int pending) =>
+        $"AI checks stopped: the provider did not answer. {pending} {AdsWait(pending)} for the next run.";
+
+    public string DigestMoreOnWebsite => "more on the website";
+
+    public string DigestMoreInReport => "more in jobranger report";
+
+    public string DigestOpenAd => "Open the ad";
+
+    public string DigestMarkApplied => "Mark applied";
+
+    public string DigestNotForMe => "Not for me";
+
+    public string DigestOpenApp => "Open jobranger";
+
+    public string DigestSettings => "Settings";
+
+    public string DigestUnsubscribe => "Unsubscribe";
+
+    public string DigestViewHidden => "view";
+
+    public string DigestStopEmails => "Stop these emails: jobranger config edit";
+
+    public string HiddenLine(int total, string parts) => $"{total} hidden: {parts}";
+
+    public string HiddenSenior(int count) => $"{count} senior";
+
+    public string HiddenMasters(int count) => $"{count} master's";
+
+    public string HiddenRole(int count) => $"{count} {(count == 1 ? "other role" : "other roles")}";
+
+    public string HiddenPlace(int count) => $"{count} {(count == 1 ? "other place" : "other places")}";
+
+    public string HiddenOther(int count) => $"{count} {(count == 1 ? "other reason" : "other reasons")}";
+
+    public string HiddenYearsAbove(int count, int cap) => $"{count} need {cap}+ yrs";
+
+    public string HiddenYearsUnknown(int count) => $"{count} need more yrs";
+
+    private static string Number(int count) => count < numberWords.Length ? numberWords[count] : $"{count}";
+
+    private static string Capitalized(string text) =>
+        text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
+
+    private static string AdsWait(int pending) => pending == 1 ? "ad waits" : "ads wait";
 }

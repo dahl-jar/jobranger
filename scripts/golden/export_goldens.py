@@ -22,6 +22,8 @@ BUDGET_ESTIMATES = GOLDEN / "Budget/estimates.json"
 MATCHING_INPUTS = TESTS / "TestData/Matching"
 RUN_PASS_INPUTS = TESTS / "TestData/RunPass"
 RUN_PASS_GOLDEN = GOLDEN / "RunPass/rows.json"
+DIGEST_INPUTS = TESTS / "TestData/Digest"
+DIGEST_GOLDEN = GOLDEN / "Digest"
 SOURCE = GOLDEN / "SOURCE"
 DRIVERS = (
     ("store_rows.py", ("--db", STORE_DB, "--out", STORE_ROWS)),
@@ -30,6 +32,7 @@ DRIVERS = (
     ("budget_estimates.py", ("--out", BUDGET_ESTIMATES)),
     ("matching.py", ("--inputs", MATCHING_INPUTS, "--out", GOLDEN)),
     ("run_pass.py", ("--inputs", RUN_PASS_INPUTS, "--out", RUN_PASS_GOLDEN)),
+    ("digest.py", ("--inputs", DIGEST_INPUTS, "--out", DIGEST_GOLDEN)),
 )
 
 log = logging.getLogger("export_goldens")
