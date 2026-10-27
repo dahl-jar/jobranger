@@ -1,6 +1,6 @@
-using System.Buffers;
 using System.Runtime.Versioning;
 using System.Text.Json;
+using Jobranger.Cli.Http;
 
 namespace Jobranger.Cli.Features.Updates;
 
@@ -15,7 +15,6 @@ internal static class VersionCheck {
     private const string draftField = "draft";
     private const string prereleaseField = "prerelease";
     private const int maxBodyBytes = 8 * 1024 * 1024;
-    private const int readBufferBytes = 81920;
 
     private static readonly TimeSpan requestDeadline = TimeSpan.FromSeconds(2);
 
@@ -40,29 +39,15 @@ internal static class VersionCheck {
                 .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, deadline.Token)
                 .ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
-            byte[]? body = await ReadCappedAsync(response.Content, deadline.Token).ConfigureAwait(false);
-            return body is null ? null : Highest(body);
+            Stream body = await response.Content.ReadAsStreamAsync(deadline.Token).ConfigureAwait(false);
+            await using (body.ConfigureAwait(false)) {
+                return Highest(await CappedReader.ReadAsync(body, maxBodyBytes, deadline.Token).ConfigureAwait(false));
+            }
         } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
             return null;
         } catch (Exception error) when (error is HttpRequestException or JsonException or IOException
-            or InvalidOperationException) {
+            or InvalidOperationException or BodyTooLargeException) {
             return null;
-        }
-    }
-
-    private static async Task<byte[]?> ReadCappedAsync(HttpContent content, CancellationToken cancellationToken) {
-        Stream body = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        await using (body.ConfigureAwait(false)) {
-            ArrayBufferWriter<byte> buffer = new();
-            byte[] chunk = new byte[readBufferBytes];
-            int read;
-            while ((read = await body.ReadAsync(chunk, cancellationToken).ConfigureAwait(false)) > 0) {
-                if (buffer.WrittenCount + read > maxBodyBytes) {
-                    return null;
-                }
-                buffer.Write(chunk.AsSpan(0, read));
-            }
-            return buffer.WrittenSpan.ToArray();
         }
     }
 
