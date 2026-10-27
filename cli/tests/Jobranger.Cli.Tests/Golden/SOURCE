@@ -1,5 +1,6 @@
 cli-python commit cb67b6236db52bc278f44469d62a89009cd9c0ef
 exported by scripts/golden/export_goldens.py
+Golden/Budget/estimates.json
 Golden/Requests/anthropic-schema.json
 Golden/Requests/anthropic.json
 Golden/Requests/ollama.json

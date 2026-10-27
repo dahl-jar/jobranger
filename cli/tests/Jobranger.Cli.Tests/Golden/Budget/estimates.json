@@ -1,0 +1,52 @@
+{
+  "prices": {
+    "input": 10.0,
+    "output": 10.0,
+    "cache_read": 1.0,
+    "cache_write_5m": 12.5,
+    "cache_write_1h": 20.0
+  },
+  "cache_write_usd": 0.11632,
+  "ad_cost_usd": {
+    "single": 0.026866,
+    "batch": 0.068685
+  },
+  "affordable": [
+    {
+      "spent_usd": 0.04,
+      "limit_usd": 0.21632,
+      "per_ad_usd": 0.02,
+      "count": 2
+    },
+    {
+      "spent_usd": 0.0,
+      "limit_usd": 0.116323,
+      "per_ad_usd": 0.0,
+      "count": 2
+    },
+    {
+      "spent_usd": 0.0,
+      "limit_usd": 0.116324,
+      "per_ad_usd": 1.4e-06,
+      "count": 1
+    },
+    {
+      "spent_usd": 0.3,
+      "limit_usd": 0.1,
+      "per_ad_usd": 0.02,
+      "count": 0
+    }
+  ],
+  "recheck": {
+    "prices": {
+      "input": 1.0,
+      "output": 2.0,
+      "cache_read": 0.1,
+      "cache_write_5m": 1.25,
+      "cache_write_1h": 2.0
+    },
+    "ads": 3,
+    "system_chars": 4001,
+    "cost_usd": 0.0185
+  }
+}
