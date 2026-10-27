@@ -1,6 +1,6 @@
 using System.Globalization;
-using System.Net;
 using System.Text;
+using Jobranger.Cli.Text;
 
 namespace Jobranger.Cli.Secrets;
 
@@ -39,7 +39,7 @@ internal static class KeyGuard {
     private static string Normalize(string text) {
         string decoded = text;
         for (int round = 0; round < decodeRounds; round++) {
-            decoded = KeyFolds.Fold(WebUtility.HtmlDecode(CharRefs.Decode(Uri.UnescapeDataString(decoded))));
+            decoded = KeyFolds.Fold(HtmlEntities.Decode(Uri.UnescapeDataString(decoded)));
         }
         return Keep(decoded.ToLowerInvariant(), rune => IsPrintable(rune) && !Rune.IsWhiteSpace(rune));
     }

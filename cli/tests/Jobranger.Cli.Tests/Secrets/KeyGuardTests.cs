@@ -5,6 +5,7 @@ namespace Jobranger.Cli.Tests.Secrets;
 
 public sealed class KeyGuardTests {
     private const string key = "sk-fake-0000-test-key-1234";
+    private const string underscoreKey = "sk_fake_0000_road_key_1234";
     private const int fullwidthOffset = 0xFEE0;
     private const int mathBoldSmallA = 0x1D41A;
     private const int mathBoldZero = 0x1D7CE;
@@ -20,8 +21,18 @@ public sealed class KeyGuardTests {
     [InlineData("bad fake-0000-test")]
     [InlineData("bad &#115&#107&#45&#102&#97&#107&#101&#45&#48&#48&#48&#48&#45&#116&#101&#115&#116&#45&#107&#101&#121&#45&#49&#50&#51&#52")]
     [InlineData("bad sk-fak&#x65-0000&#x2dtest&#x2dkey-1234")]
+    [InlineData("bad sk-fa&kopf;e-0000-t&eopf;st-key-1234")]
     public void ShouldDropDetail_WhenItHoldsKeyFragment(string detail) {
         string? cleaned = KeyGuard.Clean(detail, key);
+
+        Assert.Null(cleaned);
+    }
+
+    [Theory]
+    [InlineData("bad sk&lowbar;fake&lowbar;0000&lowbar;road&lowbar;key&lowbar;1234")]
+    [InlineData("bad sk_f&ordfke_0000_r&ordmad_key_1234")]
+    public void ShouldDropDetail_WhenUnderscoreKeyIsWrittenInEntities(string detail) {
+        string? cleaned = KeyGuard.Clean(detail, underscoreKey);
 
         Assert.Null(cleaned);
     }
