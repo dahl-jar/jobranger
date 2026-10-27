@@ -72,6 +72,14 @@ public sealed class ClassifierTests {
         Assert.Equal("strong", result?.Match?.Status);
     }
 
+    [Fact]
+    public void ShouldBlock_WhenDescriptionStatesYearsAboveLimit() {
+        Classification? result = Classify(
+            _ => { }, ad: MatchingFixtures.Ad with { Description = "Krav: minimum 3 års erfaring med Java" });
+
+        Assert.Equal(("unsuitable", 3.0), (result?.Match?.Status, result?.Match?.RequiredExperienceYears));
+    }
+
     [Theory]
     [InlineData("""{"evidence": []}""")]
     [InlineData("""{"evidence": ["education"]}""")]

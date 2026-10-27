@@ -215,6 +215,24 @@ def test_should_correct_master_flag_from_explicit_summary(
     assert (result.requires_master, result.match.status) == (True, "unsuitable")
 
 
+def test_should_block_ad_when_description_states_years_above_limit(
+    fake_profile: Profile,
+) -> None:
+    result = to_classification(
+        make_assessment(),
+        make_ad(description="Krav: minimum 3 års erfaring med Java"),
+        evidence_ids(fake_profile),
+        education_ids(fake_profile),
+        FAKE_LIMITS,
+        FAKE_VERSION,
+    )
+
+    assert (result.match.status, result.match.required_experience_years) == (
+        "unsuitable",
+        3.0,
+    )
+
+
 @pytest.mark.parametrize(
     "summary",
     [

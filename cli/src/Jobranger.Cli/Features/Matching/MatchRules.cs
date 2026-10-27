@@ -6,8 +6,9 @@ using RoleCatalogue = Jobranger.Cli.Catalogue.Catalogue;
 namespace Jobranger.Cli.Features.Matching;
 
 internal static class MatchRules {
+    public const int ItemLimit = 5;
+
     private const int textLimit = 300;
-    private const int itemLimit = 5;
     private const string noYearCapRule = "The search accepts roles requiring any number of years.";
     private const string seniorUnsuitableRule =
         "Senior and lead roles are unsuitable, even with skill fit; name the level as a blocker.";
@@ -93,8 +94,10 @@ internal static class MatchRules {
         return match;
     }
 
-    private static string YearsText(double value) =>
+    public static string YearsText(double value) =>
         value.ToString(shortFormat, CultureInfo.InvariantCulture).Replace(upperExponent, lowerExponent);
+
+    public static string Clean(string text) => WordTruncation.Cut(MatchText.CollapseSpace(text), textLimit);
 
     private static string YearCapRule(string years) =>
         $"The search accepts roles requiring at most {years} years. A mandatory minimum above {years} years is unsuitable, "
@@ -106,7 +109,5 @@ internal static class MatchRules {
         match.RequiredExperienceYears is double years && MaxYears(limits) is double cap && years > cap;
 
     private static List<string> Items(IReadOnlyList<string> items) =>
-        [.. items.Where(item => MatchText.Strip(item).Length > 0).Select(Clean).Take(itemLimit)];
-
-    private static string Clean(string text) => WordTruncation.Cut(MatchText.CollapseSpace(text), textLimit);
+        [.. items.Where(item => MatchText.Strip(item).Length > 0).Select(Clean).Take(ItemLimit)];
 }

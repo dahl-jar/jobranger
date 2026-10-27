@@ -7,7 +7,11 @@ import tarfile
 import tempfile
 from pathlib import Path
 
-PINNED_COMMIT = "cb67b6236db52bc278f44469d62a89009cd9c0ef"
+STORE_V2_COMMIT = "cb67b6236db52bc278f44469d62a89009cd9c0ef"
+UNSTAGED_MESSAGE = (
+    "cli-python has unstaged or untracked changes. "
+    "Run git add cli-python, then export again."
+)
 PYTHON_CLI = "cli-python"
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -21,18 +25,48 @@ PROVIDER_REQUESTS = GOLDEN / "Requests"
 BUDGET_ESTIMATES = GOLDEN / "Budget/estimates.json"
 MATCHING_INPUTS = TESTS / "TestData/Matching"
 SOURCE = GOLDEN / "SOURCE"
-DRIVERS = (
-    ("store_rows.py", ("--db", STORE_DB, "--out", STORE_ROWS)),
-    ("link_keys.py", ("--out", LINK_KEYS)),
-    ("provider_requests.py", ("--prompt", PROVIDER_PROMPT, "--out", PROVIDER_REQUESTS)),
-    ("budget_estimates.py", ("--out", BUDGET_ESTIMATES)),
-    ("matching.py", ("--inputs", MATCHING_INPUTS, "--out", GOLDEN)),
+DRIVERS: tuple[tuple[str, tuple[object, ...], str | None], ...] = (
+    ("store_rows.py", ("--db", STORE_DB, "--out", STORE_ROWS), STORE_V2_COMMIT),
+    ("link_keys.py", ("--out", LINK_KEYS), None),
+    (
+        "provider_requests.py",
+        ("--prompt", PROVIDER_PROMPT, "--out", PROVIDER_REQUESTS),
+        None,
+    ),
+    ("budget_estimates.py", ("--out", BUDGET_ESTIMATES), None),
+    ("matching.py", ("--inputs", MATCHING_INPUTS, "--out", GOLDEN), None),
 )
 
 log = logging.getLogger("export_goldens")
 
 
-def extract_pinned(target: Path) -> Path:
+def git_output(*arguments: str) -> str:
+    return subprocess.run(
+        ["git", "-C", str(REPO_ROOT), *arguments],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+def index_tree() -> str:
+    unstaged = subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "diff", "--quiet", "--", PYTHON_CLI],
+        check=False,
+    )
+    untracked = git_output(
+        "ls-files", "--others", "--exclude-standard", "--", PYTHON_CLI
+    )
+    if unstaged.returncode != 0 or untracked:
+        raise SystemExit(UNSTAGED_MESSAGE)
+    return git_output("write-tree", f"--prefix={PYTHON_CLI}/")
+
+
+def commit_tree(commit: str) -> str:
+    return git_output("rev-parse", f"{commit}:{PYTHON_CLI}")
+
+
+def extract(tree: str, target: Path) -> Path:
     archive = subprocess.run(
         [
             "git",
@@ -40,8 +74,8 @@ def extract_pinned(target: Path) -> Path:
             str(REPO_ROOT),
             "archive",
             "--format=tar",
-            PINNED_COMMIT,
-            PYTHON_CLI,
+            f"--prefix={PYTHON_CLI}/",
+            tree,
         ],
         check=True,
         capture_output=True,
@@ -51,7 +85,9 @@ def extract_pinned(target: Path) -> Path:
     return target / PYTHON_CLI
 
 
-def run_driver(project: Path, driver: str, arguments: tuple[object, ...]) -> None:
+def run_driver(
+    project: Path, driver: str, arguments: tuple[object, ...], tree: str
+) -> None:
     command = [
         "uv",
         "run",
@@ -63,18 +99,19 @@ def run_driver(project: Path, driver: str, arguments: tuple[object, ...]) -> Non
         str(SCRIPT_DIR / driver),
         *(str(argument) for argument in arguments),
     ]
-    log.info("running %s at %s", driver, PINNED_COMMIT)
+    log.info("running %s at cli-python tree %s", driver, tree)
     subprocess.run(command, check=True, cwd=project)
 
 
-def write_source() -> None:
+def write_source(tree: str, store_tree: str) -> None:
     outputs = sorted(
         str(path.relative_to(TESTS))
         for path in (*GOLDEN.rglob("*"), *LINK_KEYS.rglob("*"), STORE_DB)
         if path.is_file() and path != SOURCE and "Embeddings" not in path.parts
     )
     lines = [
-        f"{PYTHON_CLI} commit {PINNED_COMMIT}",
+        f"{PYTHON_CLI} tree {tree}",
+        f"store_rows.py {PYTHON_CLI} tree {store_tree} from commit {STORE_V2_COMMIT}",
         "exported by scripts/golden/export_goldens.py",
         *outputs,
     ]
@@ -83,11 +120,17 @@ def write_source() -> None:
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
+    tree = index_tree()
+    store_tree = commit_tree(STORE_V2_COMMIT)
     with tempfile.TemporaryDirectory(prefix="jobranger-golden-") as temp:
-        project = extract_pinned(Path(temp))
-        for driver, arguments in DRIVERS:
-            run_driver(project, driver, arguments)
-    write_source()
+        projects = {
+            None: (extract(tree, Path(temp) / "index"), tree),
+            STORE_V2_COMMIT: (extract(store_tree, Path(temp) / "store"), store_tree),
+        }
+        for driver, arguments, pinned_commit in DRIVERS:
+            project, project_tree = projects[pinned_commit]
+            run_driver(project, driver, arguments, project_tree)
+    write_source(tree, store_tree)
 
 
 if __name__ == "__main__":

@@ -19,6 +19,7 @@
   <ItemGroup>
     <None Include="TestData\**" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\..\..\contracts\fixtures\crypto\**" LinkBase="TestData\Contracts\crypto" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\contracts\fixtures\matching\**" LinkBase="TestData\Contracts\matching" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

@@ -287,7 +287,7 @@ def _parse_metadata(value: dict[str, object]) -> tuple[str, str, bool] | None:
         or not isinstance(low_code, bool)
     ):
         return None
-    return status, _clean(reason), low_code
+    return status, clean_text(reason), low_code
 
 
 def _validate_fit(
@@ -319,11 +319,11 @@ def _texts(value: object) -> tuple[str, ...] | None:
     texts = [item for item in value if isinstance(item, str)]
     if len(texts) != len(value):
         return None
-    items = [_clean(item) for item in texts if item.strip()]
+    items = [clean_text(item) for item in texts if item.strip()]
     return tuple(items[:MATCH_ITEM_LIMIT])
 
 
-def _clean(text: str) -> str:
+def clean_text(text: str) -> str:
     return truncate_at_word(" ".join(text.split()), MATCH_TEXT_LIMIT)
 
 
