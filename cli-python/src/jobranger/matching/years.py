@@ -33,8 +33,9 @@ WRITTEN_NUMBERS: dict[str, int] = {
     "nine": 9,
     "ten": 10,
 }
+MARKERS = frozenset({"minimum", "minimum of", "minst", "at least"})
 YEAR_PHRASE = re.compile(
-    r"\b(?:(?:minimum(?: of)?|minst|at least) "
+    r"\b(?:(minimum(?: of)?|minst|at least) "
     r"((?:[0-9]{1,2}|en|ett|to|tre|fire|fem|seks|sju|syv|åtte|ni|ti|one|two|three"
     r"|four|five|six|seven|eight|nine|ten))"
     r"(?: ?[-–] ?(?:[0-9]{1,2}|en|ett|to|tre|fire|fem|seks|sju|syv|åtte|ni|ti|one"
@@ -76,7 +77,9 @@ def stated_years(text: str) -> StatedYears | None:
         if not item or _is_optional(item):
             continue
         for found in YEAR_PHRASE.finditer(item):
-            years = _number(found.group(1) or found.group(2))
+            years = _years(found)
+            if years is None:
+                continue
             if best is None or years < best.years:
                 best = StatedYears(years, found.group(0))
     return best
@@ -112,7 +115,11 @@ def _is_optional(item: str) -> bool:
     return bool(PREFERENCE_WORD.search(rest) or EQUIVALENT_ROUTE.search(rest))
 
 
-def _number(raw: str) -> int:
+def _years(found: re.Match[str]) -> int | None:
+    marker = found.group(1)
+    if marker is not None and marker.lower() not in MARKERS:
+        return None
+    raw = found.group(2) or found.group(3)
     if raw[0].isascii() and raw[0].isdigit():
         return int(raw)
-    return WRITTEN_NUMBERS[raw.lower()]
+    return WRITTEN_NUMBERS.get(raw.lower())

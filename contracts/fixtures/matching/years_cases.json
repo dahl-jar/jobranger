@@ -337,5 +337,57 @@
     "phrase": "Minimum 8 års erfaring",
     "status": "strong",
     "years": 8
+  },
+  {
+    "id": "dotless_i_number",
+    "title": "Utvikler",
+    "description": "Minimum nı års erfaring",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "long_s_number",
+    "title": "Utvikler",
+    "description": "Minimum ſeks års erfaring",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "dotless_i_marker",
+    "title": "Utvikler",
+    "description": "Mınımum 3 års erfaring",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "long_s_marker",
+    "title": "Developer",
+    "description": "At leaſt 4 years of experience",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
   }
 ]

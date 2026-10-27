@@ -1,5 +1,5 @@
-cli-python tree 4f62114f90fc06fcc7e5bec78208ddb7df5e4f9c
-store_rows.py cli-python tree 816665a9e9d4c8ab2324c92c5b0fdf2cb3d81389 from commit cb67b6236db52bc278f44469d62a89009cd9c0ef
+cli-python tree 98b9e55853bf3a7b273577db470c5d3f5392d383
+store_rows.py cli-python tree 816665a9e9d4c8ab2324c92c5b0fdf2cb3d81389 from commit f43517d0060c4a998d8577a55452cced27a0ed5d
 exported by scripts/golden/export_goldens.py
 Golden/Budget/estimates.json
 Golden/Classify/classifications.json

@@ -7,7 +7,7 @@ import tarfile
 import tempfile
 from pathlib import Path
 
-STORE_V2_COMMIT = "cb67b6236db52bc278f44469d62a89009cd9c0ef"
+STORE_V2_COMMIT = "f43517d0060c4a998d8577a55452cced27a0ed5d"
 UNSTAGED_MESSAGE = (
     "cli-python has unstaged or untracked changes. "
     "Run git add cli-python, then export again."

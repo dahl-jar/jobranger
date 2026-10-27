@@ -8,7 +8,14 @@ namespace Jobranger.Cli.Features.Matching;
 internal static partial class YearsGuard {
     private const RegexOptions ignoreCase = RegexOptions.IgnoreCase | RegexOptions.CultureInvariant;
 
-    private static readonly Dictionary<string, int> writtenNumbers = new(StringComparer.OrdinalIgnoreCase) {
+    private static readonly HashSet<string> markers = new(StringComparer.Ordinal) {
+        "minimum",
+        "minimum of",
+        "minst",
+        "at least",
+    };
+
+    private static readonly Dictionary<string, int> writtenNumbers = new(StringComparer.Ordinal) {
         ["en"] = 1,
         ["ett"] = 1,
         ["to"] = 2,
@@ -44,7 +51,9 @@ internal static partial class YearsGuard {
                 continue;
             }
             foreach (RegexMatch found in YearPhrase().Matches(item)) {
-                int years = Number(found.Groups[1].Success ? found.Groups[1].Value : found.Groups[2].Value);
+                if (Years(found) is not int years) {
+                    continue;
+                }
                 if (best is null || years < best.Years) {
                     best = new StatedYears(years, found.Value);
                 }
@@ -79,11 +88,20 @@ internal static partial class YearsGuard {
         return PreferenceWord().IsMatch(rest) || EquivalentRoute().IsMatch(rest);
     }
 
-    private static int Number(string raw) =>
-        char.IsAsciiDigit(raw[0]) ? int.Parse(raw, CultureInfo.InvariantCulture) : writtenNumbers[raw];
+    private static int? Years(RegexMatch found) {
+        Group marker = found.Groups[1];
+        if (marker.Success && !markers.Contains(marker.Value.ToLowerInvariant())) {
+            return null;
+        }
+        string raw = found.Groups[2].Success ? found.Groups[2].Value : found.Groups[3].Value;
+        if (char.IsAsciiDigit(raw[0])) {
+            return int.Parse(raw, CultureInfo.InvariantCulture);
+        }
+        return writtenNumbers.TryGetValue(raw.ToLowerInvariant(), out int number) ? number : null;
+    }
 
     [GeneratedRegex(
-        @"\b(?:(?:minimum(?: of)?|minst|at least) "
+        @"\b(?:(minimum(?: of)?|minst|at least) "
         + @"((?:[0-9]{1,2}|en|ett|to|tre|fire|fem|seks|sju|syv|åtte|ni|ti|one|two|three"
         + @"|four|five|six|seven|eight|nine|ten))"
         + @"(?: ?[-–] ?(?:[0-9]{1,2}|en|ett|to|tre|fire|fem|seks|sju|syv|åtte|ni|ti|one"
