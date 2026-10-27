@@ -28,4 +28,12 @@ describe('pairingReducer', () => {
   it('should ignore Yes outside the word compare', () => {
     expect(pairingReducer({ name: 'handshaking' }, { type: 'answered' })).toEqual({ name: 'handshaking' })
   })
+
+  it('should show the handshake once the session starts one', () => {
+    expect(pairingReducer({ name: 'claiming' }, { type: 'session', event: { kind: 'handshaking' } })).toEqual({ name: 'handshaking' })
+  })
+
+  it('should show a plain form after unpairing', () => {
+    expect(pairingReducer({ name: 'connected' }, { type: 'unpaired' })).toEqual({ name: 'form' })
+  })
 })

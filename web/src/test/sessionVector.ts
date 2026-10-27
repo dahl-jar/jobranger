@@ -1,6 +1,7 @@
+import { beginHandshake } from '@/features/relay/session'
 import { decodeBase64Url } from '@/features/relay/base64url'
 
-export interface SessionVector {
+interface SessionVector {
   cli_static_public: string
   cli_eph_public: string
   browser_static_public: string
@@ -50,11 +51,11 @@ export const VECTOR_LABELS = {
   nonce: 'jobranger vector nonce',
 } as const
 
-export async function labelHash(label: string): Promise<Uint8Array> {
+async function labelHash(label: string): Promise<Uint8Array> {
   return new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(label)))
 }
 
-export async function labelBytes16(label: string): Promise<Uint8Array> {
+async function labelBytes16(label: string): Promise<Uint8Array> {
   return (await labelHash(label)).slice(0, SID_BYTES)
 }
 
@@ -63,4 +64,16 @@ export async function vectorKeyPair(label: string, publicKey: string): Promise<C
   const privateKey = await crypto.subtle.importKey('pkcs8', pkcs8, { name: 'X25519' }, false, ['deriveBits'])
   const publicCryptoKey = await crypto.subtle.importKey('raw', decodeBase64Url(publicKey), { name: 'X25519' }, true, [])
   return { privateKey, publicKey: publicCryptoKey }
+}
+
+export async function vectorStart() {
+  return beginHandshake({
+    webStatic: await vectorKeyPair(VECTOR_LABELS.browserStatic, SESSION_VECTOR.browser_static_public),
+    agent: SESSION_VECTOR.agent,
+    secrets: {
+      ephemeral: await vectorKeyPair(VECTOR_LABELS.browserEph, SESSION_VECTOR.browser_eph_public),
+      sid: await labelBytes16(VECTOR_LABELS.sid),
+      nonceB: await labelBytes16(VECTOR_LABELS.nonce),
+    },
+  })
 }

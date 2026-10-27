@@ -15,6 +15,7 @@ export const CV_MAX_BYTES = 5242880
 export const URL_MAX_CHARS = 2048
 export const REASSEMBLY_TIMEOUT_SECONDS = 60
 export const REASSEMBLY_MAX_OPEN = 2
+export const COMMAND_DEDUPE_SECONDS = 600
 export const CONTRACT_VERSION = 1
 export const MAX_JSON_DEPTH = 64
 export const MAX_INTEGER_DIGITS = 16

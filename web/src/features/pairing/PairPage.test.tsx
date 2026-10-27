@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ClaimResult } from '@/features/pairing/claimPairing'
@@ -8,8 +9,11 @@ import { PairPage } from '@/features/pairing/PairPage'
 import { PairingDepsContext } from '@/features/pairing/pairingDeps'
 import { PAIR_CONFIRM_TIMEOUT_SECONDS, STEP_TIMEOUT_SECONDS } from '@/features/relay/contract/limits'
 import { payloadFixtures } from '@/features/relay/contract/fixtures.gen'
-import { clearPairing, generateWebKeys, loadPairing, savePairing } from '@/features/relay/keyStore'
+import { clearPairing, loadPairing, savePairing } from '@/features/relay/keyStore'
 import type { ConnectRelay } from '@/features/relay/transport'
+import { createQueryClient } from '@/app/queryClient'
+import { RelayDepsContext } from '@/features/relay/relayContext'
+import { LAST_SEEN_KEY, relayDeps, SEEN_AT, storedPairing, TEST_AGENT, withoutCliKey } from '@/test/relayFixtures'
 import { CliPeer, FakeRelay, type PeerOptions, TEST_CHANNEL } from '@/test/fakeRelay'
 import { flush, until } from '@/test/flush'
 import { cliPairTag } from '@/test/fakeCli'
@@ -23,18 +27,21 @@ const CLAIM_OK: ClaimResult = {
   ticketExpiresAt: '2027-01-11T08:00:00Z',
 }
 const STATUS = JSON.stringify(payloadFixtures.status)
-const STORED = { channel: TEST_CHANNEL, ticket: 'ticket-one', ticketExpiresAt: '2027-01-11T08:00:00Z', pairedAt: '2026-10-13T08:00:00Z' }
 
 async function renderPair(claimResult: ClaimResult | Promise<ClaimResult> = CLAIM_OK, peerOptions: PeerOptions = {}, connect?: ConnectRelay) {
   const relay = new FakeRelay()
   const peer = await CliPeer.attach(relay, peerOptions)
   const user = userEvent.setup()
   const view = render(
-    <MemoryRouter initialEntries={['/pair']}>
-      <PairingDepsContext value={{ claim: async () => claimResult, connect: connect ?? relay.connect, agent: 'Firefox on macOS' }}>
-        <PairPage />
-      </PairingDepsContext>
-    </MemoryRouter>,
+    <QueryClientProvider client={createQueryClient()}>
+      <MemoryRouter initialEntries={['/pair']}>
+        <PairingDepsContext value={{ claim: async () => claimResult, connect: connect ?? relay.connect, agent: TEST_AGENT }}>
+          <RelayDepsContext value={relayDeps(relay)}>
+            <PairPage />
+          </RelayDepsContext>
+        </PairingDepsContext>
+      </MemoryRouter>
+    </QueryClientProvider>,
   )
   return { relay, peer, user, view }
 }
@@ -153,6 +160,18 @@ describe('PairPage', () => {
     await waitFor(async () => expect(await loadPairing()).toBeUndefined())
   })
 
+  it('should clear the last seen time when the pairing ends', async () => {
+    localStorage.setItem(LAST_SEEN_KEY, SEEN_AT)
+    const { peer } = await answerYes()
+    await peer.sendData(STATUS)
+    await screen.findByRole('heading', { name: 'Your computer is paired' })
+
+    await peer.sendData(JSON.stringify(payloadFixtures.unpaired))
+    await screen.findByText('Your machine unpaired this browser.')
+
+    expect(localStorage.getItem(LAST_SEEN_KEY)).toBeNull()
+  })
+
   it('should tell the machine when Pair a different machine is pressed on a live pairing', async () => {
     const { peer, user } = await answerYes()
     await peer.sendData(STATUS)
@@ -263,7 +282,7 @@ describe('PairPage', () => {
   })
 
   it('should leave focus alone when the page opens on a stored pairing', async () => {
-    await savePairing({ ...STORED, pending: false, cliStaticPublicKey: new Uint8Array(32), webStatic: await generateWebKeys() })
+    await savePairing(await storedPairing())
 
     await renderPair()
 
@@ -342,7 +361,7 @@ describe('PairPage', () => {
   })
 
   it('should keep a complete stored pairing on load', async () => {
-    await savePairing({ ...STORED, pending: false, cliStaticPublicKey: new Uint8Array(32), webStatic: await generateWebKeys() })
+    await savePairing(await storedPairing())
 
     await renderPair()
 
@@ -351,7 +370,7 @@ describe('PairPage', () => {
   })
 
   it('should clear a stored pairing that has no CLI key', async () => {
-    await savePairing({ ...STORED, pending: false, webStatic: await generateWebKeys() })
+    await savePairing(withoutCliKey(await storedPairing()))
 
     await renderPair()
 
@@ -427,7 +446,7 @@ describe('PairPage', () => {
   })
 
   it('should forget a pending pairing left by a reload', async () => {
-    await savePairing({ ...STORED, pending: true, webStatic: await generateWebKeys() })
+    await savePairing(withoutCliKey(await storedPairing({ pending: true })))
 
     await renderPair()
 
@@ -444,7 +463,7 @@ describe('PairPage', () => {
   })
 
   it('should show a clean form after Pair a different machine', async () => {
-    await savePairing({ ...STORED, pending: false, cliStaticPublicKey: new Uint8Array(32), webStatic: await generateWebKeys() })
+    await savePairing(await storedPairing())
     const { user } = await renderPair()
 
     await user.click(await screen.findByRole('button', { name: 'Pair a different machine' }))
@@ -454,7 +473,7 @@ describe('PairPage', () => {
   })
 
   it('should link Open jobranger to the app', async () => {
-    await savePairing({ ...STORED, pending: false, cliStaticPublicKey: new Uint8Array(32), webStatic: await generateWebKeys() })
+    await savePairing(await storedPairing())
 
     await renderPair()
 

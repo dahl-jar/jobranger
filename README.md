@@ -19,6 +19,8 @@ The site uses JetBrainsMono Nerd Font, served from `web/public/fonts` (SIL OFL 1
 
 The site is in English and Norwegian bokmål. It starts in the browser language (`nb`, `no` and `nn` give bokmål, anything else English) and switches in Settings › Appearance. The choice is stored under `jobranger.language`, and a script in the page head sets `<html lang>` before the first paint.
 
+After pairing, the browser connects to the machine running jobranger through the relay, and every message between them is end-to-end encrypted. When the relay, the network or the machine can't be reached, the page says which one and keeps what it already loaded read-only. The pairing keys are stored in IndexedDB (`jobranger`, store `pairing`), and the last time the machine was heard from under `jobranger.lastSeen`. "Pair a different machine" deletes both from this browser.
+
 ## License
 
 [PolyForm Noncommercial 1.0.0](LICENSE). Anyone can run, change and share jobranger for free for personal and other noncommercial use, including using it in their own job search. Selling it, or running it as a paid service, is not allowed.

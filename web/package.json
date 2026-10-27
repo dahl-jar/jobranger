@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@microsoft/signalr": "10.0.11",
+    "@tanstack/react-query": "5.104.2",
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
     "idb-keyval": "6.3.0",

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { encodeBase64 } from '@/features/relay/base64url'
-import { ChunkAssembler, splitMessage } from '@/features/relay/chunks'
+import { ChunkAssembler, parseAssembled, splitMessage } from '@/features/relay/chunks'
 import { CHUNK_DATA_MAX_BYTES, CHUNK_MAX_COUNT, CHUNK_THRESHOLD_BYTES, REASSEMBLY_TIMEOUT_SECONDS } from '@/features/relay/contract/limits'
 import { payloadFixtures } from '@/features/relay/contract/fixtures.gen'
 import type { Chunk, CvUpload, Payload } from '@/features/relay/contract/payload.gen'
@@ -26,9 +26,9 @@ function chunksOf(message: Payload): Chunk[] {
 }
 
 function feed(assembler: ChunkAssembler, chunks: Chunk[], nowMs = 0): Payload | undefined {
-  let result: Payload | undefined
-  for (const chunk of chunks) result = assembler.accept(chunk, nowMs)
-  return result
+  let text: string | undefined
+  for (const chunk of chunks) text = assembler.acceptText(chunk, nowMs)
+  return text === undefined ? undefined : parseAssembled(text)
 }
 
 describe('splitMessage', () => {
@@ -79,6 +79,15 @@ describe('ChunkAssembler', () => {
     const message = cvOfBytes(HUNDRED_KB)
 
     expect(feed(new ChunkAssembler(), chunksOf(message))).toEqual(message)
+  })
+
+  it('should hand over the rebuilt JSON text without parsing it', () => {
+    const message = cvOfBytes(HUNDRED_KB)
+    const assembler = new ChunkAssembler()
+    const chunks = chunksOf(message)
+    chunks.slice(0, -1).forEach((chunk) => assembler.acceptText(chunk, 0))
+
+    expect(assembler.acceptText(chunks.at(-1) ?? SINGLE, 0)).toBe(JSON.stringify(message))
   })
 
   it('should return nothing until the last chunk arrives', () => {

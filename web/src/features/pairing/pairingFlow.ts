@@ -1,8 +1,9 @@
 import { agentName } from '@/features/pairing/agentName'
 import { type ClaimedPairing, type ClaimResult, claimPairing } from '@/features/pairing/claimPairing'
 import { formatPairCode, normalizePairCode, validatePairCode } from '@/features/pairing/pairCode'
-import type { PairingEvent } from '@/features/pairing/pairingMachine'
-import { CONTRACT_VERSION } from '@/features/relay/contract/limits'
+import type { EndReason, PairingEvent } from '@/features/pairing/pairingMachine'
+import { unpairCommand } from '@/features/relay/commands'
+import { clearLastSeen } from '@/features/relay/lastSeen'
 import { connectHub } from '@/features/relay/hubTransport'
 import { clearPairing, generateWebKeys, loadPairing, probeStorage, savePairing, type StoredPairing } from '@/features/relay/keyStore'
 import { type SessionEvent, SessionRunner } from '@/features/relay/sessionRunner'
@@ -45,12 +46,12 @@ export class PairingFlow {
     return run
   }
 
-  load(): Promise<void> {
+  load(ended?: EndReason): Promise<void> {
     return this.#queue(async () => {
       const pairing = await loadPairing().catch(() => undefined)
       const complete = pairing !== undefined && !pairing.pending && pairing.cliStaticPublicKey !== undefined
       if (pairing !== undefined && !complete) await clearPairing().catch(() => undefined)
-      this.#emit({ type: 'loaded', paired: complete })
+      this.#emit({ type: 'loaded', paired: complete, ended })
     })
   }
 
@@ -129,6 +130,7 @@ export class PairingFlow {
     this.#stored = undefined
     this.#ready = false
     void runner?.stop()
+    clearLastSeen()
     await clearPairing().catch(() => undefined)
   }
 
@@ -162,7 +164,7 @@ export class PairingFlow {
   unpair(): Promise<void> {
     return this.#queue(async () => {
       if (this.#runner && this.#ready) {
-        await this.#runner.send({ type: 'unpair', v: CONTRACT_VERSION, id: crypto.randomUUID() }).catch(() => undefined)
+        await this.#runner.send(unpairCommand()).catch(() => undefined)
       }
       await this.#forget()
       this.#emit({ type: 'unpaired' })

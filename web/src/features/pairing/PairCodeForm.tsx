@@ -24,6 +24,7 @@ const END_MESSAGES: Record<EndReason, string> = {
   dropped: 'The connection dropped. Run jobranger pair again.',
   failed: 'Pairing failed. Run jobranger pair again.',
   revoked: 'Your machine unpaired this browser.',
+  ticket: 'Pair this browser again.',
 }
 
 const CODE_MAX_LENGTH = PAIR_CODE_LENGTH + 1

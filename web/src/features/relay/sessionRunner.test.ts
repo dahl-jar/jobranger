@@ -17,13 +17,14 @@ const MS = 1000
 interface Options {
   paired?: boolean
   peer?: PeerOptions
+  parseAssembled?: (text: string) => Promise<Payload | undefined>
 }
 
 const PAIR_CODE = 'KQFB-MXTW'
 
 type Context = Awaited<ReturnType<typeof setup>>
 
-async function setup({ paired = false, peer: peerOptions = {} }: Options = {}) {
+async function setup({ paired = false, peer: peerOptions = {}, parseAssembled }: Options = {}) {
   const relay = new FakeRelay()
   const peer = await CliPeer.attach(relay, peerOptions)
   const events: SessionEvent[] = []
@@ -34,6 +35,7 @@ async function setup({ paired = false, peer: peerOptions = {} }: Options = {}) {
     cliStatic: paired ? peer.cli.staticPublic : undefined,
     pairCode: paired ? undefined : PAIR_CODE,
     onEvent: (event) => events.push(event),
+    ...(parseAssembled && { parseAssembled }),
   })
   await runner.start(relay.connect, 'handle-one')
   return { relay, peer, runner, events, kinds: () => events.map((event) => event.kind) }
@@ -53,6 +55,17 @@ async function online(context: Context): Promise<void> {
 async function pairedReady() {
   const context = await setup({ paired: true })
   await online(context)
+  return context
+}
+
+function expectBrokenAbort(context: Context): void {
+  expect([context.relay.steps().at(-1), context.events.at(-1)]).toEqual(['abort', { kind: 'closed', reason: 'broken' }])
+}
+
+async function commitSent(): Promise<Context> {
+  const context = await setup({ paired: true, peer: { replyToCommit: false } })
+  context.relay.presence(true)
+  await until(() => context.relay.steps().length === 1)
   return context
 }
 
@@ -183,7 +196,7 @@ describe('SessionRunner pairing', () => {
 
     await nextEvent(context, () => context.peer.sendData(STATUS))
 
-    expect([context.relay.steps().at(-1), context.events.at(-1)]).toEqual(['abort', { kind: 'closed', reason: 'broken' }])
+    expectBrokenAbort(context)
   })
 
   it('should close when the relay drops before the first CLI data frame', async () => {
@@ -350,7 +363,7 @@ describe('SessionRunner receiver rules', () => {
 
     await nextEvent(context, () => context.relay.deliver({ ...context.peer.hello({}), ciphertext: encodeBase64Url(new TextEncoder().encode(step())) }))
 
-    expect([context.relay.steps().at(-1), context.events.at(-1)]).toEqual(['abort', { kind: 'closed', reason: 'broken' }])
+    expectBrokenAbort(context)
   })
 
   it('should close on an envelope that breaks the contract', async () => {
@@ -429,9 +442,7 @@ describe('SessionRunner paired', () => {
 
   it('should stop without a restart on unknown_device', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-    const context = await setup({ paired: true, peer: { replyToCommit: false } })
-    context.relay.presence(true)
-    await until(() => context.relay.steps().length === 1)
+    const context = await commitSent()
     await nextEvent(context, () => context.peer.sendHello({ t: 'unknown_device' }, context.relay.sids()[0]))
 
     vi.advanceTimersByTime(RESTART_BACKOFF_MS.at(-1) ?? 0)
@@ -501,9 +512,7 @@ describe('SessionRunner paired', () => {
 
   it('should give up after every backoff step fails in a row', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-    const context = await setup({ paired: true, peer: { replyToCommit: false } })
-    context.relay.presence(true)
-    await until(() => context.relay.steps().length === 1)
+    const context = await commitSent()
     for (const [round, delay] of RESTART_BACKOFF_MS.entries()) {
       await nextEvent(context, () => vi.advanceTimersByTime(STEP_TIMEOUT_SECONDS * MS))
       vi.advanceTimersByTime(delay)
@@ -746,7 +755,7 @@ describe('SessionRunner handshake rules', () => {
 
     await nextEvent(context, () => context.peer.sendHello({ t: 'offer', cli_static: zero, cli_eph: zero }, context.relay.sids()[0]))
 
-    expect([context.relay.steps().at(-1), context.events.at(-1)]).toEqual(['abort', { kind: 'closed', reason: 'broken' }])
+    expectBrokenAbort(context)
   })
 
   it('should abort when no CLI confirm comes within STEP_TIMEOUT_SECONDS of the reveal', async () => {
@@ -824,5 +833,19 @@ describe('SessionRunner handshake rules', () => {
     await flush()
 
     expect(context.events.slice(count).map((event) => (event.kind === 'message' ? event.payload.type : event.kind))).toEqual(['cv.upload'])
+  })
+
+  it('should parse a chunked CLI message with the given parser', async () => {
+    const texts: string[] = []
+    const parsed = payloadFixtures.status as Payload
+    const context = await setup({ paired: true, parseAssembled: async (text) => (texts.push(text), parsed) })
+    await online(context)
+    const message = { ...(payloadFixtures['cv.upload'] as CvUpload), content_b64: 'A'.repeat(100 * 1024) }
+    const count = context.events.length
+
+    for (const part of splitMessage(message)) await context.peer.sendData(JSON.stringify(part))
+    await until(() => context.events.length > count)
+
+    expect([texts, context.events.at(-1)]).toEqual([[JSON.stringify(message)], { kind: 'message', payload: parsed }])
   })
 })

@@ -47,9 +47,17 @@ export function splitMessage(message: Payload): Payload[] {
   }))
 }
 
-function rebuild(parts: Uint8Array[]): Payload | undefined {
+function rebuild(parts: Uint8Array[]): string | undefined {
   try {
-    const message = parsePayload(new TextDecoder('utf-8', { fatal: true }).decode(concatBytes(...parts)))
+    return new TextDecoder('utf-8', { fatal: true }).decode(concatBytes(...parts))
+  } catch {
+    return undefined
+  }
+}
+
+export function parseAssembled(text: string): Payload | undefined {
+  try {
+    const message = parsePayload(text)
     return message.type === 'chunk' ? undefined : message
   } catch {
     return undefined
@@ -74,7 +82,7 @@ export class ChunkAssembler {
     return created
   }
 
-  accept(chunk: Chunk, nowMs: number): Payload | undefined {
+  acceptText(chunk: Chunk, nowMs: number): string | undefined {
     this.#prune(nowMs)
     const set = this.#open(chunk, nowMs)
     const bytes = fromBase64(chunk.data)

@@ -1,4 +1,4 @@
-import { ChunkAssembler, splitMessage } from '@/features/relay/chunks'
+import { ChunkAssembler, parseAssembled, splitMessage } from '@/features/relay/chunks'
 import type { Envelope } from '@/features/relay/contract/envelope.gen'
 import { CONTRACT_VERSION, PAIR_CONFIRM_TIMEOUT_SECONDS, STEP_TIMEOUT_SECONDS } from '@/features/relay/contract/limits'
 import type { Payload } from '@/features/relay/contract/payload.gen'
@@ -51,6 +51,7 @@ export interface SessionRunnerOptions {
   cliStatic: Uint8Array | undefined
   pairCode?: string | undefined
   onEvent: (event: SessionEvent) => void
+  parseAssembled?: (text: string) => Promise<Payload | undefined>
 }
 
 type Phase =
@@ -319,8 +320,15 @@ export class SessionRunner implements RelayEvents {
       this.#phase = { name: 'ready', sid: phase.sid, session: phase.session }
       this.#emit({ kind: 'ready', cliStatic: phase.session.cliStatic })
     }
-    const message = payload.type === 'chunk' ? this.#assembler.accept(payload, Date.now()) : payload
+    const message = payload.type === 'chunk' ? await this.#assemble(payload) : payload
     if (message) this.#emit({ kind: 'message', payload: message })
+  }
+
+  async #assemble(chunk: Extract<Payload, { type: 'chunk' }>): Promise<Payload | undefined> {
+    const text = this.#assembler.acceptText(chunk, Date.now())
+    if (text === undefined) return undefined
+    const parse = this.#options.parseAssembled
+    return parse ? parse(text) : parseAssembled(text)
   }
 
   async #drop(sendAbort: boolean): Promise<void> {

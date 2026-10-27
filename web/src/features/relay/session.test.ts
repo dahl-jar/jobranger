@@ -4,7 +4,7 @@ import { CIPHERTEXT_B64_MAX_CHARS } from '@/features/relay/contract/limits'
 import { HelloError } from '@/features/relay/hello'
 import { answerOffer, beginHandshake, createHandshakeSecrets, FrameError, finishHandshake, HandshakeError, pairTag, type Session } from '@/features/relay/session'
 import { FakeCli } from '@/test/fakeCli'
-import { labelBytes16, SESSION_VECTOR as VECTOR, VECTOR_LABELS, vectorKeyPair } from '@/test/sessionVector'
+import { SESSION_VECTOR as VECTOR, vectorStart } from '@/test/sessionVector'
 
 const OFFER = { t: 'offer', cliStatic: decodeBase64Url(VECTOR.cli_static_public), cliEph: decodeBase64Url(VECTOR.cli_eph_public) } as const
 const PLAINTEXT = new TextEncoder().encode('{"type":"unpair","v":1,"id":"00000000-0000-4000-8000-000000000001"}')
@@ -12,18 +12,6 @@ const PLAINTEXT = new TextEncoder().encode('{"type":"unpair","v":1,"id":"0000000
 afterEach(() => {
   vi.restoreAllMocks()
 })
-
-async function vectorStart() {
-  return beginHandshake({
-    webStatic: await vectorKeyPair(VECTOR_LABELS.browserStatic, VECTOR.browser_static_public),
-    agent: VECTOR.agent,
-    secrets: {
-      ephemeral: await vectorKeyPair(VECTOR_LABELS.browserEph, VECTOR.browser_eph_public),
-      sid: await labelBytes16(VECTOR_LABELS.sid),
-      nonceB: await labelBytes16(VECTOR_LABELS.nonce),
-    },
-  })
-}
 
 async function vectorFinish() {
   const { pending } = await vectorStart()
@@ -84,7 +72,6 @@ describe('pairTag', () => {
   it('should match the vector pair_tag', async () => {
     expect(encodeBase64Url(await pairTag(VECTOR.pair_code, VECTOR.channel))).toBe(VECTOR.pair_tag)
   })
-
 })
 
 describe('beginHandshake', () => {

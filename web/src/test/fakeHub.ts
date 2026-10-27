@@ -47,6 +47,10 @@ export class FakeHub {
     this.socket?.send(JSON.stringify({ type: INVOCATION, target, arguments: args }) + RECORD_SEPARATOR)
   }
 
+  callRaw(frame: string): void {
+    this.socket?.send(frame + RECORD_SEPARATOR)
+  }
+
   closeClient(): void {
     this.socket?.close()
   }

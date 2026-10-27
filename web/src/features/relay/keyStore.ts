@@ -1,4 +1,4 @@
-import { createStore, del, get, set, type UseStore } from 'idb-keyval'
+import { createStore, del, get, promisifyRequest, set, update, type UseStore } from 'idb-keyval'
 import { sameBytes } from '@/features/relay/bytes'
 import { asRecord } from '@/shared/asRecord'
 
@@ -104,6 +104,24 @@ export async function probeStorage(): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+export async function rotateTicket(channel: string, ticket: string, ticketExpiresAt: string): Promise<void> {
+  await update<StoredPairing | undefined>(
+    PAIRING_KEY,
+    (current) => (current?.channel === channel ? { ...current, ticket, ticketExpiresAt } : current),
+    pairingStore(),
+  )
+}
+
+export async function clearPairingOf(channel: string): Promise<void> {
+  await pairingStore()('readwrite', (store) => {
+    const reading = store.get(PAIRING_KEY)
+    reading.onsuccess = () => {
+      if (asRecord(reading.result)?.channel === channel) store.delete(PAIRING_KEY)
+    }
+    return promisifyRequest(store.transaction)
+  })
 }
 
 export async function clearPairing(): Promise<void> {

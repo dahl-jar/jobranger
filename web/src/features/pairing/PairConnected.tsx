@@ -16,10 +16,11 @@ function lastRunText(status: Status): string {
 
 interface PairConnectedProps {
   status: Status | undefined
+  connection?: string | undefined
   onUnpair: () => void
 }
 
-export function PairConnected({ status, onUnpair }: PairConnectedProps) {
+export function PairConnected({ status, connection, onUnpair }: PairConnectedProps) {
   const facts = status && [
     ['Machine', status.machine],
     ['Version', `jobranger ${status.cli_version}`],
@@ -28,10 +29,16 @@ export function PairConnected({ status, onUnpair }: PairConnectedProps) {
 
   return (
     <>
-      <p role="status" className={styles.connected}>
-        <Icon name="strong" size={CONNECTED_ICON_SIZE} />
-        Connected
-      </p>
+      {connection === undefined ? (
+        <p role="status" className={styles.connected}>
+          <Icon name="strong" size={CONNECTED_ICON_SIZE} />
+          Connected
+        </p>
+      ) : (
+        <p role="status" className={styles.lead}>
+          {connection}
+        </p>
+      )}
       <h1 tabIndex={-1} className={`${styles.title} ${styles.pairedTitle}`}>
         Your computer is paired
       </h1>

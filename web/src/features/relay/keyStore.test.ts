@@ -1,6 +1,9 @@
 import 'fake-indexeddb/auto'
+import { createStore, get } from 'idb-keyval'
+import { TEST_CHANNEL } from '@/test/fakeRelay'
+import { storedPairing, withoutCliKey } from '@/test/relayFixtures'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { clearPairing, generateWebKeys, loadPairing, probeStorage, savePairing, StorageError, type StoredPairing } from '@/features/relay/keyStore'
+import { clearPairing, clearPairingOf, generateWebKeys, loadPairing, probeStorage, savePairing, StorageError, type StoredPairing } from '@/features/relay/keyStore'
 
 const engine = vi.hoisted(() => ({ dropKeys: false, failWrites: false, rewrite: undefined as ((value: Record<string, unknown>) => unknown) | undefined }))
 
@@ -21,15 +24,7 @@ vi.mock('idb-keyval', async (importOriginal) => {
 const CLI_KEY = new Uint8Array(32).fill(7)
 
 async function pairing(overrides: Partial<StoredPairing> = {}): Promise<StoredPairing> {
-  return {
-    channel: 'channel-one',
-    ticket: 'ticket-one',
-    ticketExpiresAt: '2027-01-01T00:00:00Z',
-    pending: true,
-    webStatic: await generateWebKeys(),
-    pairedAt: '2026-10-13T08:00:00Z',
-    ...overrides,
-  }
+  return { ...withoutCliKey(await storedPairing({ pending: true })), ...overrides }
 }
 
 afterEach(async () => {
@@ -55,10 +50,10 @@ describe('keyStore', () => {
 
     const privateKey = loaded?.webStatic.privateKey ?? peer.publicKey
     const bits = await crypto.subtle.deriveBits({ name: 'X25519', public: peer.publicKey }, privateKey, 256)
-    expect([loaded?.channel, loaded?.cliStaticPublicKey, bits.byteLength]).toEqual(['channel-one', CLI_KEY, 32])
+    expect([loaded?.channel, loaded?.cliStaticPublicKey, bits.byteLength]).toEqual([TEST_CHANNEL, CLI_KEY, 32])
   })
 
-  it('should load nothing after clearPairing', async () => {
+  it('should load nothing after the pairing is cleared', async () => {
     await savePairing(await pairing())
 
     await clearPairing()
@@ -171,5 +166,35 @@ describe('probeStorage', () => {
 
     const { get, createStore } = await import('idb-keyval')
     expect(await get('probe', createStore('jobranger', 'pairing'))).toBeUndefined()
+  })
+
+  it('should keep the pairing under the current key of the jobranger pairing store', async () => {
+    const saved = await pairing()
+
+    await savePairing(saved)
+
+    expect(await get<StoredPairing>('current', createStore('jobranger', 'pairing'))).toMatchObject({ channel: saved.channel })
+  })
+})
+
+describe('clearPairingOf', () => {
+  it('should clear a pairing of the given channel', async () => {
+    await savePairing(await pairing())
+
+    await clearPairingOf(TEST_CHANNEL)
+
+    expect(await loadPairing()).toBeUndefined()
+  })
+
+  it('should keep a pairing of another channel', async () => {
+    await savePairing(await pairing({ channel: 'channel-two' }))
+
+    await clearPairingOf(TEST_CHANNEL)
+
+    expect((await loadPairing())?.channel).toBe('channel-two')
+  })
+
+  it('should finish when nothing is stored', async () => {
+    await expect(clearPairingOf(TEST_CHANNEL)).resolves.toBeUndefined()
   })
 })

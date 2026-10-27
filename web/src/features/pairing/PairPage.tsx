@@ -1,4 +1,5 @@
 import { type RefObject, useContext, useEffect, useReducer, useRef, useState } from 'react'
+import { useLocation } from 'react-router'
 import buttons from '@/shared/ui/button.module.css'
 import { usePageTitle } from '@/shared/usePageTitle'
 import { PairCodeForm } from '@/features/pairing/PairCodeForm'
@@ -6,7 +7,9 @@ import { PairConnected } from '@/features/pairing/PairConnected'
 import styles from '@/features/pairing/PairPage.module.css'
 import { PairingDepsContext } from '@/features/pairing/pairingDeps'
 import { defaultPairingDeps, PairingFlow } from '@/features/pairing/pairingFlow'
-import { pairingReducer, type PairingState } from '@/features/pairing/pairingMachine'
+import { PairedSession } from '@/features/pairing/PairedSession'
+import { type EndReason, pairingReducer, type PairingState } from '@/features/pairing/pairingMachine'
+import { asRecord } from '@/shared/asRecord'
 
 const TITLES: Record<PairingState['name'], string> = {
   loading: 'Connect your machine',
@@ -16,6 +19,14 @@ const TITLES: Record<PairingState['name'], string> = {
   confirming: 'Check the words',
   waiting: 'Waiting for your terminal',
   connected: 'Paired',
+  paired: 'Paired',
+}
+
+const ARRIVAL_REASONS: Record<string, EndReason> = { ticket: 'ticket', revoked: 'revoked', refused: 'refused' }
+
+function arrivalReason(state: unknown): EndReason | undefined {
+  const reason = asRecord(state)?.reason
+  return typeof reason === 'string' && Object.hasOwn(ARRIVAL_REASONS, reason) ? ARRIVAL_REASONS[reason] : undefined
 }
 
 function Progress({ title, text }: { title: string; text: string }) {
@@ -78,21 +89,23 @@ function useViewFocus(state: PairingState): RefObject<HTMLElement | null> {
 }
 
 export function PairPage() {
+  const location = useLocation()
   const injected = useContext(PairingDepsContext)
   const [deps] = useState(() => injected ?? defaultPairingDeps())
   const [state, dispatch] = useReducer(pairingReducer, { name: 'loading' })
   const flow = useRef<PairingFlow | undefined>(undefined)
   const main = useViewFocus(state)
+  const [arrival] = useState(() => arrivalReason(location.state))
   usePageTitle(TITLES[state.name])
 
   useEffect(() => {
     const current = new PairingFlow(deps, dispatch)
     flow.current = current
-    void current.load()
+    void current.load(arrival)
     return () => {
       void current.dispose()
     }
-  }, [deps])
+  }, [deps, arrival])
 
   return (
     <main ref={main} className={styles.page}>
@@ -108,6 +121,7 @@ export function PairPage() {
       {state.name === 'confirming' && <WordCompare words={state.words} onAnswer={(match) => flow.current?.answer(match)} />}
       {state.name === 'waiting' && <Progress title="Waiting for your terminal" text="Answer in your terminal to finish pairing." />}
       {state.name === 'connected' && <PairConnected status={state.status} onUnpair={() => void flow.current?.unpair()} />}
+      {state.name === 'paired' && <PairedSession onEnded={(reason) => dispatch({ type: 'sessionEnded', reason })} />}
     </main>
   )
 }

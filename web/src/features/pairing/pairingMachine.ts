@@ -1,11 +1,12 @@
 import type { ClaimResult } from '@/features/pairing/claimPairing'
 import type { PairCodeError } from '@/features/pairing/pairCode'
 import type { Status } from '@/features/relay/contract/payload.gen'
+import type { UnpairReason } from '@/features/relay/connectionStore'
 import type { CloseReason, SessionEvent } from '@/features/relay/sessionRunner'
 
 export type ClaimError = Exclude<ClaimResult['kind'], 'ok'>
 export type FormError = PairCodeError | ClaimError | 'storage'
-export type EndReason = 'refused' | 'timeout' | 'silent' | 'cancelled' | 'dropped' | 'failed' | 'revoked'
+export type EndReason = 'refused' | 'timeout' | 'silent' | 'cancelled' | 'dropped' | 'failed' | 'revoked' | 'ticket'
 
 export type PairingState =
   | { name: 'loading' }
@@ -15,9 +16,10 @@ export type PairingState =
   | { name: 'confirming'; words: string[] }
   | { name: 'waiting' }
   | { name: 'connected'; status?: Status }
+  | { name: 'paired' }
 
 export type PairingEvent =
-  | { type: 'loaded'; paired: boolean }
+  | { type: 'loaded'; paired: boolean; ended: EndReason | undefined }
   | { type: 'submitted' }
   | { type: 'rejected'; error: FormError }
   | { type: 'claimed' }
@@ -25,6 +27,7 @@ export type PairingEvent =
   | { type: 'session'; event: SessionEvent }
   | { type: 'unpaired' }
   | { type: 'revoked' }
+  | { type: 'sessionEnded'; reason: UnpairReason | undefined }
 
 const END_REASONS: Record<CloseReason, EndReason> = {
   abort: 'refused',
@@ -58,23 +61,35 @@ function onSession(state: PairingState, event: SessionEvent): PairingState {
   }
 }
 
+type FixedEvent = Extract<PairingEvent, { type: 'submitted' | 'claimed' | 'unpaired' | 'revoked' }>['type']
+
+const FIXED_STATES: Record<FixedEvent, PairingState> = {
+  submitted: { name: 'claiming' },
+  claimed: { name: 'handshaking' },
+  unpaired: { name: 'form' },
+  revoked: { name: 'form', ended: 'revoked' },
+}
+
+function isFixed(event: PairingEvent): event is Extract<PairingEvent, { type: FixedEvent }> {
+  return Object.hasOwn(FIXED_STATES, event.type)
+}
+
+function formAfter(ended: EndReason | undefined): PairingState {
+  return ended === undefined ? { name: 'form' } : { name: 'form', ended }
+}
+
 export function pairingReducer(state: PairingState, event: PairingEvent): PairingState {
+  if (isFixed(event)) return FIXED_STATES[event.type]
   switch (event.type) {
     case 'loaded':
-      return event.paired ? { name: 'connected' } : { name: 'form' }
-    case 'submitted':
-      return { name: 'claiming' }
+      return event.paired ? { name: 'paired' } : formAfter(event.ended)
     case 'rejected':
       return { name: 'form', error: event.error }
-    case 'claimed':
-      return { name: 'handshaking' }
     case 'answered':
       return state.name === 'confirming' ? { name: 'waiting' } : state
     case 'session':
       return onSession(state, event.event)
-    case 'unpaired':
-      return { name: 'form' }
-    case 'revoked':
-      return { name: 'form', ended: 'revoked' }
+    case 'sessionEnded':
+      return formAfter(event.reason)
   }
 }

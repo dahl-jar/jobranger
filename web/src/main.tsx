@@ -1,9 +1,11 @@
+import { QueryClientProvider } from '@tanstack/react-query'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router'
 import '@/app/styles/fonts.css'
 import '@/app/styles/tokens.css'
 import '@/app/styles/base.css'
+import { createQueryClient } from '@/app/queryClient'
 import { routes } from '@/app/router'
 import { reloadOnce } from '@/app/routeImport'
 import { forgetScroll } from '@/app/scrollPositions'
@@ -17,6 +19,7 @@ const [pageLoad] = performance.getEntriesByType('navigation')
 forgetScroll(window.location, pageLoad instanceof PerformanceNavigationTiming ? pageLoad.type : undefined)
 
 const router = createBrowserRouter(routes)
+const queryClient = createQueryClient()
 
 window.addEventListener('vite:preloadError', (event) => {
   const { navigation, location } = router.state
@@ -28,7 +31,9 @@ createRoot(container).render(
   <StrictMode>
     <LanguageProvider>
       <ThemeProvider>
-        <RouterProvider router={router} />
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider router={router} />
+        </QueryClientProvider>
       </ThemeProvider>
     </LanguageProvider>
   </StrictMode>,

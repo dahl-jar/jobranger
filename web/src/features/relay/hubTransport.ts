@@ -1,4 +1,5 @@
 import { HttpTransportType, HubConnectionBuilder, LogLevel } from '@microsoft/signalr'
+import { RawReceiveProtocol } from '@/features/relay/rawReceiveProtocol'
 import type { ConnectRelay, Presence } from '@/features/relay/transport'
 import { asRecord } from '@/shared/asRecord'
 import { RELAY_URL } from '@/shared/config'
@@ -19,11 +20,12 @@ export function connectHub(relayUrl = RELAY_URL): ConnectRelay {
         transport: HttpTransportType.WebSockets,
         skipNegotiation: true,
       })
+      .withHubProtocol(new RawReceiveProtocol())
       .withServerTimeout(SERVER_TIMEOUT_MS)
       .withKeepAliveInterval(KEEP_ALIVE_MS)
       .configureLogging(LogLevel.None)
       .build()
-    connection.on('Receive', (envelope: unknown) => events.onEnvelope(JSON.stringify(envelope)))
+    connection.on('Receive', (envelope: string) => events.onEnvelope(envelope))
     connection.on('Presence', (presence: unknown) => {
       if (isPresence(presence)) events.onPresence({ cli_online: presence.cli_online })
     })

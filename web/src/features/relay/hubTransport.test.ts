@@ -42,6 +42,15 @@ describe('connectHub', () => {
     await vi.waitFor(() => expect(events.onEnvelope).toHaveBeenCalledWith(JSON.stringify(ENVELOPE)))
   })
 
+  it('should pass the raw Receive text on with its duplicate keys', async () => {
+    const raw = '{"v":1,"seq":0,"seq":12345678901234567890}'
+    await connect()
+
+    hub.callRaw(`{"type":1,"target":"Receive","arguments":[${raw}]}`)
+
+    await vi.waitFor(() => expect(events.onEnvelope).toHaveBeenCalledWith(raw))
+  })
+
   it('should pass the CLI online flag of Presence on', async () => {
     await connect()
 
