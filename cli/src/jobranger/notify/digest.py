@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 
 from jobranger.ads.apply_link import STATUS_EXPIRED
 from jobranger.ads.duplicates import DIRECT_SOURCE_PREFIXES, group_duplicates
+from jobranger.matching.classify import StopReason
 from jobranger.matching.merge import preferred_ad
 from jobranger.matching.rules import (
-    is_reportable,
     max_years,
     parse_date,
 )
@@ -17,10 +17,11 @@ if TYPE_CHECKING:
     from jobranger.ads.models import Ad
     from jobranger.matching.rules import HiddenKind
     from jobranger.pipeline import RunResult
-    from jobranger.settings import AppConfig, Targets
+    from jobranger.settings import AppConfig
     from jobranger.storage.store import Store
 
 APPLY_SOON_DAYS = 7
+NOTICE_STOPS = frozenset({StopReason.auth, StopReason.provider_down})
 RECENT_RUNS = 2
 OTHER_KIND = "other"
 
@@ -41,6 +42,8 @@ class DigestData:
     budget_paused: bool
     pending: int
     max_years: float | None
+    carried: list[Ad] = field(default_factory=list)
+    model_stopped: StopReason | None = None
 
 
 def build_digest(
@@ -51,15 +54,14 @@ def build_digest(
         []
         if result.version is None
         else _wanted_ads(
-            store.ads_by_id(list(result.reported_ids)), today, result.version, targets
+            store.keep_reportable(
+                store.ads_by_id(list(result.reported_ids)), result.version, targets
+            ),
+            today,
+            result.version,
         )
     )
-    apply_soon = sorted(
-        (ad for ad in wanted if _due_soon(ad, today)), key=lambda ad: ad.deadline or ""
-    )
-    new_today = sorted(
-        (ad for ad in wanted if not _due_soon(ad, today)), key=_new_today_order
-    )
+    apply_soon, new_today, carried = _groups(wanted, set(result.carried_ids), today)
     return DigestData(
         day=today,
         ran_at=datetime.now(tz=UTC),
@@ -81,18 +83,34 @@ def build_digest(
         budget_paused=result.budget_paused,
         pending=result.pending,
         max_years=max_years(targets.limits),
+        carried=carried,
+        model_stopped=_notice_stop(result),
     )
 
 
-def _wanted_ads(
-    candidates: list[Ad], today: date, version: str, targets: Targets
-) -> list[Ad]:
+def _groups(
+    wanted: list[Ad], carried_ids: set[str], today: date
+) -> tuple[list[Ad], list[Ad], list[Ad]]:
+    fresh = [ad for ad in wanted if ad.id not in carried_ids]
+    apply_soon = sorted(
+        (ad for ad in fresh if _due_soon(ad, today)), key=_deadline_order
+    )
+    new_today = sorted(
+        (ad for ad in fresh if not _due_soon(ad, today)), key=_new_today_order
+    )
+    carried = sorted((ad for ad in wanted if ad.id in carried_ids), key=_deadline_order)
+    return apply_soon, new_today, carried
+
+
+def _notice_stop(result: RunResult) -> StopReason | None:
+    if result.model_stopped in NOTICE_STOPS and result.pending:
+        return result.model_stopped
+    return None
+
+
+def _wanted_ads(candidates: list[Ad], today: date, version: str) -> list[Ad]:
     preferred = (preferred_ad(group, version) for group in group_duplicates(candidates))
-    return [
-        ad
-        for ad in preferred
-        if not _is_expired(ad, today) and is_reportable(ad, version, targets)
-    ]
+    return [ad for ad in preferred if not _is_expired(ad, today)]
 
 
 def _is_expired(ad: Ad, today: date) -> bool:
@@ -107,9 +125,13 @@ def _due_soon(ad: Ad, today: date) -> bool:
     return deadline is not None and (deadline - today).days <= APPLY_SOON_DAYS
 
 
+def _deadline_order(ad: Ad) -> tuple[bool, str]:
+    return (ad.deadline is None, ad.deadline or "")
+
+
 def _new_today_order(ad: Ad) -> tuple[bool, bool, str]:
     strong = ad.match is not None and ad.match.status == "strong"
-    return (not strong, ad.deadline is None, ad.deadline or "")
+    return (not strong, *_deadline_order(ad))
 
 
 def _closed_since_last(store: Store, run_id: int | None) -> int:

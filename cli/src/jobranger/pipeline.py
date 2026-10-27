@@ -71,6 +71,7 @@ APPLY_CHECK_LIMIT = 60
 APPLY_RECHECK_DAYS = 7
 APPLY_URL_BACKFILL_LIMIT = 60
 REPORTED_LOOKBACK_DAYS = 90
+DIGEST_CARRY_DAYS = 7
 IMPORTED_SOURCES = frozenset({finn.SOURCE, nav.SOURCE})
 SOURCE_THREAD_PREFIX = "source"
 
@@ -97,6 +98,8 @@ class RunResult:
     pending: int = 0
     model_stopped: StopReason | None = None
     version: str | None = None
+    carried_ids: tuple[str, ...] = ()
+    silent_ids: tuple[str, ...] = ()
 
 
 @dataclass
@@ -111,6 +114,8 @@ class _Tally:
     model_stopped: StopReason | None = None
     reported_ids: tuple[str, ...] = ()
     hidden_counts: dict[HiddenKind, int] = field(default_factory=dict)
+    carried_ids: tuple[str, ...] = ()
+    silent_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -220,6 +225,8 @@ def _locked_pass(state: _Pass) -> RunResult:
         pending=tally.pending,
         model_stopped=tally.model_stopped,
         version=version,
+        carried_ids=tally.carried_ids,
+        silent_ids=tally.silent_ids,
     )
 
 
@@ -443,15 +450,43 @@ def _report_stage(state: _Pass, tally: _Tally, version: str) -> None:
     today = state.today.isoformat()
     store.close_past_deadline(today)
     state.events.emit(RunEvent("report"))
-    ads = store.reportable_ads(today, state.started_at, version, targets)
+    ads = store.reportable_ads(today, version, targets)
     lookback = (now - timedelta(days=REPORTED_LOOKBACK_DAYS)).isoformat()
-    remaining, _ = split_reported(ads, store.reported_ads(lookback))
-    tally.reported_ids = tuple(
-        ad.id for ad in remaining if not is_stale(ad, state.today)
+    remaining, covered = split_reported(ads, store.reported_ads(lookback))
+    tally.reported_ids, tally.carried_ids, tally.silent_ids = _pick_due(
+        state,
+        remaining,
+        covered,
+        store.shown_anyway(),
+        (now - timedelta(days=DIGEST_CARRY_DAYS)).isoformat(),
     )
     tally.hidden_counts = _hidden_counts(
         store.new_since(state.started_at), set(tally.reported_ids), version, targets
     )
+
+
+def _pick_due(
+    state: _Pass,
+    remaining: list[Ad],
+    covered: list[str],
+    shown: frozenset[str],
+    carry_from: str,
+) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+    due = [ad for ad in remaining if _is_due(ad, state.today, shown, carry_from)]
+    due_ids = {ad.id for ad in due}
+    carried = tuple(ad.id for ad in due if _matched_at(ad) < state.started_at)
+    silent = (*covered, *(ad.id for ad in remaining if ad.id not in due_ids))
+    return tuple(ad.id for ad in due), carried, silent
+
+
+def _is_due(ad: Ad, today: date, shown: frozenset[str], carry_from: str) -> bool:
+    if is_stale(ad, today):
+        return False
+    return _matched_at(ad) >= carry_from or ad.id in shown
+
+
+def _matched_at(ad: Ad) -> str:
+    return max(ad.first_seen or "", ad.first_classified_at or "")
 
 
 def _hidden_counts(

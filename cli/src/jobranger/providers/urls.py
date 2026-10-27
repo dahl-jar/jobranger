@@ -4,7 +4,7 @@ import re
 from urllib.parse import urlsplit, urlunsplit
 
 OLLAMA_API_PATH = "/v1"
-USERINFO_PATTERN = re.compile(r"^(?P<scheme>[^:/?#]+://)[^/?#]*@")
+USERINFO_PATTERN = re.compile(r"^(?P<scheme>[A-Za-z][A-Za-z0-9+.-]*:/*).*@", re.DOTALL)
 
 
 def ollama_root(url: str) -> str:

@@ -1198,6 +1198,7 @@ def test_should_report_new_ad_with_future_deadline_only(
             match=make_match(version=VERSION),
         )
     )
+    store.mark_reported(["finn:1"], datetime.now(tz=UTC).isoformat())
     future = _new_ad(2, deadline="2099-01-01")
     _use_sources(monkeypatch, [_source("fake", [future])])
 

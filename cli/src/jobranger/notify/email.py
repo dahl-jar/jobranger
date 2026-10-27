@@ -10,6 +10,7 @@ from urllib.parse import SplitResult, quote, urlsplit, urlunsplit
 from jobranger.ads.apply_link import WEB_SCHEMES
 from jobranger.ads.duplicates import DIRECT_SOURCE_PREFIXES, is_direct_source
 from jobranger.catalogue import role_label
+from jobranger.matching.classify import StopReason
 from jobranger.matching.rules import display_fit, parse_date
 from jobranger.notify.terminal import MIDDLE_DOT, hidden_line
 
@@ -58,8 +59,13 @@ NORTH_EAST_ARROW = "↗"
 FIT_LABELS: dict[DisplayFit, str] = {
     "strong": f"{CHECK_MARK} Strong fit",
     "partial": f"{HALF_CIRCLE} Partial fit",
+    "on_request": "Shown on request",
 }
-FIT_COLORS: dict[DisplayFit, str] = {"strong": STRONG_COLOR, "partial": PARTIAL_COLOR}
+FIT_COLORS: dict[DisplayFit, str] = {
+    "strong": STRONG_COLOR,
+    "partial": PARTIAL_COLOR,
+    "on_request": MUTED,
+}
 NUMBER_WORDS = (
     "no",
     "one",
@@ -82,6 +88,18 @@ NO_DATE = "No date"
 APPLY_EARLY = "apply early"
 APPLY_SOON_TITLE = "Apply this week"
 NEW_TODAY_TITLE = "New today"
+CARRIED_TITLE = "Still waiting from earlier"
+LEAD_FITS: tuple[DisplayFit, ...] = ("strong", "partial", "on_request")
+STOP_NOTES: dict[StopReason, str] = {
+    StopReason.auth: (
+        "AI checks stopped: the provider refused the API key."
+        " {pending} {waiting}. Set a new key with: jobranger init"
+    ),
+    StopReason.provider_down: (
+        "AI checks stopped: the provider did not answer."
+        " {pending} {waiting} for the next run."
+    ),
+}
 STOP_EMAILS = "Stop these emails: jobranger config edit"
 
 
@@ -98,6 +116,7 @@ class RenderedDigest:
     subject: str
     html: str
     text: str
+    ad_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -109,6 +128,7 @@ class _Link:
 
 @dataclass(frozen=True)
 class _Card:
+    ad_id: str
     due: str
     due_note: str
     fit: DisplayFit
@@ -146,7 +166,10 @@ def render_digest(
     cards = [_html_card(card) for section in digest.sections for card in section.cards]
     kept = _kept_count(_html(_keep(digest, 0), []), cards)
     digest = _keep(digest, kept)
-    return RenderedDigest(digest.subject, _html(digest, cards[:kept]), _text(digest))
+    shown = tuple(card.ad_id for section in digest.sections for card in section.cards)
+    return RenderedDigest(
+        digest.subject, _html(digest, cards[:kept]), _text(digest), shown
+    )
 
 
 def _kept_count(frame: str, cards: Sequence[str]) -> int:
@@ -171,14 +194,19 @@ def _keep(digest: _Digest, count: int) -> _Digest:
 def _digest(data: DigestData, links: DigestLinks, targets: Targets) -> _Digest:
     soon = tuple(_card(ad, data.day, links, targets) for ad in data.apply_soon)
     fresh = tuple(_card(ad, data.day, links, targets) for ad in data.new_today)
+    earlier = tuple(_card(ad, data.day, links, targets) for ad in data.carried)
     site = links.site_url
     sections = tuple(
         _Section(title, cards, 0)
-        for title, cards in ((APPLY_SOON_TITLE, soon), (NEW_TODAY_TITLE, fresh))
+        for title, cards in (
+            (APPLY_SOON_TITLE, soon),
+            (NEW_TODAY_TITLE, fresh),
+            (CARRIED_TITLE, earlier),
+        )
         if cards
     )
     hidden_text = hidden_line(data.hidden, data.max_years)
-    matches = _plural(len(soon) + len(fresh), "match", "matches")
+    matches = _plural(len(soon) + len(fresh) + len(earlier), "match", "matches")
     return _Digest(
         subject=f"{PRODUCT_NAME}: {matches}, {_long_date(data.day)}",
         date_line=_long_date(data.day),
@@ -197,6 +225,7 @@ def _digest(data: DigestData, links: DigestLinks, targets: Targets) -> _Digest:
 def _card(ad: Ad, day: date, links: DigestLinks, targets: Targets) -> _Card:
     deadline = parse_date(ad.deadline)
     return _Card(
+        ad_id=ad.id,
         due=_short_date(deadline) if deadline else NO_DATE,
         due_note=_due_note(deadline, day),
         fit=display_fit(ad, targets),
@@ -311,19 +340,24 @@ def _due_note(deadline: date | None, day: date) -> str:
 def _lead(cards: list[_Card], new_ads: int, ran_at: datetime) -> str:
     part_of_day = _part_of_day(ran_at)
     new_ads_text = _plural(new_ads, "new ad", "new ads")
-    strong = sum(card.fit == "strong" for card in cards)
-    partial = len(cards) - strong
     fits = [
-        f"{_number(count)} {kind} {'fit' if count == 1 else 'fits'}"
-        for count, kind in ((strong, "strong"), (partial, "partial"))
-        if count
+        _fit_phrase(sum(card.fit == fit for card in cards), fit) for fit in LEAD_FITS
     ]
-    if not fits:
+    shown = [phrase for phrase in fits if phrase]
+    if not shown:
         return f"No new matches this {part_of_day}, from {new_ads_text}."
     return (
-        f"{_capitalize(' and '.join(fits))} this {part_of_day}, "
+        f"{_capitalize(_join_and(shown))} this {part_of_day}, "
         f"picked from {new_ads_text}."
     )
+
+
+def _fit_phrase(count: int, fit: DisplayFit) -> str:
+    if not count:
+        return ""
+    if fit == "on_request":
+        return f"{_number(count)} {'ad' if count == 1 else 'ads'} shown on request"
+    return f"{_number(count)} {fit} {'fit' if count == 1 else 'fits'}"
 
 
 def _notes(data: DigestData) -> tuple[str, ...]:
@@ -332,6 +366,7 @@ def _notes(data: DigestData) -> tuple[str, ...]:
         _closed_note(data.closed_since_last),
         _failed_note(data.failed_sources),
         _paused_note(data),
+        _stopped_note(data),
     )
     return tuple(note for note in notes if note)
 
@@ -364,6 +399,13 @@ def _failed_note(failed: Sequence[str]) -> str:
         return ""
     names = [_source_phrase(source) for source in failed]
     return f"Could not read {_join_capped(names, FAILED_SOURCES_SHOWN)}."
+
+
+def _stopped_note(data: DigestData) -> str:
+    if data.model_stopped is None:
+        return ""
+    waiting = "ad waits" if data.pending == 1 else "ads wait"
+    return STOP_NOTES[data.model_stopped].format(pending=data.pending, waiting=waiting)
 
 
 def _paused_note(data: DigestData) -> str:

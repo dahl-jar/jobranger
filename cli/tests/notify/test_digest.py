@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 from typing import TYPE_CHECKING
 
 import pytest
-from factories import FIXTURES, make_ad, make_match, targets
+from factories import FIXTURES, OUTDATED_VERSION, make_ad, make_match, targets
 
 from jobranger.events import RunMode
 from jobranger.notify.digest import DigestData, build_digest
@@ -37,21 +38,30 @@ def _ad(index: int, **overrides: object) -> Ad:
     return make_ad(**base)
 
 
-def _digest(
-    tmp_path: Path, ads: list[Ad], reported: list[Ad] | None = None
-) -> DigestData:
+def _store(tmp_path: Path, *ads: Ad) -> Store:
     store = Store(tmp_path / "ads.db")
     for ad in ads:
         store.upsert_ad(ad)
-    chosen = ads if reported is None else reported
+    return store
+
+
+def _result(*ads: Ad, **overrides: object) -> RunResult:
     result = RunResult(
         run_id=None,
         status="completed",
         mode=RunMode.manual,
-        reported_ids=tuple(ad.id for ad in chosen),
+        reported_ids=tuple(ad.id for ad in ads),
         version=VERSION,
     )
-    return build_digest(store, result, CONFIG, TODAY)
+    return replace(result, **overrides)
+
+
+def _digest(
+    tmp_path: Path, ads: list[Ad], reported: list[Ad] | None = None
+) -> DigestData:
+    store = _store(tmp_path, *ads)
+    chosen = ads if reported is None else reported
+    return build_digest(store, _result(*chosen), CONFIG, TODAY)
 
 
 def _ids(ads: list[Ad]) -> list[str]:
@@ -276,3 +286,58 @@ def test_should_report_duplicate_by_its_current_match(tmp_path: Path) -> None:
     data = _digest(tmp_path, [current, stale])
 
     assert _ids(data.new_today) == [current.id]
+
+
+def test_should_keep_shown_anyway_ad_that_rules_would_hide(tmp_path: Path) -> None:
+    ad = _ad(1, is_programming_job=False)
+    store = _store(tmp_path, ad)
+    store.mark_ad(ad.id, "show_anyway", "2026-10-09T00:00:00+00:00")
+
+    data = build_digest(store, _result(ad), CONFIG, TODAY)
+
+    assert _ids(data.new_today) == [ad.id]
+
+
+def test_should_list_ads_from_earlier_runs_apart_from_new_ones(tmp_path: Path) -> None:
+    earlier, fresh = _ad(1), _ad(2)
+    store = _store(tmp_path, earlier, fresh)
+    result = _result(earlier, fresh, carried_ids=(earlier.id,))
+
+    data = build_digest(store, result, CONFIG, TODAY)
+
+    assert (_ids(data.new_today), _ids(data.carried)) == ([fresh.id], [earlier.id])
+
+
+def test_should_sort_earlier_ads_by_deadline_with_undated_last(tmp_path: Path) -> None:
+    undated = _ad(1)
+    later = _ad(2, deadline="2026-10-30")
+    sooner = _ad(3, deadline="2026-10-20")
+    store = _store(tmp_path, undated, later, sooner)
+    result = _result(
+        undated, later, sooner, carried_ids=(undated.id, later.id, sooner.id)
+    )
+
+    data = build_digest(store, result, CONFIG, TODAY)
+
+    assert _ids(data.carried) == [sooner.id, later.id, undated.id]
+
+
+def test_should_take_match_from_current_twin_when_other_is_shown_anyway(
+    tmp_path: Path,
+) -> None:
+    current = _ad(1, company="Org One AS", title="Developer")
+    outdated = _ad(
+        2,
+        company="Org One AS",
+        title="Developer",
+        technologies=("Java", "Kotlin"),
+        match=make_match(version=OUTDATED_VERSION),
+    )
+    store = _store(tmp_path, current, outdated)
+    store.mark_ad(outdated.id, "show_anyway", "2026-10-09T00:00:00+00:00")
+
+    data = build_digest(store, _result(current, outdated), CONFIG, TODAY)
+
+    [shown] = data.new_today
+    assert shown.match is not None
+    assert shown.match.version == VERSION

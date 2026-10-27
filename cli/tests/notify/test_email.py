@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 import pytest
 from factories import make_ad, make_match, targets
 
+from jobranger.matching.classify import StopReason
 from jobranger.notify import email
 from jobranger.notify.digest import DigestData
 from jobranger.notify.email import (
@@ -857,3 +858,101 @@ def test_should_show_bare_card_in_html_when_ad_has_no_summary_or_link() -> None:
         "Bergen \u00b7 Software \u00b7 FINN",
         "Stop these emails: jobranger config edit",
     ]
+
+
+def test_should_render_earlier_ads_under_still_waiting() -> None:
+    fresh = _ad(1, display_title="Fresh Role")
+    earlier = _ad(2, display_title="Earlier Role")
+
+    text = _render(new_today=[fresh], carried=[earlier]).text
+
+    new_today = text.index("NEW TODAY")
+    waiting = text.index("STILL WAITING FROM EARLIER")
+    assert new_today < text.index("Fresh Role") < waiting < text.index("Earlier Role")
+
+
+def test_should_leave_earlier_ads_out_of_lead_count() -> None:
+    rendered = _render(new_ads=0, carried=[_ad(1)])
+
+    assert "No new matches this morning, from 0 new ads." in rendered.text
+
+
+def test_should_list_ids_of_rendered_cards() -> None:
+    soon = _ad(1, deadline="2026-10-10")
+    fresh, earlier = _ad(2), _ad(3)
+
+    rendered = _render(apply_soon=[soon], new_today=[fresh], carried=[earlier])
+
+    assert rendered.ad_ids == (soon.id, fresh.id, earlier.id)
+
+
+def test_should_leave_cards_cut_for_size_out_of_rendered_ids() -> None:
+    long_summary = "Build backend services. " * 200
+    ads = [_ad(index, summary=long_summary) for index in range(40)]
+
+    rendered = _render(WEBSITE_ON, new_today=ads)
+
+    shown = len(re.findall(r">Open the ad", rendered.html))
+    assert rendered.ad_ids == tuple(ad.id for ad in ads[:shown])
+
+
+def test_should_count_earlier_cards_in_subject() -> None:
+    rendered = _render(new_today=[_ad(1)], carried=[_ad(2)])
+
+    assert rendered.subject.startswith("jobranger: 2 matches,")
+
+
+def test_should_label_unsuitable_card_as_shown_on_request() -> None:
+    ad = _ad(1, match=make_match(status="unsuitable"))
+
+    html = _render(new_today=[ad]).html
+
+    assert "Shown on request" in html
+    assert "Partial fit" not in html
+
+
+def test_should_count_shown_on_request_cards_apart_in_lead() -> None:
+    strong = _ad(1)
+    shown = _ad(2, match=make_match(status="unsuitable"))
+
+    text = _render(new_today=[strong, shown]).text
+
+    assert (
+        "One strong fit and one ad shown on request this morning, picked from 812"
+    ) in text
+
+
+@pytest.mark.parametrize(
+    ("stopped", "line"),
+    [
+        (
+            StopReason.auth,
+            "AI checks stopped: the provider refused the API key. 4 ads wait."
+            " Set a new key with: jobranger init",
+        ),
+        (
+            StopReason.provider_down,
+            "AI checks stopped: the provider did not answer. 4 ads wait for the"
+            " next run.",
+        ),
+    ],
+    ids=["auth", "provider down"],
+)
+def test_should_name_model_stop_in_footer(stopped: StopReason, line: str) -> None:
+    text = _render(model_stopped=stopped, pending=4).text
+
+    assert line in text
+
+
+def test_should_count_several_shown_on_request_cards_in_lead() -> None:
+    shown = [_ad(index, match=make_match(status="unsuitable")) for index in (1, 2)]
+
+    text = _render(new_today=shown).text
+
+    assert "Two ads shown on request this morning" in text
+
+
+def test_should_say_one_ad_waits_when_model_stops() -> None:
+    text = _render(model_stopped=StopReason.provider_down, pending=1).text
+
+    assert "1 ad waits for the next run." in text

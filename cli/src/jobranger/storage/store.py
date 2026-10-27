@@ -22,6 +22,7 @@ from jobranger.settings import MAX_AMOUNT_USD
 from jobranger.storage.migrations import SCHEMA_VERSION_KEY, migrate
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from pathlib import Path
 
     from jobranger.matching.classify import Classification
@@ -58,7 +59,7 @@ SHARED_COLUMNS = (
     "is_programming_job, display_title, role_type, technologies, requirements, "
     "assessment, apply_url, apply_status, apply_checked_at, republished"
 )
-AD_COLUMNS = f"{SHARED_COLUMNS}, first_seen, closed_at"
+AD_COLUMNS = f"{SHARED_COLUMNS}, first_seen, closed_at, first_classified_at"
 INSERT_COLUMNS = f"{SHARED_COLUMNS}, assessment_version, dedup_key, first_seen"
 INSERT_AD_SQL = (
     f"INSERT INTO ads ({INSERT_COLUMNS}) "
@@ -286,11 +287,14 @@ class Store:
     def set_classification(
         self, ad_id: str, classification: Classification, version: str
     ) -> None:
+        classified_at = _now()
         self._conn.execute(
             "UPDATE ads SET label = ?, summary = ?, requires_master = ?, "
             "is_programming_job = ?, display_title = ?, role_type = ?, "
             "technologies = ?, requirements = ?, assessment = ?, "
-            "assessment_version = ?, classified_at = ? WHERE id = ?",
+            "assessment_version = ?, classified_at = ?, "
+            "first_classified_at = COALESCE(first_classified_at, ?) "
+            "WHERE id = ?",
             (
                 classification.label,
                 classification.summary,
@@ -302,7 +306,8 @@ class Store:
                 json.dumps(classification.requirements, ensure_ascii=False),
                 encode_match(classification.match, classification.checks),
                 version,
-                _now(),
+                classified_at,
+                classified_at,
                 ad_id,
             ),
         )
@@ -330,29 +335,31 @@ class Store:
         return self._select("first_seen >= ?", (iso_ts,))
 
     def reportable_ads(
-        self, as_of_date: str, since: str | None, version: str, targets: Targets
+        self, as_of_date: str, version: str, targets: Targets
     ) -> list[Ad]:
         where = (
-            "active = 1 AND "
+            "active = 1 AND reported_at IS NULL AND "
             "(deadline IS NULL OR date(deadline) IS NULL OR date(deadline) >= date(?)) "
             "AND (apply_status IS NULL OR apply_status != 'expired')"
         )
-        params: list[object] = [as_of_date]
-        if since is not None:
-            where += (
-                " AND (first_seen >= ? OR (classified_at >= ? AND reported_at IS NULL))"
-            )
-            params.extend((since, since))
-        shown = {
-            ad_id
-            for ad_id, actions in self.ad_actions().items()
-            if "show_anyway" in actions
-        }
+        return self.keep_reportable(
+            self._select(where, (as_of_date,)), version, targets
+        )
+
+    def keep_reportable(
+        self, ads: list[Ad], version: str, targets: Targets
+    ) -> list[Ad]:
+        actions = self.ad_actions()
+        shown = _shown_anyway(actions)
         return [
             ad
-            for ad in self._select(where, tuple(params))
-            if ad.id in shown or is_reportable(ad, version, targets)
+            for ad in ads
+            if not actions.get(ad.id, frozenset()).intersection(EXCLUSIVE_ACTIONS)
+            and (ad.id in shown or is_reportable(ad, version, targets))
         ]
+
+    def shown_anyway(self) -> frozenset[str]:
+        return _shown_anyway(self.ad_actions())
 
     def reported_ads(self, since: str) -> list[Ad]:
         return self._select("reported_at >= ?", (since,))
@@ -819,6 +826,13 @@ def _row_to_ad(row: tuple[object, ...]) -> Ad:
         republished=bool(row[22]),
         first_seen=_optional_str(row[23]),
         closed_at=_optional_str(row[24]),
+        first_classified_at=_optional_str(row[25]),
+    )
+
+
+def _shown_anyway(actions: Mapping[str, frozenset[Action]]) -> frozenset[str]:
+    return frozenset(
+        ad_id for ad_id, marks in actions.items() if "show_anyway" in marks
     )
 
 

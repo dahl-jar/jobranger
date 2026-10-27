@@ -70,6 +70,7 @@ ALLOWED_FIELDS = frozenset(
         "about_chars",
         "doc_count",
         "file",
+        "failure",
     }
 )
 

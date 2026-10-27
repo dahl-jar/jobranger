@@ -135,7 +135,16 @@ BASELINE = Migration(
     ),
 )
 
-MIGRATIONS: tuple[Migration, ...] = (BASELINE,)
+FIRST_CLASSIFICATION = Migration(
+    2,
+    (
+        "ALTER TABLE ads ADD COLUMN first_classified_at TEXT",
+        "UPDATE ads SET first_classified_at = COALESCE(classified_at, first_seen) "
+        "WHERE label IS NOT NULL OR classified_at IS NOT NULL",
+    ),
+)
+
+MIGRATIONS: tuple[Migration, ...] = (BASELINE, FIRST_CLASSIFICATION)
 
 
 def current_version(conn: sqlite3.Connection) -> int:

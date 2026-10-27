@@ -3,8 +3,13 @@ from __future__ import annotations
 import io
 import itertools
 import re
+from dataclasses import dataclass
+from email.errors import HeaderParseError
+from email.headerregistry import Address
+from email.message import EmailMessage
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal, Self
+from urllib.parse import SplitResult, urlsplit
 
 import httpx
 from pydantic import (
@@ -14,6 +19,7 @@ from pydantic import (
     ValidationError,
     field_serializer,
     field_validator,
+    model_validator,
 )
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
@@ -27,7 +33,7 @@ from jobranger.catalogue import (
     default_employer_feeds,
 )
 from jobranger.providers.base import ProviderName
-from jobranger.providers.urls import ollama_root, without_userinfo
+from jobranger.providers.urls import ollama_root
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -44,6 +50,21 @@ LOCATION_SEPARATOR = "."
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
 OLLAMA_URL_SCHEMES = frozenset({"http", "https"})
 INVALID_OLLAMA_URL = "ollama_url {url!r} is not an http or https URL with a host"
+SMTP_DEFAULT_PORTS = {"smtp": 587, "smtps": 465}
+IMPLICIT_TLS_SCHEME = "smtps"
+ROOT_LABEL = "."
+EMPTY_URL_PATHS = frozenset({"", "/"})
+INVALID_SMTP_URL = (
+    "smtp_url is not smtp://host[:port] or smtps://host[:port]"
+    " without a user, path or query"
+)
+INVALID_OLLAMA_URL_FIELD = "ollama_url is not an http or https URL with a host"
+INVALID_ADDRESS = "address {address!r} is not one email address"
+INVALID_SENDER = "sender {sender!r} is not one email address"
+MISSING_ADDRESS = "email is on but no email address is set"
+MISSING_SMTP_URL = "email goes through SMTP but no SMTP server (smtp_url) is set"
+
+type EmailVia = Literal["smtp", "resend"]
 
 
 class ConfigMissingError(Exception):
@@ -60,7 +81,7 @@ class ConfigInvalidError(Exception):
 
 
 class Limits(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
 
     levels: frozenset[Level] = DEFAULT_LEVELS
     years: frozenset[YearBand] = DEFAULT_YEARS
@@ -72,7 +93,7 @@ class Limits(BaseModel):
 
 
 class Targets(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
 
     subfields: tuple[RoleId, ...] = ()
     limits: Limits = Limits()
@@ -91,7 +112,7 @@ class Targets(BaseModel):
 
 
 class SourcesConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
 
     nav: bool = True
     employers: bool = True
@@ -101,7 +122,7 @@ class SourcesConfig(BaseModel):
 
 
 class ScheduleConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
 
     times: tuple[str, ...] = DEFAULT_RUN_TIMES
 
@@ -123,14 +144,14 @@ Amount = Annotated[float, Field(ge=0, le=MAX_AMOUNT_USD, allow_inf_nan=False)]
 
 
 class PriceOverride(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
 
     input_per_mtok: Amount
     output_per_mtok: Amount
 
 
 class ModelConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
 
     provider: ProviderName | None = None
     model: str | None = None
@@ -143,26 +164,66 @@ class ModelConfig(BaseModel):
     def _valid_ollama_url(cls, url: str) -> str:
         root = ollama_root(url)
         if not is_ollama_url(root):
-            raise ValueError(INVALID_OLLAMA_URL.format(url=without_userinfo(url)))
+            raise ValueError(INVALID_OLLAMA_URL_FIELD)
         return root
 
 
+@dataclass(frozen=True)
+class SmtpServer:
+    host: str
+    port: int
+    implicit_tls: bool
+
+
 class EmailConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
 
     on: bool = False
     address: str | None = None
+    via: EmailVia = "smtp"
+    smtp_url: str | None = None
+    smtp_user: str | None = None
+    sender: str | None = None
+
+    @field_validator("address")
+    @classmethod
+    def _one_address(cls, address: str | None) -> str | None:
+        if address is not None and not is_email_address(address):
+            raise ValueError(INVALID_ADDRESS.format(address=address))
+        return address
+
+    @field_validator("sender")
+    @classmethod
+    def _one_sender(cls, sender: str | None) -> str | None:
+        if sender is not None and not is_mailbox(sender):
+            raise ValueError(INVALID_SENDER.format(sender=sender))
+        return sender
+
+    @field_validator("smtp_url")
+    @classmethod
+    def _valid_smtp_url(cls, url: str | None) -> str | None:
+        if url is not None:
+            smtp_server(url)
+        return url
+
+    @model_validator(mode="after")
+    def _complete_when_on(self) -> Self:
+        if self.on and self.address is None:
+            raise ValueError(MISSING_ADDRESS)
+        if self.on and self.via == "smtp" and self.smtp_url is None:
+            raise ValueError(MISSING_SMTP_URL)
+        return self
 
 
 class NotifyConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
 
     website: bool = True
     email: EmailConfig = EmailConfig()
 
 
 class ProfileRef(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
 
     path: Path
     cv_name: str | None = None
@@ -182,7 +243,7 @@ class ProfileRef(BaseModel):
 
 
 class AppConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True)
 
     version: Literal[1] = 1
     profile: ProfileRef
@@ -288,3 +349,89 @@ def _minutes(time: str) -> int:
         msg = f"run time {time!r} is not HH:MM"
         raise ValueError(msg)
     return int(matched.group(1)) * MINUTES_PER_HOUR + int(matched.group(2))
+
+
+def smtp_server(url: str) -> SmtpServer:
+    invalid = ValueError(INVALID_SMTP_URL)
+    try:
+        parts = urlsplit(url)
+        host = parts.hostname
+        port = parts.port
+    except ValueError as error:
+        raise invalid from error
+    if not host or not _bare_server_url(parts):
+        raise invalid
+    try:
+        server_host = _ascii_host(host)
+    except ValueError as error:
+        raise invalid from error
+    default_port = SMTP_DEFAULT_PORTS[parts.scheme]
+    return SmtpServer(
+        server_host,
+        default_port if port is None else port,
+        parts.scheme == IMPLICIT_TLS_SCHEME,
+    )
+
+
+def _bare_server_url(parts: SplitResult) -> bool:
+    return (
+        parts.scheme in SMTP_DEFAULT_PORTS
+        and "@" not in parts.netloc
+        and parts.path in EMPTY_URL_PATHS
+        and not parts.query
+        and not parts.fragment
+    )
+
+
+def _ascii_host(host: str) -> str:
+    converted = ascii_domain(host.removesuffix(ROOT_LABEL))
+    if not converted or converted.endswith(ROOT_LABEL):
+        raise ValueError
+    return converted
+
+
+def ascii_domain(domain: str) -> str:
+    if any(char.isspace() or not char.isprintable() for char in domain):
+        raise ValueError
+    return domain.encode("idna").decode("ascii")
+
+
+def ascii_address(address: str) -> str:
+    if any(char.isspace() for char in address):
+        raise ValueError
+    parsed = Address(addr_spec=address)
+    return str(Address(username=parsed.username, domain=ascii_domain(parsed.domain)))
+
+
+def ascii_mailbox(value: str) -> str:
+    if value != value.strip() or "\t" in value:
+        raise ValueError
+    message = EmailMessage()
+    message["From"] = value
+    header = message["From"]
+    if len(header.addresses) != 1 or header.defects:
+        raise ValueError
+    mailbox = header.addresses[0]
+    return str(
+        Address(
+            display_name=mailbox.display_name,
+            username=mailbox.username,
+            domain=ascii_domain(mailbox.domain),
+        )
+    )
+
+
+def is_email_address(address: str) -> bool:
+    try:
+        ascii_address(address)
+    except (ValueError, HeaderParseError):
+        return False
+    return True
+
+
+def is_mailbox(value: str) -> bool:
+    try:
+        ascii_mailbox(value)
+    except (ValueError, HeaderParseError):
+        return False
+    return True

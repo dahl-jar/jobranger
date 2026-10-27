@@ -452,3 +452,10 @@ def test_should_demote_strong_with_gaps_to_stretch() -> None:
     assert result == make_match(
         status="stretch", gaps=("Norwegian needs confirmation",)
     )
+
+
+@pytest.mark.parametrize("status", ["unsuitable", "unknown"])
+def test_should_label_unreportable_match_as_shown_on_request(status: str) -> None:
+    ad = make_ad(location="Bergen", match=make_match(status=status))
+
+    assert display_fit(ad, targets(places=("Bergen",))) == "on_request"

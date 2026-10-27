@@ -51,7 +51,7 @@ def test_should_roll_back_failed_migration_completely(tmp_path: Path) -> None:
         2, ("CREATE TABLE half (id INTEGER PRIMARY KEY)", "CREATE TABLE (oops")
     )
 
-    with pytest.raises(MigrationError) as raised:
+    with pytest.raises(MigrationError, match="migration 2 failed") as raised:
         migrate(conn, (FIRST, broken))
 
     assert ("half" in _tables(conn), current_version(conn), raised.value.version) == (
@@ -65,7 +65,7 @@ def test_should_refuse_database_newer_than_code(tmp_path: Path) -> None:
     conn = sqlite3.connect(tmp_path / "db.sqlite")
     migrate(conn, (FIRST, SECOND))
 
-    with pytest.raises(SchemaTooNewError) as raised:
+    with pytest.raises(SchemaTooNewError, match=r"schema 2 is newer .*\(1\)") as raised:
         migrate(conn, (FIRST,))
 
     assert (raised.value.found, raised.value.supported) == (2, 1)
@@ -75,3 +75,23 @@ def test_should_stay_at_version_zero_without_migrations(tmp_path: Path) -> None:
     conn = sqlite3.connect(tmp_path / "db.sqlite")
 
     assert migrate(conn, ()) == 0
+
+
+def test_should_backfill_first_classification_for_classified_ads(
+    tmp_path: Path,
+) -> None:
+    conn = sqlite3.connect(tmp_path / "db.sqlite")
+    migrate(conn, MIGRATIONS[:1])
+    conn.execute(
+        "INSERT INTO ads (id, source, source_id, title, company, url, dedup_key, "
+        "first_seen, label, classified_at) VALUES "
+        "('a', 'finn', '1', 't', 'c', 'u', 'k', 'seen-a', 'junior', 'checked-a'), "
+        "('b', 'finn', '2', 't', 'c', 'u', 'k', 'seen-b', 'junior', NULL), "
+        "('c', 'finn', '3', 't', 'c', 'u', 'k', 'seen-c', NULL, NULL)"
+    )
+    conn.commit()
+
+    migrate(conn)
+
+    rows = conn.execute("SELECT id, first_classified_at FROM ads ORDER BY id")
+    assert rows.fetchall() == [("a", "checked-a"), ("b", "seen-b"), ("c", None)]

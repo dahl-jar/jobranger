@@ -38,6 +38,7 @@ class Ad:
     republished: bool = False
     first_seen: str | None = None
     closed_at: str | None = None
+    first_classified_at: str | None = None
 
 
 @dataclass(frozen=True)

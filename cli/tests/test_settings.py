@@ -1,27 +1,37 @@
 from __future__ import annotations
 
 import importlib
+import re
 import stat
 import sys
 from typing import TYPE_CHECKING
 
 import pytest
 from factories import INVALID_URL, OLLAMA_PASSWORD, OLLAMA_URL, traceback_text
-from pydantic import ValidationError
+from mail_fakes import SMTP_PASSWORD
+from pydantic import BaseModel, ValidationError
 
 from jobranger.catalogue import default_employer_feeds
+from jobranger.notify.send import DEFAULT_RESEND_SENDER
 from jobranger.settings import (
     DEFAULT_OLLAMA_URL,
+    AppConfig,
     ConfigInvalidError,
     ConfigMissingError,
+    EmailConfig,
+    Limits,
     ModelConfig,
+    NotifyConfig,
+    PriceOverride,
     ProfileRef,
     ScheduleConfig,
+    SmtpServer,
     SourcesConfig,
     Targets,
     default_config,
     load_config,
     save_config,
+    smtp_server,
 )
 
 if TYPE_CHECKING:
@@ -32,6 +42,23 @@ PROVIDER_SDKS = frozenset({"openai", "anthropic"})
 OWNER_READ_WRITE = 0o600
 OWNER_ONLY_DIR = 0o700
 COMMENT = "# chosen during setup"
+LONG_LABEL = "a" * 64
+CREDENTIAL_SMTP_URLS = [
+    f"smtp://user:{SMTP_PASSWORD}@smtp.example.test",
+    f"smtp://user:Qa/{SMTP_PASSWORD}#x@smtp.example.test:587",
+    f"smtp://user:Qa?{SMTP_PASSWORD}@smtp.example.test",
+    f"smtp:/user:{SMTP_PASSWORD}@smtp.example.test",
+    f"smtps://user:Qa/{SMTP_PASSWORD}@smtp.example.test",
+    f"SMTP://user:Qa/{SMTP_PASSWORD}@smtp.example.test",
+]
+CREDENTIAL_SMTP_IDS = [
+    "plain",
+    "slash and hash",
+    "question mark",
+    "single slash",
+    "smtps",
+    "upper-case scheme",
+]
 
 
 @pytest.fixture
@@ -184,6 +211,74 @@ def test_should_hide_ollama_password_when_config_fails_to_load(
     assert OLLAMA_PASSWORD not in traceback_text(raised.value)
 
 
+@pytest.mark.parametrize("url", CREDENTIAL_SMTP_URLS, ids=CREDENTIAL_SMTP_IDS)
+def test_should_hide_smtp_password_when_config_fails_to_load(
+    config_path: Path, url: str
+) -> None:
+    config_path.write_text(
+        config_path.read_text().replace("    smtp_url:\n", f'    smtp_url: "{url}"\n')
+    )
+
+    with pytest.raises(ConfigInvalidError) as raised:
+        load_config(config_path)
+
+    assert SMTP_PASSWORD not in traceback_text(raised.value)
+
+
+@pytest.mark.parametrize("url", CREDENTIAL_SMTP_URLS, ids=CREDENTIAL_SMTP_IDS)
+def test_should_hide_smtp_password_in_validation_error(url: str) -> None:
+    with pytest.raises(ValidationError) as raised:
+        EmailConfig(smtp_url=url)
+
+    assert SMTP_PASSWORD not in str(raised.value)
+
+
+@pytest.mark.parametrize(
+    "model",
+    [
+        Limits,
+        Targets,
+        SourcesConfig,
+        ScheduleConfig,
+        PriceOverride,
+        ModelConfig,
+        EmailConfig,
+        NotifyConfig,
+        ProfileRef,
+        AppConfig,
+    ],
+)
+def test_should_leave_input_out_of_validation_error(model: type[BaseModel]) -> None:
+    with pytest.raises(ValidationError) as raised:
+        model.model_validate({"unknown": SMTP_PASSWORD})
+
+    assert SMTP_PASSWORD not in str(raised.value)
+
+
+def test_should_hide_ollama_password_in_validation_error() -> None:
+    with pytest.raises(ValidationError) as raised:
+        ModelConfig(ollama_url=f"http://user:Qa/{OLLAMA_PASSWORD}#x@[::1")
+
+    assert OLLAMA_PASSWORD not in str(raised.value)
+
+
+@pytest.mark.parametrize(
+    ("model", "field", "url", "message"),
+    [
+        (EmailConfig, "smtp_url", "http://box", "smtp_url is not smtp://host"),
+        (ModelConfig, "ollama_url", "ftp://box", "ollama_url is not an http"),
+    ],
+    ids=["smtp_url", "ollama_url"],
+)
+def test_should_name_field_without_its_url_in_error(
+    model: type[BaseModel], field: str, url: str, message: str
+) -> None:
+    with pytest.raises(ValidationError, match=message) as raised:
+        model.model_validate({field: url})
+
+    assert url not in str(raised.value)
+
+
 @pytest.mark.parametrize(
     "url", [f"{OLLAMA_URL}/v1", f"{OLLAMA_URL}/v1/", f"{OLLAMA_URL}//v1"]
 )
@@ -298,3 +393,150 @@ def test_should_load_settings_without_provider_sdks() -> None:
     importlib.import_module("jobranger.settings")
 
     assert {_root(name) for name in sys.modules} & PROVIDER_SDKS == set()
+
+
+@pytest.mark.parametrize(
+    ("url", "server"),
+    [
+        ("smtp://smtp.example.test", SmtpServer("smtp.example.test", 587, False)),
+        ("smtps://smtp.example.test", SmtpServer("smtp.example.test", 465, True)),
+        ("smtp://localhost:2525", SmtpServer("localhost", 2525, False)),
+    ],
+    ids=["smtp", "smtps", "explicit port"],
+)
+def test_should_read_smtp_server_from_url(url: str, server: SmtpServer) -> None:
+    assert smtp_server(url) == server
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://smtp.example.test",
+        "smtp://",
+        "smtp://user:secret@smtp.example.test",
+        "smtp://smtp.example.test/inbox",
+        "smtp://smtp.example.test?tls=off",
+        "smtp://smtp.example.test#top",
+        "smtp://smtp.example.test:99999",
+    ],
+    ids=["http", "no host", "password", "path", "query", "fragment", "bad port"],
+)
+def test_should_reject_invalid_smtp_url(url: str) -> None:
+    with pytest.raises(ValidationError, match="smtp_url"):
+        EmailConfig(smtp_url=url)
+
+
+def test_should_accept_sender_with_display_name() -> None:
+    email = EmailConfig(sender=DEFAULT_RESEND_SENDER)
+
+    assert email.sender == DEFAULT_RESEND_SENDER
+
+
+def test_should_require_address_when_email_is_on() -> None:
+    with pytest.raises(ValidationError, match="email address"):
+        EmailConfig(on=True, via="resend")
+
+
+def test_should_require_smtp_server_when_email_goes_through_smtp() -> None:
+    with pytest.raises(ValidationError, match="SMTP server"):
+        EmailConfig(on=True, address="user@example.com", via="smtp")
+
+
+def test_should_accept_resend_email_without_smtp_server() -> None:
+    email = EmailConfig(on=True, address="user@example.com", via="resend")
+
+    assert email.smtp_url is None
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("address", "user@", "address 'user@' is not one email address"),
+        ("sender", "a@b.test, c@d.test", "sender 'a@b.test, c@d.test' is not one"),
+    ],
+    ids=["address", "sender"],
+)
+def test_should_name_rejected_value_in_email_error(
+    field: str, value: str, message: str
+) -> None:
+    with pytest.raises(ValidationError, match=re.escape(message)):
+        EmailConfig.model_validate({field: value})
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "smtp://smtp..example.test:587",
+        "smtp://.:587",
+        "smtp://exa mple.test:587",
+    ],
+    ids=["empty label", "dot only", "space"],
+)
+def test_should_reject_smtp_host_that_is_not_a_host_name(url: str) -> None:
+    with pytest.raises(ValidationError, match="smtp_url"):
+        EmailConfig(smtp_url=url)
+
+
+def test_should_connect_to_ascii_form_of_international_smtp_host() -> None:
+    server = smtp_server("smtp://smtp.bø.example")
+
+    assert server.host == "smtp.xn--b-5ga.example"
+
+
+@pytest.mark.parametrize(
+    "address",
+    [
+        "user@example.com\nBcc: other@example.com",
+        "user@",
+        "usér@example.com",
+        f"user@{LONG_LABEL}.example.test",
+    ],
+    ids=["line break", "no domain", "non-ascii local part", "long domain label"],
+)
+def test_should_reject_email_address_when_it_is_not_one_address(address: str) -> None:
+    with pytest.raises(ValidationError, match="address .* is not one email address"):
+        EmailConfig(address=address)
+
+
+@pytest.mark.parametrize(
+    "sender",
+    [
+        " jobranger <user@example.com>",
+        "jobranger\t<user@example.com>",
+        "jobranger <a@b.test>\nBcc: c@d.test",
+        "a@b.test,c@d.test",
+        "jobranger <usér@example.com>",
+        f"jobranger <user@{LONG_LABEL}.example.test>",
+    ],
+    ids=[
+        "leading space",
+        "inner tab",
+        "line break",
+        "two addresses",
+        "non-ascii local part",
+        "long domain label",
+    ],
+)
+def test_should_reject_sender_when_it_is_not_one_address(sender: str) -> None:
+    with pytest.raises(ValidationError, match="sender .* is not one email address"):
+        EmailConfig(sender=sender)
+
+
+def test_should_accept_address_with_international_domain() -> None:
+    email = EmailConfig(address="user@bø.example")
+
+    assert email.address == "user@bø.example"
+
+
+def test_should_drop_trailing_dot_from_smtp_host() -> None:
+    server = smtp_server("smtp://smtp.example.test.:587")
+
+    assert server.host == "smtp.example.test"
+
+
+@pytest.mark.parametrize(
+    "url", ["smtp://a..:587", "smtp://smtp.example.test..:587"], ids=["short", "long"]
+)
+def test_should_reject_smtp_host_ending_in_two_dots(url: str) -> None:
+    with pytest.raises(ValidationError, match="smtp_url"):
+        EmailConfig(smtp_url=url)

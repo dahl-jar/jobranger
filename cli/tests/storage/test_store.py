@@ -20,6 +20,7 @@ from jobranger.matching.assessment import Check
 from jobranger.providers.base import Usage
 from jobranger.settings import MAX_AMOUNT_USD
 from jobranger.storage.store import (
+    Action,
     Application,
     ApplicationChange,
     ApplicationEvent,
@@ -110,7 +111,7 @@ def test_should_report_only_current_active_ads(tmp_path: Path) -> None:
     store.upsert_ad(expired)
     store.set_active(inactive.id, False)
 
-    ads = store.reportable_ads("2026-08-24", None, FAKE_VERSION, targets())
+    ads = store.reportable_ads("2026-08-24", FAKE_VERSION, targets())
 
     assert [ad.id for ad in ads] == [current.id]
 
@@ -122,9 +123,9 @@ def test_should_report_reclassified_ad_once(tmp_path: Path) -> None:
     since = datetime.now(tz=UTC).isoformat()
     store.set_classification(ad.id, make_classification(), FAKE_VERSION)
 
-    first = store.reportable_ads("2026-09-30", since, FAKE_VERSION, targets())
+    first = store.reportable_ads("2026-09-30", FAKE_VERSION, targets())
     store.mark_reported([ad.id], since)
-    second = store.reportable_ads("2026-09-30", since, FAKE_VERSION, targets())
+    second = store.reportable_ads("2026-09-30", FAKE_VERSION, targets())
 
     assert [found.id for found in first] == [ad.id]
     assert second == []
@@ -141,8 +142,7 @@ def test_should_reactivate_current_ads_during_source_sync(tmp_path: Path) -> Non
     store.sync_source_active("finn", frozenset({current.id}))
 
     assert [
-        ad.id
-        for ad in store.reportable_ads("2026-08-24", None, FAKE_VERSION, targets())
+        ad.id for ad in store.reportable_ads("2026-08-24", FAKE_VERSION, targets())
     ] == [current.id]
 
 
@@ -272,7 +272,7 @@ def test_should_exclude_expired_apply_status_from_reportable(tmp_path: Path) -> 
     store.upsert_ad(make_ad(label="junior", apply_url="https://a.test/jobs/abc"))
     store.set_apply_status("finn:1234", "expired", "2026-09-16T05:00:00+00:00")
 
-    assert store.reportable_ads("2026-09-16", None, FAKE_VERSION, targets()) == []
+    assert store.reportable_ads("2026-09-16", FAKE_VERSION, targets()) == []
 
 
 def test_should_list_pending_apply_checks_once_per_week(tmp_path: Path) -> None:
@@ -445,9 +445,19 @@ def test_should_include_shown_anyway_ad_in_reportable_ads(tmp_path: Path) -> Non
     store, ad_id = _store_with_ad(tmp_path, requires_master=True)
     store.mark_ad(ad_id, "show_anyway", AT)
 
-    ads = store.reportable_ads("2026-10-09", None, FAKE_VERSION, targets())
+    ads = store.reportable_ads("2026-10-09", FAKE_VERSION, targets())
 
     assert [ad.id for ad in ads] == [ad_id]
+
+
+@pytest.mark.parametrize("action", ["applied", "skipped", "not_for_me"])
+def test_should_leave_dismissed_ad_out_of_reportable_ads(
+    tmp_path: Path, action: Action
+) -> None:
+    store, ad_id = _store_with_ad(tmp_path)
+    store.mark_ad(ad_id, action, AT)
+
+    assert store.reportable_ads("2026-10-09", FAKE_VERSION, targets()) == []
 
 
 def test_should_reject_application_with_blank_company(tmp_path: Path) -> None:
@@ -626,11 +636,11 @@ def test_should_report_ad_after_subfield_added_without_reclassifying(
 ) -> None:
     store, ad_id = _store_with_ad(tmp_path, role_type="frontend")
     before = store.reportable_ads(
-        "2026-10-09", None, FAKE_VERSION, targets(subfields=("backend",))
+        "2026-10-09", FAKE_VERSION, targets(subfields=("backend",))
     )
 
     after = store.reportable_ads(
-        "2026-10-09", None, FAKE_VERSION, targets(subfields=("backend", "frontend"))
+        "2026-10-09", FAKE_VERSION, targets(subfields=("backend", "frontend"))
     )
 
     assert ([ad.id for ad in before], [ad.id for ad in after]) == ([], [ad_id])
@@ -955,4 +965,22 @@ def test_should_create_database_readable_by_owner_only(tmp_path: Path) -> None:
     assert (path.stat().st_mode & 0o777, path.parent.stat().st_mode & 0o777) == (
         0o600,
         0o700,
+    )
+
+
+def test_should_keep_first_classification_time_when_reclassified(
+    tmp_path: Path,
+) -> None:
+    store = Store(tmp_path / "ads.db")
+    ad = make_ad(match=None)
+    store.upsert_ad(ad)
+    store.set_classification(ad.id, make_classification(), FAKE_VERSION)
+    [first] = store.ads_by_id([ad.id])
+
+    store.set_classification(ad.id, make_classification(), OUTDATED_VERSION)
+
+    [second] = store.ads_by_id([ad.id])
+    assert (first.first_classified_at is not None, second.first_classified_at) == (
+        True,
+        first.first_classified_at,
     )

@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from jobranger.settings import Limits, Targets
 
 type HiddenKind = Literal["senior", "years", "masters", "role", "place", "other"]
-type DisplayFit = Literal["strong", "partial"]
+type DisplayFit = Literal["strong", "partial", "on_request"]
 
 YEAR_CAP_RULE = (
     "The search accepts roles requiring at most {years:g} years. A mandatory "
@@ -195,6 +195,8 @@ def parse_date(value: str | None) -> date | None:
 
 
 def display_fit(ad: Ad, targets: Targets) -> DisplayFit:
+    if ad.match is not None and ad.match.status not in REPORTABLE_FITS:
+        return "on_request"
     if ad.match is None or ad.match.status != "strong":
         return "partial"
     if not place_matches(ad.location, targets.places):
