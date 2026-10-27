@@ -6,7 +6,6 @@ using System.Net.Http.Headers;
 namespace Jobranger.Cli.Http;
 
 internal static class SourceRequests {
-    private const int maxAttempts = 3;
     private const int maxRedirects = 5;
     private const string locationHeader = "Location";
 
@@ -39,7 +38,7 @@ internal static class SourceRequests {
     public static async Task<SourceResponse> GetAsync(
         HttpClient client, Uri url, SourceRequestOptions options, CancellationToken cancellationToken) {
         for (int attempt = 1; ; attempt++) {
-            bool last = attempt == maxAttempts;
+            bool last = attempt >= options.MaxAttempts;
             try {
                 SourceResponse response = await FollowAsync(client, url, options, cancellationToken).ConfigureAwait(false);
                 if (last || !retryStatuses.Contains(response.Status)) {
@@ -102,11 +101,13 @@ internal static class SourceRequests {
             $"unreadable redirect location={headers.NonValidated[locationHeader]}"),
     };
 
+    internal static bool IsWebScheme(Uri url) => webSchemes.Contains(url.Scheme);
+
     private static void Check(Uri url) {
         if (!url.IsAbsoluteUri) {
             throw new RefusedRequestException("relative url");
         }
-        if (!webSchemes.Contains(url.Scheme)) {
+        if (!IsWebScheme(url)) {
             throw new RefusedRequestException($"unsupported scheme scheme={url.Scheme}");
         }
         if (url.HostNameType is UriHostNameType.IPv4 or UriHostNameType.IPv6

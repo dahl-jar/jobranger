@@ -16,7 +16,6 @@ public sealed class SourceRequestsTests {
     private const string maxRetryAfter = "300";
     private const int testTimeoutMs = 10_000;
     private const int maxAttempts = 3;
-    private const string locationHeader = "Location";
 
     private static readonly TimeSpan attemptDeadline = TimeSpan.FromSeconds(120);
     private static readonly TimeSpan retryAfterWait = TimeSpan.FromSeconds(300);
@@ -188,7 +187,7 @@ public sealed class SourceRequestsTests {
     [Fact(Timeout = testTimeoutMs)]
     public async Task ShouldRetry_WhenConnectTimesOut() {
         FakeTimeProvider time = new();
-        FakeSourceHandler inner = new(index => index == 0 ? throw ConnectTimeout() : Ok());
+        FakeSourceHandler inner = new(index => index == 0 ? throw HttpFixtures.ConnectTimeout() : Ok());
         using HttpClient client = LimitedClient(inner, time);
         Task<SourceResponse> response =
             SourceRequests.GetAsync(client, start, new SourceRequestOptions(), TestContext.Current.CancellationToken);
@@ -234,7 +233,7 @@ public sealed class SourceRequestsTests {
     [InlineData("//")]
     [InlineData("")]
     public async Task ShouldRefuseRedirect_WhenLocationIsUnreadable(string location) {
-        FakeSourceHandler handler = new(_ => RawRedirect(location));
+        FakeSourceHandler handler = new(_ => HttpFixtures.RawRedirect(location));
 
         await Assert.ThrowsAsync<RefusedRequestException>(() => GetAsync(handler));
 
@@ -323,19 +322,11 @@ public sealed class SourceRequestsTests {
     private static HttpClient LimitedClient(FakeSourceHandler inner, FakeTimeProvider time) =>
         new(new HostLimitHandler(new HostLimiter(time), time) { InnerHandler = inner });
 
-    private static TaskCanceledException ConnectTimeout() => new("connect timed out", new TimeoutException());
-
     private static HttpResponseMessage Ok() => new(HttpStatusCode.OK) { Content = new ByteArrayContent(page) };
 
     private static HttpResponseMessage Redirect(string location) {
         HttpResponseMessage response = new(HttpStatusCode.Found);
         response.Headers.Location = new Uri(location, UriKind.RelativeOrAbsolute);
-        return response;
-    }
-
-    private static HttpResponseMessage RawRedirect(string location) {
-        HttpResponseMessage response = new(HttpStatusCode.Found);
-        response.Headers.TryAddWithoutValidation(locationHeader, location);
         return response;
     }
 

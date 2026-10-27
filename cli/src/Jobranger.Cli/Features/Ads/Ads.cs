@@ -1,8 +1,13 @@
+using Jobranger.Cli.Config;
 using Microsoft.Data.Sqlite;
 
 namespace Jobranger.Cli.Features.Ads;
 
 internal sealed class Ads(SqliteConnection connection, TimeProvider time) {
+    private const int applyCheckLimit = 60;
+
+    private static readonly TimeSpan applyRecheckAge = TimeSpan.FromDays(7);
+
     private readonly AdStore store = new(connection, time);
 
     public bool Upsert(Ad ad) => store.Upsert(ad);
@@ -23,4 +28,24 @@ internal sealed class Ads(SqliteConnection connection, TimeProvider time) {
         store.KeepReportable(ads, isReportable);
 
     public void MarkReported(IReadOnlyList<string> adIds, DateTimeOffset at) => store.MarkReported(adIds, at);
+
+    public async Task CheckApplyLinksAsync(
+        HttpClient client, DateTimeOffset now, Targets targets, CancellationToken cancellationToken) {
+        DateOnly today = DateOnly.FromDateTime(now.UtcDateTime);
+        foreach (Ad ad in store.PendingApplyCheck(today, now - applyRecheckAge, applyCheckLimit, targets)) {
+            if (ad.ApplyUrl is string url) {
+                ApplyStatus status = await CheckAsync(client, url, cancellationToken).ConfigureAwait(false);
+                store.SetApplyStatus(ad.Id, WireNames.Of(status), now);
+            }
+        }
+    }
+
+    private async Task<ApplyStatus> CheckAsync(HttpClient client, string url, CancellationToken cancellationToken) {
+        try {
+            return await ApplyLinks.CheckAsync(client, url, time, cancellationToken).ConfigureAwait(false);
+        } catch (Exception error) when (error is not OperationCanceledException
+            || !cancellationToken.IsCancellationRequested) {
+            return ApplyStatus.Unknown;
+        }
+    }
 }
