@@ -30,5 +30,6 @@ internal sealed class RecordingConsole : IDisposable {
             ColorSystem = ColorSystemSupport.NoColors,
             Interactive = InteractionSupport.No,
             Out = new AnsiConsoleOutput(writer),
+            EnvironmentVariables = [],
         });
 }
