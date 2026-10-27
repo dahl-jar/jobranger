@@ -47,18 +47,22 @@ function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-function phrasePattern(value: unknown): string[] {
+interface Phrase {
+  pattern: string
+  parts: string[]
+}
+
+function phrase(value: unknown): Phrase[] {
   const parts = isCallable(value) ? callWith(value, MARKER).split(MARKER) : typeof value === 'string' ? [value.trim()] : []
   const letters = parts.join('').match(LETTER)?.length ?? 0
   if (letters < MIN_PHRASE_LETTERS) return []
-  return [parts.map(escapeRegExp).join(ARGUMENT_PATTERN)]
+  return [{ pattern: parts.map(escapeRegExp).join(ARGUMENT_PATTERN), parts }]
 }
 
-function englishOnlyPatterns(): RegExp[] {
-  const norwegian = new Set(collect(nb, phrasePattern))
-  return [...new Set(collect(en, phrasePattern))]
-    .filter((pattern) => !norwegian.has(pattern))
-    .map((pattern) => new RegExp(`(?<!\\p{L})${pattern}(?!\\p{L})`, 'u'))
+function englishOnlyPhrases(): Phrase[] {
+  const norwegian = new Set(collect(nb, phrase).map(({ pattern }) => pattern))
+  const english = new Map(collect(en, phrase).map((candidate) => [candidate.pattern, candidate]))
+  return [...english.values()].filter(({ pattern }) => !norwegian.has(pattern))
 }
 
 function ownText(element: Element): string {
@@ -81,8 +85,9 @@ function pageTexts(root: Element): string {
 
 export function englishLeft(data: readonly string[] = []): string[] {
   const text = withoutData(pageTexts(document.body), data)
-  return englishOnlyPatterns()
-    .map((pattern) => text.match(pattern)?.[0])
+  return englishOnlyPhrases()
+    .filter(({ parts }) => parts.every((part) => text.includes(part)))
+    .map(({ pattern }) => text.match(new RegExp(`(?<!\\p{L})${pattern}(?!\\p{L})`, 'u'))?.[0])
     .filter((found) => found !== undefined)
 }
 

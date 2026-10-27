@@ -13,24 +13,20 @@ internal sealed class RelayHub(
     HubDelivery delivery,
     RefusalSampler sampler,
     RelayMetrics metrics,
-    ILoggerFactory loggers) : Hub
-{
+    ILoggerFactory loggers) : Hub {
     private const string receiveMethod = "Receive";
     private const string presenceMethod = "Presence";
     private const string sessionsClosedMethod = "SessionsClosed";
     private const string replacedMethod = "Replaced";
     private const string samplerPrefix = "join:";
 
-    public override async Task OnConnectedAsync()
-    {
+    public override async Task OnConnectedAsync() {
         HandleClaims claims = Context.Claims();
         JoinResult joined = registry.TryJoin(claims.Channel, claims.Role, Context.ConnectionId, claims.Grant);
-        if (joined.Outcome != JoinOutcome.Joined)
-        {
+        if (joined.Outcome != JoinOutcome.Joined) {
             string reason = HubErrors.For(joined.Outcome);
             metrics.ConnectionRejected(reason);
-            if (sampler.ShouldLog(samplerPrefix + reason))
-            {
+            if (sampler.ShouldLog(samplerPrefix + reason)) {
                 RelayLog.For(loggers).HubConnectionRefused(claims.Channel.Value, reason);
             }
 
@@ -38,8 +34,7 @@ internal sealed class RelayHub(
         }
 
         filter.Open(Context);
-        if (joined.Replaced is { } replaced)
-        {
+        if (joined.Replaced is { } replaced) {
             await delivery.Send(
                 registry.Members(claims.Channel, RelayRole.Web),
                 presenceMethod,
@@ -51,25 +46,21 @@ internal sealed class RelayHub(
         await Announce(claims.Channel, registry.Snapshot(claims.Channel));
     }
 
-    public async Task Send(JsonElement envelope)
-    {
+    public async Task Send(JsonElement envelope) {
         HandleClaims claims = Context.Claims();
         Envelope accepted = filter.Accept(Context, claims, envelope);
         await delivery.Send(registry.Members(claims.Channel, RelayRoles.Other(claims.Role)), receiveMethod, [accepted]);
         metrics.EnvelopeForwarded(accepted.Ciphertext.Length);
     }
 
-    public override async Task OnDisconnectedAsync(Exception? exception)
-    {
+    public override async Task OnDisconnectedAsync(Exception? exception) {
         EnvelopeFilter.Close(Context);
         HandleClaims claims = Context.Claims();
-        if (registry.Leave(claims.Channel, claims.Role, Context.ConnectionId) is not { } departure)
-        {
+        if (registry.Leave(claims.Channel, claims.Role, Context.ConnectionId) is not { } departure) {
             return;
         }
 
-        if (departure.Sids.Count > 0)
-        {
+        if (departure.Sids.Count > 0) {
             await delivery.Send(
                 registry.Members(claims.Channel, RelayRole.Cli), sessionsClosedMethod, [new SessionsClosed(departure.Sids)]);
         }

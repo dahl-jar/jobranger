@@ -12,6 +12,12 @@ describe('englishLeft', () => {
     expect(englishLeft()).toContain('No page here.')
   })
 
+  it('should find English table text with an argument filled in', () => {
+    showPage('Setup, step 5 of 8')
+
+    expect(englishLeft()).toContain('Setup, step 5 of 8')
+  })
+
   it('should skip English text that comes from the data', () => {
     showPage('No page here.')
 

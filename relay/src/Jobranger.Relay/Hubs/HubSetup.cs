@@ -10,21 +10,17 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Jobranger.Relay.Hubs;
 
-internal static class HubSetup
-{
+internal static class HubSetup {
     private const string hubPolicy = "relay-handle";
     private const string dispatcherCategory = "Microsoft.AspNetCore.SignalR.Internal.DefaultHubDispatcher";
     private const string connectionHandlerCategory = "Microsoft.AspNetCore.SignalR.HubConnectionHandler";
 
-    public static WebApplicationBuilder AddRelayHub(this WebApplicationBuilder builder)
-    {
-        builder.WebHost.ConfigureKestrel(kestrel =>
-        {
+    public static WebApplicationBuilder AddRelayHub(this WebApplicationBuilder builder) {
+        builder.WebHost.ConfigureKestrel(kestrel => {
             kestrel.Limits.MaxRequestBufferSize = RelayLimits.KestrelInputBufferBytes;
             kestrel.Limits.MaxResponseBufferSize = RelayLimits.KestrelOutputBufferBytes;
         });
-        builder.WebHost.UseSockets(sockets =>
-        {
+        builder.WebHost.UseSockets(sockets => {
             sockets.MaxReadBufferSize = RelayLimits.KestrelInputBufferBytes;
             sockets.MaxWriteBufferSize = RelayLimits.KestrelOutputBufferBytes;
             sockets.CreateBoundListenSocket = BoundedListenSocket;
@@ -47,8 +43,7 @@ internal static class HubSetup
             .AddScheme<AuthenticationSchemeOptions, HandleAuthHandler>(HandleAuthHandler.SchemeName, null);
         services.AddAuthorizationBuilder()
             .AddPolicy(hubPolicy, policy => policy.RequireClaim(HubClaims.ChannelType).RequireClaim(HubClaims.RoleType));
-        services.AddSignalR(hub =>
-        {
+        services.AddSignalR(hub => {
             hub.MaximumReceiveMessageSize = RelayLimits.MaxFrameBytes;
             hub.KeepAliveInterval = RelayLimits.HubKeepAlive;
             hub.ClientTimeoutInterval = RelayLimits.HubClientTimeout;
@@ -56,18 +51,15 @@ internal static class HubSetup
             hub.MaximumParallelInvocationsPerClient = 1;
             hub.EnableDetailedErrors = false;
             hub.AddFilter<HubErrorFilter>();
-        }).AddJsonProtocol(json =>
-        {
+        }).AddJsonProtocol(json => {
             json.PayloadSerializerOptions.TypeInfoResolverChain.Insert(0, RelayJsonContext.Default);
             json.PayloadSerializerOptions.TypeInfoResolverChain.Insert(0, EnvelopeJsonContext.Default);
         });
         return builder;
     }
 
-    public static Task HideNegotiate(HttpContext http, RequestDelegate next)
-    {
-        if (http.GetEndpoint()?.Metadata.GetMetadata<NegotiateMetadata>() is null)
-        {
+    public static Task HideNegotiate(HttpContext http, RequestDelegate next) {
+        if (http.GetEndpoint()?.Metadata.GetMetadata<NegotiateMetadata>() is null) {
             return next(http);
         }
 
@@ -75,20 +67,17 @@ internal static class HubSetup
         return Task.CompletedTask;
     }
 
-    public static WebApplication MapRelayHub(this WebApplication app)
-    {
+    public static WebApplication MapRelayHub(this WebApplication app) {
         HubIdleWatch idle = app.Services.GetRequiredService<HubIdleWatch>();
-        HttpConnectionDispatcherOptions options = new()
-        {
+        HttpConnectionDispatcherOptions options = new() {
             Transports = HttpTransportType.WebSockets,
             ApplicationMaxBufferSize = RelayLimits.HubApplicationBufferBytes,
             TransportMaxBufferSize = RelayLimits.HubTransportBufferBytes,
         };
-        app.MapConnections(HandleAuthHandler.HubPath, options, connection =>
-            {
-                connection.Use(idle.Wrap);
-                connection.UseHub<RelayHub>();
-            })
+        app.MapConnections(HandleAuthHandler.HubPath, options, connection => {
+            connection.Use(idle.Wrap);
+            connection.UseHub<RelayHub>();
+        })
             .WithMetadata(new HubMetadata(typeof(RelayHub)))
             .RequireAuthorization(hubPolicy)
             .RequireRelayLimit(RateLimiting.HubSockets)
@@ -96,8 +85,7 @@ internal static class HubSetup
         return app;
     }
 
-    private static Socket BoundedListenSocket(EndPoint endpoint)
-    {
+    private static Socket BoundedListenSocket(EndPoint endpoint) {
         Socket listener = SocketTransportOptions.CreateDefaultBoundListenSocket(endpoint);
         listener.ReceiveBufferSize = RelayLimits.KernelSocketBufferBytes;
         listener.SendBufferSize = RelayLimits.KernelSocketBufferBytes;

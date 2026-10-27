@@ -4,16 +4,12 @@ using Microsoft.AspNetCore.Http;
 
 namespace Jobranger.Relay.Tests;
 
-internal sealed class BodyLimitFilter : IStartupFilter
-{
+internal sealed class BodyLimitFilter : IStartupFilter {
     public const long MaxBodyBytes = 16_384;
 
-    public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
-    {
-        app.Use((context, nextMiddleware) =>
-        {
-            if (context.Request.ContentLength > MaxBodyBytes)
-            {
+    public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app => {
+        app.Use((context, nextMiddleware) => {
+            if (context.Request.ContentLength > MaxBodyBytes) {
                 context.Request.Body = new OversizedBody();
             }
 
@@ -22,8 +18,7 @@ internal sealed class BodyLimitFilter : IStartupFilter
         next(app);
     };
 
-    private sealed class OversizedBody : Stream
-    {
+    private sealed class OversizedBody : Stream {
         public override bool CanRead => true;
 
         public override bool CanSeek => false;
@@ -32,14 +27,12 @@ internal sealed class BodyLimitFilter : IStartupFilter
 
         public override long Length => throw new NotSupportedException();
 
-        public override long Position
-        {
+        public override long Position {
             get => throw new NotSupportedException();
             set => throw new NotSupportedException();
         }
 
-        public override void Flush()
-        {
+        public override void Flush() {
         }
 
         public override int Read(byte[] buffer, int offset, int count) => throw TooLarge();

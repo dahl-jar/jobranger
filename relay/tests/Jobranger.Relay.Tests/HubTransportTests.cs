@@ -10,11 +10,9 @@ using Microsoft.Extensions.Options;
 
 namespace Jobranger.Relay.Tests;
 
-public sealed class HubTransportTests(RelayFactory factory) : IClassFixture<RelayFactory>
-{
+public sealed class HubTransportTests(RelayFactory factory) : IClassFixture<RelayFactory> {
     [Fact]
-    public void ShouldBoundHubPipeBuffers()
-    {
+    public void ShouldBoundHubPipeBuffers() {
         _ = factory.Server;
         HttpConnectionDispatcherOptions options = factory.Services.GetRequiredService<EndpointDataSource>().Endpoints
             .Select(endpoint => endpoint.Metadata.GetMetadata<HttpConnectionDispatcherOptions>())
@@ -27,8 +25,7 @@ public sealed class HubTransportTests(RelayFactory factory) : IClassFixture<Rela
     }
 
     [Fact]
-    public void ShouldBoundServerConnectionBuffers()
-    {
+    public void ShouldBoundServerConnectionBuffers() {
         KestrelServerLimits limits = factory.Services.GetRequiredService<IOptions<KestrelServerOptions>>().Value.Limits;
         SocketTransportOptions sockets = factory.Services.GetRequiredService<IOptions<SocketTransportOptions>>().Value;
 
@@ -39,8 +36,7 @@ public sealed class HubTransportTests(RelayFactory factory) : IClassFixture<Rela
     }
 
     [Fact]
-    public void ShouldBoundKernelSocketBuffers()
-    {
+    public void ShouldBoundKernelSocketBuffers() {
         SocketTransportOptions sockets = factory.Services.GetRequiredService<IOptions<SocketTransportOptions>>().Value;
         using System.Net.Sockets.Socket listener = sockets.CreateBoundListenSocket(new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, 0));
 
@@ -50,14 +46,12 @@ public sealed class HubTransportTests(RelayFactory factory) : IClassFixture<Rela
     }
 
     [Fact]
-    public void ShouldCapHubSocketsAtDerivedLimit()
-    {
+    public void ShouldCapHubSocketsAtDerivedLimit() {
         HubSocketGate gate = factory.Services.GetRequiredService<HubSocketGate>();
         string[] networks = [.. Enumerable.Range(0, RelayLimits.MaxHubSockets + 1).Select(network => $"network-{network}")];
         bool[] entered = [.. networks.Select(gate.TryEnter)];
 
-        foreach ((string network, bool admitted) in networks.Zip(entered).Where(pair => pair.Second))
-        {
+        foreach ((string network, bool admitted) in networks.Zip(entered).Where(pair => pair.Second)) {
             gate.Exit(network);
         }
 
@@ -65,8 +59,7 @@ public sealed class HubTransportTests(RelayFactory factory) : IClassFixture<Rela
     }
 
     [Fact]
-    public void ShouldNotRegisterDataProtection()
-    {
+    public void ShouldNotRegisterDataProtection() {
         IDataProtectionProvider? protection = factory.Services.GetService<IDataProtectionProvider>();
 
         Assert.Null(protection);

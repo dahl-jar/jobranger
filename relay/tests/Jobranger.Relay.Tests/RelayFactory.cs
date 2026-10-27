@@ -11,8 +11,7 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Jobranger.Relay.Tests;
 
-public sealed class RelayFactory : WebApplicationFactory<Program>
-{
+public sealed class RelayFactory : WebApplicationFactory<Program> {
     public const string SiteOrigin = "https://site.test";
     public const string ProxyNetwork = "10.42.0.0/16";
 
@@ -25,20 +24,17 @@ public sealed class RelayFactory : WebApplicationFactory<Program>
 
     public int? HubSocketCap { get; set; }
 
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
-    {
+    protected override void ConfigureWebHost(IWebHostBuilder builder) {
         builder.UseSetting("Relay:SiteOrigin", SiteOrigin);
         builder.UseSetting("Relay:HandleKey", HandleKey);
         builder.UseSetting("Relay:RedactionKey", RedactionKey);
         builder.UseSetting("Relay:KnownProxyNetworks:0", ProxyNetwork);
         builder.ConfigureLogging(logging => logging.AddFakeLogging());
-        builder.ConfigureTestServices(services =>
-        {
+        builder.ConfigureTestServices(services => {
             services.AddSingleton<TimeProvider>(Time);
             services.AddSingleton<IStartupFilter, PeerAddressFilter>();
             services.AddSingleton<IStartupFilter, LocalPortFilter>();
-            if (HubSocketCap is { } cap)
-            {
+            if (HubSocketCap is { } cap) {
                 services.AddSingleton(new HubSocketGate(cap, RelayLimits.MaxHubSocketsPerNetwork));
             }
             services.AddSingleton<IStartupFilter, BodyLimitFilter>();

@@ -7,8 +7,7 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Jobranger.Relay.Tests;
 
-public sealed class RelayRateLimiterTests
-{
+public sealed class RelayRateLimiterTests {
     private const string clientAddress = "2001:db8:1:1::1";
     private const int idlePartitions = 4;
 
@@ -19,8 +18,7 @@ public sealed class RelayRateLimiterTests
     [Theory]
     [InlineData(clientAddress)]
     [InlineData("2001:db8:1:2::1")]
-    public void ShouldReturnPermitsWhenLeaseIsDisposed(string next)
-    {
+    public void ShouldReturnPermitsWhenLeaseIsDisposed(string next) {
         using RelayRateLimiter limiter = new(new FakeTimeProvider(), limiters: (_, _) => new ConcurrencyLimiter(onePermit));
         limiter.AttemptAcquireForAddress(Client(clientAddress), RateLimiting.PairStart).Dispose();
 
@@ -30,8 +28,7 @@ public sealed class RelayRateLimiterTests
     }
 
     [Fact]
-    public void ShouldDropIdlePartitionsOfEveryTierOnSweep()
-    {
+    public void ShouldDropIdlePartitionsOfEveryTierOnSweep() {
         FakeTimeProvider time = new();
         int disposed = 0;
         using RelayRateLimiter limiter = new(
@@ -50,8 +47,7 @@ public sealed class RelayRateLimiterTests
     }
 
     [Fact]
-    public void ShouldReturnClientPermitWhenBlockRefuses()
-    {
+    public void ShouldReturnClientPermitWhenBlockRefuses() {
         using RelayRateLimiter limiter = new(new FakeTimeProvider(), limiters: (_, _) => new ConcurrencyLimiter(onePermit));
         RateLimitLease holder = limiter.AttemptAcquireForAddress(Client("2001:db8:1:1::1"), RateLimiting.PairStart);
         limiter.AttemptAcquireForAddress(Client("2001:db8:1:2::1"), RateLimiting.PairStart).Dispose();
@@ -63,8 +59,7 @@ public sealed class RelayRateLimiterTests
     }
 
     [Fact]
-    public void ShouldKeepNetworkOverflowInItsOwnShardWhenChannelStoreIsFull()
-    {
+    public void ShouldKeepNetworkOverflowInItsOwnShardWhenChannelStoreIsFull() {
         using RelayRateLimiter limiter = new(
             new FakeTimeProvider(),
             maxPartitions: 1,

@@ -2,8 +2,7 @@ using System.Threading.RateLimiting;
 
 namespace Jobranger.Relay.Core;
 
-public sealed class BucketLimiter : RateLimiter
-{
+public sealed class BucketLimiter : RateLimiter {
     private readonly int burst;
     private readonly int refill;
     private readonly TimeSpan period;
@@ -13,8 +12,7 @@ public sealed class BucketLimiter : RateLimiter
     private DateTimeOffset fullSince;
     private int tokens;
 
-    public BucketLimiter(int burst, int refill, TimeSpan period, TimeProvider time)
-    {
+    public BucketLimiter(int burst, int refill, TimeSpan period, TimeProvider time) {
         this.burst = burst;
         this.refill = refill;
         this.period = period;
@@ -24,12 +22,9 @@ public sealed class BucketLimiter : RateLimiter
         fullSince = lastRefill;
     }
 
-    public override TimeSpan? IdleDuration
-    {
-        get
-        {
-            lock (gate)
-            {
+    public override TimeSpan? IdleDuration {
+        get {
+            lock (gate) {
                 DateTimeOffset now = Refill();
                 return tokens == burst ? now - fullSince : null;
             }
@@ -38,13 +33,10 @@ public sealed class BucketLimiter : RateLimiter
 
     public override RateLimiterStatistics? GetStatistics() => null;
 
-    protected override RateLimitLease AttemptAcquireCore(int permitCount)
-    {
-        lock (gate)
-        {
+    protected override RateLimitLease AttemptAcquireCore(int permitCount) {
+        lock (gate) {
             DateTimeOffset now = Refill();
-            if (permitCount > tokens)
-            {
+            if (permitCount > tokens) {
                 return new RefusedLease(lastRefill + period - now);
             }
 
@@ -56,13 +48,11 @@ public sealed class BucketLimiter : RateLimiter
     protected override ValueTask<RateLimitLease> AcquireAsyncCore(int permitCount, CancellationToken cancellationToken) =>
         ValueTask.FromResult(AttemptAcquireCore(permitCount));
 
-    private DateTimeOffset Refill()
-    {
+    private DateTimeOffset Refill() {
         DateTimeOffset now = time.GetUtcNow();
         long periods = (now - lastRefill).Ticks / period.Ticks;
         long periodsToFull = (burst - tokens + refill - 1) / refill;
-        if (tokens < burst && periods >= periodsToFull)
-        {
+        if (tokens < burst && periods >= periodsToFull) {
             fullSince = lastRefill + (period * periodsToFull);
         }
 

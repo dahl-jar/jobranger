@@ -2,10 +2,8 @@ using Jobranger.Relay.Core;
 
 namespace Jobranger.Relay.Pairing;
 
-internal static class WebSession
-{
-    public static WebSessionResponse Open(ChannelId channel, string grant, ChannelHandle handles, TimeProvider time)
-    {
+internal static class WebSession {
+    public static WebSessionResponse Open(ChannelId channel, string grant, ChannelHandle handles, TimeProvider time) {
         DateTimeOffset handleExpires = Expiry.After(time, RelayLimits.HandleLifetime);
         DateTimeOffset ticketExpires = Expiry.After(time, RelayLimits.TicketLifetime);
         return new WebSessionResponse(

@@ -5,10 +5,8 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Jobranger.Relay.Pairing;
 
-internal static class SessionEndpoints
-{
-    public static IEndpointRouteBuilder MapSessions(this IEndpointRouteBuilder app)
-    {
+internal static class SessionEndpoints {
+    public static IEndpointRouteBuilder MapSessions(this IEndpointRouteBuilder app) {
         RouteGroupBuilder session = app.MapGroup("/session")
             .RequireCors(SiteCors.Policy)
             .RequireFailureLimit(RateLimiting.Session)
@@ -26,17 +24,14 @@ internal static class SessionEndpoints
         RelayRateLimiter limiter,
         ChannelHandle handles,
         TimeProvider time,
-        ILoggerFactory loggers)
-    {
+        ILoggerFactory loggers) {
         ILogger logger = RelayLog.For(loggers);
         ProofResult proof = ProofCheck.Check(request, OwnershipProof.SessionCliPurpose, nonces);
-        if (proof.Problem is { } problem)
-        {
+        if (proof.Problem is { } problem) {
             return Failed(http, logger, problem);
         }
 
-        if (RateLimiting.ThrottleChannel(http, limiter, proof.Channel, RelayRole.Cli) is { } refused)
-        {
+        if (RateLimiting.ThrottleChannel(http, limiter, proof.Channel, RelayRole.Cli) is { } refused) {
             return refused;
         }
 
@@ -55,19 +50,16 @@ internal static class SessionEndpoints
         RelayRateLimiter limiter,
         ChannelHandle handles,
         TimeProvider time,
-        ILoggerFactory loggers)
-    {
+        ILoggerFactory loggers) {
         ILogger logger = RelayLog.For(loggers);
         TicketCheck check = handles.VerifyTicket(request.Ticket);
-        if (check is not { Outcome: TicketOutcome.Valid, Channel: { } channel, Grant: { } grant })
-        {
+        if (check is not { Outcome: TicketOutcome.Valid, Channel: { } channel, Grant: { } grant }) {
             return Failed(
                 http, logger, check.Outcome == TicketOutcome.Expired ? RelayProblems.TicketExpired : RelayProblems.InvalidTicket);
         }
 
         paired.Record(channel);
-        if (RateLimiting.ThrottleChannel(http, limiter, channel, RelayRole.Web) is { } refused)
-        {
+        if (RateLimiting.ThrottleChannel(http, limiter, channel, RelayRole.Web) is { } refused) {
             return refused;
         }
 

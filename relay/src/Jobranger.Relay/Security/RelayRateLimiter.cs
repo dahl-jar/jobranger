@@ -4,8 +4,7 @@ using Jobranger.Relay.Core;
 
 namespace Jobranger.Relay.Security;
 
-public sealed class RelayRateLimiter : PartitionedRateLimiter<HttpContext>, ISweepable
-{
+public sealed class RelayRateLimiter : PartitionedRateLimiter<HttpContext>, ISweepable {
     private const int clientScale = 1;
     private const int sharedTiersPerPolicy = 2;
     private const int unpairedChannelStores = 1;
@@ -21,8 +20,7 @@ public sealed class RelayRateLimiter : PartitionedRateLimiter<HttpContext>, ISwe
         TimeProvider time,
         int? maxPartitions = null,
         int overflowShards = RelayLimits.OverflowShards,
-        Func<string, int, RateLimiter>? limiters = null)
-    {
+        Func<string, int, RateLimiter>? limiters = null) {
         Func<string, int, RateLimiter> limiterFor = limiters ?? ((policy, scale) => RateLimiting.Limiter(policy, scale, time));
         int partitions = maxPartitions ?? MaxPartitionsPerStore;
         clients = RateLimiting.Policies.ToDictionary(
@@ -43,10 +41,8 @@ public sealed class RelayRateLimiter : PartitionedRateLimiter<HttpContext>, ISwe
 
     public override RateLimiterStatistics? GetStatistics(HttpContext resource) => null;
 
-    public void Sweep()
-    {
-        foreach (PartitionStore store in Stores())
-        {
+    public void Sweep() {
+        foreach (PartitionStore store in Stores()) {
             store.Sweep();
         }
     }
@@ -58,8 +54,7 @@ public sealed class RelayRateLimiter : PartitionedRateLimiter<HttpContext>, ISwe
     public RateLimitLease AttemptAcquireForUnpairedChannel(HttpContext resource, ChannelId channel) =>
         AttemptAcquireTiered(resource.Connection.RemoteIpAddress, RateLimiting.Nonce, unpairedChannels, channel.Value);
 
-    public RateLimitLease AttemptAcquireForAddress(HttpContext resource, string policy)
-    {
+    public RateLimitLease AttemptAcquireForAddress(HttpContext resource, string policy) {
         IPAddress? address = resource.Connection.RemoteIpAddress;
         return AttemptAcquireTiered(address, policy, blocks[policy], BlockOf(address, policy));
     }
@@ -73,12 +68,9 @@ public sealed class RelayRateLimiter : PartitionedRateLimiter<HttpContext>, ISwe
         HttpContext resource, int permitCount, CancellationToken cancellationToken) =>
         ValueTask.FromResult(AttemptAcquireCore(resource, permitCount));
 
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            foreach (PartitionStore store in Stores())
-            {
+    protected override void Dispose(bool disposing) {
+        if (disposing) {
+            foreach (PartitionStore store in Stores()) {
                 store.Dispose();
             }
         }
@@ -91,18 +83,15 @@ public sealed class RelayRateLimiter : PartitionedRateLimiter<HttpContext>, ISwe
     private static string? BlockOf(IPAddress? address, string policy) =>
         policy == RateLimiting.PairStart ? ClientPartition.Network(address) : ClientPartition.Ipv6Block(address);
 
-    private RateLimitLease AttemptAcquireTiered(IPAddress? address, string policy, PartitionStore shared, string? sharedKey)
-    {
+    private RateLimitLease AttemptAcquireTiered(IPAddress? address, string policy, PartitionStore shared, string? sharedKey) {
         string network = ClientPartition.Network(address);
         RateLimitLease clientLease = clients[policy].AttemptAcquire(ClientPartition.For(address), network);
-        if (!clientLease.IsAcquired || sharedKey is null)
-        {
+        if (!clientLease.IsAcquired || sharedKey is null) {
             return clientLease;
         }
 
         RateLimitLease sharedLease = shared.AttemptAcquire(sharedKey, network);
-        if (sharedLease.IsAcquired)
-        {
+        if (sharedLease.IsAcquired) {
             return new TieredLease(sharedLease, clientLease);
         }
 
@@ -110,8 +99,7 @@ public sealed class RelayRateLimiter : PartitionedRateLimiter<HttpContext>, ISwe
         return sharedLease;
     }
 
-    private sealed class TieredLease(RateLimitLease shared, RateLimitLease client) : RateLimitLease
-    {
+    private sealed class TieredLease(RateLimitLease shared, RateLimitLease client) : RateLimitLease {
         public override bool IsAcquired => client.IsAcquired;
 
         public override IEnumerable<string> MetadataNames => client.MetadataNames;
@@ -119,10 +107,8 @@ public sealed class RelayRateLimiter : PartitionedRateLimiter<HttpContext>, ISwe
         public override bool TryGetMetadata(string metadataName, out object? metadata) =>
             client.TryGetMetadata(metadataName, out metadata);
 
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
+        protected override void Dispose(bool disposing) {
+            if (disposing) {
                 shared.Dispose();
                 client.Dispose();
             }

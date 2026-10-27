@@ -2,8 +2,7 @@ using Jobranger.Relay.Core;
 
 namespace Jobranger.Relay.Telemetry;
 
-internal static partial class RelayLog
-{
+internal static partial class RelayLog {
     private const string category = "Jobranger.Relay";
 
     public static ILogger For(ILoggerFactory loggers) => loggers.CreateLogger(category);

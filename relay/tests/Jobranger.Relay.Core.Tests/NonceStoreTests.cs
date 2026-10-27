@@ -2,8 +2,7 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Jobranger.Relay.Core.Tests;
 
-public sealed class NonceStoreTests
-{
+public sealed class NonceStoreTests {
     private static readonly TimeSpan nonceLifetime = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan justBeforeExpiry = TimeSpan.FromSeconds(59);
     private static readonly TimeSpan tombstoneRetention = TimeSpan.FromMinutes(5);
@@ -14,22 +13,19 @@ public sealed class NonceStoreTests
     private readonly FakeTimeProvider time = new();
     private readonly NonceStore store;
 
-    public NonceStoreTests()
-    {
+    public NonceStoreTests() {
         store = new NonceStore(time);
     }
 
     [Fact]
-    public void ShouldIssueNonceOf32BytesValidForSixtySeconds()
-    {
+    public void ShouldIssueNonceOf32BytesValidForSixtySeconds() {
         RelayNonce nonce = Issued(store);
 
         Assert.Equal((nonceChars, time.GetUtcNow() + nonceLifetime), (nonce.Value.Length, nonce.ExpiresAt));
     }
 
     [Fact]
-    public void ShouldIssueDifferentNonces()
-    {
+    public void ShouldIssueDifferentNonces() {
         RelayNonce first = Issued(store);
 
         RelayNonce second = Issued(store);
@@ -38,8 +34,7 @@ public sealed class NonceStoreTests
     }
 
     [Fact]
-    public void ShouldConsumeNonceOnlyOnce()
-    {
+    public void ShouldConsumeNonceOnlyOnce() {
         RelayNonce nonce = Issued(store);
         store.Consume(nonce.Value);
 
@@ -49,8 +44,7 @@ public sealed class NonceStoreTests
     }
 
     [Fact]
-    public void ShouldAcceptNonceBeforeSixtySeconds()
-    {
+    public void ShouldAcceptNonceBeforeSixtySeconds() {
         RelayNonce nonce = Issued(store);
         time.Advance(justBeforeExpiry);
 
@@ -60,8 +54,7 @@ public sealed class NonceStoreTests
     }
 
     [Fact]
-    public void ShouldReportNonceExpiredAfterSixtySeconds()
-    {
+    public void ShouldReportNonceExpiredAfterSixtySeconds() {
         RelayNonce nonce = Issued(store);
         time.Advance(nonceLifetime);
 
@@ -73,8 +66,7 @@ public sealed class NonceStoreTests
     [Theory]
     [InlineData(null)]
     [InlineData("AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8")]
-    public void ShouldReportNonceNeverIssuedAsUnknown(string? nonce)
-    {
+    public void ShouldReportNonceNeverIssuedAsUnknown(string? nonce) {
         Issued(store);
 
         NonceOutcome outcome = store.Consume(nonce);
@@ -83,8 +75,7 @@ public sealed class NonceStoreTests
     }
 
     [Fact]
-    public void ShouldReportNonceExpiredAfterLaterIssueDrainsIt()
-    {
+    public void ShouldReportNonceExpiredAfterLaterIssueDrainsIt() {
         RelayNonce nonce = Issued(store);
         time.Advance(nonceLifetime);
         Issued(store);
@@ -95,8 +86,7 @@ public sealed class NonceStoreTests
     }
 
     [Fact]
-    public void ShouldForgetExpiredNonceOnceTombstoneRetentionPasses()
-    {
+    public void ShouldForgetExpiredNonceOnceTombstoneRetentionPasses() {
         RelayNonce nonce = Issued(store);
         time.Advance(nonceLifetime + tombstoneRetention);
         Issued(store);
@@ -107,8 +97,7 @@ public sealed class NonceStoreTests
     }
 
     [Fact]
-    public void ShouldForgetExpiredNonceOnSweepAfterTombstoneRetention()
-    {
+    public void ShouldForgetExpiredNonceOnSweepAfterTombstoneRetention() {
         RelayNonce nonce = Issued(store);
         time.Advance(nonceLifetime + tombstoneRetention);
         store.Sweep();
@@ -119,8 +108,7 @@ public sealed class NonceStoreTests
     }
 
     [Fact]
-    public void ShouldKeepExpiredNonceUntilTombstoneRetentionPasses()
-    {
+    public void ShouldKeepExpiredNonceUntilTombstoneRetentionPasses() {
         RelayNonce nonce = Issued(store);
         time.Advance(nonceLifetime + tombstoneRetention - TimeSpan.FromSeconds(1));
         Issued(store);
@@ -131,8 +119,7 @@ public sealed class NonceStoreTests
     }
 
     [Fact]
-    public void ShouldReportConsumedNonceUnknownAfterItsExpiry()
-    {
+    public void ShouldReportConsumedNonceUnknownAfterItsExpiry() {
         RelayNonce nonce = Issued(store);
         store.Consume(nonce.Value);
         time.Advance(nonceLifetime);
@@ -144,8 +131,7 @@ public sealed class NonceStoreTests
     }
 
     [Fact]
-    public void ShouldRefuseIssueWhenOutstandingLimitIsReached()
-    {
+    public void ShouldRefuseIssueWhenOutstandingLimitIsReached() {
         NonceStore small = new(time, maxOutstanding: 2);
         Issued(small);
         Issued(small);
@@ -156,8 +142,7 @@ public sealed class NonceStoreTests
     }
 
     [Fact]
-    public void ShouldIssueAgainOnceOutstandingNoncesExpire()
-    {
+    public void ShouldIssueAgainOnceOutstandingNoncesExpire() {
         NonceStore small = new(time, maxOutstanding: 1);
         Issued(small);
         time.Advance(nonceLifetime);
@@ -168,8 +153,7 @@ public sealed class NonceStoreTests
     }
 
     [Fact]
-    public void ShouldIssueWhileConsumedNoncesStayUnderLimit()
-    {
+    public void ShouldIssueWhileConsumedNoncesStayUnderLimit() {
         const int limit = 3;
         const int rounds = limit * 10;
         NonceStore small = new(time, maxOutstanding: limit);
@@ -180,8 +164,7 @@ public sealed class NonceStoreTests
     }
 
     [Fact]
-    public void ShouldRefuseNetworkAtItsLimit()
-    {
+    public void ShouldRefuseNetworkAtItsLimit() {
         NonceStore shared = new(time, maxOutstanding: 10, maxPerNetwork: 2);
         shared.IssueForNetwork(networkA);
         shared.IssueForNetwork(networkA);
@@ -192,8 +175,7 @@ public sealed class NonceStoreTests
     }
 
     [Fact]
-    public void ShouldFreeNetworkShareOnceItsNonceIsConsumed()
-    {
+    public void ShouldFreeNetworkShareOnceItsNonceIsConsumed() {
         NonceStore shared = new(time, maxOutstanding: 10, maxPerNetwork: 1);
         RelayNonce nonce = shared.IssueForNetwork(networkA)!;
         shared.Consume(nonce.Value);
@@ -204,8 +186,7 @@ public sealed class NonceStoreTests
     }
 
     [Fact]
-    public void ShouldFreeNetworkShareOnceItsNonceExpires()
-    {
+    public void ShouldFreeNetworkShareOnceItsNonceExpires() {
         NonceStore shared = new(time, maxOutstanding: 10, maxPerNetwork: 1);
         shared.IssueForNetwork(networkA);
         time.Advance(nonceLifetime);
@@ -216,8 +197,7 @@ public sealed class NonceStoreTests
     }
 
     [Fact]
-    public void ShouldFreeOneNetworkShareForEachConsumedNonce()
-    {
+    public void ShouldFreeOneNetworkShareForEachConsumedNonce() {
         NonceStore shared = new(time, maxOutstanding: 10, maxPerNetwork: 2);
         RelayNonce first = shared.IssueForNetwork(networkA)!;
         shared.IssueForNetwork(networkA);
@@ -229,8 +209,7 @@ public sealed class NonceStoreTests
     }
 
     [Fact]
-    public void ShouldDropOldestTombstoneOnceTombstonesExceedOutstandingLimit()
-    {
+    public void ShouldDropOldestTombstoneOnceTombstonesExceedOutstandingLimit() {
         NonceStore small = new(time, maxOutstanding: 1);
         RelayNonce oldest = Issued(small);
         time.Advance(nonceLifetime);
@@ -244,8 +223,7 @@ public sealed class NonceStoreTests
     }
 
     [Fact]
-    public void ShouldIssueChannelNoncesOutsideNetworkLimit()
-    {
+    public void ShouldIssueChannelNoncesOutsideNetworkLimit() {
         NonceStore shared = new(time, maxOutstanding: 10, maxPerNetwork: 1, maxPerChannel: 2);
         shared.IssueForNetwork(networkA);
 
@@ -255,8 +233,7 @@ public sealed class NonceStoreTests
     }
 
     [Fact]
-    public void ShouldKeepChannelSharesSeparate()
-    {
+    public void ShouldKeepChannelSharesSeparate() {
         NonceStore shared = new(time, maxOutstanding: 10, maxPerChannel: 1);
         shared.IssueForChannel(Channels.One);
 

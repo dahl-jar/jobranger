@@ -1,7 +1,6 @@
 namespace Jobranger.Relay.Core;
 
-public enum NonceOutcome
-{
+public enum NonceOutcome {
     Valid,
     Unknown,
     Expired,

@@ -1,18 +1,14 @@
 namespace Jobranger.Relay.Hubs;
 
-internal sealed class HubSocketGate(int capacity, int perNetwork)
-{
+internal sealed class HubSocketGate(int capacity, int perNetwork) {
     private readonly Dictionary<string, int> byNetwork = new(StringComparer.Ordinal);
     private readonly Lock gate = new();
     private int open;
 
-    public bool TryEnter(string network)
-    {
-        lock (gate)
-        {
+    public bool TryEnter(string network) {
+        lock (gate) {
             int held = byNetwork.GetValueOrDefault(network);
-            if (open >= capacity || held >= perNetwork)
-            {
+            if (open >= capacity || held >= perNetwork) {
                 return false;
             }
 
@@ -22,18 +18,13 @@ internal sealed class HubSocketGate(int capacity, int perNetwork)
         }
     }
 
-    public void Exit(string network)
-    {
-        lock (gate)
-        {
+    public void Exit(string network) {
+        lock (gate) {
             open--;
             int held = byNetwork.GetValueOrDefault(network) - 1;
-            if (held > 0)
-            {
+            if (held > 0) {
                 byNetwork[network] = held;
-            }
-            else
-            {
+            } else {
                 byNetwork.Remove(network);
             }
         }

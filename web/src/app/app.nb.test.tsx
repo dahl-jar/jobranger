@@ -1,11 +1,12 @@
 import { screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import { PageLoading } from '@/app/PageLoading'
 import { RouteError } from '@/app/RouteError'
 import { routeImport } from '@/app/routeImport'
 import { routes } from '@/app/router'
 import { ThemeSwitch } from '@/app/theme/ThemeSwitch'
 import { expectNoEnglish } from '@/test/english'
+import { preloadLazyRoutes } from '@/test/lazyRoutes'
 import { renderNorwegian, renderNorwegianRoutes } from '@/test/render'
 import { IMPORT_FAILURE } from '@/test/stubs'
 
@@ -14,6 +15,8 @@ function Broken(): never {
 }
 
 describe('app shell in bokmål', () => {
+  beforeAll(() => preloadLazyRoutes(routes))
+
   it('should show the missing page in bokmål', async () => {
     renderNorwegianRoutes(routes, '/nowhere')
 

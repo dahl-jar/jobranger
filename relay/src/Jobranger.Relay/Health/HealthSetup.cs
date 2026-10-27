@@ -5,8 +5,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Jobranger.Relay.Health;
 
-internal static class HealthSetup
-{
+internal static class HealthSetup {
     private const string livePath = "/healthz";
     private const string readyPath = "/readyz";
     private const string liveTag = "live";
@@ -16,8 +15,7 @@ internal static class HealthSetup
     private const string stoppingCheck = "stopping";
     private const string healthCheckCategory = "Microsoft.Extensions.Diagnostics.HealthChecks";
 
-    public static IServiceCollection AddRelayHealth(this IServiceCollection services)
-    {
+    public static IServiceCollection AddRelayHealth(this IServiceCollection services) {
         services.AddSingleton<SweeperHeartbeat>();
         services.AddSingleton<ISweepable>(provider => provider.GetRequiredService<PairingStore>());
         services.AddSingleton<ISweepable>(provider => provider.GetRequiredService<NonceStore>());
@@ -32,8 +30,7 @@ internal static class HealthSetup
         return services;
     }
 
-    public static WebApplication MapRelayHealth(this WebApplication app)
-    {
+    public static WebApplication MapRelayHealth(this WebApplication app) {
         app.MapHealthChecks(livePath, new HealthCheckOptions { Predicate = check => check.Tags.Contains(liveTag) });
         app.MapHealthChecks(readyPath, new HealthCheckOptions { Predicate = check => check.Tags.Contains(readyTag) });
         return app;

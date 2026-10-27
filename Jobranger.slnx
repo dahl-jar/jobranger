@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/relay/" />
+  <Folder Name="/relay/src/">
+    <Project Path="relay/src/Jobranger.Relay.Core/Jobranger.Relay.Core.csproj" />
+    <Project Path="relay/src/Jobranger.Relay/Jobranger.Relay.csproj" />
+  </Folder>
+  <Folder Name="/relay/tests/">
+    <Project Path="relay/tests/Jobranger.Relay.Core.Tests/Jobranger.Relay.Core.Tests.csproj" />
+    <Project Path="relay/tests/Jobranger.Relay.Tests/Jobranger.Relay.Tests.csproj" />
+  </Folder>
+</Solution>

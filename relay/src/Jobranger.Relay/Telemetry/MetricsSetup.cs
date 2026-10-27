@@ -3,8 +3,7 @@ using OpenTelemetry.Metrics;
 
 namespace Jobranger.Relay.Telemetry;
 
-internal static class MetricsSetup
-{
+internal static class MetricsSetup {
     public const int MetricsPort = 9464;
 
     private const string metricsPath = "/metrics";
@@ -32,29 +31,25 @@ internal static class MetricsSetup
         "System.Runtime",
     ];
 
-    public static IServiceCollection AddRelayMetrics(this IServiceCollection services)
-    {
+    public static IServiceCollection AddRelayMetrics(this IServiceCollection services) {
         services.AddSingleton<RelayMetrics>();
         services.AddOpenTelemetry().WithMetrics(metrics => metrics
             .AddMeter(meters)
             .AddPrometheusExporter(prometheus => prometheus.ScrapeResponseCacheDurationMilliseconds = scrapeCacheMilliseconds));
-        services.ConfigureOpenTelemetryMeterProvider((provider, metrics) =>
-        {
+        services.ConfigureOpenTelemetryMeterProvider((provider, metrics) => {
             IMeterFactory owner = provider.GetRequiredService<IMeterFactory>();
             metrics.AddView(instrument => Stream(instrument, owner));
         });
         return services;
     }
 
-    public static IApplicationBuilder UseRelayMetrics(this IApplicationBuilder app)
-    {
+    public static IApplicationBuilder UseRelayMetrics(this IApplicationBuilder app) {
         app.ApplicationServices.GetRequiredService<RelayMetrics>();
         app.UseOpenTelemetryPrometheusScrapingEndpoint(IsScrape);
         return app.MapWhen(OnMetricsPort, branch => branch.Run(NotFound));
     }
 
-    private static MetricStreamConfiguration? Stream(Instrument instrument, IMeterFactory owner) => instrument.Meter switch
-    {
+    private static MetricStreamConfiguration? Stream(Instrument instrument, IMeterFactory owner) => instrument.Meter switch {
         { Scope: IMeterFactory scope } when !ReferenceEquals(scope, owner) => MetricStreamConfiguration.Drop,
         { Name: kestrelMeter } => new MetricStreamConfiguration { TagKeys = kestrelTags },
         _ => null,
@@ -64,8 +59,7 @@ internal static class MetricsSetup
 
     private static bool OnMetricsPort(HttpContext http) => http.Connection.LocalPort == MetricsPort;
 
-    private static Task NotFound(HttpContext http)
-    {
+    private static Task NotFound(HttpContext http) {
         http.Response.StatusCode = StatusCodes.Status404NotFound;
         return Task.CompletedTask;
     }

@@ -4,8 +4,7 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace Jobranger.Relay.Tests;
 
-internal sealed class FakeCaller(string connectionId) : HubCallerContext
-{
+internal sealed class FakeCaller(string connectionId) : HubCallerContext {
     public override string ConnectionId { get; } = connectionId;
 
     public override string? UserIdentifier => null;
@@ -18,7 +17,6 @@ internal sealed class FakeCaller(string connectionId) : HubCallerContext
 
     public override CancellationToken ConnectionAborted => CancellationToken.None;
 
-    public override void Abort()
-    {
+    public override void Abort() {
     }
 }

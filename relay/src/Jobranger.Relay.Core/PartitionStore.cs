@@ -5,8 +5,7 @@ using System.Threading.RateLimiting;
 
 namespace Jobranger.Relay.Core;
 
-public sealed class PartitionStore : ISweepable, IDisposable
-{
+public sealed class PartitionStore : ISweepable, IDisposable {
     private const int shardKeyBytes = 32;
 
     private readonly Func<RateLimiter> create;
@@ -23,8 +22,7 @@ public sealed class PartitionStore : ISweepable, IDisposable
         int maxPartitions,
         TimeProvider time,
         int overflowShards = RelayLimits.OverflowShards,
-        byte[]? shardKey = null)
-    {
+        byte[]? shardKey = null) {
         this.create = create;
         this.maxPartitions = maxPartitions;
         this.time = time;
@@ -33,12 +31,9 @@ public sealed class PartitionStore : ISweepable, IDisposable
         lastSweep = time.GetUtcNow();
     }
 
-    internal int LiveCount
-    {
-        get
-        {
-            lock (gate)
-            {
+    internal int LiveCount {
+        get {
+            lock (gate) {
                 return live.Count;
             }
         }
@@ -46,29 +41,22 @@ public sealed class PartitionStore : ISweepable, IDisposable
 
     public RateLimitLease AttemptAcquire(string key) => AttemptAcquire(key, key);
 
-    public RateLimitLease AttemptAcquire(string key, string network)
-    {
-        lock (gate)
-        {
+    public RateLimitLease AttemptAcquire(string key, string network) {
+        lock (gate) {
             SweepIfDue();
             return LimiterFor(key, network).AttemptAcquire();
         }
     }
 
-    public void Sweep()
-    {
-        lock (gate)
-        {
+    public void Sweep() {
+        lock (gate) {
             SweepIdle(time.GetUtcNow());
         }
     }
 
-    public void Dispose()
-    {
-        lock (gate)
-        {
-            foreach (RateLimiter limiter in live.Values.Concat(overflow))
-            {
+    public void Dispose() {
+        lock (gate) {
+            foreach (RateLimiter limiter in live.Values.Concat(overflow)) {
                 limiter.Dispose();
             }
 
@@ -76,21 +64,17 @@ public sealed class PartitionStore : ISweepable, IDisposable
         }
     }
 
-    internal int ShardOf(string key)
-    {
+    internal int ShardOf(string key) {
         byte[] digest = HMACSHA256.HashData(shardKey, Encoding.UTF8.GetBytes(key));
         return (int)(BinaryPrimitives.ReadUInt32LittleEndian(digest) % (uint)overflow.Length);
     }
 
-    private RateLimiter LimiterFor(string key, string network)
-    {
-        if (live.TryGetValue(key, out RateLimiter? limiter))
-        {
+    private RateLimiter LimiterFor(string key, string network) {
+        if (live.TryGetValue(key, out RateLimiter? limiter)) {
             return limiter;
         }
 
-        if (live.Count >= maxPartitions)
-        {
+        if (live.Count >= maxPartitions) {
             return overflow[ShardOf(network)];
         }
 
@@ -99,24 +83,19 @@ public sealed class PartitionStore : ISweepable, IDisposable
         return limiter;
     }
 
-    private void SweepIfDue()
-    {
+    private void SweepIfDue() {
         DateTimeOffset now = time.GetUtcNow();
-        if (now - lastSweep < RelayLimits.PartitionSweepInterval)
-        {
+        if (now - lastSweep < RelayLimits.PartitionSweepInterval) {
             return;
         }
 
         SweepIdle(now);
     }
 
-    private void SweepIdle(DateTimeOffset now)
-    {
+    private void SweepIdle(DateTimeOffset now) {
         lastSweep = now;
-        foreach ((string key, RateLimiter limiter) in live)
-        {
-            if (limiter.IdleDuration is not null)
-            {
+        foreach ((string key, RateLimiter limiter) in live) {
+            if (limiter.IdleDuration is not null) {
                 live.Remove(key);
                 limiter.Dispose();
             }

@@ -3,15 +3,13 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Jobranger.Relay.Core.Tests;
 
-public sealed class HandleKeysTests
-{
+public sealed class HandleKeysTests {
     private static readonly TimeSpan handleLifetime = TimeSpan.FromMinutes(5);
 
     [Theory]
     [InlineData(31, 32)]
     [InlineData(32, 31)]
-    public void ShouldRejectKeyShorterThan32Bytes(int currentLength, int previousLength)
-    {
+    public void ShouldRejectKeyShorterThan32Bytes(int currentLength, int previousLength) {
         byte[] current = new byte[currentLength];
         byte[] previous = new byte[previousLength];
 
@@ -19,14 +17,12 @@ public sealed class HandleKeysTests
     }
 
     [Fact]
-    public void ShouldRejectMissingCurrentKey()
-    {
+    public void ShouldRejectMissingCurrentKey() {
         Assert.Throws<ArgumentNullException>(() => new HandleKeys(null!, null));
     }
 
     [Fact]
-    public void ShouldKeepSigningKeyWhenCallerClearsItsArray()
-    {
+    public void ShouldKeepSigningKeyWhenCallerClearsItsArray() {
         FakeTimeProvider time = new();
         byte[] current = RandomNumberGenerator.GetBytes(RelayLimits.MinHandleKeyBytes);
         ChannelHandle handles = new(new HandleKeys(current, null), time);

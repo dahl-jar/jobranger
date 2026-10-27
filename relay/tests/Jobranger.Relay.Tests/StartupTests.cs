@@ -1,14 +1,13 @@
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Jobranger.Relay.Tests;
 
-public sealed class StartupTests
-{
+public sealed class StartupTests {
     [Fact]
-    public void ShouldRefuseToStartWithoutHandleKey()
-    {
+    public void ShouldRefuseToStartWithoutHandleKey() {
         using RelayFactory factory = new();
-        using var missingKey = factory.WithWebHostBuilder(builder => builder.UseSetting("Relay:HandleKey", ""));
+        using WebApplicationFactory<Program> missingKey = factory.WithWebHostBuilder(builder => builder.UseSetting("Relay:HandleKey", ""));
 
         Assert.Throws<InvalidOperationException>(() => missingKey.CreateClient());
     }

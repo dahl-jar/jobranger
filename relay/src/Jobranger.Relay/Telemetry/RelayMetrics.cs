@@ -3,8 +3,7 @@ using Jobranger.Relay.Core;
 
 namespace Jobranger.Relay.Telemetry;
 
-internal sealed class RelayMetrics
-{
+internal sealed class RelayMetrics {
     public const string MeterName = "Jobranger.Relay";
 
     private const string codeTag = "code";
@@ -20,8 +19,7 @@ internal sealed class RelayMetrics
     private readonly Counter<long> envelopesRejected;
     private readonly Counter<long> connectionsRejected;
 
-    public RelayMetrics(IMeterFactory meters, ChannelRegistry registry)
-    {
+    public RelayMetrics(IMeterFactory meters, ChannelRegistry registry) {
         Meter meter = meters.Create(MeterName);
         pairingsStarted = meter.CreateCounter<long>("relay.pairings.started");
         pairingsClaimed = meter.CreateCounter<long>("relay.pairings.claimed");
@@ -42,8 +40,7 @@ internal sealed class RelayMetrics
 
     public void RateLimited(string policy) => CountBy(rateLimited, policyTag, policy);
 
-    public void EnvelopeForwarded(int chars)
-    {
+    public void EnvelopeForwarded(int chars) {
         envelopesForwarded.Add(1);
         envelopeChars.Add(chars);
     }

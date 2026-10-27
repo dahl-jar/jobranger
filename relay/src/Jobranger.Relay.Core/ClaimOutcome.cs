@@ -1,7 +1,6 @@
 namespace Jobranger.Relay.Core;
 
-public enum ClaimOutcome
-{
+public enum ClaimOutcome {
     Claimed,
     WrongCode,
     Expired,

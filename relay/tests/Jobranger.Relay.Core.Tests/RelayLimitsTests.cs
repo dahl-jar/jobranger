@@ -1,7 +1,6 @@
 namespace Jobranger.Relay.Core.Tests;
 
-public sealed class RelayLimitsTests
-{
+public sealed class RelayLimitsTests {
     private const long podMemoryLimitBytes = 512L * 1024 * 1024;
     private const long peakShareOfPodLimitPercent = 80;
     private const long measuredStoresBytes = 133L * 1024 * 1024;
@@ -9,8 +8,7 @@ public sealed class RelayLimitsTests
     private const long marginPercent = 105;
 
     [Fact]
-    public void ShouldFitHubAtCapWithFullStoresInPeakBudget()
-    {
+    public void ShouldFitHubAtCapWithFullStoresInPeakBudget() {
         long peak = RelayLimits.RelayBaselineBytes + RelayLimits.StoresBudgetBytes
             + ((long)RelayLimits.MaxHubSockets * RelayLimits.HubSocketBudgetBytes);
 
@@ -18,8 +16,7 @@ public sealed class RelayLimitsTests
     }
 
     [Fact]
-    public void ShouldUseWholeBudgetForHubSockets()
-    {
+    public void ShouldUseWholeBudgetForHubSockets() {
         long oneMore = RelayLimits.RelayBaselineBytes + RelayLimits.StoresBudgetBytes
             + ((long)(RelayLimits.MaxHubSockets + 1) * RelayLimits.HubSocketBudgetBytes);
 
@@ -27,24 +24,21 @@ public sealed class RelayLimitsTests
     }
 
     [Fact]
-    public void ShouldCoverMeasuredStoresWithMargin()
-    {
+    public void ShouldCoverMeasuredStoresWithMargin() {
         long stores = RelayLimits.StoresBudgetBytes;
 
         Assert.True(stores * 100 >= measuredStoresBytes * marginPercent);
     }
 
     [Fact]
-    public void ShouldCoverMeasuredSocketCostWithMargin()
-    {
+    public void ShouldCoverMeasuredSocketCostWithMargin() {
         long perSocket = RelayLimits.HubSocketBudgetBytes;
 
         Assert.True(perSocket * 100 >= measuredHubSocketBytes * marginPercent);
     }
 
     [Fact]
-    public void ShouldBufferOneFullFrameFromClient()
-    {
+    public void ShouldBufferOneFullFrameFromClient() {
         int applicationBuffer = RelayLimits.HubApplicationBufferBytes;
 
         Assert.True(applicationBuffer >= RelayLimits.MaxFrameBytes);

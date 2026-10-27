@@ -2,8 +2,7 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Jobranger.Relay.Core.Tests;
 
-public sealed class PairingStoreTests
-{
+public sealed class PairingStoreTests {
     private static readonly TimeSpan justBeforeExpiry = new(0, 9, 59);
     private static readonly TimeSpan codeLifetime = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan tombstoneEnd = TimeSpan.FromMinutes(20);
@@ -18,14 +17,12 @@ public sealed class PairingStoreTests
     private readonly FakeTimeProvider time = new();
     private readonly PairingStore store;
 
-    public PairingStoreTests()
-    {
+    public PairingStoreTests() {
         store = new PairingStore(time);
     }
 
     [Fact]
-    public void ShouldClaimPendingPairingOnlyOnce()
-    {
+    public void ShouldClaimPendingPairingOnlyOnce() {
         PendingPairing pending = Started(store, Channels.One);
         store.Claim(pending.Code);
 
@@ -35,8 +32,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldClaimPendingPairingBeforeTenMinutes()
-    {
+    public void ShouldClaimPendingPairingBeforeTenMinutes() {
         PendingPairing pending = Started(store, Channels.One);
         time.Advance(justBeforeExpiry);
 
@@ -46,8 +42,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldExpirePendingPairingAfterTenMinutes()
-    {
+    public void ShouldExpirePendingPairingAfterTenMinutes() {
         PendingPairing pending = Started(store, Channels.One);
         time.Advance(codeLifetime);
 
@@ -57,8 +52,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldAnswerWrongCodeForWrongVerifier()
-    {
+    public void ShouldAnswerWrongCodeForWrongVerifier() {
         PendingPairing pending = Started(store, Channels.One);
 
         ClaimResult result = store.Claim(WrongVerifier(pending.Code));
@@ -67,8 +61,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldAnswerWrongCodeForUnknownSelector()
-    {
+    public void ShouldAnswerWrongCodeForUnknownSelector() {
         PendingPairing pending = Started(store, Channels.One);
 
         ClaimResult result = store.Claim(pending.Code with { Selector = Other(pending.Code.Selector) });
@@ -77,8 +70,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldBurnPairingCodeAfterFiveWrongGuesses()
-    {
+    public void ShouldBurnPairingCodeAfterFiveWrongGuesses() {
         PendingPairing pending = Started(store, Channels.One);
         Guess(store, pending.Code, wrongGuessLimit);
 
@@ -88,8 +80,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldClaimPairingAfterFourWrongGuesses()
-    {
+    public void ShouldClaimPairingAfterFourWrongGuesses() {
         PendingPairing pending = Started(store, Channels.One);
         Guess(store, pending.Code, wrongGuessLimit - 1);
 
@@ -99,8 +90,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldForgetOlderReplacedCodeOnSecondRestart()
-    {
+    public void ShouldForgetOlderReplacedCodeOnSecondRestart() {
         PendingPairing first = Started(store, Channels.One);
         Started(store, Channels.One);
         Started(store, Channels.One);
@@ -111,8 +101,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldAnswerExpiredForCodeReplacedByNewerStart()
-    {
+    public void ShouldAnswerExpiredForCodeReplacedByNewerStart() {
         PendingPairing replaced = Started(store, Channels.One);
         store.Start(Channels.One, network);
 
@@ -122,8 +111,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldRefuseStartWhenPendingLimitIsReached()
-    {
+    public void ShouldRefuseStartWhenPendingLimitIsReached() {
         PairingStore full = new(time, maxPending: 2);
         full.Start(Channels.One, network);
         full.Start(Channels.Two, network);
@@ -134,8 +122,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldRefuseNetworkAtItsPendingLimit()
-    {
+    public void ShouldRefuseNetworkAtItsPendingLimit() {
         PairingStore shared = new(time, maxPendingPerNetwork: 1);
         shared.Start(Channels.One, network);
 
@@ -145,8 +132,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldFreeNetworkShareOnceItsCodeIsClaimed()
-    {
+    public void ShouldFreeNetworkShareOnceItsCodeIsClaimed() {
         PairingStore shared = new(time, maxPendingPerNetwork: 1);
         shared.Claim(Started(shared, Channels.One).Code);
 
@@ -156,8 +142,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldFreeOneNetworkShareForEachClosedCode()
-    {
+    public void ShouldFreeOneNetworkShareForEachClosedCode() {
         PairingStore shared = new(time, maxPendingPerNetwork: 2);
         PendingPairing first = Started(shared, Channels.One);
         shared.Start(Channels.Two, network);
@@ -169,8 +154,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldReplaceOwnPendingCodeAtNetworkLimit()
-    {
+    public void ShouldReplaceOwnPendingCodeAtNetworkLimit() {
         PairingStore shared = new(time, maxPendingPerNetwork: 1);
         shared.Start(Channels.One, network);
 
@@ -180,8 +164,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldAllowStartOncePendingPairingIsClaimed()
-    {
+    public void ShouldAllowStartOncePendingPairingIsClaimed() {
         PairingStore full = new(time, maxPending: 1);
         PendingPairing pending = Started(full, Channels.One);
         full.Claim(pending.Code);
@@ -192,8 +175,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldAllowStartOncePendingPairingIsBurned()
-    {
+    public void ShouldAllowStartOncePendingPairingIsBurned() {
         PairingStore full = new(time, maxPending: 1);
         PendingPairing pending = Started(full, Channels.One);
         Guess(full, pending.Code, wrongGuessLimit);
@@ -204,8 +186,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldAllowStartOncePendingPairingExpires()
-    {
+    public void ShouldAllowStartOncePendingPairingExpires() {
         PairingStore full = new(time, maxPending: 1);
         full.Start(Channels.One, network);
         time.Advance(codeLifetime);
@@ -216,8 +197,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldAllowStartWhenLaterCodeLapsesFirst()
-    {
+    public void ShouldAllowStartWhenLaterCodeLapsesFirst() {
         PairingStore full = new(time, maxPending: 2);
         DateTimeOffset startedAt = time.GetUtcNow();
         full.Start(Channels.One, network);
@@ -231,8 +211,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldKeepCountingNewerCodeWhenReplacedCodeLapses()
-    {
+    public void ShouldKeepCountingNewerCodeWhenReplacedCodeLapses() {
         PairingStore full = new(time, maxPending: 1);
         full.Start(Channels.One, network);
         time.Advance(justBeforeExpiry);
@@ -245,8 +224,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldAnswerExpiredForTombstoneBeforeRetentionPasses()
-    {
+    public void ShouldAnswerExpiredForTombstoneBeforeRetentionPasses() {
         PendingPairing pending = Started(store, Channels.One);
         time.Advance(tombstoneEnd - TimeSpan.FromSeconds(1));
 
@@ -257,8 +235,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldForgetPairingOnceRetentionPasses()
-    {
+    public void ShouldForgetPairingOnceRetentionPasses() {
         PendingPairing pending = Started(store, Channels.One);
         time.Advance(TimeSpan.FromSeconds(1));
         Started(store, Channels.Two);
@@ -271,8 +248,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldIssueCodeFromInjectedSource()
-    {
+    public void ShouldIssueCodeFromInjectedSource() {
         PairingStore seeded = new(time, drawCode: () => new PairingCode("KQFB", "MXTW"));
 
         PendingPairing? pending = seeded.Start(Channels.One, network);
@@ -281,8 +257,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldForgetEarlierPairingWhoseSelectorSortsAfterLaterOne()
-    {
+    public void ShouldForgetEarlierPairingWhoseSelectorSortsAfterLaterOne() {
         Queue<PairingCode> codes = new([new PairingCode("ZZZZ", "BBBB"), new PairingCode("BBBB", "BBBB")]);
         PairingStore ordered = new(time, drawCode: codes.Dequeue);
         PendingPairing earlier = Started(ordered, Channels.One);
@@ -297,8 +272,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldForgetEveryPairingInOneSweep()
-    {
+    public void ShouldForgetEveryPairingInOneSweep() {
         Started(store, Channels.One);
         time.Advance(TimeSpan.FromSeconds(1));
         PendingPairing last = Started(store, Channels.Two);
@@ -311,8 +285,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldForgetPairingsStartedAtSameTime()
-    {
+    public void ShouldForgetPairingsStartedAtSameTime() {
         Started(store, Channels.One);
         PendingPairing second = Started(store, Channels.Two);
         time.Advance(tombstoneEnd);
@@ -324,8 +297,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldRefuseStartWhenEntryLimitHoldsOnlyPendingCodes()
-    {
+    public void ShouldRefuseStartWhenEntryLimitHoldsOnlyPendingCodes() {
         PairingStore full = new(time, maxEntries: 2);
         Started(full, Channels.One);
         Started(full, Channels.Two);
@@ -336,11 +308,9 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldStartAfterEntryLimitOfClaimedCodes()
-    {
+    public void ShouldStartAfterEntryLimitOfClaimedCodes() {
         PairingStore busy = new(time);
-        for (int pairing = 0; pairing < entryLimit; pairing++)
-        {
+        for (int pairing = 0; pairing < entryLimit; pairing++) {
             busy.Claim(Started(busy, new ChannelId($"channel-{pairing}")).Code);
         }
 
@@ -350,8 +320,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldEvictOldestTombstoneAtEntryLimit()
-    {
+    public void ShouldEvictOldestTombstoneAtEntryLimit() {
         PairingStore full = new(time, maxEntries: 3);
         PendingPairing pending = Started(full, Channels.One);
         PendingPairing oldest = Started(full, Channels.Two);
@@ -368,8 +337,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact(Timeout = heavyTestTimeoutMs)]
-    public async Task ShouldRefuseStartWhenNoFreeSelectorIsDrawn()
-    {
+    public async Task ShouldRefuseStartWhenNoFreeSelectorIsDrawn() {
         PairingStore crowded = new(time, maxPending: int.MaxValue, maxPendingPerNetwork: int.MaxValue, maxEntries: int.MaxValue);
 
         bool refused = await Task.Run(
@@ -380,8 +348,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldReplaceOwnPendingCodeWhenPendingLimitIsReached()
-    {
+    public void ShouldReplaceOwnPendingCodeWhenPendingLimitIsReached() {
         PairingStore full = new(time, maxPending: 1);
         full.Start(Channels.One, network);
 
@@ -391,8 +358,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldReplaceOwnPendingCodeWhenEntryLimitIsReached()
-    {
+    public void ShouldReplaceOwnPendingCodeWhenEntryLimitIsReached() {
         PairingStore full = new(time, maxEntries: 1);
         full.Start(Channels.One, network);
 
@@ -402,12 +368,10 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldAllowOtherChannelAfterRepeatedRestarts()
-    {
+    public void ShouldAllowOtherChannelAfterRepeatedRestarts() {
         const int entryLimit = 3;
         PairingStore full = new(time, maxEntries: entryLimit);
-        for (int start = 0; start <= entryLimit; start++)
-        {
+        for (int start = 0; start <= entryLimit; start++) {
             full.Start(Channels.One, network);
         }
 
@@ -417,8 +381,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldAnswerWrongCodeForMissingSelector()
-    {
+    public void ShouldAnswerWrongCodeForMissingSelector() {
         PendingPairing pending = Started(store, Channels.One);
 
         ClaimResult result = store.Claim(pending.Code with { Selector = null! });
@@ -427,8 +390,7 @@ public sealed class PairingStoreTests
     }
 
     [Fact]
-    public void ShouldAnswerWrongCodeForMissingVerifier()
-    {
+    public void ShouldAnswerWrongCodeForMissingVerifier() {
         PendingPairing pending = Started(store, Channels.One);
 
         ClaimResult result = store.Claim(pending.Code with { Verifier = null! });
@@ -436,17 +398,14 @@ public sealed class PairingStoreTests
         Assert.Equal(new ClaimResult(ClaimOutcome.WrongCode, null), result);
     }
 
-    private static PendingPairing Started(PairingStore target, ChannelId channel)
-    {
+    private static PendingPairing Started(PairingStore target, ChannelId channel) {
         PendingPairing? pending = target.Start(channel, network);
         Assert.NotNull(pending);
         return pending;
     }
 
-    private static void Guess(PairingStore target, PairingCode code, int times)
-    {
-        for (int guess = 0; guess < times; guess++)
-        {
+    private static void Guess(PairingStore target, PairingCode code, int times) {
+        for (int guess = 0; guess < times; guess++) {
             target.Claim(WrongVerifier(code));
         }
     }

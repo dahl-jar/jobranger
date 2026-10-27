@@ -2,8 +2,7 @@ using Jobranger.Relay.Options;
 
 namespace Jobranger.Relay.Tests;
 
-public sealed class RelayOptionsValidatorTests
-{
+public sealed class RelayOptionsValidatorTests {
     private const string shortKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==";
 
     private readonly RelayOptionsValidator validator = new();
@@ -11,8 +10,7 @@ public sealed class RelayOptionsValidatorTests
     [Theory]
     [InlineData(null)]
     [InlineData("")]
-    public void ShouldAcceptValidOptions(string? previousHandleKey)
-    {
+    public void ShouldAcceptValidOptions(string? previousHandleKey) {
         RelayOptions options = Valid();
         options.PreviousHandleKey = previousHandleKey;
 
@@ -24,8 +22,7 @@ public sealed class RelayOptionsValidatorTests
     [Theory]
     [InlineData(shortKey)]
     [InlineData("not base64 at all, but long enough to pass a length check!!")]
-    public void ShouldRejectShortOrMalformedHandleKey(string key)
-    {
+    public void ShouldRejectShortOrMalformedHandleKey(string key) {
         RelayOptions options = Valid();
         options.HandleKey = key;
 
@@ -35,8 +32,7 @@ public sealed class RelayOptionsValidatorTests
     }
 
     [Fact]
-    public void ShouldRejectShortPreviousHandleKey()
-    {
+    public void ShouldRejectShortPreviousHandleKey() {
         RelayOptions options = Valid();
         options.PreviousHandleKey = shortKey;
 
@@ -46,8 +42,7 @@ public sealed class RelayOptionsValidatorTests
     }
 
     [Fact]
-    public void ShouldRejectShortRedactionKey()
-    {
+    public void ShouldRejectShortRedactionKey() {
         RelayOptions options = Valid();
         options.RedactionKey = shortKey;
 
@@ -60,8 +55,7 @@ public sealed class RelayOptionsValidatorTests
     [InlineData("site.test")]
     [InlineData("https://site.test/")]
     [InlineData("ftp://site.test")]
-    public void ShouldRejectSiteOriginThatIsNotAnOrigin(string origin)
-    {
+    public void ShouldRejectSiteOriginThatIsNotAnOrigin(string origin) {
         RelayOptions options = Valid();
         options.SiteOrigin = origin;
 
@@ -73,8 +67,7 @@ public sealed class RelayOptionsValidatorTests
     [Theory]
     [InlineData("")]
     [InlineData("10.42.0.0/16,not-a-network")]
-    public void ShouldRejectMissingOrInvalidProxyNetworks(string networks)
-    {
+    public void ShouldRejectMissingOrInvalidProxyNetworks(string networks) {
         RelayOptions options = Valid();
         options.KnownProxyNetworks = networks.Split(',', StringSplitOptions.RemoveEmptyEntries);
 
@@ -83,8 +76,7 @@ public sealed class RelayOptionsValidatorTests
         Assert.True(failed);
     }
 
-    private static RelayOptions Valid() => new()
-    {
+    private static RelayOptions Valid() => new() {
         SiteOrigin = "http://localhost:5173",
         HandleKey = RelayFactory.HandleKey,
         RedactionKey = RelayFactory.RedactionKey,

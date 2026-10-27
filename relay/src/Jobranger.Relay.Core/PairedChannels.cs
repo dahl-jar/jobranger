@@ -1,29 +1,22 @@
 namespace Jobranger.Relay.Core;
 
-public sealed class PairedChannels(TimeProvider time, int capacity = RelayLimits.MaxPairedChannels) : ISweepable
-{
+public sealed class PairedChannels(TimeProvider time, int capacity = RelayLimits.MaxPairedChannels) : ISweepable {
     private readonly Dictionary<ChannelId, LinkedListNode<PairedChannel>> records = [];
     private readonly LinkedList<PairedChannel> byLastUse = new();
     private readonly Lock gate = new();
 
-    internal int Count
-    {
-        get
-        {
-            lock (gate)
-            {
+    internal int Count {
+        get {
+            lock (gate) {
                 return records.Count;
             }
         }
     }
 
-    public void Record(ChannelId channel)
-    {
-        lock (gate)
-        {
+    public void Record(ChannelId channel) {
+        lock (gate) {
             Forget(channel);
-            if (records.Count >= capacity && byLastUse.First is { } leastRecent)
-            {
+            if (records.Count >= capacity && byLastUse.First is { } leastRecent) {
                 Forget(leastRecent.Value.Channel);
             }
 
@@ -31,18 +24,14 @@ public sealed class PairedChannels(TimeProvider time, int capacity = RelayLimits
         }
     }
 
-    public bool Touch(ChannelId channel)
-    {
-        lock (gate)
-        {
-            if (!records.TryGetValue(channel, out LinkedListNode<PairedChannel>? node))
-            {
+    public bool Touch(ChannelId channel) {
+        lock (gate) {
+            if (!records.TryGetValue(channel, out LinkedListNode<PairedChannel>? node)) {
                 return false;
             }
 
             Forget(channel);
-            if (time.GetUtcNow() >= node.Value.ExpiresAt)
-            {
+            if (time.GetUtcNow() >= node.Value.ExpiresAt) {
                 return false;
             }
 
@@ -51,13 +40,10 @@ public sealed class PairedChannels(TimeProvider time, int capacity = RelayLimits
         }
     }
 
-    public void Sweep()
-    {
-        lock (gate)
-        {
+    public void Sweep() {
+        lock (gate) {
             DateTimeOffset now = time.GetUtcNow();
-            while (byLastUse.First is { Value: var oldest } && oldest.ExpiresAt <= now)
-            {
+            while (byLastUse.First is { Value: var oldest } && oldest.ExpiresAt <= now) {
                 Forget(oldest.Channel);
             }
         }
@@ -66,10 +52,8 @@ public sealed class PairedChannels(TimeProvider time, int capacity = RelayLimits
     private void Remember(ChannelId channel) =>
         records.Add(channel, byLastUse.AddLast(new PairedChannel(channel, time.GetUtcNow() + RelayLimits.TicketLifetime)));
 
-    private void Forget(ChannelId channel)
-    {
-        if (records.Remove(channel, out LinkedListNode<PairedChannel>? node))
-        {
+    private void Forget(ChannelId channel) {
+        if (records.Remove(channel, out LinkedListNode<PairedChannel>? node)) {
             byLastUse.Remove(node);
         }
     }

@@ -1,6 +1,6 @@
 {
   "stryker-config": {
-    "solution": "Jobranger.Relay.slnx",
+    "solution": "../Jobranger.slnx",
     "project": "Jobranger.Relay.Core.csproj",
     "test-projects": [
       "tests/Jobranger.Relay.Core.Tests/Jobranger.Relay.Core.Tests.csproj"

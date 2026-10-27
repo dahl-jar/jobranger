@@ -2,8 +2,7 @@ using Jobranger.Relay.Core;
 
 namespace Jobranger.Relay.Options;
 
-public sealed class RelayOptions
-{
+public sealed class RelayOptions {
     public const string Section = "Relay";
 
     public string SiteOrigin { get; set; } = string.Empty;

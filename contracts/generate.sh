@@ -2,9 +2,9 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-python_out="$root/cli/src/jobranger/contract"
+python_out="$root/cli-python/src/jobranger/contract"
 typescript_out="$root/web/src/features/relay/contract"
-uv_run=(uv run --project "$root/cli" --locked)
+uv_run=(uv run --project "$root/cli-python" --locked)
 codegen=("${uv_run[@]}" datamodel-codegen
   --input-file-type jsonschema
   --output-model-type pydantic_v2.BaseModel
@@ -31,6 +31,6 @@ for name in payload envelope; do
     --maxItems -1
 done
 node "$root/web/scripts/generate-validators.ts" "$root/contracts" "$typescript_out/validate.gen"
-"${uv_run[@]}" python "$root/contracts/scripts/postprocess.py" "$root"
+"${uv_run[@]}" python "$root/scripts/codegen/postprocess.py" "$root"
 "${uv_run[@]}" ruff format --quiet "$python_out"
 "${uv_run[@]}" ruff check --fix --quiet "$python_out"

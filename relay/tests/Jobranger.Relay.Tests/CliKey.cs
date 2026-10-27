@@ -6,8 +6,7 @@ using NSec.Cryptography;
 
 namespace Jobranger.Relay.Tests;
 
-internal sealed class CliKey : IDisposable
-{
+internal sealed class CliKey : IDisposable {
     public const string PairStart = "pair.start";
     public const string SessionCli = "session.cli";
 
@@ -15,13 +14,11 @@ internal sealed class CliKey : IDisposable
 
     private readonly Key key;
 
-    public CliKey()
-    {
+    public CliKey() {
         key = Key.Create(ed25519);
     }
 
-    public CliKey(byte[] seed)
-    {
+    public CliKey(byte[] seed) {
         key = Key.Import(ed25519, seed, KeyBlobFormat.RawPrivateKey);
     }
 
@@ -32,8 +29,7 @@ internal sealed class CliKey : IDisposable
     public string Sign(string purpose, string nonce) =>
         Base64Url.EncodeToString(ed25519.Sign(key, Encoding.UTF8.GetBytes($"jobranger relay v1\n{purpose}\n{nonce}")));
 
-    public JsonObject Proof(string purpose, string nonce) => new()
-    {
+    public JsonObject Proof(string purpose, string nonce) => new() {
         ["v"] = 1,
         ["publicKey"] = PublicKey,
         ["nonce"] = nonce,

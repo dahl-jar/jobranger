@@ -6,11 +6,23 @@ on:
     paths:
       - contracts/**
       - relay/**
+      - Jobranger.slnx
+      - Directory.*.props
+      - global.json
+      - nuget.config
+      - .config/dotnet-tools.json
+      - .editorconfig
       - .github/workflows/relay.yml
   pull_request:
     paths:
       - contracts/**
       - relay/**
+      - Jobranger.slnx
+      - Directory.*.props
+      - global.json
+      - nuget.config
+      - .config/dotnet-tools.json
+      - .editorconfig
       - .github/workflows/relay.yml
   workflow_dispatch:
 
@@ -21,17 +33,15 @@ jobs:
   check:
     name: Format, build and test
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: relay
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
         with:
-          global-json-file: relay/global.json
+          global-json-file: global.json
 
-      - run: dotnet restore Jobranger.Relay.slnx
-      - run: dotnet format Jobranger.Relay.slnx --verify-no-changes --no-restore
-      - run: dotnet build Jobranger.Relay.slnx -c Release --no-restore
-      - run: dotnet test --solution Jobranger.Relay.slnx -c Release --no-build
+      - run: dotnet restore Jobranger.slnx --locked-mode
+      - run: dotnet format Jobranger.slnx --verify-no-changes --no-restore
+      - run: dotnet build Jobranger.slnx -c Release --no-restore -warnaserror
+      - run: dotnet test --project relay/tests/Jobranger.Relay.Core.Tests -c Release --no-build
+      - run: dotnet test --project relay/tests/Jobranger.Relay.Tests -c Release --no-build

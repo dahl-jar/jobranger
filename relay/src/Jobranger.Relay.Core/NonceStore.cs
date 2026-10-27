@@ -7,8 +7,7 @@ public sealed class NonceStore(
     TimeProvider time,
     int maxOutstanding = RelayLimits.MaxOutstandingNonces,
     int maxPerNetwork = RelayLimits.MaxOutstandingNoncesPerNetwork,
-    int maxPerChannel = RelayLimits.MaxOutstandingNoncesPerChannel) : ISweepable
-{
+    int maxPerChannel = RelayLimits.MaxOutstandingNoncesPerChannel) : ISweepable {
     private const int nonceBytes = 32;
     private const string networkSharePrefix = "network:";
     private const string channelSharePrefix = "channel:";
@@ -24,18 +23,14 @@ public sealed class NonceStore(
 
     public RelayNonce? IssueForNetwork(string network) => Issue($"{networkSharePrefix}{network}", maxPerNetwork);
 
-    public NonceOutcome Consume(string? nonce)
-    {
-        if (nonce is null)
-        {
+    public NonceOutcome Consume(string? nonce) {
+        if (nonce is null) {
             return NonceOutcome.Unknown;
         }
 
-        lock (gate)
-        {
+        lock (gate) {
             DateTimeOffset now = time.GetUtcNow();
-            if (outstanding.Remove(nonce, out LinkedListNode<Outstanding>? node))
-            {
+            if (outstanding.Remove(nonce, out LinkedListNode<Outstanding>? node)) {
                 byExpiry.Remove(node);
                 Release(node.Value.Share);
                 return now >= node.Value.Nonce.ExpiresAt ? NonceOutcome.Expired : NonceOutcome.Valid;
@@ -45,23 +40,18 @@ public sealed class NonceStore(
         }
     }
 
-    public void Sweep()
-    {
-        lock (gate)
-        {
+    public void Sweep() {
+        lock (gate) {
             Drain(time.GetUtcNow());
         }
     }
 
-    private RelayNonce? Issue(string share, int shareLimit)
-    {
-        lock (gate)
-        {
+    private RelayNonce? Issue(string share, int shareLimit) {
+        lock (gate) {
             DateTimeOffset now = time.GetUtcNow();
             Drain(now);
             int shareCount = perShare.GetValueOrDefault(share);
-            if (outstanding.Count >= maxOutstanding || shareCount >= shareLimit)
-            {
+            if (outstanding.Count >= maxOutstanding || shareCount >= shareLimit) {
                 return null;
             }
 
@@ -74,10 +64,8 @@ public sealed class NonceStore(
         }
     }
 
-    private void Drain(DateTimeOffset now)
-    {
-        while (byExpiry.First is { Value: var oldest } && oldest.Nonce.ExpiresAt <= now)
-        {
+    private void Drain(DateTimeOffset now) {
+        while (byExpiry.First is { Value: var oldest } && oldest.Nonce.ExpiresAt <= now) {
             byExpiry.RemoveFirst();
             outstanding.Remove(oldest.Nonce.Value);
             Release(oldest.Share);
@@ -86,21 +74,16 @@ public sealed class NonceStore(
         }
 
         while (expiredByAge.TryPeek(out RelayNonce? stale)
-            && (expired.Count > maxOutstanding || stale.ExpiresAt + RelayLimits.NonceTombstoneRetention <= now))
-        {
+            && (expired.Count > maxOutstanding || stale.ExpiresAt + RelayLimits.NonceTombstoneRetention <= now)) {
             expiredByAge.Dequeue();
             expired.Remove(stale.Value);
         }
     }
 
-    private void Release(string share)
-    {
-        if (perShare[share] == 1)
-        {
+    private void Release(string share) {
+        if (perShare[share] == 1) {
             perShare.Remove(share);
-        }
-        else
-        {
+        } else {
             perShare[share]--;
         }
     }

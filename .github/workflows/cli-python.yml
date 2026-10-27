@@ -1,4 +1,4 @@
-name: Test CLI
+name: Test Python CLI
 
 on:
   push:
@@ -7,15 +7,15 @@ on:
       - relay/src/Jobranger.Relay.Core/ContractLimits.cs
       - contracts/**
       - web/src/features/relay/contract/**
-      - cli/**
-      - .github/workflows/cli.yml
+      - cli-python/**
+      - .github/workflows/cli-python.yml
   pull_request:
     paths:
       - relay/src/Jobranger.Relay.Core/ContractLimits.cs
       - contracts/**
       - web/src/features/relay/contract/**
-      - cli/**
-      - .github/workflows/cli.yml
+      - cli-python/**
+      - .github/workflows/cli-python.yml
   workflow_dispatch:
 
 permissions:
@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: cli
+        working-directory: cli-python
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
@@ -35,7 +35,7 @@ jobs:
         with:
           python-version: "3.12"
           enable-cache: true
-          cache-dependency-glob: cli/uv.lock
+          cache-dependency-glob: cli-python/uv.lock
 
       - run: uv sync --locked
       - run: uv run ruff check

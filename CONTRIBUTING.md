@@ -1,8 +1,10 @@
 # Contributing
 
-Each component builds and tests on its own. Run the commands from the component folder.
+Each component builds and tests on its own. The cli-python, web and edge commands run from their component folder. The relay and contracts commands run from the repo root.
 
-## cli
+With [mise](https://mise.jdx.dev) installed, `mise run test` runs every suite from the repo root and `mise run contracts:check` checks the generated contract code. `mise.toml` pins the tool versions.
+
+## cli-python
 
 Needs Python 3.12+ and uv.
 
@@ -40,13 +42,15 @@ Tests can only connect to loopback. Any other host fails with `NetworkBlockedErr
 Needs the .NET 10 SDK.
 
 ```bash
-dotnet restore Jobranger.Relay.slnx
-dotnet format Jobranger.Relay.slnx --verify-no-changes --no-restore
-dotnet build Jobranger.Relay.slnx -c Release --no-restore
-dotnet test --solution Jobranger.Relay.slnx -c Release --no-build
+dotnet restore Jobranger.slnx --locked-mode
+dotnet format Jobranger.slnx --verify-no-changes --no-restore
+dotnet build Jobranger.slnx -c Release --no-restore -warnaserror
+dotnet test --solution Jobranger.slnx -c Release --no-build
 dotnet tool restore
-dotnet stryker
+(cd relay && dotnet stryker)
 ```
+
+Each .NET project has a committed `packages.lock.json`. After a package change in `Directory.Packages.props`, run `dotnet restore Jobranger.slnx --force-evaluate` and commit the updated lock files with it.
 
 ## web
 
@@ -97,25 +101,31 @@ Under `wrangler dev`, Miniflare drops `CF-Connecting-IP` from the Worker's fetch
 
 ## contracts
 
-Run from the repo root. `contracts/generate.sh` writes the pydantic models, the TypeScript types, the Ajv validators and the schema copies from `contracts/payload.schema.json` and `contracts/envelope.schema.json`. Generated code must match the schemas.
+`contracts/generate.sh` writes the pydantic models, the TypeScript types, the Ajv validators and the schema copies from `contracts/payload.schema.json` and `contracts/envelope.schema.json`. Generated code must match the schemas.
 
 ```bash
-# regenerate, then check nothing drifted
 bash contracts/generate.sh
 git diff --exit-code
 ```
 
 All three stacks test the same fixtures. Every golden in `contracts/fixtures/envelope` and `contracts/fixtures/payload` must pass its schema, and every file in `envelope-invalid` and `payload-invalid` must fail.
 
+The cli-python tests cover the schemas, decoders, limits and fixtures:
+
 ```bash
-# cli: schemas, decoders, limits and fixtures
-uv --directory cli run pytest tests/contract
+uv --directory cli-python run pytest tests/contract
+```
 
-# web: validators from source and from the built bundle
+The web tests cover the validators, from source and from the built bundle:
+
+```bash
 pnpm --dir web exec vitest run src/features/relay/contract tests
+```
 
-# relay: envelope rules
-(cd relay && dotnet test --project tests/Jobranger.Relay.Core.Tests -c Release --filter-class "*EnvelopeContractTests")
+The relay tests cover the envelope rules:
+
+```bash
+dotnet test --project relay/tests/Jobranger.Relay.Core.Tests -c Release --filter-class "*EnvelopeContractTests"
 ```
 
 Every schema guard needs one invalid fixture in `contracts/fixtures/payload-invalid` or `contracts/fixtures/envelope-invalid`. The fixture changes one leaf of its golden, so the guard is the only reason it fails. Name it `<type>.<rule>.json`. A new fixture also raises the counts in `web/src/test/fixtureCounts.ts`, and an envelope fixture raises the count in `ShouldFindEveryInvalidFixture` in the relay tests.
@@ -123,14 +133,14 @@ Every schema guard needs one invalid fixture in `contracts/fixtures/payload-inva
 Mutation runs scoped to the contract code:
 
 ```bash
-(cd cli && uv run python scripts/mutate.py "jobranger.contract*")
+(cd cli-python && uv run python scripts/mutate.py "jobranger.contract*")
 (cd web && pnpm mutate --mutate "src/features/relay/contract/*.ts,!src/features/relay/contract/*.test.ts,!src/features/relay/contract/*.gen.*")
 (cd relay && dotnet stryker --mutate "**/EnvelopeRules.cs")
 ```
 
 ## Mutation runs
 
-`scripts/mutate.py`, `dotnet stryker` and `pnpm mutate` (web and edge) run locally only.
+`cli-python/scripts/mutate.py`, `dotnet stryker` and `pnpm mutate` (web and edge) run locally only.
 
 ## Commits
 

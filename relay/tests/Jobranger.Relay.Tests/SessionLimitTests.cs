@@ -1,13 +1,13 @@
 using System.Net;
 using System.Text.Json.Nodes;
 using Jobranger.Relay.Security;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Jobranger.Relay.Tests;
 
-public sealed class SessionLimitTests(RelayFactory factory) : IClassFixture<RelayFactory>
-{
+public sealed class SessionLimitTests(RelayFactory factory) : IClassFixture<RelayFactory> {
     private const string cliRoute = "/session/cli";
     private const string webRoute = "/session/web";
     private const int sessionsPerChannel = 30;
@@ -20,16 +20,14 @@ public sealed class SessionLimitTests(RelayFactory factory) : IClassFixture<Rela
     private static readonly TimeSpan leftInWindow = TimeSpan.FromMinutes(6);
 
     [Fact]
-    public async Task ShouldIssueHandlesToPairedChannelDuringAddressFlood()
-    {
-        using var capped = factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+    public async Task ShouldIssueHandlesToPairedChannelDuringAddressFlood() {
+        using WebApplicationFactory<Program> capped = factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
             services.AddSingleton(new RelayRateLimiter(factory.Time, maxPartitions: 1, overflowShards: 1))));
         using CliKey key = new();
         using RelayApi owner = RelayApi.For(capped, "192.0.2.10");
         JsonObject paired = await owner.Paired(key);
         string ticket = (string)paired["ticket"]!;
-        for (int client = 1; client <= floodClients; client++)
-        {
+        for (int client = 1; client <= floodClients; client++) {
             using RelayApi flood = RelayApi.For(capped, $"198.18.{client / addressesPerNetwork}.{(client % addressesPerNetwork) + 1}");
             using HttpResponseMessage refused = await flood.WebSession("not-a-ticket");
         }
@@ -44,19 +42,16 @@ public sealed class SessionLimitTests(RelayFactory factory) : IClassFixture<Rela
     [Theory]
     [InlineData(cliRoute)]
     [InlineData(webRoute)]
-    public async Task ShouldRefuseChannelPastSessionLimit(string route)
-    {
+    public async Task ShouldRefuseChannelPastSessionLimit(string route) {
         using CliKey key = new();
         using RelayApi owner = RelayApi.For(factory, Addresses.NextIpv4(secondOctet));
         JsonObject paired = await owner.Paired(key);
         string ticket = (string)paired["ticket"]!;
-        using (await Session(route, key, ticket))
-        {
+        using (await Session(route, key, ticket)) {
             factory.Time.Advance(elapsedInWindow);
         }
 
-        for (int request = 1; request < sessionsPerChannel; request++)
-        {
+        for (int request = 1; request < sessionsPerChannel; request++) {
             using HttpResponseMessage admitted = await Session(route, key, ticket);
         }
 
@@ -66,11 +61,9 @@ public sealed class SessionLimitTests(RelayFactory factory) : IClassFixture<Rela
     }
 
     [Fact]
-    public async Task ShouldRefuseFailedSessionsPastAddressLimit()
-    {
+    public async Task ShouldRefuseFailedSessionsPastAddressLimit() {
         using RelayApi api = RelayApi.For(factory, Addresses.NextIpv4(secondOctet));
-        for (int attempt = 1; attempt < failedSessionsPerAddress; attempt++)
-        {
+        for (int attempt = 1; attempt < failedSessionsPerAddress; attempt++) {
             using HttpResponseMessage failed = await api.WebSession("not-a-ticket");
         }
 
@@ -80,8 +73,7 @@ public sealed class SessionLimitTests(RelayFactory factory) : IClassFixture<Rela
         Assert.Equal((HttpStatusCode.BadRequest, HttpStatusCode.TooManyRequests), (last.StatusCode, refused.StatusCode));
     }
 
-    private async Task<HttpResponseMessage> Session(string route, CliKey key, string ticket)
-    {
+    private async Task<HttpResponseMessage> Session(string route, CliKey key, string ticket) {
         using RelayApi api = RelayApi.For(factory, Addresses.NextIpv4(secondOctet));
         return route == cliRoute
             ? await api.Post(cliRoute, key.Proof(CliKey.SessionCli, await api.Nonce()))

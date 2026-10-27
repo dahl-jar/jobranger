@@ -3,18 +3,15 @@ using System.Runtime.InteropServices;
 
 namespace Jobranger.Relay.Tests;
 
-public sealed class StartupProcessTests
-{
+public sealed class StartupProcessTests {
     private const int startupFailureExitCode = 1;
 
     private static readonly TimeSpan exitDeadline = TimeSpan.FromSeconds(15);
 
     [Fact]
-    public async Task ShouldExitWithFailureCodeOnInvalidConfig()
-    {
+    public async Task ShouldExitWithFailureCodeOnInvalidConfig() {
         string workDir = Directory.CreateTempSubdirectory("relay-startup-").FullName;
-        ProcessStartInfo start = new(DotnetHost(), [Path.Combine(AppContext.BaseDirectory, "Jobranger.Relay.dll")])
-        {
+        ProcessStartInfo start = new(DotnetHost(), [Path.Combine(AppContext.BaseDirectory, "Jobranger.Relay.dll")]) {
             WorkingDirectory = workDir,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -32,15 +29,11 @@ public sealed class StartupProcessTests
         Assert.Contains("relay failed to start", await output + await errors, StringComparison.Ordinal);
     }
 
-    private static async Task<bool> WaitForExit(Process relay, CancellationToken deadline)
-    {
-        try
-        {
+    private static async Task<bool> WaitForExit(Process relay, CancellationToken deadline) {
+        try {
             await relay.WaitForExitAsync(deadline);
             return true;
-        }
-        catch (OperationCanceledException)
-        {
+        } catch (OperationCanceledException) {
             relay.Kill(entireProcessTree: true);
             return false;
         }

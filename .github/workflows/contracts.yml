@@ -6,15 +6,20 @@ on:
     paths:
       - relay/src/Jobranger.Relay.Core/ContractLimits.cs
       - web/scripts/**
+      - scripts/codegen/**
       - contracts/**
-      - cli/src/jobranger/contract/**
-      - cli/tests/contract/**
+      - cli-python/src/jobranger/contract/**
+      - cli-python/tests/contract/**
       - web/src/features/relay/contract/**
       - relay/src/Jobranger.Relay.Core/Envelope*.cs
       - relay/tests/Jobranger.Relay.Core.Tests/EnvelopeContractTests.cs
+      - Jobranger.slnx
+      - Directory.*.props
+      - global.json
+      - nuget.config
       - .github/workflows/contracts.yml
-      - cli/pyproject.toml
-      - cli/uv.lock
+      - cli-python/pyproject.toml
+      - cli-python/uv.lock
       - web/package.json
       - web/pnpm-lock.yaml
       - .gitattributes
@@ -22,15 +27,20 @@ on:
     paths:
       - relay/src/Jobranger.Relay.Core/ContractLimits.cs
       - web/scripts/**
+      - scripts/codegen/**
       - contracts/**
-      - cli/src/jobranger/contract/**
-      - cli/tests/contract/**
+      - cli-python/src/jobranger/contract/**
+      - cli-python/tests/contract/**
       - web/src/features/relay/contract/**
       - relay/src/Jobranger.Relay.Core/Envelope*.cs
       - relay/tests/Jobranger.Relay.Core.Tests/EnvelopeContractTests.cs
+      - Jobranger.slnx
+      - Directory.*.props
+      - global.json
+      - nuget.config
       - .github/workflows/contracts.yml
-      - cli/pyproject.toml
-      - cli/uv.lock
+      - cli-python/pyproject.toml
+      - cli-python/uv.lock
       - web/package.json
       - web/pnpm-lock.yaml
       - .gitattributes
@@ -50,7 +60,7 @@ jobs:
         with:
           python-version: "3.12"
           enable-cache: true
-          cache-dependency-glob: cli/uv.lock
+          cache-dependency-glob: cli-python/uv.lock
 
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
         with:
@@ -64,16 +74,16 @@ jobs:
 
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
         with:
-          global-json-file: relay/global.json
+          global-json-file: global.json
 
-      - run: uv --directory cli sync --locked
+      - run: uv --directory cli-python sync --locked
       - run: pnpm --dir web install --frozen-lockfile
       - run: touch web/src/features/relay/contract/old.gen.ts
       - run: bash contracts/generate.sh
       - run: git diff --exit-code
       - run: test -z "$(git status --porcelain)" || { git status --porcelain; exit 1; }
-      - run: uv --directory cli run --locked pytest tests/contract
+      - run: uv --directory cli-python run --locked pytest tests/contract
       - run: pnpm --dir web exec tsc -b
       - run: pnpm --dir web exec vitest run src/features/relay/contract tests --passWithNoTests=false
-      - run: dotnet test --project tests/Jobranger.Relay.Core.Tests -c Release --filter-class "*EnvelopeContractTests" --minimum-expected-tests 1
-        working-directory: relay
+      - run: dotnet restore Jobranger.slnx --locked-mode
+      - run: dotnet test --project relay/tests/Jobranger.Relay.Core.Tests -c Release --no-restore --filter-class "*EnvelopeContractTests" --minimum-expected-tests 1

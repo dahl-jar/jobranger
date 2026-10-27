@@ -3,12 +3,12 @@ using System.Security.Cryptography;
 using System.Text.Json.Nodes;
 using Jobranger.Relay.Core;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Jobranger.Relay.Tests;
 
-public sealed class SessionEndpointTests(RelayFactory factory) : IClassFixture<RelayFactory>, IDisposable
-{
+public sealed class SessionEndpointTests(RelayFactory factory) : IClassFixture<RelayFactory>, IDisposable {
     private static readonly TimeSpan handleLifetime = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan ticketLifetime = TimeSpan.FromDays(90);
     private static readonly TimeSpan oneDay = TimeSpan.FromDays(1);
@@ -16,8 +16,7 @@ public sealed class SessionEndpointTests(RelayFactory factory) : IClassFixture<R
     private readonly RelayApi api = RelayApi.For(factory, Addresses.Next());
 
     [Fact]
-    public async Task ShouldReturnCliHandleForSessionProof()
-    {
+    public async Task ShouldReturnCliHandleForSessionProof() {
         using CliKey key = new();
         JsonObject started = await api.StartPairing(key);
         string channel = (string)started["channel"]!;
@@ -32,8 +31,7 @@ public sealed class SessionEndpointTests(RelayFactory factory) : IClassFixture<R
     }
 
     [Fact]
-    public async Task ShouldRejectSessionProofSignedForPairStart()
-    {
+    public async Task ShouldRejectSessionProofSignedForPairStart() {
         using CliKey key = new();
 
         using HttpResponseMessage response = await api.Post("/session/cli", key.Proof(CliKey.PairStart, await api.Nonce()));
@@ -42,8 +40,7 @@ public sealed class SessionEndpointTests(RelayFactory factory) : IClassFixture<R
     }
 
     [Fact]
-    public async Task ShouldExchangeTicketForNewHandleAndLaterTicket()
-    {
+    public async Task ShouldExchangeTicketForNewHandleAndLaterTicket() {
         using CliKey key = new();
         JsonObject paired = await api.Paired(key);
         string ticket = (string)paired["ticket"]!;
@@ -64,8 +61,7 @@ public sealed class SessionEndpointTests(RelayFactory factory) : IClassFixture<R
     }
 
     [Fact]
-    public async Task ShouldKeepTicketGrantAcrossRefresh()
-    {
+    public async Task ShouldKeepTicketGrantAcrossRefresh() {
         using CliKey key = new();
         JsonObject paired = await api.Paired(key);
         string? grant = Handles().VerifyTicket((string)paired["ticket"]!).Grant;
@@ -79,8 +75,7 @@ public sealed class SessionEndpointTests(RelayFactory factory) : IClassFixture<R
     }
 
     [Fact]
-    public async Task ShouldReturn410ForExpiredTicket()
-    {
+    public async Task ShouldReturn410ForExpiredTicket() {
         using CliKey key = new();
         JsonObject paired = await api.Paired(key);
         string ticket = (string)paired["ticket"]!;
@@ -92,8 +87,7 @@ public sealed class SessionEndpointTests(RelayFactory factory) : IClassFixture<R
     }
 
     [Fact]
-    public async Task ShouldReturn400ForInvalidTicket()
-    {
+    public async Task ShouldReturn400ForInvalidTicket() {
         using CliKey key = new();
         JsonObject paired = await api.Paired(key);
         string handle = (string)paired["handle"]!;
@@ -104,11 +98,9 @@ public sealed class SessionEndpointTests(RelayFactory factory) : IClassFixture<R
     }
 
     [Fact]
-    public async Task ShouldAcceptTicketSignedWithPreviousKey()
-    {
+    public async Task ShouldAcceptTicketSignedWithPreviousKey() {
         byte[] previousKey = Convert.FromBase64String(RelayFactory.HandleKey);
-        using var rotated = factory.WithWebHostBuilder(builder =>
-        {
+        using WebApplicationFactory<Program> rotated = factory.WithWebHostBuilder(builder => {
             builder.UseSetting("Relay:HandleKey", Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)));
             builder.UseSetting("Relay:PreviousHandleKey", RelayFactory.HandleKey);
         });

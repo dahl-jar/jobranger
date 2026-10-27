@@ -5,13 +5,11 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Jobranger.Relay.Tests;
 
-public sealed class LogFormatterTests
-{
+public sealed class LogFormatterTests {
     private const string written = "pairing started channel=1:abc";
 
     [Fact]
-    public void ShouldWriteStateFieldsWithoutStateMessage()
-    {
+    public void ShouldWriteStateFieldsWithoutStateMessage() {
         JsonObject line = Formatted(null);
 
         Assert.Equal(
@@ -20,15 +18,13 @@ public sealed class LogFormatterTests
     }
 
     [Fact]
-    public void ShouldWriteExceptionText()
-    {
+    public void ShouldWriteExceptionText() {
         JsonObject line = Formatted(new InvalidOperationException("relay key missing"));
 
         Assert.Contains("relay key missing", (string?)line["Exception"], StringComparison.Ordinal);
     }
 
-    private static JsonObject Formatted(Exception? exception)
-    {
+    private static JsonObject Formatted(Exception? exception) {
         List<KeyValuePair<string, object?>> state = [new("Channel", "1:abc"), new("{OriginalFormat}", "pairing started channel={Channel}")];
         LogEntry<List<KeyValuePair<string, object?>>> entry = new(
             LogLevel.Information, "Jobranger.Relay", new EventId(1), state, exception, (_, _) => written);

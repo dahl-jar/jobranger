@@ -4,18 +4,15 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace Jobranger.Relay.Hubs;
 
-internal static class HubClaims
-{
+internal static class HubClaims {
     public const string ChannelType = "jr:ch";
     public const string RoleType = "jr:role";
     private const string grantType = "jr:grant";
 
-    public static ClaimsPrincipal Principal(HandleClaims claims, string scheme)
-    {
+    public static ClaimsPrincipal Principal(HandleClaims claims, string scheme) {
         ClaimsIdentity identity = new(
             [new Claim(ChannelType, claims.Channel.Value), new Claim(RoleType, RelayRoles.Wire(claims.Role))], scheme);
-        if (claims.Grant is { } grant)
-        {
+        if (claims.Grant is { } grant) {
             identity.AddClaim(new Claim(grantType, grant));
         }
 

@@ -3,15 +3,12 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Jobranger.Relay.Security;
 
-internal static class FailureCharge
-{
+internal static class FailureCharge {
     private const string chargedKey = "relay.failure-charged";
 
-    public static ProblemHttpResult? Charge(HttpContext http)
-    {
+    public static ProblemHttpResult? Charge(HttpContext http) {
         if (http.RequestServices.GetRequiredService<FailurePolicies>().For(http) is not { } policy
-            || http.Items.ContainsKey(chargedKey))
-        {
+            || http.Items.ContainsKey(chargedKey)) {
             return null;
         }
 
@@ -20,18 +17,15 @@ internal static class FailureCharge
         return lease.IsAcquired ? null : RateLimiting.Refuse(http, lease, policy);
     }
 
-    public static async Task ChargeBadRequests(HttpContext http, RequestDelegate next)
-    {
+    public static async Task ChargeBadRequests(HttpContext http, RequestDelegate next) {
         await next(http);
-        if (http.Response is
-            {
-                StatusCode: StatusCodes.Status400BadRequest
+        if (http.Response is {
+            StatusCode: StatusCodes.Status400BadRequest
                     or StatusCodes.Status413PayloadTooLarge
                     or StatusCodes.Status415UnsupportedMediaType,
-                HasStarted: false,
-            }
-            && Charge(http) is { } refused)
-        {
+            HasStarted: false,
+        }
+            && Charge(http) is { } refused) {
             await refused.ExecuteAsync(http);
         }
     }

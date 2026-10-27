@@ -6,8 +6,7 @@ using Microsoft.Extensions.Logging.Testing;
 
 namespace Jobranger.Relay.Tests;
 
-public sealed class HubTests(RelayFactory factory) : IClassFixture<RelayFactory>
-{
+public sealed class HubTests(RelayFactory factory) : IClassFixture<RelayFactory> {
     private const int messagesBurst = 40;
     private const int sidsPerConnection = 32;
     private const int maxCiphertextChars = 61_440;
@@ -18,15 +17,13 @@ public sealed class HubTests(RelayFactory factory) : IClassFixture<RelayFactory>
     private static readonly TimeSpan clientTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan beforeTimeout = TimeSpan.FromSeconds(20);
 
-    private static readonly Dictionary<string, Func<JsonObject, string>> brokenEnvelopes = new(StringComparer.Ordinal)
-    {
+    private static readonly Dictionary<string, Func<JsonObject, string>> brokenEnvelopes = new(StringComparer.Ordinal) {
         ["duplicate-property"] = envelope => envelope.ToJsonString().Insert(1, "\"seq\":2,"),
         ["property-name-case"] = envelope => envelope.ToJsonString().Replace("\"seq\":", "\"Seq\":", StringComparison.Ordinal),
     };
 
     [Fact]
-    public async Task ShouldForwardEnvelopeToOtherRoleOnly()
-    {
+    public async Task ShouldForwardEnvelopeToOtherRoleOnly() {
         using RelayApi api = RelayApi.For(factory, Addresses.Next());
         using CliKey key = new();
         JsonObject started = await api.StartPairing(key);
@@ -48,8 +45,7 @@ public sealed class HubTests(RelayFactory factory) : IClassFixture<RelayFactory>
     }
 
     [Fact]
-    public async Task ShouldSendPresenceWhenCliConnects()
-    {
+    public async Task ShouldSendPresenceWhenCliConnects() {
         ChannelId channel = RelayClients.NewChannel();
         await using HubPeer browser = await RelayClients.ConnectWebAsync(factory, channel);
         await using HubPeer cli = await RelayClients.ConnectCliAsync(factory, channel);
@@ -60,8 +56,7 @@ public sealed class HubTests(RelayFactory factory) : IClassFixture<RelayFactory>
     }
 
     [Fact]
-    public async Task ShouldSendPresenceWhenBrowserLeaves()
-    {
+    public async Task ShouldSendPresenceWhenBrowserLeaves() {
         ChannelId channel = RelayClients.NewChannel();
         await using HubPeer cli = await RelayClients.ConnectCliAsync(factory, channel);
         HubPeer browser = await RelayClients.ConnectWebAsync(factory, channel);
@@ -74,8 +69,7 @@ public sealed class HubTests(RelayFactory factory) : IClassFixture<RelayFactory>
     }
 
     [Fact]
-    public async Task ShouldRejectEnvelopeWithUnknownMajorVersion()
-    {
+    public async Task ShouldRejectEnvelopeWithUnknownMajorVersion() {
         ChannelId channel = RelayClients.NewChannel();
         await using HubPeer browser = await RelayClients.ConnectWebAsync(factory, channel);
         JsonObject envelope = Envelopes.WithUnsupportedVersion(channel);
@@ -88,8 +82,7 @@ public sealed class HubTests(RelayFactory factory) : IClassFixture<RelayFactory>
     [Theory]
     [InlineData("duplicate-property")]
     [InlineData("property-name-case")]
-    public async Task ShouldRejectEnvelopeBreakingContract(string broken)
-    {
+    public async Task ShouldRejectEnvelopeBreakingContract(string broken) {
         ChannelId channel = RelayClients.NewChannel();
         await using HubPeer browser = await RelayClients.ConnectWebAsync(factory, channel);
 
@@ -99,12 +92,10 @@ public sealed class HubTests(RelayFactory factory) : IClassFixture<RelayFactory>
     }
 
     [Fact]
-    public async Task ShouldNotLogRejectedEnvelopeAsFailure()
-    {
+    public async Task ShouldNotLogRejectedEnvelopeAsFailure() {
         await using RelayFactory own = new();
         ChannelId channel = RelayClients.NewChannel();
-        await using (HubPeer browser = await RelayClients.ConnectWebAsync(own, channel))
-        {
+        await using (HubPeer browser = await RelayClients.ConnectWebAsync(own, channel)) {
             Assert.Equal("invalid_envelope", await browser.Rejection("""{"v":1}"""));
         }
 
@@ -114,8 +105,7 @@ public sealed class HubTests(RelayFactory factory) : IClassFixture<RelayFactory>
     }
 
     [Fact]
-    public async Task ShouldRejectEnvelopeForAnotherChannel()
-    {
+    public async Task ShouldRejectEnvelopeForAnotherChannel() {
         await using HubPeer browser = await RelayClients.ConnectWebAsync(factory, RelayClients.NewChannel());
 
         string reason = await browser.Rejection(Envelopes.Data(RelayClients.NewChannel(), Envelopes.NewSid()).ToJsonString());
@@ -124,13 +114,11 @@ public sealed class HubTests(RelayFactory factory) : IClassFixture<RelayFactory>
     }
 
     [Fact]
-    public async Task ShouldRejectEnvelopeOverMessageRate()
-    {
+    public async Task ShouldRejectEnvelopeOverMessageRate() {
         ChannelId channel = RelayClients.NewChannel();
         await using HubPeer browser = await RelayClients.ConnectWebAsync(factory, channel);
         string envelope = Envelopes.Data(channel, Envelopes.NewSid()).ToJsonString();
-        for (int message = 0; message < messagesBurst; message++)
-        {
+        for (int message = 0; message < messagesBurst; message++) {
             await browser.Send(envelope);
         }
 
@@ -140,13 +128,11 @@ public sealed class HubTests(RelayFactory factory) : IClassFixture<RelayFactory>
     }
 
     [Fact]
-    public async Task ShouldRejectEnvelopeOverChannelByteRate()
-    {
+    public async Task ShouldRejectEnvelopeOverChannelByteRate() {
         ChannelId channel = RelayClients.NewChannel();
         await using HubPeer cli = await RelayClients.ConnectCliAsync(factory, channel);
         string envelope = With(Envelopes.Data(channel, Envelopes.NewSid()), "ciphertext", new string('A', maxCiphertextChars));
-        for (int frame = 0; frame < framesInByteBurst; frame++)
-        {
+        for (int frame = 0; frame < framesInByteBurst; frame++) {
             await cli.Send(envelope);
         }
 
@@ -156,8 +142,7 @@ public sealed class HubTests(RelayFactory factory) : IClassFixture<RelayFactory>
     }
 
     [Fact]
-    public async Task ShouldCloseSocketOnFrameOver64KiB()
-    {
+    public async Task ShouldCloseSocketOnFrameOver64KiB() {
         ChannelId channel = RelayClients.NewChannel();
         await using HubPeer cli = await RelayClients.ConnectCliAsync(factory, channel);
         Task send = cli.Send(With(Envelopes.Data(channel, Envelopes.NewSid()), "ciphertext", new string('A', oversizeCiphertextChars)));
@@ -168,8 +153,7 @@ public sealed class HubTests(RelayFactory factory) : IClassFixture<RelayFactory>
     }
 
     [Fact]
-    public async Task ShouldRejectBrowserEnvelopeWithSidOfAnotherBrowser()
-    {
+    public async Task ShouldRejectBrowserEnvelopeWithSidOfAnotherBrowser() {
         ChannelId channel = RelayClients.NewChannel();
         await using HubPeer browser = await RelayClients.ConnectWebAsync(factory, channel);
         await using HubPeer sibling = await RelayClients.ConnectWebAsync(factory, channel);
@@ -182,8 +166,7 @@ public sealed class HubTests(RelayFactory factory) : IClassFixture<RelayFactory>
     }
 
     [Fact]
-    public async Task ShouldNotTellCliWhenBrowserWithoutSessionsCloses()
-    {
+    public async Task ShouldNotTellCliWhenBrowserWithoutSessionsCloses() {
         ChannelId channel = RelayClients.NewChannel();
         await using HubPeer cli = await RelayClients.ConnectCliAsync(factory, channel);
         HubPeer idle = await RelayClients.ConnectWebAsync(factory, channel);
@@ -201,8 +184,7 @@ public sealed class HubTests(RelayFactory factory) : IClassFixture<RelayFactory>
     }
 
     [Fact]
-    public async Task ShouldTellReplacedCliBeforeClosingIt()
-    {
+    public async Task ShouldTellReplacedCliBeforeClosingIt() {
         ChannelId channel = RelayClients.NewChannel();
         await using HubPeer first = await RelayClients.ConnectCliAsync(factory, channel);
         await using HubPeer second = await RelayClients.ConnectCliAsync(factory, channel);
@@ -213,8 +195,7 @@ public sealed class HubTests(RelayFactory factory) : IClassFixture<RelayFactory>
     }
 
     [Fact]
-    public async Task ShouldShowBrowsersCliGoingOfflineWhenReplaced()
-    {
+    public async Task ShouldShowBrowsersCliGoingOfflineWhenReplaced() {
         ChannelId channel = RelayClients.NewChannel();
         await using HubPeer browser = await RelayClients.ConnectWebAsync(factory, channel);
         await using HubPeer first = await RelayClients.ConnectCliAsync(factory, channel);
@@ -227,8 +208,7 @@ public sealed class HubTests(RelayFactory factory) : IClassFixture<RelayFactory>
     }
 
     [Fact]
-    public async Task ShouldRefuseThirdSocketOfOneTicket()
-    {
+    public async Task ShouldRefuseThirdSocketOfOneTicket() {
         using RelayApi api = RelayApi.For(factory, Addresses.Next());
         using CliKey key = new();
         JsonObject paired = await api.Paired(key);
@@ -248,12 +228,10 @@ public sealed class HubTests(RelayFactory factory) : IClassFixture<RelayFactory>
     }
 
     [Fact]
-    public async Task ShouldRejectBrowserEnvelopeBeyondSessionLimit()
-    {
+    public async Task ShouldRejectBrowserEnvelopeBeyondSessionLimit() {
         ChannelId channel = RelayClients.NewChannel();
         await using HubPeer browser = await RelayClients.ConnectWebAsync(factory, channel);
-        for (int session = 0; session < sidsPerConnection; session++)
-        {
+        for (int session = 0; session < sidsPerConnection; session++) {
             await browser.Send(Envelopes.Hello(channel, Envelopes.NewSid()).ToJsonString());
         }
 
@@ -263,16 +241,14 @@ public sealed class HubTests(RelayFactory factory) : IClassFixture<RelayFactory>
     }
 
     [Fact]
-    public async Task ShouldAdmitCliHandleForChannelUnknownToRelay()
-    {
+    public async Task ShouldAdmitCliHandleForChannelUnknownToRelay() {
         await using HubPeer cli = await RelayClients.ConnectCliAsync(factory, RelayClients.NewChannel());
 
         Assert.Equal(HubConnectionState.Connected, cli.Connection.State);
     }
 
     [Fact]
-    public async Task ShouldReportDecimalVersionAsInvalidEnvelope()
-    {
+    public async Task ShouldReportDecimalVersionAsInvalidEnvelope() {
         ChannelId channel = RelayClients.NewChannel();
         await using HubPeer browser = await RelayClients.ConnectWebAsync(factory, channel);
         string envelope = Envelopes.Data(channel, Envelopes.NewSid()).ToJsonString().Replace("\"v\":1,", "\"v\":1.0,", StringComparison.Ordinal);
@@ -283,8 +259,7 @@ public sealed class HubTests(RelayFactory factory) : IClassFixture<RelayFactory>
     }
 
     [Fact]
-    public async Task ShouldCloseSilentBrowserAndEndItsSessions()
-    {
+    public async Task ShouldCloseSilentBrowserAndEndItsSessions() {
         ChannelId channel = RelayClients.NewChannel();
         await using HubPeer cli = await RelayClients.ConnectCliAsync(factory, channel);
         await using HubPeer browser = await RelayClients.ConnectWebAsync(factory, channel, silence);
@@ -300,8 +275,7 @@ public sealed class HubTests(RelayFactory factory) : IClassFixture<RelayFactory>
         Assert.Equal(($$"""{"sids":["{{sid}}"]}""", HubConnectionState.Connected), (notice, cli.Connection.State));
     }
 
-    private static string With(JsonObject envelope, string property, JsonNode value)
-    {
+    private static string With(JsonObject envelope, string property, JsonNode value) {
         envelope[property] = value;
         return envelope.ToJsonString();
     }

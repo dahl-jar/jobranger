@@ -2,8 +2,7 @@ using Jobranger.Relay.Core;
 
 namespace Jobranger.Relay.Hubs;
 
-internal static class HubErrors
-{
+internal static class HubErrors {
     public const string RateLimited = "rate_limited";
     public const string UnsupportedVersion = "unsupported_version";
     public const string InvalidEnvelope = "invalid_envelope";
@@ -13,8 +12,7 @@ internal static class HubErrors
     public const string ChannelFull = "channel_full";
     public const string TicketFull = "ticket_full";
 
-    public static string For(JoinOutcome outcome) => outcome switch
-    {
+    public static string For(JoinOutcome outcome) => outcome switch {
         JoinOutcome.ChannelFull => ChannelFull,
         JoinOutcome.TicketFull => TicketFull,
         _ => throw new ArgumentOutOfRangeException(nameof(outcome), outcome, "outcome must be a refusal"),

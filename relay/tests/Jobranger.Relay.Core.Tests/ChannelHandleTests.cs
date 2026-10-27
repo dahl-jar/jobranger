@@ -5,8 +5,7 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Jobranger.Relay.Core.Tests;
 
-public sealed class ChannelHandleTests
-{
+public sealed class ChannelHandleTests {
     private static readonly TimeSpan handleLifetime = TimeSpan.FromMinutes(5);
     private const string grant = "grant-one";
     private const int grantChars = 22;
@@ -17,16 +16,14 @@ public sealed class ChannelHandleTests
     private readonly byte[] key = RandomNumberGenerator.GetBytes(RelayLimits.MinHandleKeyBytes);
     private readonly ChannelHandle handles;
 
-    public ChannelHandleTests()
-    {
+    public ChannelHandleTests() {
         handles = new ChannelHandle(new HandleKeys(key, null), time);
     }
 
     [Theory]
     [InlineData(RelayRole.Cli)]
     [InlineData(RelayRole.Web)]
-    public void ShouldVerifyHandleItSigned(RelayRole role)
-    {
+    public void ShouldVerifyHandleItSigned(RelayRole role) {
         DateTimeOffset expires = time.GetUtcNow() + handleLifetime;
         string? roleGrant = role == RelayRole.Web ? grant : null;
         string handle = role == RelayRole.Web ? handles.SignWeb(Channels.One, expires, grant) : handles.SignCli(Channels.One, expires);
@@ -37,8 +34,7 @@ public sealed class ChannelHandleTests
     }
 
     [Fact]
-    public void ShouldCreateDistinctGrantsOf16Bytes()
-    {
+    public void ShouldCreateDistinctGrantsOf16Bytes() {
         string first = ChannelHandle.NewGrant();
 
         string second = ChannelHandle.NewGrant();
@@ -47,8 +43,7 @@ public sealed class ChannelHandleTests
     }
 
     [Fact]
-    public void ShouldRefuseTicketWhenGrantMissing()
-    {
+    public void ShouldRefuseTicketWhenGrantMissing() {
         string ticket = Sealed($"{{\"K\":\"t\",\"C\":\"{Channels.One.Value}\",\"R\":\"web\",\"E\":{LiveExpiry(ticketLifetime)}}}");
 
         TicketCheck check = handles.VerifyTicket(ticket);
@@ -57,8 +52,7 @@ public sealed class ChannelHandleTests
     }
 
     [Fact]
-    public void ShouldRefuseWebHandleWhenGrantMissing()
-    {
+    public void ShouldRefuseWebHandleWhenGrantMissing() {
         string handle = Sealed($"{{\"K\":\"h\",\"C\":\"{Channels.One.Value}\",\"R\":\"web\",\"E\":{LiveExpiry(handleLifetime)}}}");
 
         HandleClaims? claims = handles.Verify(handle);
@@ -67,8 +61,7 @@ public sealed class ChannelHandleTests
     }
 
     [Fact]
-    public void ShouldRejectHandleWithTamperedChannel()
-    {
+    public void ShouldRejectHandleWithTamperedChannel() {
         string[] parts = handles.SignCli(Channels.One, time.GetUtcNow() + handleLifetime).Split('.');
         string payload = Encoding.UTF8.GetString(Base64Url.DecodeFromChars(parts[0]))
             .Replace(Channels.One.Value, Channels.Two.Value, StringComparison.Ordinal);
@@ -84,8 +77,7 @@ public sealed class ChannelHandleTests
     [InlineData("no-dot")]
     [InlineData("!!.!!")]
     [InlineData("e30.!!")]
-    public void ShouldRejectMalformedHandle(string? handle)
-    {
+    public void ShouldRejectMalformedHandle(string? handle) {
         HandleClaims? claims = handles.Verify(handle);
 
         Assert.Null(claims);
@@ -100,8 +92,7 @@ public sealed class ChannelHandleTests
 
     [Theory]
     [MemberData(nameof(NonCanonicalVariants))]
-    public void ShouldRejectNonCanonicalHandle(Func<string, string> rewrite)
-    {
+    public void ShouldRejectNonCanonicalHandle(Func<string, string> rewrite) {
         string handle = rewrite(handles.SignCli(Channels.One, time.GetUtcNow() + handleLifetime));
 
         HandleClaims? claims = handles.Verify(handle);
@@ -110,8 +101,7 @@ public sealed class ChannelHandleTests
     }
 
     [Fact]
-    public void ShouldRejectHandleAtItsExpiry()
-    {
+    public void ShouldRejectHandleAtItsExpiry() {
         string handle = handles.SignCli(Channels.One, time.GetUtcNow() + handleLifetime);
         time.Advance(handleLifetime);
 
@@ -121,8 +111,7 @@ public sealed class ChannelHandleTests
     }
 
     [Fact]
-    public void ShouldVerifyHandleSignedWithPreviousKey()
-    {
+    public void ShouldVerifyHandleSignedWithPreviousKey() {
         DateTimeOffset expires = time.GetUtcNow() + handleLifetime;
         string handle = handles.SignCli(Channels.One, expires);
         ChannelHandle rotated = new(new HandleKeys(RandomNumberGenerator.GetBytes(RelayLimits.MinHandleKeyBytes), key), time);
@@ -133,8 +122,7 @@ public sealed class ChannelHandleTests
     }
 
     [Fact]
-    public void ShouldRejectSignedHandleWithUnknownRole()
-    {
+    public void ShouldRejectSignedHandleWithUnknownRole() {
         string handle = Sealed($$"""{"K":"h","C":"{{Channels.One.Value}}","R":"admin","E":{{LiveExpiry(handleLifetime)}}}""");
 
         HandleClaims? claims = handles.Verify(handle);
@@ -145,8 +133,7 @@ public sealed class ChannelHandleTests
     [Theory]
     [InlineData("not json")]
     [InlineData("{\"K\":\"t\",\"C\":\"x\",\"R\":\"web\",\"E\":\"soon\"}")]
-    public void ShouldRejectSignedTicketWithMalformedPayload(string payload)
-    {
+    public void ShouldRejectSignedTicketWithMalformedPayload(string payload) {
         string ticket = Sealed(payload);
 
         TicketCheck check = handles.VerifyTicket(ticket);
@@ -155,8 +142,7 @@ public sealed class ChannelHandleTests
     }
 
     [Fact]
-    public void ShouldNotAcceptTicketAsHandle()
-    {
+    public void ShouldNotAcceptTicketAsHandle() {
         string ticket = handles.SignTicket(Channels.One, time.GetUtcNow() + ticketLifetime, grant);
 
         HandleClaims? claims = handles.Verify(ticket);
@@ -165,8 +151,7 @@ public sealed class ChannelHandleTests
     }
 
     [Fact]
-    public void ShouldNotAcceptHandleAsTicket()
-    {
+    public void ShouldNotAcceptHandleAsTicket() {
         string handle = handles.SignWeb(Channels.One, time.GetUtcNow() + handleLifetime, grant);
 
         TicketCheck check = handles.VerifyTicket(handle);
@@ -175,8 +160,7 @@ public sealed class ChannelHandleTests
     }
 
     [Fact]
-    public void ShouldAcceptTicketBeforeItsExpiry()
-    {
+    public void ShouldAcceptTicketBeforeItsExpiry() {
         string ticket = handles.SignTicket(Channels.One, time.GetUtcNow() + ticketLifetime, grant);
         time.Advance(ticketLifetime - TimeSpan.FromSeconds(1));
 
@@ -186,8 +170,7 @@ public sealed class ChannelHandleTests
     }
 
     [Fact]
-    public void ShouldReportTicketExpiredAtItsExpiry()
-    {
+    public void ShouldReportTicketExpiredAtItsExpiry() {
         string ticket = handles.SignTicket(Channels.One, time.GetUtcNow() + ticketLifetime, grant);
         time.Advance(ticketLifetime);
 
@@ -196,16 +179,14 @@ public sealed class ChannelHandleTests
         Assert.Equal(new TicketCheck(TicketOutcome.Expired, null), check);
     }
 
-    private string Sealed(string payload)
-    {
+    private string Sealed(string payload) {
         byte[] body = Encoding.UTF8.GetBytes(payload);
         return $"{Base64Url.EncodeToString(body)}.{Base64Url.EncodeToString(HMACSHA256.HashData(key, body))}";
     }
 
     private long LiveExpiry(TimeSpan lifetime) => (time.GetUtcNow() + lifetime).ToUnixTimeSeconds();
 
-    private static string FlipTrailingBit(string token)
-    {
+    private static string FlipTrailingBit(string token) {
         const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
         int last = alphabet.IndexOf(token[^1], StringComparison.Ordinal);
         return string.Concat(token.AsSpan(0, token.Length - 1), alphabet[last ^ 1].ToString());

@@ -2,8 +2,7 @@ using System.Threading.Channels;
 
 namespace Jobranger.Relay.Core.Tests;
 
-internal sealed class RecordingStore(TimeProvider time) : ISweepable
-{
+internal sealed class RecordingStore(TimeProvider time) : ISweepable {
     private static readonly TimeSpan wait = TimeSpan.FromSeconds(10);
 
     private readonly Channel<DateTimeOffset> sweeps = Channel.CreateUnbounded<DateTimeOffset>();

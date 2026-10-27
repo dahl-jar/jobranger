@@ -5,8 +5,7 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Jobranger.Relay.Tests;
 
-public sealed class HubDeliveryTests
-{
+public sealed class HubDeliveryTests {
     private const string method = "Receive";
 
     private static readonly TimeSpan sendTimeout = TimeSpan.FromSeconds(5);
@@ -18,8 +17,7 @@ public sealed class HubDeliveryTests
     private readonly FakeHubConnection otherReading = new("web-other");
     private readonly HubDelivery delivery;
 
-    public HubDeliveryTests()
-    {
+    public HubDeliveryTests() {
         connections.Add(stalled);
         connections.Add(reading);
         connections.Add(otherReading);
@@ -27,16 +25,14 @@ public sealed class HubDeliveryTests
     }
 
     [Fact]
-    public async Task ShouldSerializeMessageOnceForAllRecipients()
-    {
+    public async Task ShouldSerializeMessageOnceForAllRecipients() {
         await delivery.Send([reading.ConnectionId, otherReading.ConnectionId], method, []);
 
         Assert.Same(Assert.Single(reading.Written), Assert.Single(otherReading.Written));
     }
 
     [Fact]
-    public void ShouldDeliverToOtherConnectionsWhileOneStalls()
-    {
+    public void ShouldDeliverToOtherConnectionsWhileOneStalls() {
         _ = delivery.Send([stalled.ConnectionId, reading.ConnectionId], method, []);
 
         Assert.Single(reading.Written);
@@ -44,8 +40,7 @@ public sealed class HubDeliveryTests
     }
 
     [Fact]
-    public async Task ShouldCloseOnlyConnectionThatStallsPastSendTimeout()
-    {
+    public async Task ShouldCloseOnlyConnectionThatStallsPastSendTimeout() {
         Task sending = delivery.Send([stalled.ConnectionId, reading.ConnectionId], method, []);
         time.Advance(sendTimeout);
 
@@ -55,8 +50,7 @@ public sealed class HubDeliveryTests
     }
 
     [Fact]
-    public void ShouldCancelStalledSendAtSendTimeout()
-    {
+    public void ShouldCancelStalledSendAtSendTimeout() {
         _ = delivery.Send([stalled.ConnectionId], method, []);
         CancellationToken send = Assert.Single(stalled.StalledWrites);
         time.Advance(sendTimeout - TimeSpan.FromMilliseconds(1));
@@ -68,8 +62,7 @@ public sealed class HubDeliveryTests
     }
 
     [Fact]
-    public async Task ShouldSkipConnectionThatAlreadyClosed()
-    {
+    public async Task ShouldSkipConnectionThatAlreadyClosed() {
         connections.Remove(otherReading.ConnectionId);
 
         await delivery.Send([reading.ConnectionId, otherReading.ConnectionId], method, []);

@@ -1,15 +1,18 @@
 import 'fake-indexeddb/auto'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import styles from '@/app/PublicLayout.module.css'
 import { PageLoading } from '@/app/PageLoading'
 import { routes } from '@/app/router'
+import { preloadLazyRoutes } from '@/test/lazyRoutes'
 import { renderRoutes } from '@/test/render'
 
 const LANDING_HEADLINE = 'jobranger checks Norwegian software and data engineering ads against your CV.'
 
 describe('routes', () => {
+  beforeAll(() => preloadLazyRoutes(routes))
+
   it('should show No page here for an unknown path', async () => {
     renderRoutes(routes, '/nowhere')
 

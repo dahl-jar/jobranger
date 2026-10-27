@@ -2,8 +2,7 @@ using Jobranger.Relay.Telemetry;
 
 namespace Jobranger.Relay.Pairing;
 
-internal static class RelayProblems
-{
+internal static class RelayProblems {
     public const string CodeKey = "code";
 
     private const string traceIdKey = "traceId";
@@ -25,23 +24,19 @@ internal static class RelayProblems
     public static readonly RelayProblem RateLimited = new(StatusCodes.Status429TooManyRequests, "rate_limited");
     public static readonly RelayProblem RelayFull = new(StatusCodes.Status503ServiceUnavailable, "relay_full");
 
-    public static void Customize(ProblemDetailsContext context)
-    {
+    public static void Customize(ProblemDetailsContext context) {
         context.ProblemDetails.Extensions.Remove(traceIdKey);
         context.ProblemDetails.Extensions.TryAdd(CodeKey, CodeFor(context.ProblemDetails.Status));
-        if (context.ProblemDetails.Extensions[CodeKey] is string code)
-        {
+        if (context.ProblemDetails.Extensions[CodeKey] is string code) {
             context.HttpContext.RequestServices.GetRequiredService<RelayMetrics>().RequestRejected(code);
         }
 
-        if (context.ProblemDetails.Status == StatusCodes.Status429TooManyRequests)
-        {
+        if (context.ProblemDetails.Status == StatusCodes.Status429TooManyRequests) {
             context.ProblemDetails.Type ??= tooManyRequestsType;
         }
     }
 
-    private static string CodeFor(int? status) => status switch
-    {
+    private static string CodeFor(int? status) => status switch {
         StatusCodes.Status400BadRequest => InvalidRequest.Code,
         StatusCodes.Status404NotFound => "not_found",
         StatusCodes.Status405MethodNotAllowed => "method_not_allowed",

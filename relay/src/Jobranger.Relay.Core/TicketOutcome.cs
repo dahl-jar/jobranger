@@ -1,7 +1,6 @@
 namespace Jobranger.Relay.Core;
 
-public enum TicketOutcome
-{
+public enum TicketOutcome {
     Valid,
     Expired,
     Invalid,

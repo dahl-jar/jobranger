@@ -8,7 +8,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 SCHEMAS = ("payload", "envelope")
-PYTHON_OUT = Path("cli/src/jobranger/contract")
+PYTHON_OUT = Path("cli-python/src/jobranger/contract")
 TYPESCRIPT_OUT = Path("web/src/features/relay/contract")
 FIXTURE_SETS = (
     ("envelopeFixtures", "envelope", "Envelope"),

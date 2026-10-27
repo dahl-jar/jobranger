@@ -5,8 +5,7 @@ using Jobranger.Relay.Core;
 
 namespace Jobranger.Relay.Tests;
 
-internal static class Envelopes
-{
+internal static class Envelopes {
     private const int sidBytes = 16;
     private const int unsupportedVersion = 2;
 
@@ -18,8 +17,7 @@ internal static class Envelopes
 
     public static JsonObject Hello(ChannelId channel, string sid) => Load("hello.json", channel, sid);
 
-    public static JsonObject WithUnsupportedVersion(ChannelId channel)
-    {
+    public static JsonObject WithUnsupportedVersion(ChannelId channel) {
         JsonObject envelope = Data(channel, NewSid());
         envelope["v"] = unsupportedVersion;
         return envelope;
@@ -27,8 +25,7 @@ internal static class Envelopes
 
     public static string Compact(string json) => JsonNode.Parse(json)!.ToJsonString();
 
-    private static JsonObject Load(string fileName, ChannelId channel, string sid)
-    {
+    private static JsonObject Load(string fileName, ChannelId channel, string sid) {
         JsonObject envelope = JsonNode.Parse(File.ReadAllText(Path.Combine(folder, fileName)))!.AsObject();
         envelope["channel"] = channel.Value;
         envelope["sid"] = sid;

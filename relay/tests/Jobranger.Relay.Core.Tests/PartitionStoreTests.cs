@@ -3,8 +3,7 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Jobranger.Relay.Core.Tests;
 
-public sealed class PartitionStoreTests : IDisposable
-{
+public sealed class PartitionStoreTests : IDisposable {
     private const int cap = 2;
     private const int permits = 2;
     private const int floodSize = 100;
@@ -19,16 +18,13 @@ public sealed class PartitionStoreTests : IDisposable
     private readonly FakeTimeProvider time = new();
     private readonly PartitionStore store;
 
-    public PartitionStoreTests()
-    {
+    public PartitionStoreTests() {
         store = new PartitionStore(() => new WindowLimiter(permits, window, time), cap, time, overflowShards: 1, shardKey: keyOne);
     }
 
     [Fact]
-    public void ShouldKeepLivePartitionsAtCapDuringFlood()
-    {
-        for (int client = 0; client < floodSize; client++)
-        {
+    public void ShouldKeepLivePartitionsAtCapDuringFlood() {
+        for (int client = 0; client < floodSize; client++) {
             Acquired($"client-{client}");
         }
 
@@ -38,8 +34,7 @@ public sealed class PartitionStoreTests : IDisposable
     }
 
     [Fact]
-    public void ShouldKeepExistingClientWindowDuringFlood()
-    {
+    public void ShouldKeepExistingClientWindowDuringFlood() {
         Acquired("client-a");
         Acquired("client-b");
         Flood();
@@ -50,8 +45,7 @@ public sealed class PartitionStoreTests : IDisposable
     }
 
     [Fact]
-    public void ShouldRefuseOverflowClientsAtPerClientLimit()
-    {
+    public void ShouldRefuseOverflowClientsAtPerClientLimit() {
         Acquired("client-a");
         Acquired("client-b");
         Acquired("overflow-one");
@@ -63,8 +57,7 @@ public sealed class PartitionStoreTests : IDisposable
     }
 
     [Fact]
-    public void ShouldFreePartitionsOnceTheirWindowsEnd()
-    {
+    public void ShouldFreePartitionsOnceTheirWindowsEnd() {
         Acquired("client-a");
         Acquired("client-b");
         time.Advance(window);
@@ -76,8 +69,7 @@ public sealed class PartitionStoreTests : IDisposable
     }
 
     [Fact]
-    public void ShouldDropIdlePartitionsOnSweep()
-    {
+    public void ShouldDropIdlePartitionsOnSweep() {
         Acquired("client-a");
         Acquired("client-b");
         time.Advance(window);
@@ -89,8 +81,7 @@ public sealed class PartitionStoreTests : IDisposable
     }
 
     [Fact]
-    public void ShouldKeepActivePartitionAcrossSweep()
-    {
+    public void ShouldKeepActivePartitionAcrossSweep() {
         Acquired("client-a");
         Acquired("client-a");
         time.Advance(TimeSpan.FromSeconds(1));
@@ -102,8 +93,7 @@ public sealed class PartitionStoreTests : IDisposable
     }
 
     [Fact]
-    public void ShouldAdmitClientInOtherShardWhenOneIsExhausted()
-    {
+    public void ShouldAdmitClientInOtherShardWhenOneIsExhausted() {
         using PartitionStore sharded = Sharded(keyOne);
         Acquired(sharded, "client-a");
         string exhausted = "flood-0";
@@ -117,12 +107,10 @@ public sealed class PartitionStoreTests : IDisposable
     }
 
     [Fact]
-    public void ShouldRefuseNewClientOnceEveryShardIsExhausted()
-    {
+    public void ShouldRefuseNewClientOnceEveryShardIsExhausted() {
         using PartitionStore sharded = Sharded(keyOne);
         Acquired(sharded, "client-a");
-        for (int client = 0; client < floodSize; client++)
-        {
+        for (int client = 0; client < floodSize; client++) {
             Acquired(sharded, $"flood-{client}");
         }
 
@@ -132,15 +120,13 @@ public sealed class PartitionStoreTests : IDisposable
     }
 
     [Fact]
-    public void ShouldConfineNetworkFloodToItsOwnShard()
-    {
+    public void ShouldConfineNetworkFloodToItsOwnShard() {
         using PartitionStore sharded = Sharded(keyOne);
         Acquired(sharded, "client-a");
         string floodNetwork = "flood-net";
         string otherNetwork = Enumerable.Range(0, sampleClients).Select(network => $"net-{network}")
             .First(network => sharded.ShardOf(network) != sharded.ShardOf(floodNetwork));
-        for (int client = 0; client < floodSize; client++)
-        {
+        for (int client = 0; client < floodSize; client++) {
             AcquiredIn(sharded, $"flood-{client}", floodNetwork);
         }
 
@@ -150,8 +136,7 @@ public sealed class PartitionStoreTests : IDisposable
     }
 
     [Fact]
-    public void ShouldPickSameShardForSameClientUnderSameKey()
-    {
+    public void ShouldPickSameShardForSameClientUnderSameKey() {
         using PartitionStore first = Sharded(keyOne);
         using PartitionStore second = Sharded(keyOne);
 
@@ -161,8 +146,7 @@ public sealed class PartitionStoreTests : IDisposable
     }
 
     [Fact]
-    public void ShouldPickShardsByKey()
-    {
+    public void ShouldPickShardsByKey() {
         using PartitionStore first = Sharded(keyOne);
         using PartitionStore second = Sharded(keyTwo);
 
@@ -172,8 +156,7 @@ public sealed class PartitionStoreTests : IDisposable
     }
 
     [Fact]
-    public void ShouldSpreadClientsOverEveryShard()
-    {
+    public void ShouldSpreadClientsOverEveryShard() {
         using PartitionStore sharded = Sharded(keyOne);
 
         int used = Enumerable.Range(0, sampleClients).Select(client => sharded.ShardOf($"c{client}")).Distinct().Count();
@@ -183,14 +166,12 @@ public sealed class PartitionStoreTests : IDisposable
 
     public void Dispose() => store.Dispose();
 
-    private static bool Acquired(PartitionStore target, string key)
-    {
+    private static bool Acquired(PartitionStore target, string key) {
         using RateLimitLease lease = target.AttemptAcquire(key);
         return lease.IsAcquired;
     }
 
-    private static bool AcquiredIn(PartitionStore target, string key, string network)
-    {
+    private static bool AcquiredIn(PartitionStore target, string key, string network) {
         using RateLimitLease lease = target.AttemptAcquire(key, network);
         return lease.IsAcquired;
     }
@@ -198,16 +179,13 @@ public sealed class PartitionStoreTests : IDisposable
     private PartitionStore Sharded(byte[] key) =>
         new(() => new WindowLimiter(1, window, time), 1, time, overflowShards: shards, shardKey: key);
 
-    private void Flood()
-    {
-        for (int client = 0; client < floodSize; client++)
-        {
+    private void Flood() {
+        for (int client = 0; client < floodSize; client++) {
             Acquired($"flood-{client}");
         }
     }
 
-    private bool Acquired(string key)
-    {
+    private bool Acquired(string key) {
         using RateLimitLease lease = store.AttemptAcquire(key);
         return lease.IsAcquired;
     }

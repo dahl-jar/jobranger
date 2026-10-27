@@ -5,8 +5,7 @@ using Xunit;
 
 namespace Jobranger.Relay.Core.Tests;
 
-public sealed class EnvelopeContractTests
-{
+public sealed class EnvelopeContractTests {
     private static readonly string contracts = Path.Combine(AppContext.BaseDirectory, "contracts");
     private static readonly string goldenFolder = Path.Combine(contracts, "fixtures", "envelope");
     private static readonly string invalidFolder = Path.Combine(contracts, "fixtures", "envelope-invalid");
@@ -24,8 +23,7 @@ public sealed class EnvelopeContractTests
 
     [Theory]
     [MemberData(nameof(GoldenFixtures))]
-    public void ShouldRoundTripEnvelopeFixture(string fileName)
-    {
+    public void ShouldRoundTripEnvelopeFixture(string fileName) {
         string json = File.ReadAllText(Path.Combine(goldenFolder, fileName));
         Envelope? envelope = JsonSerializer.Deserialize(json, EnvelopeJsonContext.Default.Envelope);
 
@@ -35,8 +33,7 @@ public sealed class EnvelopeContractTests
     }
 
     [Fact]
-    public void ShouldCoverEverySchemaProperty()
-    {
+    public void ShouldCoverEverySchemaProperty() {
         JsonNode schema = JsonNode.Parse(File.ReadAllText(Path.Combine(contracts, "envelope.schema.json")))!;
         IEnumerable<string> schemaNames = schema["oneOf"]!.AsArray()
             .Select(reference => reference!["$ref"]!.GetValue<string>().Split('/')[^1])
@@ -53,8 +50,7 @@ public sealed class EnvelopeContractTests
 
     [Theory]
     [MemberData(nameof(MissingPropertyFixtures))]
-    public void ShouldRejectEnvelopeWithoutRequiredProperty(string fileName)
-    {
+    public void ShouldRejectEnvelopeWithoutRequiredProperty(string fileName) {
         string json = File.ReadAllText(Path.Combine(invalidFolder, fileName));
 
         Assert.Throws<JsonException>(() => JsonSerializer.Deserialize(json, EnvelopeJsonContext.Default.Envelope));
@@ -62,8 +58,7 @@ public sealed class EnvelopeContractTests
 
     [Theory]
     [MemberData(nameof(GoldenFixtures))]
-    public void ShouldAcceptGoldenEnvelope(string fileName)
-    {
+    public void ShouldAcceptGoldenEnvelope(string fileName) {
         byte[] json = File.ReadAllBytes(Path.Combine(goldenFolder, fileName));
 
         bool accepted = EnvelopeRules.TryParse(json, out Envelope? envelope);
@@ -74,16 +69,14 @@ public sealed class EnvelopeContractTests
 
     [Theory]
     [MemberData(nameof(InvalidFixtures))]
-    public void ShouldRejectInvalidEnvelope(string fileName)
-    {
+    public void ShouldRejectInvalidEnvelope(string fileName) {
         byte[] json = File.ReadAllBytes(Path.Combine(invalidFolder, fileName));
 
         Assert.False(EnvelopeRules.TryParse(json, out _));
     }
 
     [Fact]
-    public void ShouldFindEveryInvalidFixture()
-    {
+    public void ShouldFindEveryInvalidFixture() {
         Assert.Equal(38, InvalidFixtures.Count);
     }
 
@@ -92,8 +85,7 @@ public sealed class EnvelopeContractTests
     [InlineData("\"extra\":\"\\ud800\",")]
     [InlineData("\"\\ud800\":1,")]
     [InlineData("\"extra\":1e400,")]
-    public void ShouldRejectEnvelopeWithUnsafeJson(string extra)
-    {
+    public void ShouldRejectEnvelopeWithUnsafeJson(string extra) {
         byte[] json = WithExtra(extra);
 
         Assert.False(EnvelopeRules.TryParse(json, out _));
@@ -102,8 +94,7 @@ public sealed class EnvelopeContractTests
     [Theory]
     [InlineData(ContractLimits.MaxJsonDepth - 1, true)]
     [InlineData(ContractLimits.MaxJsonDepth, false)]
-    public void ShouldLimitNestingDepth(int arrays, bool accepted)
-    {
+    public void ShouldLimitNestingDepth(int arrays, bool accepted) {
         byte[] json = WithExtra($"\"extra\":{new string('[', arrays)}{new string(']', arrays)},");
 
         Assert.Equal(accepted, EnvelopeRules.TryParse(json, out _));
@@ -114,8 +105,7 @@ public sealed class EnvelopeContractTests
     [InlineData("-", ContractLimits.MaxIntegerDigits + 1, false)]
     [InlineData("", ContractLimits.MaxIntegerDigits + 1, false)]
     [InlineData("0.", ContractLimits.MaxIntegerDigits + 1, true)]
-    public void ShouldLimitIntegerDigits(string prefix, int digits, bool accepted)
-    {
+    public void ShouldLimitIntegerDigits(string prefix, int digits, bool accepted) {
         byte[] json = WithExtra($"\"extra\":{prefix}{new string('9', digits)},");
 
         Assert.Equal(accepted, EnvelopeRules.TryParse(json, out _));
@@ -124,8 +114,7 @@ public sealed class EnvelopeContractTests
     [Theory]
     [InlineData(1)]
     [InlineData(maxSeq)]
-    public void ShouldAcceptDataSeqAtBounds(long seq)
-    {
+    public void ShouldAcceptDataSeqAtBounds(long seq) {
         string json = File.ReadAllText(Path.Combine(goldenFolder, "data.json"));
         string bounded = json.Replace("\"seq\": 1,", $"\"seq\": {seq},", StringComparison.Ordinal);
 
@@ -137,22 +126,19 @@ public sealed class EnvelopeContractTests
     [InlineData("data.json", ContractLimits.CiphertextB64MaxChars)]
     [InlineData("hello.json", helloCiphertextMinChars)]
     [InlineData("hello.json", helloCiphertextMaxChars)]
-    public void ShouldAcceptCiphertextAtBounds(string fileName, int length)
-    {
+    public void ShouldAcceptCiphertextAtBounds(string fileName, int length) {
         JsonNode envelope = JsonNode.Parse(File.ReadAllText(Path.Combine(goldenFolder, fileName)))!;
         envelope["ciphertext"] = new string('A', length);
 
         Assert.True(EnvelopeRules.TryParse(Encoding.UTF8.GetBytes(envelope.ToJsonString()), out _));
     }
 
-    private static byte[] WithExtra(string extra)
-    {
+    private static byte[] WithExtra(string extra) {
         string json = File.ReadAllText(Path.Combine(goldenFolder, "data.json"));
         return Encoding.UTF8.GetBytes(json.Replace("\"v\": 1,", "\"v\": 1, " + extra, StringComparison.Ordinal));
     }
 
-    private static TheoryData<string> FileNames(string folder, string pattern)
-    {
+    private static TheoryData<string> FileNames(string folder, string pattern) {
         IEnumerable<string> names = Directory.GetFiles(folder, pattern)
             .Select(Path.GetFileName)
             .OfType<string>()

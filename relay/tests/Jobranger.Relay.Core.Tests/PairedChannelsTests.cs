@@ -2,8 +2,7 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Jobranger.Relay.Core.Tests;
 
-public sealed class PairedChannelsTests
-{
+public sealed class PairedChannelsTests {
     private const int capacity = 2;
 
     private static readonly TimeSpan ticketLifetime = TimeSpan.FromDays(90);
@@ -13,14 +12,12 @@ public sealed class PairedChannelsTests
     private readonly FakeTimeProvider time = new();
     private readonly PairedChannels paired;
 
-    public PairedChannelsTests()
-    {
+    public PairedChannelsTests() {
         paired = new PairedChannels(time, capacity);
     }
 
     [Fact]
-    public void ShouldKnowOnlyRecordedChannels()
-    {
+    public void ShouldKnowOnlyRecordedChannels() {
         paired.Record(Channels.One);
 
         (bool, bool) known = (paired.Touch(Channels.One), paired.Touch(Channels.Two));
@@ -29,8 +26,7 @@ public sealed class PairedChannelsTests
     }
 
     [Fact]
-    public void ShouldForgetChannelOnceTicketLifetimeEnds()
-    {
+    public void ShouldForgetChannelOnceTicketLifetimeEnds() {
         paired.Record(Channels.One);
         time.Advance(ticketLifetime);
 
@@ -40,8 +36,7 @@ public sealed class PairedChannelsTests
     }
 
     [Fact]
-    public void ShouldExtendChannelWhenRecordedAgain()
-    {
+    public void ShouldExtendChannelWhenRecordedAgain() {
         paired.Record(Channels.One);
         time.Advance(sixtyDays);
         paired.Record(Channels.One);
@@ -53,8 +48,7 @@ public sealed class PairedChannelsTests
     }
 
     [Fact]
-    public void ShouldExtendChannelWhenTouched()
-    {
+    public void ShouldExtendChannelWhenTouched() {
         paired.Record(Channels.One);
         time.Advance(sixtyDays);
         paired.Touch(Channels.One);
@@ -66,8 +60,7 @@ public sealed class PairedChannelsTests
     }
 
     [Fact]
-    public void ShouldEvictLeastRecentlyUsedChannelWhenFull()
-    {
+    public void ShouldEvictLeastRecentlyUsedChannelWhenFull() {
         paired.Record(Channels.One);
         time.Advance(oneDay);
         paired.Record(Channels.Two);
@@ -82,8 +75,7 @@ public sealed class PairedChannelsTests
     }
 
     [Fact]
-    public void ShouldDropExpiredChannelsOnSweep()
-    {
+    public void ShouldDropExpiredChannelsOnSweep() {
         paired.Record(Channels.One);
         time.Advance(oneDay);
         paired.Record(Channels.Two);
@@ -96,8 +88,7 @@ public sealed class PairedChannelsTests
     }
 
     [Fact]
-    public void ShouldKeepEveryChannelWhenKnownChannelIsRecordedAgain()
-    {
+    public void ShouldKeepEveryChannelWhenKnownChannelIsRecordedAgain() {
         paired.Record(Channels.One);
         paired.Record(Channels.Two);
 

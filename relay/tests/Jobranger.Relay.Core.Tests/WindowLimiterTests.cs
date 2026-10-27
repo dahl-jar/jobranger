@@ -3,8 +3,7 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Jobranger.Relay.Core.Tests;
 
-public sealed class WindowLimiterTests : IDisposable
-{
+public sealed class WindowLimiterTests : IDisposable {
     private const int permits = 2;
 
     private static readonly TimeSpan window = TimeSpan.FromSeconds(60);
@@ -13,14 +12,12 @@ public sealed class WindowLimiterTests : IDisposable
     private readonly FakeTimeProvider time = new();
     private readonly WindowLimiter limiter;
 
-    public WindowLimiterTests()
-    {
+    public WindowLimiterTests() {
         limiter = new WindowLimiter(permits, window, time);
     }
 
     [Fact]
-    public void ShouldRefuseRequestBeyondPermitsInWindow()
-    {
+    public void ShouldRefuseRequestBeyondPermitsInWindow() {
         Taken(permits);
 
         using RateLimitLease lease = limiter.AttemptAcquire();
@@ -29,8 +26,7 @@ public sealed class WindowLimiterTests : IDisposable
     }
 
     [Fact]
-    public void ShouldReportTimeLeftInWindowAsRetryAfter()
-    {
+    public void ShouldReportTimeLeftInWindowAsRetryAfter() {
         Taken(permits);
         time.Advance(partWindow);
 
@@ -40,8 +36,7 @@ public sealed class WindowLimiterTests : IDisposable
     }
 
     [Fact]
-    public void ShouldAdmitAgainOnceWindowEnds()
-    {
+    public void ShouldAdmitAgainOnceWindowEnds() {
         Taken(permits);
         time.Advance(window);
 
@@ -51,8 +46,7 @@ public sealed class WindowLimiterTests : IDisposable
     }
 
     [Fact]
-    public void ShouldNotBeIdleWhileWindowHoldsUsedPermits()
-    {
+    public void ShouldNotBeIdleWhileWindowHoldsUsedPermits() {
         Taken(1);
         time.Advance(window - TimeSpan.FromSeconds(1));
 
@@ -62,8 +56,7 @@ public sealed class WindowLimiterTests : IDisposable
     }
 
     [Fact]
-    public void ShouldBeIdleSinceWindowEnded()
-    {
+    public void ShouldBeIdleSinceWindowEnded() {
         Taken(1);
         time.Advance(window + partWindow);
 
@@ -73,8 +66,7 @@ public sealed class WindowLimiterTests : IDisposable
     }
 
     [Fact]
-    public void ShouldBeIdleFromWindowEnd()
-    {
+    public void ShouldBeIdleFromWindowEnd() {
         Taken(1);
         time.Advance(window);
 
@@ -84,8 +76,7 @@ public sealed class WindowLimiterTests : IDisposable
     }
 
     [Fact]
-    public void ShouldOfferOnlyRetryAfterOnRefusal()
-    {
+    public void ShouldOfferOnlyRetryAfterOnRefusal() {
         Taken(permits);
 
         using RateLimitLease lease = limiter.AttemptAcquire();
@@ -96,8 +87,7 @@ public sealed class WindowLimiterTests : IDisposable
     }
 
     [Fact]
-    public void ShouldOfferNoMetadataOnGrant()
-    {
+    public void ShouldOfferNoMetadataOnGrant() {
         using RateLimitLease lease = limiter.AttemptAcquire();
 
         Assert.Equal(
@@ -106,8 +96,7 @@ public sealed class WindowLimiterTests : IDisposable
     }
 
     [Fact]
-    public async Task ShouldAdmitAsyncRequestWithinPermits()
-    {
+    public async Task ShouldAdmitAsyncRequestWithinPermits() {
         using RateLimitLease lease = await limiter.AcquireAsync(1, TestContext.Current.CancellationToken);
 
         Assert.True(lease.IsAcquired);
@@ -115,10 +104,8 @@ public sealed class WindowLimiterTests : IDisposable
 
     public void Dispose() => limiter.Dispose();
 
-    private void Taken(int count)
-    {
-        for (int take = 0; take < count; take++)
-        {
+    private void Taken(int count) {
+        for (int take = 0; take < count; take++) {
             using RateLimitLease lease = limiter.AttemptAcquire();
             Assert.True(lease.IsAcquired);
         }

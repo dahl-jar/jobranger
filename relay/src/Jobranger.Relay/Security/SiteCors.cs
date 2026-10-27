@@ -5,12 +5,10 @@ using Microsoft.Net.Http.Headers;
 
 namespace Jobranger.Relay.Security;
 
-internal static class SiteCors
-{
+internal static class SiteCors {
     public const string Policy = "site";
 
-    public static IServiceCollection AddSiteCors(this IServiceCollection services)
-    {
+    public static IServiceCollection AddSiteCors(this IServiceCollection services) {
         services.AddCors();
         services.AddOptions<CorsOptions>().Configure<IOptions<RelayOptions>>((cors, relay) =>
             cors.AddPolicy(Policy, policy => policy

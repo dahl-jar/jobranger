@@ -2,13 +2,13 @@ using System.Net;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Jobranger.Relay.Core;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Jobranger.Relay.Tests;
 
-public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassFixture<RelayFactory>, IDisposable
-{
+public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassFixture<RelayFactory>, IDisposable {
     private const string vectorSeed = "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60";
     private const string vectorChannel = "sVpCkQYZPnMOnyB34PLScKMrmg2wDUTIPjk5VO0U880";
     private const int grantChars = 22;
@@ -21,8 +21,7 @@ public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassF
     private readonly RelayApi api = RelayApi.For(factory, Addresses.Next());
 
     [Fact]
-    public async Task ShouldIssueNonceValidForSixtySeconds()
-    {
+    public async Task ShouldIssueNonceValidForSixtySeconds() {
         using HttpResponseMessage response = await api.Post("/pair/nonce", RelayApi.NonceBody(null));
 
         JsonObject body = await RelayApi.Json(response);
@@ -32,8 +31,7 @@ public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassF
     }
 
     [Fact]
-    public async Task ShouldReturnCodeAndCliHandleForValidSignature()
-    {
+    public async Task ShouldReturnCodeAndCliHandleForValidSignature() {
         using CliKey key = new();
         DateTimeOffset now = factory.Time.GetUtcNow();
 
@@ -49,8 +47,7 @@ public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassF
     }
 
     [Fact]
-    public async Task ShouldDeriveChannelFromCliPublicKey()
-    {
+    public async Task ShouldDeriveChannelFromCliPublicKey() {
         using CliKey vector = new(Convert.FromHexString(vectorSeed));
 
         using HttpResponseMessage response = await api.Post("/pair/start", vector.Proof(CliKey.PairStart, await api.Nonce()));
@@ -61,8 +58,7 @@ public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassF
     }
 
     [Fact]
-    public async Task ShouldRejectPairStartWithReusedNonce()
-    {
+    public async Task ShouldRejectPairStartWithReusedNonce() {
         using CliKey key = new();
         string nonce = await api.Nonce();
         using HttpResponseMessage first = await api.Post("/pair/start", key.Proof(CliKey.PairStart, nonce));
@@ -73,8 +69,7 @@ public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassF
     }
 
     [Fact]
-    public async Task ShouldRejectPairStartSignedByAnotherKey()
-    {
+    public async Task ShouldRejectPairStartSignedByAnotherKey() {
         using CliKey key = new();
         using CliKey other = new();
         string nonce = await api.Nonce();
@@ -87,8 +82,7 @@ public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassF
     }
 
     [Fact]
-    public async Task ShouldReturn410ForExpiredNonce()
-    {
+    public async Task ShouldReturn410ForExpiredNonce() {
         using CliKey key = new();
         string nonce = await api.Nonce();
         factory.Time.Advance(nonceLifetime);
@@ -102,8 +96,7 @@ public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassF
     [InlineData("publicKey", "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHUR")]
     [InlineData("signature", "qVDD-Mm74_gqK9b6YfRv4d9RfDKugkD_My-wCZ7TwgmwMkgOqEJ5P1hX1VhBufwboU9p2ClTfd92Ny5TAMV7B")]
     [InlineData("nonce", null)]
-    public async Task ShouldRejectProofWithMalformedField(string field, string? value)
-    {
+    public async Task ShouldRejectProofWithMalformedField(string field, string? value) {
         using CliKey key = new();
         JsonObject proof = key.Proof(CliKey.PairStart, await api.Nonce());
         proof[field] = value;
@@ -117,8 +110,7 @@ public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassF
     [InlineData("/pair/nonce", 2, "unsupported_version")]
     [InlineData("/pair/claim", null, "invalid_request")]
     [InlineData("/session/web", 2, "unsupported_version")]
-    public async Task ShouldRejectRequestWithoutSupportedVersion(string path, int? version, string code)
-    {
+    public async Task ShouldRejectRequestWithoutSupportedVersion(string path, int? version, string code) {
         JsonObject body = new() { ["v"] = version, ["code"] = "KQFB-MXTW", ["ticket"] = "t" };
 
         using HttpResponseMessage response = await api.Post(path, body);
@@ -130,8 +122,7 @@ public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassF
     [InlineData("/pair/nonce", "{\"v\":\"1\"}")]
     [InlineData("/pair/claim", "{\"v\":1,\"code\":\"BBBB-BBBB\",\"code\":\"BBBB-BBBB\"}")]
     [InlineData("/pair/claim", "{\"v\":1,")]
-    public async Task ShouldRejectLooseJson(string path, string body)
-    {
+    public async Task ShouldRejectLooseJson(string path, string body) {
         using HttpResponseMessage response = await api.PostRaw(path, body);
 
         Assert.Equal((HttpStatusCode.BadRequest, "invalid_request"), await RelayApi.Problem(response));
@@ -142,11 +133,9 @@ public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassF
     [InlineData("GET", "/pair/claim", null, HttpStatusCode.MethodNotAllowed, "method_not_allowed")]
     [InlineData("POST", "/pair/unknown", RelayApi.JsonType, HttpStatusCode.NotFound, "not_found")]
     public async Task ShouldNameFrameworkErrorInProblemCode(
-        string method, string path, string? contentType, HttpStatusCode status, string code)
-    {
+        string method, string path, string? contentType, HttpStatusCode status, string code) {
         using HttpRequestMessage request = new(new HttpMethod(method), path);
-        if (contentType is not null)
-        {
+        if (contentType is not null) {
             request.Content = new StringContent("{\"v\":1}", System.Text.Encoding.UTF8, contentType);
         }
 
@@ -156,8 +145,7 @@ public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassF
     }
 
     [Fact]
-    public async Task ShouldReturnWebHandleAndTicketForClaimedCode()
-    {
+    public async Task ShouldReturnWebHandleAndTicketForClaimedCode() {
         using CliKey key = new();
         JsonObject started = await api.StartPairing(key);
         DateTimeOffset now = factory.Time.GetUtcNow();
@@ -176,8 +164,7 @@ public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassF
     }
 
     [Fact]
-    public async Task ShouldClaimCodeTypedInLowercaseWithoutHyphen()
-    {
+    public async Task ShouldClaimCodeTypedInLowercaseWithoutHyphen() {
         using CliKey key = new();
         JsonObject started = await api.StartPairing(key);
         string code = (string)started["code"]!;
@@ -188,8 +175,7 @@ public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassF
     }
 
     [Fact]
-    public async Task ShouldReturn404ForWrongCode()
-    {
+    public async Task ShouldReturn404ForWrongCode() {
         using CliKey key = new();
         JsonObject started = await api.StartPairing(key);
         string code = (string)started["code"]!;
@@ -200,8 +186,7 @@ public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassF
     }
 
     [Fact]
-    public async Task ShouldAnswerUnknownSelectorAndWrongVerifierWithSame404Body()
-    {
+    public async Task ShouldAnswerUnknownSelectorAndWrongVerifierWithSame404Body() {
         using CliKey key = new();
         JsonObject started = await api.StartPairing(key);
         string code = (string)started["code"]!;
@@ -216,8 +201,7 @@ public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassF
     }
 
     [Fact]
-    public async Task ShouldReturn410ForExpiredCode()
-    {
+    public async Task ShouldReturn410ForExpiredCode() {
         using CliKey key = new();
         JsonObject started = await api.StartPairing(key);
         string code = (string)started["code"]!;
@@ -229,17 +213,15 @@ public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassF
     }
 
     [Fact]
-    public async Task ShouldReturn400ForMalformedCode()
-    {
+    public async Task ShouldReturn400ForMalformedCode() {
         using HttpResponseMessage response = await api.Claim("K7QF-2M9X");
 
         Assert.Equal((HttpStatusCode.BadRequest, "invalid_code_format"), await RelayApi.Problem(response));
     }
 
     [Fact]
-    public async Task ShouldReturn503WhenPendingLimitIsReached()
-    {
-        using var full = factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+    public async Task ShouldReturn503WhenPendingLimitIsReached() {
+        using WebApplicationFactory<Program> full = factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
             services.AddSingleton(new PairingStore(factory.Time, maxPending: 0))));
         using RelayApi fullApi = RelayApi.For(full, Addresses.Next());
         using CliKey key = new();
@@ -250,9 +232,8 @@ public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassF
     }
 
     [Fact]
-    public async Task ShouldReturn503ToNetworkAtPendingLimit()
-    {
-        using var shared = factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+    public async Task ShouldReturn503ToNetworkAtPendingLimit() {
+        using WebApplicationFactory<Program> shared = factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
             services.AddSingleton(new PairingStore(factory.Time, maxPendingPerNetwork: 1))));
         using RelayApi first = RelayApi.For(shared, "100.101.1.1");
         using RelayApi sameNetwork = RelayApi.For(shared, "100.101.1.2");
@@ -270,12 +251,10 @@ public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassF
     }
 
     [Fact]
-    public async Task ShouldReturn503ToNetworkAtNonceLimit()
-    {
+    public async Task ShouldReturn503ToNetworkAtNonceLimit() {
         const int noncesPerNetwork = 64;
         const int noncesPerAddress = 30;
-        for (int issued = 0; issued < noncesPerNetwork; issued++)
-        {
+        for (int issued = 0; issued < noncesPerNetwork; issued++) {
             using RelayApi flood = RelayApi.For(factory, $"100.100.1.{(issued / noncesPerAddress) + 1}");
             await flood.Nonce();
         }
@@ -290,8 +269,7 @@ public sealed partial class PairingEndpointTests(RelayFactory factory) : IClassF
     }
 
     [Fact]
-    public async Task ShouldAllowCorsPreflightFromSiteOrigin()
-    {
+    public async Task ShouldAllowCorsPreflightFromSiteOrigin() {
         using HttpRequestMessage preflight = new(HttpMethod.Options, "/pair/claim");
         preflight.Headers.Add("Origin", RelayFactory.SiteOrigin);
         preflight.Headers.Add("Access-Control-Request-Method", "POST");

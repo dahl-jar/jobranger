@@ -1,10 +1,8 @@
 namespace Jobranger.Relay.Core.Tests;
 
-public sealed class PendingPairingTests
-{
+public sealed class PendingPairingTests {
     [Fact]
-    public void ShouldPrintOnlyExpiry()
-    {
+    public void ShouldPrintOnlyExpiry() {
         PendingPairing pending = new(new PairingCode("KQFB", "MXTW"), DateTimeOffset.UnixEpoch);
 
         string printed = pending.ToString();

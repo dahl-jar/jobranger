@@ -5,33 +5,26 @@ using Microsoft.Extensions.Options;
 
 namespace Jobranger.Relay.Options;
 
-public sealed class RelayOptionsValidator : IValidateOptions<RelayOptions>
-{
-    public ValidateOptionsResult Validate(string? name, RelayOptions options)
-    {
+public sealed class RelayOptionsValidator : IValidateOptions<RelayOptions> {
+    public ValidateOptionsResult Validate(string? name, RelayOptions options) {
         List<string> failures = [];
-        if (!IsOrigin(options.SiteOrigin))
-        {
+        if (!IsOrigin(options.SiteOrigin)) {
             failures.Add("Relay:SiteOrigin must be an http or https origin with no path");
         }
 
-        if (!IsKey(options.HandleKey))
-        {
+        if (!IsKey(options.HandleKey)) {
             failures.Add("Relay:HandleKey must be base64 of at least 32 bytes");
         }
 
-        if (!string.IsNullOrEmpty(options.PreviousHandleKey) && !IsKey(options.PreviousHandleKey))
-        {
+        if (!string.IsNullOrEmpty(options.PreviousHandleKey) && !IsKey(options.PreviousHandleKey)) {
             failures.Add("Relay:PreviousHandleKey must be empty or base64 of at least 32 bytes");
         }
 
-        if (!IsKey(options.RedactionKey))
-        {
+        if (!IsKey(options.RedactionKey)) {
             failures.Add("Relay:RedactionKey must be base64 of at least 32 bytes");
         }
 
-        if (options.KnownProxyNetworks.Count == 0 || !options.KnownProxyNetworks.All(network => IPNetwork.TryParse(network, out _)))
-        {
+        if (options.KnownProxyNetworks.Count == 0 || !options.KnownProxyNetworks.All(network => IPNetwork.TryParse(network, out _))) {
             failures.Add("Relay:KnownProxyNetworks must list at least one network in CIDR form");
         }
 

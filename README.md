@@ -4,11 +4,12 @@ jobranger fetches job ads from FINN, NAV, LinkedIn and employer job boards, chec
 
 | Folder | Contents |
 |---|---|
-| `cli/` | Python CLI that fetches, matches and reports ads |
+| `cli-python/` | Python CLI that fetches, matches and reports ads |
 | `relay/` | ASP.NET Core relay between the CLI and the website |
 | `edge/` | Cloudflare Worker that rate limits requests to the relay by address and network |
 | `web/` | React website |
 | `contracts/` | Message schemas and the encrypted session layout (`contracts/session/v1.md`) shared by the CLI and the website |
+| `scripts/` | `codegen/postprocess.py`, the last step of `contracts/generate.sh` |
 
 Development setup and checks are in [CONTRIBUTING.md](CONTRIBUTING.md).
 

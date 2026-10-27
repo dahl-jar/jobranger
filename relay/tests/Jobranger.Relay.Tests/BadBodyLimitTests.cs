@@ -3,8 +3,7 @@ using System.Text;
 
 namespace Jobranger.Relay.Tests;
 
-public sealed class BadBodyLimitTests(RelayFactory factory) : IClassFixture<RelayFactory>
-{
+public sealed class BadBodyLimitTests(RelayFactory factory) : IClassFixture<RelayFactory> {
     private const int noncesPerAddress = 30;
     private const int failedSessionsPerAddress = 120;
     private const string malformedJson = "{\"v\":1,";
@@ -24,11 +23,9 @@ public sealed class BadBodyLimitTests(RelayFactory factory) : IClassFixture<Rela
     [InlineData("/session/cli", oversized, failedSessionsPerAddress)]
     [InlineData("/pair/nonce", wrongType, noncesPerAddress)]
     [InlineData("/session/cli", wrongType, failedSessionsPerAddress)]
-    public async Task ShouldRefuseBadBodiesPastAddressLimit(string path, string kind, int limit)
-    {
+    public async Task ShouldRefuseBadBodiesPastAddressLimit(string path, string kind, int limit) {
         using RelayApi api = RelayApi.For(factory, Addresses.Next());
-        for (int attempt = 1; attempt < limit; attempt++)
-        {
+        for (int attempt = 1; attempt < limit; attempt++) {
             using HttpResponseMessage rejected = await Send(api, path, kind);
         }
 
@@ -39,22 +36,18 @@ public sealed class BadBodyLimitTests(RelayFactory factory) : IClassFixture<Rela
         Assert.True(refused.Headers.RetryAfter?.Delta > TimeSpan.Zero);
     }
 
-    private static HttpStatusCode Rejection(string kind) => kind switch
-    {
+    private static HttpStatusCode Rejection(string kind) => kind switch {
         oversized => HttpStatusCode.RequestEntityTooLarge,
         wrongType => HttpStatusCode.UnsupportedMediaType,
         _ => HttpStatusCode.BadRequest,
     };
 
-    private static async Task<HttpResponseMessage> Send(RelayApi api, string path, string kind)
-    {
-        switch (kind)
-        {
+    private static async Task<HttpResponseMessage> Send(RelayApi api, string path, string kind) {
+        switch (kind) {
             case oversized:
                 return await api.PostRaw(path, $"{{\"v\":1,\"pad\":\"{new string('a', oversizedBodyBytes)}\"}}");
             case wrongType:
-                using (HttpRequestMessage request = new(HttpMethod.Post, path) { Content = new StringContent("{\"v\":1}", Encoding.UTF8, plainText) })
-                {
+                using (HttpRequestMessage request = new(HttpMethod.Post, path) { Content = new StringContent("{\"v\":1}", Encoding.UTF8, plainText) }) {
                     return await api.Send(request);
                 }
 

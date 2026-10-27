@@ -2,8 +2,7 @@ using System.IO.Pipelines;
 
 namespace Jobranger.Relay.Hubs;
 
-internal sealed class ActivityReader(PipeReader inner, TimeProvider time) : PipeReader
-{
+internal sealed class ActivityReader(PipeReader inner, TimeProvider time) : PipeReader {
     private long lastReadTicks = time.GetUtcNow().UtcTicks;
 
     public DateTimeOffset LastRead => new(Volatile.Read(ref lastReadTicks), TimeSpan.Zero);
@@ -16,18 +15,15 @@ internal sealed class ActivityReader(PipeReader inner, TimeProvider time) : Pipe
 
     public override void Complete(Exception? exception = null) => inner.Complete(exception);
 
-    public override async ValueTask<ReadResult> ReadAsync(CancellationToken cancellationToken = default)
-    {
+    public override async ValueTask<ReadResult> ReadAsync(CancellationToken cancellationToken = default) {
         ReadResult result = await inner.ReadAsync(cancellationToken);
         Stamp();
         return result;
     }
 
-    public override bool TryRead(out ReadResult result)
-    {
+    public override bool TryRead(out ReadResult result) {
         bool read = inner.TryRead(out result);
-        if (read)
-        {
+        if (read) {
             Stamp();
         }
 

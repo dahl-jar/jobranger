@@ -1,6 +1,5 @@
 namespace Jobranger.Relay.Pairing;
 
-internal interface IVersionedRequest
-{
+internal interface IVersionedRequest {
     int? V { get; }
 }

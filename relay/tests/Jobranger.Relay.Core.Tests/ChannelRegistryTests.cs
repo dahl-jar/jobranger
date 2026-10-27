@@ -2,8 +2,7 @@ using Microsoft.Extensions.Time.Testing;
 
 namespace Jobranger.Relay.Core.Tests;
 
-public sealed class ChannelRegistryTests : IDisposable
-{
+public sealed class ChannelRegistryTests : IDisposable {
     private const string cli = "cli-one";
     private const string otherCli = "cli-two";
     private const string browser = "web-one";
@@ -19,10 +18,8 @@ public sealed class ChannelRegistryTests : IDisposable
     private readonly ChannelRegistry registry = new(new FakeTimeProvider());
 
     [Fact]
-    public void ShouldKeepCliSlotFreeWhenBrowsersFillChannel()
-    {
-        for (int index = 0; index < browsersInFullChannel; index++)
-        {
+    public void ShouldKeepCliSlotFreeWhenBrowsersFillChannel() {
+        for (int index = 0; index < browsersInFullChannel; index++) {
             registry.TryJoin(Channels.One, RelayRole.Web, $"web-{index}", GrantOf($"web-{index}"));
         }
 
@@ -32,24 +29,21 @@ public sealed class ChannelRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ShouldReportOfflineForUnknownChannel()
-    {
+    public void ShouldReportOfflineForUnknownChannel() {
         Presence presence = registry.Snapshot(Channels.Three);
 
         Assert.Equal(new Presence(false, 0), presence);
     }
 
     [Fact]
-    public void ShouldReportNothingWhenConnectionLeavesUnknownChannel()
-    {
+    public void ShouldReportNothingWhenConnectionLeavesUnknownChannel() {
         Departure? departure = registry.Leave(Channels.Three, RelayRole.Web, browser);
 
         Assert.Null(departure);
     }
 
     [Fact]
-    public void ShouldRefuseSidFromConnectionOutsideChannel()
-    {
+    public void ShouldRefuseSidFromConnectionOutsideChannel() {
         registry.TryJoin(Channels.One, RelayRole.Cli, cli, null);
 
         SidOutcome bound = registry.BindSid(Channels.One, browser, sid);
@@ -58,8 +52,7 @@ public sealed class ChannelRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ShouldForgetChannelAfterLastSocketLeaves()
-    {
+    public void ShouldForgetChannelAfterLastSocketLeaves() {
         registry.TryJoin(Channels.One, RelayRole.Cli, cli, null);
         Assert.True(registry.TryConsumeBytes(Channels.One, RelayRole.Cli, channelBytesBurst));
         registry.Leave(Channels.One, RelayRole.Cli, cli);
@@ -71,8 +64,7 @@ public sealed class ChannelRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ShouldReportPresenceAfterBrowserLeaves()
-    {
+    public void ShouldReportPresenceAfterBrowserLeaves() {
         registry.TryJoin(Channels.One, RelayRole.Cli, cli, null);
         registry.TryJoin(Channels.One, RelayRole.Web, browser, GrantOf(browser));
         registry.TryJoin(Channels.One, RelayRole.Web, otherBrowser, GrantOf(otherBrowser));
@@ -83,8 +75,7 @@ public sealed class ChannelRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ShouldReplaceEarlierCliConnectionInFullChannel()
-    {
+    public void ShouldReplaceEarlierCliConnectionInFullChannel() {
         Fill(Channels.One);
 
         JoinResult joined = registry.TryJoin(Channels.One, RelayRole.Cli, otherCli, null);
@@ -93,8 +84,7 @@ public sealed class ChannelRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ShouldKeepCliOnlineWhenReplacedConnectionLeaves()
-    {
+    public void ShouldKeepCliOnlineWhenReplacedConnectionLeaves() {
         registry.TryJoin(Channels.One, RelayRole.Cli, cli, null);
         registry.TryJoin(Channels.One, RelayRole.Cli, otherCli, null);
         registry.Leave(Channels.One, RelayRole.Cli, cli);
@@ -105,8 +95,7 @@ public sealed class ChannelRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ShouldReportNothingWhenUnknownConnectionLeaves()
-    {
+    public void ShouldReportNothingWhenUnknownConnectionLeaves() {
         registry.TryJoin(Channels.One, RelayRole.Web, browser, GrantOf(browser));
 
         Departure? departure = registry.Leave(Channels.One, RelayRole.Web, otherBrowser);
@@ -115,8 +104,7 @@ public sealed class ChannelRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ShouldRefuseSidHeldByAnotherBrowser()
-    {
+    public void ShouldRefuseSidHeldByAnotherBrowser() {
         JoinBrowsers();
         registry.BindSid(Channels.One, browser, sid);
 
@@ -126,8 +114,7 @@ public sealed class ChannelRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ShouldAcceptSidAgainFromItsBrowser()
-    {
+    public void ShouldAcceptSidAgainFromItsBrowser() {
         JoinBrowsers();
         registry.BindSid(Channels.One, browser, sid);
 
@@ -137,8 +124,7 @@ public sealed class ChannelRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ShouldRefuseSidBeyondPerConnectionLimit()
-    {
+    public void ShouldRefuseSidBeyondPerConnectionLimit() {
         FillSids();
 
         SidOutcome bound = registry.BindSid(Channels.One, browser, "sid-extra");
@@ -147,8 +133,7 @@ public sealed class ChannelRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ShouldReturnBrowserSidsOnLeave()
-    {
+    public void ShouldReturnBrowserSidsOnLeave() {
         JoinBrowsers();
         registry.BindSid(Channels.One, browser, sid);
         registry.BindSid(Channels.One, browser, otherSid);
@@ -159,8 +144,7 @@ public sealed class ChannelRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ShouldFreeSidForOtherBrowserAfterLeave()
-    {
+    public void ShouldFreeSidForOtherBrowserAfterLeave() {
         JoinBrowsers();
         registry.BindSid(Channels.One, browser, sid);
         registry.Leave(Channels.One, RelayRole.Web, browser);
@@ -171,8 +155,7 @@ public sealed class ChannelRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ShouldFreeBrowserSidsWhenCliLeaves()
-    {
+    public void ShouldFreeBrowserSidsWhenCliLeaves() {
         registry.TryJoin(Channels.One, RelayRole.Cli, cli, null);
         FillSids();
         registry.Leave(Channels.One, RelayRole.Cli, cli);
@@ -183,8 +166,7 @@ public sealed class ChannelRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ShouldLetOtherBrowserTakeSidAfterCliLeaves()
-    {
+    public void ShouldLetOtherBrowserTakeSidAfterCliLeaves() {
         registry.TryJoin(Channels.One, RelayRole.Cli, cli, null);
         JoinBrowsers();
         registry.BindSid(Channels.One, browser, sid);
@@ -196,8 +178,7 @@ public sealed class ChannelRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ShouldFreeBrowserSidsWhenCliIsReplaced()
-    {
+    public void ShouldFreeBrowserSidsWhenCliIsReplaced() {
         registry.TryJoin(Channels.One, RelayRole.Cli, cli, null);
         FillSids();
         registry.TryJoin(Channels.One, RelayRole.Cli, otherCli, null);
@@ -208,8 +189,7 @@ public sealed class ChannelRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ShouldRefuseBytesBeyondChannelBurst()
-    {
+    public void ShouldRefuseBytesBeyondChannelBurst() {
         registry.TryJoin(Channels.One, RelayRole.Cli, cli, null);
         Assert.True(registry.TryConsumeBytes(Channels.One, RelayRole.Cli, channelBytesBurst));
 
@@ -221,8 +201,7 @@ public sealed class ChannelRegistryTests : IDisposable
     public void Dispose() => registry.Dispose();
 
     [Fact]
-    public void ShouldKeepCliByteBudgetWhenBrowsersUseTheirs()
-    {
+    public void ShouldKeepCliByteBudgetWhenBrowsersUseTheirs() {
         registry.TryJoin(Channels.One, RelayRole.Cli, cli, null);
         Assert.True(registry.TryConsumeBytes(Channels.One, RelayRole.Web, channelBytesBurst));
 
@@ -232,8 +211,7 @@ public sealed class ChannelRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ShouldPredictRefusalWithoutJoining()
-    {
+    public void ShouldPredictRefusalWithoutJoining() {
         Fill(Channels.One);
 
         JoinOutcome predicted = registry.Admits(Channels.One, RelayRole.Web, otherGrant);
@@ -244,8 +222,7 @@ public sealed class ChannelRegistryTests : IDisposable
     [Theory]
     [InlineData(RelayRole.Cli)]
     [InlineData(RelayRole.Web)]
-    public void ShouldPredictJoinForChannelWithRoom(RelayRole role)
-    {
+    public void ShouldPredictJoinForChannelWithRoom(RelayRole role) {
         registry.TryJoin(Channels.One, RelayRole.Cli, cli, null);
 
         JoinOutcome predicted = registry.Admits(Channels.One, role, role == RelayRole.Web ? grant : null);
@@ -254,8 +231,7 @@ public sealed class ChannelRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ShouldListConnectionsOfOneRole()
-    {
+    public void ShouldListConnectionsOfOneRole() {
         registry.TryJoin(Channels.One, RelayRole.Cli, cli, null);
         JoinBrowsers();
 
@@ -265,8 +241,7 @@ public sealed class ChannelRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ShouldListCliConnection()
-    {
+    public void ShouldListCliConnection() {
         registry.TryJoin(Channels.One, RelayRole.Cli, cli, null);
         JoinBrowsers();
 
@@ -276,16 +251,14 @@ public sealed class ChannelRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ShouldListNoMembersForUnknownChannel()
-    {
+    public void ShouldListNoMembersForUnknownChannel() {
         IReadOnlyList<string> members = registry.Members(Channels.Three, RelayRole.Web);
 
         Assert.Empty(members);
     }
 
     [Fact]
-    public void ShouldRefuseThirdSocketOfOneTicket()
-    {
+    public void ShouldRefuseThirdSocketOfOneTicket() {
         registry.TryJoin(Channels.One, RelayRole.Web, browser, grant);
         registry.TryJoin(Channels.One, RelayRole.Web, otherBrowser, grant);
 
@@ -297,8 +270,7 @@ public sealed class ChannelRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ShouldFreeTicketSlotWhenItsSocketLeaves()
-    {
+    public void ShouldFreeTicketSlotWhenItsSocketLeaves() {
         registry.TryJoin(Channels.One, RelayRole.Web, browser, grant);
         registry.TryJoin(Channels.One, RelayRole.Web, otherBrowser, grant);
         registry.Leave(Channels.One, RelayRole.Web, browser);
@@ -309,8 +281,7 @@ public sealed class ChannelRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ShouldReportFullTicketWithoutJoining()
-    {
+    public void ShouldReportFullTicketWithoutJoining() {
         registry.TryJoin(Channels.One, RelayRole.Web, browser, grant);
         registry.TryJoin(Channels.One, RelayRole.Web, otherBrowser, grant);
 
@@ -320,8 +291,7 @@ public sealed class ChannelRegistryTests : IDisposable
     }
 
     [Fact]
-    public void ShouldRefuseBrowserJoinWithoutGrant()
-    {
+    public void ShouldRefuseBrowserJoinWithoutGrant() {
         registry.TryJoin(Channels.One, RelayRole.Cli, cli, null);
 
         JoinResult joined = registry.TryJoin(Channels.One, RelayRole.Web, browser, null);
@@ -331,26 +301,21 @@ public sealed class ChannelRegistryTests : IDisposable
 
     private static string GrantOf(string connectionId) => $"grant-{connectionId}";
 
-    private void Fill(ChannelId channel)
-    {
+    private void Fill(ChannelId channel) {
         Assert.Equal(JoinOutcome.Joined, registry.TryJoin(channel, RelayRole.Cli, cli, null).Outcome);
-        for (int index = 0; index < browsersInFullChannel; index++)
-        {
+        for (int index = 0; index < browsersInFullChannel; index++) {
             Assert.Equal(JoinOutcome.Joined, registry.TryJoin(channel, RelayRole.Web, $"web-{index}", GrantOf($"web-{index}")).Outcome);
         }
     }
 
-    private void FillSids()
-    {
+    private void FillSids() {
         JoinBrowsers();
-        for (int index = 0; index < sidsPerConnection; index++)
-        {
+        for (int index = 0; index < sidsPerConnection; index++) {
             Assert.Equal(SidOutcome.Bound, registry.BindSid(Channels.One, browser, $"sid-{index}"));
         }
     }
 
-    private void JoinBrowsers()
-    {
+    private void JoinBrowsers() {
         registry.TryJoin(Channels.One, RelayRole.Web, browser, GrantOf(browser));
         registry.TryJoin(Channels.One, RelayRole.Web, otherBrowser, GrantOf(otherBrowser));
     }

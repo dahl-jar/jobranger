@@ -1,6 +1,5 @@
 namespace Jobranger.Relay.Core;
 
-public interface ISweepable
-{
+public interface ISweepable {
     void Sweep();
 }

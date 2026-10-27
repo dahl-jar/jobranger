@@ -4,23 +4,20 @@ using System.Text.Json.Nodes;
 
 namespace Jobranger.Relay.Tests;
 
-public sealed class TimestampTests : IClassFixture<RelayFactory>, IDisposable
-{
+public sealed class TimestampTests : IClassFixture<RelayFactory>, IDisposable {
     private static readonly TimeSpan fraction = TimeSpan.FromMilliseconds(750);
 
     private readonly RelayFactory factory;
     private readonly RelayApi api;
 
-    public TimestampTests(RelayFactory factory)
-    {
+    public TimestampTests(RelayFactory factory) {
         this.factory = factory;
         api = RelayApi.For(factory, Addresses.Next());
         AdvanceToFraction();
     }
 
     [Fact]
-    public async Task ShouldReportCliHandleExpiryEqualToTokenExpiry()
-    {
+    public async Task ShouldReportCliHandleExpiryEqualToTokenExpiry() {
         using CliKey key = new();
 
         JsonObject started = await api.StartPairing(key);
@@ -29,8 +26,7 @@ public sealed class TimestampTests : IClassFixture<RelayFactory>, IDisposable
     }
 
     [Fact]
-    public async Task ShouldReportWebHandleExpiryEqualToTokenExpiry()
-    {
+    public async Task ShouldReportWebHandleExpiryEqualToTokenExpiry() {
         using CliKey key = new();
 
         JsonObject claimed = await api.Paired(key);
@@ -39,8 +35,7 @@ public sealed class TimestampTests : IClassFixture<RelayFactory>, IDisposable
     }
 
     [Fact]
-    public async Task ShouldReportTicketExpiryEqualToTokenExpiry()
-    {
+    public async Task ShouldReportTicketExpiryEqualToTokenExpiry() {
         using CliKey key = new();
 
         JsonObject claimed = await api.Paired(key);
@@ -49,8 +44,7 @@ public sealed class TimestampTests : IClassFixture<RelayFactory>, IDisposable
     }
 
     [Fact]
-    public async Task ShouldReportCliSessionHandleExpiryEqualToTokenExpiry()
-    {
+    public async Task ShouldReportCliSessionHandleExpiryEqualToTokenExpiry() {
         using CliKey key = new();
 
         using HttpResponseMessage response = await api.Post("/session/cli", key.Proof(CliKey.SessionCli, await api.Nonce()));
@@ -60,8 +54,7 @@ public sealed class TimestampTests : IClassFixture<RelayFactory>, IDisposable
     }
 
     [Fact]
-    public async Task ShouldReportCodeExpiryRoundedDownToWholeSecond()
-    {
+    public async Task ShouldReportCodeExpiryRoundedDownToWholeSecond() {
         using CliKey key = new();
         DateTimeOffset expires = factory.Time.GetUtcNow() + TimeSpan.FromMinutes(10);
 
@@ -71,8 +64,7 @@ public sealed class TimestampTests : IClassFixture<RelayFactory>, IDisposable
     }
 
     [Fact]
-    public async Task ShouldReportNonceExpiryRoundedDownToWholeSecond()
-    {
+    public async Task ShouldReportNonceExpiryRoundedDownToWholeSecond() {
         DateTimeOffset expires = factory.Time.GetUtcNow() + TimeSpan.FromSeconds(60);
 
         using HttpResponseMessage response = await api.Post("/pair/nonce", RelayApi.NonceBody(null));
@@ -84,8 +76,7 @@ public sealed class TimestampTests : IClassFixture<RelayFactory>, IDisposable
 
     public void Dispose() => api.Dispose();
 
-    private void AdvanceToFraction()
-    {
+    private void AdvanceToFraction() {
         long intoSecond = factory.Time.GetUtcNow().Ticks % TimeSpan.TicksPerSecond;
         long ahead = (fraction.Ticks - intoSecond + TimeSpan.TicksPerSecond) % TimeSpan.TicksPerSecond;
         factory.Time.Advance(TimeSpan.FromTicks(ahead));
@@ -94,8 +85,7 @@ public sealed class TimestampTests : IClassFixture<RelayFactory>, IDisposable
     private static DateTimeOffset WholeSeconds(DateTimeOffset value) =>
         DateTimeOffset.FromUnixTimeSeconds(value.ToUnixTimeSeconds());
 
-    private static DateTimeOffset TokenExpiry(JsonNode? token)
-    {
+    private static DateTimeOffset TokenExpiry(JsonNode? token) {
         string body = ((string)token!).Split('.')[0];
         using JsonDocument payload = JsonDocument.Parse(Base64Url.DecodeFromChars(body));
         return DateTimeOffset.FromUnixTimeSeconds(payload.RootElement.GetProperty("E").GetInt64());

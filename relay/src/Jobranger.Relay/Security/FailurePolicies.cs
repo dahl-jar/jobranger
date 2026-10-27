@@ -1,7 +1,6 @@
 namespace Jobranger.Relay.Security;
 
-internal sealed class FailurePolicies(EndpointDataSource endpoints)
-{
+internal sealed class FailurePolicies(EndpointDataSource endpoints) {
     private readonly Lazy<Dictionary<string, string>> byRoute = new(() => endpoints.Endpoints
         .OfType<RouteEndpoint>()
         .SelectMany(endpoint =>

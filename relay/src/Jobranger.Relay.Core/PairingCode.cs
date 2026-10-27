@@ -3,8 +3,7 @@ using System.Security.Cryptography;
 
 namespace Jobranger.Relay.Core;
 
-public readonly record struct PairingCode(string Selector, string Verifier)
-{
+public readonly record struct PairingCode(string Selector, string Verifier) {
     private const string alphabet = "BCDFGHJKLMNPQRSTVWXZ";
 
     private const int partLength = 4;
@@ -14,11 +13,9 @@ public readonly record struct PairingCode(string Selector, string Verifier)
 
     public static PairingCode Generate() => Split(RandomNumberGenerator.GetString(alphabet, codeLength));
 
-    public static bool TryParse(string? input, out PairingCode code)
-    {
+    public static bool TryParse(string? input, out PairingCode code) {
         code = default;
-        if (input is null)
-        {
+        if (input is null) {
             return false;
         }
 
@@ -26,8 +23,7 @@ public readonly record struct PairingCode(string Selector, string Verifier)
             .Replace("-", string.Empty, StringComparison.Ordinal)
             .Replace(" ", string.Empty, StringComparison.Ordinal)
             .ToUpperInvariant();
-        if (compact.Length != codeLength || compact.AsSpan().ContainsAnyExcept(alphabetChars))
-        {
+        if (compact.Length != codeLength || compact.AsSpan().ContainsAnyExcept(alphabetChars)) {
             return false;
         }
 

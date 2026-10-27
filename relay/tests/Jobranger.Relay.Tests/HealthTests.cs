@@ -9,8 +9,7 @@ using Microsoft.Extensions.Logging.Testing;
 
 namespace Jobranger.Relay.Tests;
 
-public sealed class HealthTests
-{
+public sealed class HealthTests {
     private const string livePath = "/healthz";
     private const string readyPath = "/readyz";
     private const string healthCheckCategory = "Microsoft.Extensions.Diagnostics.HealthChecks";
@@ -20,8 +19,7 @@ public sealed class HealthTests
     private static readonly TimeSpan oneSecond = TimeSpan.FromSeconds(1);
 
     [Fact]
-    public async Task ShouldReportReadyAfterStart()
-    {
+    public async Task ShouldReportReadyAfterStart() {
         using RelayFactory factory = new();
         using HttpClient client = factory.CreateClient();
 
@@ -31,8 +29,7 @@ public sealed class HealthTests
     }
 
     [Fact]
-    public async Task ShouldReportNotReadyWhenSweeperStalls()
-    {
+    public async Task ShouldReportNotReadyWhenSweeperStalls() {
         using RelayFactory factory = new();
         using StalledStore stalled = new();
         using HttpClient client = (await Stall(factory, stalled, SweeperTiming.StaleAfter)).CreateClient();
@@ -43,8 +40,7 @@ public sealed class HealthTests
     }
 
     [Fact]
-    public async Task ShouldStayLiveWhenSweeperStalls()
-    {
+    public async Task ShouldStayLiveWhenSweeperStalls() {
         using RelayFactory factory = new();
         using StalledStore stalled = new();
         using HttpClient client = (await Stall(factory, stalled, SweeperTiming.DeadAfter - oneSecond)).CreateClient();
@@ -55,8 +51,7 @@ public sealed class HealthTests
     }
 
     [Fact]
-    public async Task ShouldStayReadyJustBeforeStaleLimit()
-    {
+    public async Task ShouldStayReadyJustBeforeStaleLimit() {
         using RelayFactory factory = new();
         using StalledStore stalled = new();
         using HttpClient client = (await Stall(factory, stalled, SweeperTiming.StaleAfter - oneSecond)).CreateClient();
@@ -67,8 +62,7 @@ public sealed class HealthTests
     }
 
     [Fact]
-    public async Task ShouldFailLivenessWhenSweeperStalledPastDeadline()
-    {
+    public async Task ShouldFailLivenessWhenSweeperStalledPastDeadline() {
         using RelayFactory factory = new();
         using StalledStore stalled = new();
         using HttpClient client = (await Stall(factory, stalled, SweeperTiming.DeadAfter)).CreateClient();
@@ -79,14 +73,12 @@ public sealed class HealthTests
     }
 
     [Fact]
-    public async Task ShouldNotLogEachUnhealthyProbe()
-    {
+    public async Task ShouldNotLogEachUnhealthyProbe() {
         using RelayFactory factory = new();
         using StalledStore stalled = new();
         WebApplicationFactory<Program> host = await Stall(factory, stalled, SweeperTiming.StaleAfter);
         using HttpClient client = host.CreateClient();
-        for (int probe = 0; probe < unhealthyProbes; probe++)
-        {
+        for (int probe = 0; probe < unhealthyProbes; probe++) {
             await Status(client, readyPath);
         }
 
@@ -97,8 +89,7 @@ public sealed class HealthTests
     }
 
     [Fact]
-    public void ShouldReportNotReadyWhileStopping()
-    {
+    public void ShouldReportNotReadyWhileStopping() {
         using RelayFactory factory = new();
         using HttpClient client = factory.CreateClient();
         IHostApplicationLifetime lifetime = factory.Services.GetRequiredService<IHostApplicationLifetime>();
@@ -112,8 +103,7 @@ public sealed class HealthTests
     }
 
     [Fact]
-    public void ShouldRegisterEveryStoreForSweeping()
-    {
+    public void ShouldRegisterEveryStoreForSweeping() {
         using RelayFactory factory = new();
         IServiceProvider services = factory.Services;
         HashSet<object> stores =
@@ -129,8 +119,7 @@ public sealed class HealthTests
         Assert.Equal(stores, swept);
     }
 
-    private static async Task<WebApplicationFactory<Program>> Stall(RelayFactory factory, StalledStore stalled, TimeSpan stalledFor)
-    {
+    private static async Task<WebApplicationFactory<Program>> Stall(RelayFactory factory, StalledStore stalled, TimeSpan stalledFor) {
         WebApplicationFactory<Program> host = factory
             .WithWebHostBuilder(builder => builder.ConfigureTestServices(services => services.AddSingleton<ISweepable>(stalled)));
         _ = host.Server;
@@ -140,8 +129,7 @@ public sealed class HealthTests
         return host;
     }
 
-    private static async Task<HttpStatusCode> Status(HttpClient client, string path)
-    {
+    private static async Task<HttpStatusCode> Status(HttpClient client, string path) {
         using HttpResponseMessage response = await client.GetAsync(path, TestContext.Current.CancellationToken);
         return response.StatusCode;
     }

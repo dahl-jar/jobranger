@@ -7,8 +7,7 @@ using Microsoft.Extensions.Diagnostics.Metrics.Testing;
 
 namespace Jobranger.Relay.Tests;
 
-public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFactory>
-{
+public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFactory> {
     private const string meterName = "Jobranger.Relay";
     private const string metricsPath = "/metrics";
     private const string healthPath = "/healthz";
@@ -19,8 +18,7 @@ public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFact
     private const string localAddress = "192.0.2.7";
 
     [Fact]
-    public async Task ShouldServeMetricsOnMetricsPort()
-    {
+    public async Task ShouldServeMetricsOnMetricsPort() {
         using HttpClient client = factory.CreateClient();
 
         using HttpResponseMessage response = await Scrape(client, metricsPath, LocalPortFilter.MetricsPort);
@@ -29,8 +27,7 @@ public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFact
     }
 
     [Fact]
-    public async Task ShouldNotServeMetricsWhenHostHeaderNamesMetricsPort()
-    {
+    public async Task ShouldNotServeMetricsWhenHostHeaderNamesMetricsPort() {
         using HttpClient client = factory.CreateClient();
         using HttpRequestMessage request = new(HttpMethod.Get, metricsPath);
         request.Headers.Host = $"relay.example.test:{LocalPortFilter.MetricsPort}";
@@ -41,8 +38,7 @@ public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFact
     }
 
     [Fact]
-    public async Task ShouldAnswerNotFoundForHealthOnMetricsPort()
-    {
+    public async Task ShouldAnswerNotFoundForHealthOnMetricsPort() {
         using HttpClient client = factory.CreateClient();
 
         using HttpResponseMessage response = await Scrape(client, healthPath, LocalPortFilter.MetricsPort);
@@ -51,8 +47,7 @@ public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFact
     }
 
     [Fact]
-    public async Task ShouldCountStartedPairing()
-    {
+    public async Task ShouldCountStartedPairing() {
         using MetricCollector<long> started = Collector("relay.pairings.started");
         using RelayApi api = RelayApi.For(factory, Addresses.Next());
         using CliKey key = new();
@@ -63,8 +58,7 @@ public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFact
     }
 
     [Fact]
-    public async Task ShouldCountClaimedPairing()
-    {
+    public async Task ShouldCountClaimedPairing() {
         using RelayApi api = RelayApi.For(factory, Addresses.Next());
         using CliKey key = new();
         JsonObject started = await api.StartPairing(key);
@@ -76,8 +70,7 @@ public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFact
     }
 
     [Fact]
-    public async Task ShouldCountRejectedRequestsByCode()
-    {
+    public async Task ShouldCountRejectedRequestsByCode() {
         using MetricCollector<long> rejected = Collector("relay.requests.rejected");
         using RelayApi api = RelayApi.For(factory, Addresses.Next());
 
@@ -87,8 +80,7 @@ public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFact
     }
 
     [Fact]
-    public async Task ShouldCountRateLimitedRequestsByPolicy()
-    {
+    public async Task ShouldCountRateLimitedRequestsByPolicy() {
         using RelayApi api = RelayApi.For(factory, Addresses.Next());
         await api.Claims(claimBurst);
         using MetricCollector<long> limited = Collector("relay.rate_limited");
@@ -99,8 +91,7 @@ public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFact
     }
 
     [Fact]
-    public async Task ShouldCountForwardedEnvelopes()
-    {
+    public async Task ShouldCountForwardedEnvelopes() {
         ChannelId channel = RelayClients.NewChannel();
         await using HubPeer cli = await RelayClients.ConnectCliAsync(factory, channel);
         await using HubPeer browser = await RelayClients.ConnectWebAsync(factory, channel);
@@ -115,8 +106,7 @@ public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFact
     }
 
     [Fact]
-    public async Task ShouldCountRejectedEnvelopesByReason()
-    {
+    public async Task ShouldCountRejectedEnvelopesByReason() {
         ChannelId channel = RelayClients.NewChannel();
         await using HubPeer browser = await RelayClients.ConnectWebAsync(factory, channel);
         JsonObject envelope = Envelopes.WithUnsupportedVersion(channel);
@@ -128,8 +118,7 @@ public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFact
     }
 
     [Fact]
-    public async Task ShouldCountRefusedHubJoinsByReason()
-    {
+    public async Task ShouldCountRefusedHubJoinsByReason() {
         string handle = RelayClients.Handle(factory, RelayClients.NewChannel(), RelayRole.Web);
         await using HubPeer first = await RelayClients.ConnectAsync(factory, handle, RelayFactory.SiteOrigin);
         await using HubPeer second = await RelayClients.ConnectAsync(factory, handle, RelayFactory.SiteOrigin);
@@ -143,8 +132,7 @@ public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFact
     }
 
     [Fact]
-    public async Task ShouldCountRefusedHubAuthByReason()
-    {
+    public async Task ShouldCountRefusedHubAuthByReason() {
         using MetricCollector<long> refused = Collector("relay.connections.rejected");
         await using HubPeer peer = RelayClients.Build(factory, "not-a-handle", null);
 
@@ -154,8 +142,7 @@ public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFact
     }
 
     [Fact]
-    public async Task ShouldReportActiveChannels()
-    {
+    public async Task ShouldReportActiveChannels() {
         await using RelayFactory own = new();
         await using HubPeer cli = await RelayClients.ConnectCliAsync(own, RelayClients.NewChannel());
         using MetricCollector<int> active = new(own.Services.GetRequiredService<IMeterFactory>(), meterName, "relay.channels.active");
@@ -166,8 +153,7 @@ public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFact
     }
 
     [Fact]
-    public async Task ShouldKeepIdentifiersOutOfMetrics()
-    {
+    public async Task ShouldKeepIdentifiersOutOfMetrics() {
         string address = Addresses.Next();
         using RelayApi api = RelayApi.For(factory, address);
         using CliKey key = new();
@@ -194,8 +180,7 @@ public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFact
     }
 
     [Fact]
-    public async Task ShouldDropServerAddressFromKestrelMetrics()
-    {
+    public async Task ShouldDropServerAddressFromKestrelMetrics() {
         using Meter kestrel = factory.Services.GetRequiredService<IMeterFactory>().Create(kestrelMeter);
         kestrel.CreateCounter<long>(kestrelInstrument).Add(
             1, new KeyValuePair<string, object?>("server.address", localAddress), new KeyValuePair<string, object?>("server.port", LocalPortFilter.HttpPort));
@@ -207,8 +192,7 @@ public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFact
         Assert.Equal((true, false), (scraped.Contains($"server_port=\"{LocalPortFilter.HttpPort}\"", StringComparison.Ordinal), scraped.Contains(localAddress, StringComparison.Ordinal)));
     }
 
-    private static Task<HttpResponseMessage> Scrape(HttpClient client, string path, int port)
-    {
+    private static Task<HttpResponseMessage> Scrape(HttpClient client, string path, int port) {
         HttpRequestMessage request = new(HttpMethod.Get, path);
         request.Headers.Add(LocalPortFilter.PortHeader, port.ToString(System.Globalization.CultureInfo.InvariantCulture));
         return client.SendAsync(request, TestContext.Current.CancellationToken);

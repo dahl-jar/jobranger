@@ -1,7 +1,6 @@
 namespace Jobranger.Relay.Core;
 
-public enum SidOutcome
-{
+public enum SidOutcome {
     Bound,
     Taken,
     TooMany,

@@ -1,7 +1,6 @@
 namespace Jobranger.Relay.Core;
 
-public enum RelayRole
-{
+public enum RelayRole {
     Cli,
     Web,
 }

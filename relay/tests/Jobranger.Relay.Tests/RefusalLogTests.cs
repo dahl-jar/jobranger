@@ -1,15 +1,14 @@
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Logging.Testing;
 
 namespace Jobranger.Relay.Tests;
 
-public sealed class RefusalLogTests(RelayFactory factory) : IClassFixture<RelayFactory>
-{
+public sealed class RefusalLogTests(RelayFactory factory) : IClassFixture<RelayFactory> {
     private const int claimBurst = 5;
     private const int extraClaims = 3;
 
     [Fact]
-    public async Task ShouldLogRateLimitRefusalAtMostOncePerSecondPerPolicy()
-    {
+    public async Task ShouldLogRateLimitRefusalAtMostOncePerSecondPerPolicy() {
         using RelayApi api = RelayApi.For(factory, Addresses.Next());
         await api.Claims(claimBurst + extraClaims);
         int sameSecond = RefusalLines();
@@ -22,9 +21,8 @@ public sealed class RefusalLogTests(RelayFactory factory) : IClassFixture<RelayF
     }
 
     [Fact]
-    public async Task ShouldLogRejectionOncePerSecondPerReason()
-    {
-        using var isolated = factory.WithWebHostBuilder(_ => { });
+    public async Task ShouldLogRejectionOncePerSecondPerReason() {
+        using WebApplicationFactory<Program> isolated = factory.WithWebHostBuilder(_ => { });
         using RelayApi api = RelayApi.For(isolated, Addresses.Next());
         FakeLogCollector logs = isolated.Services.GetFakeLogCollector();
         await api.Claims(extraClaims);

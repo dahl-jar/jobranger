@@ -2,8 +2,7 @@ using System.Threading.RateLimiting;
 
 namespace Jobranger.Relay.Core;
 
-internal sealed class ChannelMembers(TimeProvider time) : IDisposable
-{
+internal sealed class ChannelMembers(TimeProvider time) : IDisposable {
     private readonly Dictionary<string, string> browsers = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> sidOwners = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<string>> sidsByBrowser = new(StringComparer.Ordinal);
@@ -15,38 +14,31 @@ internal sealed class ChannelMembers(TimeProvider time) : IDisposable
 
     public Presence Presence => new(cli is not null, browsers.Count);
 
-    public JoinOutcome Admits(RelayRole role, string? grant)
-    {
-        if (role == RelayRole.Cli)
-        {
+    public JoinOutcome Admits(RelayRole role, string? grant) {
+        if (role == RelayRole.Cli) {
             return JoinOutcome.Joined;
         }
 
-        if (browsers.Count >= RelayLimits.MaxBrowsersPerChannel)
-        {
+        if (browsers.Count >= RelayLimits.MaxBrowsersPerChannel) {
             return JoinOutcome.ChannelFull;
         }
 
         return grant is not { } held || SocketsOf(held) >= RelayLimits.MaxSocketsPerTicket ? JoinOutcome.TicketFull : JoinOutcome.Joined;
     }
 
-    public JoinResult Join(RelayRole role, string connectionId, string? grant)
-    {
-        if (role == RelayRole.Cli)
-        {
+    public JoinResult Join(RelayRole role, string connectionId, string? grant) {
+        if (role == RelayRole.Cli) {
             string? replaced = cli;
             cli = connectionId;
             ReleaseSids();
             return new JoinResult(JoinOutcome.Joined, replaced);
         }
 
-        if (grant is not { } held)
-        {
+        if (grant is not { } held) {
             return new JoinResult(JoinOutcome.TicketFull, null);
         }
 
-        if (Admits(role, held) is not JoinOutcome.Joined and var refused)
-        {
+        if (Admits(role, held) is not JoinOutcome.Joined and var refused) {
             return new JoinResult(refused, null);
         }
 
@@ -58,12 +50,9 @@ internal sealed class ChannelMembers(TimeProvider time) : IDisposable
         ? cli is { } connection ? [connection] : []
         : [.. browsers.Keys];
 
-    public Departure? Leave(RelayRole role, string connectionId)
-    {
-        if (role == RelayRole.Cli)
-        {
-            if (!string.Equals(cli, connectionId, StringComparison.Ordinal))
-            {
+    public Departure? Leave(RelayRole role, string connectionId) {
+        if (role == RelayRole.Cli) {
+            if (!string.Equals(cli, connectionId, StringComparison.Ordinal)) {
                 return null;
             }
 
@@ -72,40 +61,33 @@ internal sealed class ChannelMembers(TimeProvider time) : IDisposable
             return new Departure(Presence, []);
         }
 
-        if (!browsers.Remove(connectionId))
-        {
+        if (!browsers.Remove(connectionId)) {
             return null;
         }
 
         List<string> released = sidsByBrowser.Remove(connectionId, out List<string>? sids) ? sids : [];
-        foreach (string sid in released)
-        {
+        foreach (string sid in released) {
             sidOwners.Remove(sid);
         }
 
         return new Departure(Presence, released);
     }
 
-    public SidOutcome Bind(string connectionId, string sid)
-    {
-        if (!browsers.ContainsKey(connectionId))
-        {
+    public SidOutcome Bind(string connectionId, string sid) {
+        if (!browsers.ContainsKey(connectionId)) {
             return SidOutcome.Taken;
         }
 
-        if (sidOwners.TryGetValue(sid, out string? owner))
-        {
+        if (sidOwners.TryGetValue(sid, out string? owner)) {
             return string.Equals(owner, connectionId, StringComparison.Ordinal) ? SidOutcome.Bound : SidOutcome.Taken;
         }
 
-        if (!sidsByBrowser.TryGetValue(connectionId, out List<string>? held))
-        {
+        if (!sidsByBrowser.TryGetValue(connectionId, out List<string>? held)) {
             held = [];
             sidsByBrowser.Add(connectionId, held);
         }
 
-        if (held.Count >= RelayLimits.MaxSidsPerConnection)
-        {
+        if (held.Count >= RelayLimits.MaxSidsPerConnection) {
             return SidOutcome.TooMany;
         }
 
@@ -114,20 +96,17 @@ internal sealed class ChannelMembers(TimeProvider time) : IDisposable
         return SidOutcome.Bound;
     }
 
-    public bool TryConsumeBytes(RelayRole sender, int count)
-    {
+    public bool TryConsumeBytes(RelayRole sender, int count) {
         using RateLimitLease lease = (sender == RelayRole.Cli ? cliBytes : browserBytes).AttemptAcquire(count);
         return lease.IsAcquired;
     }
 
-    public void Dispose()
-    {
+    public void Dispose() {
         cliBytes.Dispose();
         browserBytes.Dispose();
     }
 
-    private void ReleaseSids()
-    {
+    private void ReleaseSids() {
         sidOwners.Clear();
         sidsByBrowser.Clear();
     }

@@ -8,8 +8,7 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace Jobranger.Relay.Security;
 
-internal static class RateLimiting
-{
+internal static class RateLimiting {
     public const string Nonce = "nonce";
     public const string PairStart = "pair-start";
     public const string PairClaim = "pair-claim";
@@ -22,14 +21,12 @@ internal static class RateLimiting
 
     public static readonly string[] Policies = [Nonce, PairStart, PairClaim, Session, HubSockets];
 
-    public static IServiceCollection AddRelayRateLimits(this IServiceCollection services)
-    {
+    public static IServiceCollection AddRelayRateLimits(this IServiceCollection services) {
         services.AddSingleton(provider => new RelayRateLimiter(provider.GetRequiredService<TimeProvider>()));
         services.AddSingleton<RefusalSampler>();
         services.AddSingleton<FailurePolicies>();
         services.AddRateLimiter(_ => { });
-        services.AddOptions<RateLimiterOptions>().Configure<RelayRateLimiter>((options, limiter) =>
-        {
+        services.AddOptions<RateLimiterOptions>().Configure<RelayRateLimiter>((options, limiter) => {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             options.OnRejected = WriteRejection;
             options.GlobalLimiter = limiter;
@@ -41,16 +38,14 @@ internal static class RateLimiting
         where TBuilder : IEndpointConventionBuilder =>
         builder.WithMetadata(new RelayRateLimit(policy));
 
-    public static RateLimiter Limiter(string policy, int scale, TimeProvider time) => policy switch
-    {
+    public static RateLimiter Limiter(string policy, int scale, TimeProvider time) => policy switch {
         PairClaim => new BucketLimiter(
             RelayLimits.ClaimBurst * scale, RelayLimits.ClaimRefillTokens * scale, RelayLimits.ClaimRefillPeriod, time),
         PairStart => new WindowLimiter(RelayLimits.PairStartsPerWindow * scale, RelayLimits.PairStartWindow, time),
         Session => new WindowLimiter(RelayLimits.FailedSessionsPerWindow * scale, RelayLimits.SessionRequestWindow, time),
         SessionChannel => new WindowLimiter(RelayLimits.SessionsPerChannelWindow * scale, RelayLimits.SessionRequestWindow, time),
         Nonce or UnpairedChannel => new WindowLimiter(RelayLimits.NonceRequestsPerWindow * scale, RelayLimits.NonceRequestWindow, time),
-        HubSockets => new ConcurrencyLimiter(new ConcurrencyLimiterOptions
-        {
+        HubSockets => new ConcurrencyLimiter(new ConcurrencyLimiterOptions {
             PermitLimit = RelayLimits.HubSocketsPerClient * scale,
             QueueLimit = 0,
         }),
@@ -58,10 +53,8 @@ internal static class RateLimiting
             nameof(policy), policy, "policy must be nonce, pair-start, pair-claim, session, session-channel, unpaired-channel or hub-sockets"),
     };
 
-    public static ProblemHttpResult? Throttle(HttpContext http, RateLimitLease lease, string policy)
-    {
-        using (lease)
-        {
+    public static ProblemHttpResult? Throttle(HttpContext http, RateLimitLease lease, string policy) {
+        using (lease) {
             return lease.IsAcquired ? null : Refuse(http, lease, policy);
         }
     }
@@ -69,19 +62,15 @@ internal static class RateLimiting
     public static ProblemHttpResult? ThrottleChannel(HttpContext http, RelayRateLimiter limiter, ChannelId channel, RelayRole role) =>
         Throttle(http, limiter.AttemptAcquireForChannel(http, channel, role), SessionChannel);
 
-    public static ProblemHttpResult Refuse(HttpContext http, RateLimitLease lease, string? policy)
-    {
-        if (lease.TryGetMetadata(MetadataName.RetryAfter, out TimeSpan retryAfter))
-        {
+    public static ProblemHttpResult Refuse(HttpContext http, RateLimitLease lease, string? policy) {
+        if (lease.TryGetMetadata(MetadataName.RetryAfter, out TimeSpan retryAfter)) {
             int seconds = Math.Max(minRetryAfterSeconds, (int)Math.Ceiling(retryAfter.TotalSeconds));
             http.Response.Headers.RetryAfter = seconds.ToString(CultureInfo.InvariantCulture);
         }
 
-        if (policy is not null)
-        {
+        if (policy is not null) {
             http.RequestServices.GetRequiredService<RelayMetrics>().RateLimited(policy);
-            if (http.RequestServices.GetRequiredService<RefusalSampler>().ShouldLog(policy))
-            {
+            if (http.RequestServices.GetRequiredService<RefusalSampler>().ShouldLog(policy)) {
                 RelayLog.For(http.RequestServices.GetRequiredService<ILoggerFactory>()).RateLimitRefused(policy);
             }
         }

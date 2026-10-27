@@ -7,8 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Jobranger.Relay.Tests;
 
-internal static class RelayClients
-{
+internal static class RelayClients {
     private const string hubPath = "hub";
     private const string tokenQuery = "access_token";
     private const int channelKeyBytes = 32;
@@ -17,33 +16,27 @@ internal static class RelayClients
 
     public static ChannelId NewChannel() => ChannelId.FromPublicKey(RandomNumberGenerator.GetBytes(channelKeyBytes));
 
-    public static string Handle(RelayFactory factory, ChannelId channel, RelayRole role)
-    {
+    public static string Handle(RelayFactory factory, ChannelId channel, RelayRole role) {
         ChannelHandle handles = factory.Services.GetRequiredService<ChannelHandle>();
         DateTimeOffset expires = factory.Time.GetUtcNow() + handleLifetime;
         return role == RelayRole.Web ? handles.SignWeb(channel, expires, ChannelHandle.NewGrant()) : handles.SignCli(channel, expires);
     }
 
     public static HubPeer Build(
-        RelayFactory factory, string? handle, string? origin, string? address = null, TimeSpan? keepAlive = null)
-    {
+        RelayFactory factory, string? handle, string? origin, string? address = null, TimeSpan? keepAlive = null) {
         TestServer server = factory.Server;
         string query = handle is null ? string.Empty : $"?{tokenQuery}={Uri.EscapeDataString(handle)}";
         string client = address ?? Addresses.Next();
         HubConnection connection = new HubConnectionBuilder()
-            .WithUrl(new Uri(server.BaseAddress, hubPath + query), options =>
-            {
+            .WithUrl(new Uri(server.BaseAddress, hubPath + query), options => {
                 options.Transports = HttpTransportType.WebSockets;
                 options.SkipNegotiation = true;
                 options.HttpMessageHandlerFactory = _ => server.CreateHandler();
-                options.WebSocketFactory = async (context, cancellation) =>
-                {
+                options.WebSocketFactory = async (context, cancellation) => {
                     WebSocketClient sockets = server.CreateWebSocketClient();
-                    sockets.ConfigureRequest = request =>
-                    {
+                    sockets.ConfigureRequest = request => {
                         request.Headers[RelayApi.ClientHeader] = client;
-                        if (origin is not null)
-                        {
+                        if (origin is not null) {
                             request.Headers.Origin = origin;
                         }
                     };
@@ -52,8 +45,7 @@ internal static class RelayClients
             })
             .AddJsonProtocol(json => json.PayloadSerializerOptions.TypeInfoResolverChain.Insert(0, HubTestJsonContext.Default))
             .Build();
-        if (keepAlive is { } interval)
-        {
+        if (keepAlive is { } interval) {
             connection.KeepAliveInterval = interval;
             connection.ServerTimeout = interval * 2;
         }
@@ -62,8 +54,7 @@ internal static class RelayClients
     }
 
     public static async Task<HubPeer> ConnectAsync(
-        RelayFactory factory, string handle, string? origin, string? address = null, TimeSpan? keepAlive = null)
-    {
+        RelayFactory factory, string handle, string? origin, string? address = null, TimeSpan? keepAlive = null) {
         HubPeer peer = Build(factory, handle, origin, address, keepAlive);
         await peer.Connection.StartAsync(TestContext.Current.CancellationToken);
         await peer.Next(HubPeer.Presence);

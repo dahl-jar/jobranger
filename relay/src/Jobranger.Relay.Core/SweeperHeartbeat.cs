@@ -1,7 +1,6 @@
 namespace Jobranger.Relay.Core;
 
-public sealed class SweeperHeartbeat
-{
+public sealed class SweeperHeartbeat {
     private long lastBeatTicks;
 
     public void Beat(DateTimeOffset at) => Volatile.Write(ref lastBeatTicks, at.UtcTicks);

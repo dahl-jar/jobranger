@@ -8,8 +8,7 @@ public sealed class PairingStore(
     int maxPending = RelayLimits.MaxPendingPairings,
     int maxPendingPerNetwork = RelayLimits.MaxPendingPairingsPerNetwork,
     int maxEntries = RelayLimits.MaxPairingEntries,
-    Func<PairingCode>? drawCode = null) : ISweepable
-{
+    Func<PairingCode>? drawCode = null) : ISweepable {
     private static readonly ClaimResult wrongCode = new(ClaimOutcome.WrongCode, null);
     private static readonly ClaimResult expired = new(ClaimOutcome.Expired, null);
     private static readonly Comparer<Entry> expiryOrder = Comparer<Entry>.Create(CompareExpiry);
@@ -22,21 +21,17 @@ public sealed class PairingStore(
     private readonly Lock gate = new();
     private readonly Func<PairingCode> nextCode = drawCode ?? PairingCode.Generate;
 
-    public PendingPairing? Start(ChannelId channel, string network)
-    {
-        lock (gate)
-        {
+    public PendingPairing? Start(ChannelId channel, string network) {
+        lock (gate) {
             DateTimeOffset now = time.GetUtcNow();
             Drain(now);
             pendingByChannel.TryGetValue(channel, out Entry? previous);
-            if (!TryMakeRoom(previous, network) || !TryDrawFreeCode(out PairingCode code))
-            {
+            if (!TryMakeRoom(previous, network) || !TryDrawFreeCode(out PairingCode code)) {
                 return null;
             }
 
             Entry entry = new(code, channel, network, now + RelayLimits.CodeLifetime);
-            if (previous is not null)
-            {
+            if (previous is not null) {
                 Replace(previous, entry);
             }
 
@@ -48,30 +43,23 @@ public sealed class PairingStore(
         }
     }
 
-    public ClaimResult Claim(PairingCode code)
-    {
-        if (code.Selector is null || code.Verifier is null)
-        {
+    public ClaimResult Claim(PairingCode code) {
+        if (code.Selector is null || code.Verifier is null) {
             return wrongCode;
         }
 
-        lock (gate)
-        {
-            if (!entries.TryGetValue(code.Selector, out Entry? entry))
-            {
+        lock (gate) {
+            if (!entries.TryGetValue(code.Selector, out Entry? entry)) {
                 return wrongCode;
             }
 
-            if (!entry.Open || time.GetUtcNow() >= entry.ExpiresAt)
-            {
+            if (!entry.Open || time.GetUtcNow() >= entry.ExpiresAt) {
                 return expired;
             }
 
-            if (!CryptographicOperations.FixedTimeEquals(entry.Verifier, Encoding.ASCII.GetBytes(code.Verifier)))
-            {
+            if (!CryptographicOperations.FixedTimeEquals(entry.Verifier, Encoding.ASCII.GetBytes(code.Verifier))) {
                 entry.Failures++;
-                if (entry.Failures >= RelayLimits.MaxWrongGuesses)
-                {
+                if (entry.Failures >= RelayLimits.MaxWrongGuesses) {
                     Close(entry);
                 }
 
@@ -83,22 +71,18 @@ public sealed class PairingStore(
         }
     }
 
-    public void Sweep()
-    {
-        lock (gate)
-        {
+    public void Sweep() {
+        lock (gate) {
             Drain(time.GetUtcNow());
         }
     }
 
-    private static int CompareExpiry(Entry left, Entry right)
-    {
+    private static int CompareExpiry(Entry left, Entry right) {
         int byExpiry = left.ExpiresAt.CompareTo(right.ExpiresAt);
         return byExpiry != 0 ? byExpiry : string.CompareOrdinal(left.Selector, right.Selector);
     }
 
-    private bool TryMakeRoom(Entry? previous, string network)
-    {
+    private bool TryMakeRoom(Entry? previous, string network) {
         int othersPending = pendingByChannel.Count - (previous is null ? 0 : 1);
         int networkPending = pendingByNetwork.GetValueOrDefault(network) - (previous?.Network == network ? 1 : 0);
         return othersPending < maxPending
@@ -106,13 +90,10 @@ public sealed class PairingStore(
             && (previous is not null || entries.Count < maxEntries || TryEvictOldestTombstone());
     }
 
-    private bool TryDrawFreeCode(out PairingCode code)
-    {
-        for (int attempt = 0; attempt < RelayLimits.MaxCodeDrawAttempts; attempt++)
-        {
+    private bool TryDrawFreeCode(out PairingCode code) {
+        for (int attempt = 0; attempt < RelayLimits.MaxCodeDrawAttempts; attempt++) {
             code = nextCode();
-            if (!entries.ContainsKey(code.Selector))
-            {
+            if (!entries.ContainsKey(code.Selector)) {
                 return true;
             }
         }
@@ -121,21 +102,17 @@ public sealed class PairingStore(
         return false;
     }
 
-    private void Drain(DateTimeOffset now)
-    {
-        while (lapsing.Min is { } entry && entry.ExpiresAt <= now)
-        {
+    private void Drain(DateTimeOffset now) {
+        while (lapsing.Min is { } entry && entry.ExpiresAt <= now) {
             Close(entry);
         }
 
-        while (retiring.Min is { } entry && entry.ExpiresAt + RelayLimits.TombstoneRetention <= now)
-        {
+        while (retiring.Min is { } entry && entry.ExpiresAt + RelayLimits.TombstoneRetention <= now) {
             Forget(entry);
         }
     }
 
-    private void Close(Entry entry)
-    {
+    private void Close(Entry entry) {
         entry.Open = false;
         lapsing.Remove(entry);
         pendingByChannel.Remove(entry.Channel);
@@ -143,22 +120,16 @@ public sealed class PairingStore(
         retiring.Add(entry);
     }
 
-    private void Release(string network)
-    {
-        if (pendingByNetwork[network] == 1)
-        {
+    private void Release(string network) {
+        if (pendingByNetwork[network] == 1) {
             pendingByNetwork.Remove(network);
-        }
-        else
-        {
+        } else {
             pendingByNetwork[network]--;
         }
     }
 
-    private bool TryEvictOldestTombstone()
-    {
-        if (retiring.Min is not { } oldest)
-        {
+    private bool TryEvictOldestTombstone() {
+        if (retiring.Min is not { } oldest) {
             return false;
         }
 
@@ -166,25 +137,21 @@ public sealed class PairingStore(
         return true;
     }
 
-    private void Replace(Entry previous, Entry next)
-    {
+    private void Replace(Entry previous, Entry next) {
         Close(previous);
         Forget(previous.Replaced);
         previous.Replaced = null;
         next.Replaced = previous;
     }
 
-    private void Forget(Entry? entry)
-    {
-        if (entry is not null && entries.TryGetValue(entry.Selector, out Entry? held) && ReferenceEquals(held, entry))
-        {
+    private void Forget(Entry? entry) {
+        if (entry is not null && entries.TryGetValue(entry.Selector, out Entry? held) && ReferenceEquals(held, entry)) {
             entries.Remove(entry.Selector);
             retiring.Remove(entry);
         }
     }
 
-    private sealed class Entry(PairingCode code, ChannelId channel, string network, DateTimeOffset expiresAt)
-    {
+    private sealed class Entry(PairingCode code, ChannelId channel, string network, DateTimeOffset expiresAt) {
         public string Selector { get; } = code.Selector;
 
         public byte[] Verifier { get; } = Encoding.ASCII.GetBytes(code.Verifier);

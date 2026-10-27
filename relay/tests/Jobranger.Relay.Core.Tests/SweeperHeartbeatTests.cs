@@ -1,15 +1,13 @@
 namespace Jobranger.Relay.Core.Tests;
 
-public sealed class SweeperHeartbeatTests
-{
+public sealed class SweeperHeartbeatTests {
     private static readonly DateTimeOffset beat = new(2026, 10, 18, 8, 0, 0, TimeSpan.Zero);
     private static readonly TimeSpan oneSecond = TimeSpan.FromSeconds(1);
 
     [Theory]
     [InlineData(1, true)]
     [InlineData(0, false)]
-    public void ShouldCountBeatOnlyBeforeLimitPasses(int secondsBeforeLimit, bool within)
-    {
+    public void ShouldCountBeatOnlyBeforeLimitPasses(int secondsBeforeLimit, bool within) {
         SweeperHeartbeat heartbeat = new();
         heartbeat.Beat(beat);
 
@@ -19,8 +17,7 @@ public sealed class SweeperHeartbeatTests
     }
 
     [Fact]
-    public void ShouldReportNoBeatBeforeFirstBeat()
-    {
+    public void ShouldReportNoBeatBeforeFirstBeat() {
         SweeperHeartbeat heartbeat = new();
 
         bool reported = heartbeat.BeatWithin(beat, SweeperTiming.DeadAfter);

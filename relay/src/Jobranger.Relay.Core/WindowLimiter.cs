@@ -2,18 +2,14 @@ using System.Threading.RateLimiting;
 
 namespace Jobranger.Relay.Core;
 
-public sealed class WindowLimiter(int permits, TimeSpan window, TimeProvider time) : RateLimiter
-{
+public sealed class WindowLimiter(int permits, TimeSpan window, TimeProvider time) : RateLimiter {
     private readonly Lock gate = new();
     private DateTimeOffset windowStart = time.GetUtcNow();
     private int used;
 
-    public override TimeSpan? IdleDuration
-    {
-        get
-        {
-            lock (gate)
-            {
+    public override TimeSpan? IdleDuration {
+        get {
+            lock (gate) {
                 DateTimeOffset windowEnd = windowStart + window;
                 DateTimeOffset now = time.GetUtcNow();
                 return now >= windowEnd ? now - windowEnd : null;
@@ -23,19 +19,15 @@ public sealed class WindowLimiter(int permits, TimeSpan window, TimeProvider tim
 
     public override RateLimiterStatistics? GetStatistics() => null;
 
-    protected override RateLimitLease AttemptAcquireCore(int permitCount)
-    {
-        lock (gate)
-        {
+    protected override RateLimitLease AttemptAcquireCore(int permitCount) {
+        lock (gate) {
             DateTimeOffset now = time.GetUtcNow();
-            if (now >= windowStart + window)
-            {
+            if (now >= windowStart + window) {
                 windowStart = now;
                 used = 0;
             }
 
-            if (used + permitCount > permits)
-            {
+            if (used + permitCount > permits) {
                 return new RefusedLease(windowStart + window - now);
             }
 

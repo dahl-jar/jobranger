@@ -1,7 +1,6 @@
 namespace Jobranger.Relay.Tests;
 
-internal static class Codes
-{
+internal static class Codes {
     private const string filler = "BBBB";
     private const string otherFiller = "CCCC";
 

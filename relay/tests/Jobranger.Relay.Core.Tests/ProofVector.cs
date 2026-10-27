@@ -1,7 +1,6 @@
 namespace Jobranger.Relay.Core.Tests;
 
-internal static class ProofVector
-{
+internal static class ProofVector {
     public const string PublicKey = "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo";
     public const string Channel = "sVpCkQYZPnMOnyB34PLScKMrmg2wDUTIPjk5VO0U880";
     public const string Nonce = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8";

@@ -2,8 +2,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Jobranger.Relay.Pairing;
 
-internal sealed record RelayProblem(int Status, string Code)
-{
+internal sealed record RelayProblem(int Status, string Code) {
     public ProblemHttpResult ToResult() => TypedResults.Problem(
         statusCode: Status,
         title: Code,

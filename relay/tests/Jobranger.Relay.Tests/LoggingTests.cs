@@ -4,11 +4,9 @@ using Microsoft.Extensions.Logging.Testing;
 
 namespace Jobranger.Relay.Tests;
 
-public sealed partial class LoggingTests(RelayFactory factory) : IClassFixture<RelayFactory>
-{
+public sealed partial class LoggingTests(RelayFactory factory) : IClassFixture<RelayFactory> {
     [Fact]
-    public async Task ShouldNotLogCodesHandlesOrRawChannelIds()
-    {
+    public async Task ShouldNotLogCodesHandlesOrRawChannelIds() {
         using RelayApi api = RelayApi.For(factory, Addresses.Next());
         using CliKey key = new();
         string nonce = await api.Nonce();
@@ -40,8 +38,7 @@ public sealed partial class LoggingTests(RelayFactory factory) : IClassFixture<R
     }
 
     [Fact]
-    public async Task ShouldLogChannelAsSameKeyedPseudonymAcrossEvents()
-    {
+    public async Task ShouldLogChannelAsSameKeyedPseudonymAcrossEvents() {
         using RelayApi api = RelayApi.For(factory, Addresses.Next());
         using CliKey key = new();
         await api.Paired(key);

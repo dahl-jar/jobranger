@@ -6,21 +6,18 @@ using Microsoft.Extensions.Logging.Testing;
 
 namespace Jobranger.Relay.Tests;
 
-public sealed class HubErrorFilterTests : IDisposable
-{
+public sealed class HubErrorFilterTests : IDisposable {
     private readonly FakeLoggerProvider provider = new();
     private readonly LoggerFactory loggers;
     private readonly HubErrorFilter filter;
 
-    public HubErrorFilterTests()
-    {
+    public HubErrorFilterTests() {
         loggers = new LoggerFactory([provider]);
         filter = new HubErrorFilter(loggers);
     }
 
     [Fact]
-    public async Task ShouldLogUnexpectedHubFailure()
-    {
+    public async Task ShouldLogUnexpectedHubFailure() {
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => filter.InvokeMethodAsync(Invocation(), _ => throw new InvalidOperationException("broken hub")).AsTask());
 
@@ -30,8 +27,7 @@ public sealed class HubErrorFilterTests : IDisposable
     }
 
     [Fact]
-    public async Task ShouldNotLogHubRejection()
-    {
+    public async Task ShouldNotLogHubRejection() {
         await Assert.ThrowsAsync<HubException>(
             () => filter.InvokeMethodAsync(Invocation(), _ => throw new HubException("invalid_envelope")).AsTask());
 
@@ -41,8 +37,7 @@ public sealed class HubErrorFilterTests : IDisposable
     }
 
     [Fact]
-    public async Task ShouldLogUnexpectedFailureWhileConnecting()
-    {
+    public async Task ShouldLogUnexpectedFailureWhileConnecting() {
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => filter.OnConnectedAsync(Lifetime(), _ => throw new InvalidOperationException("broken join")));
 
@@ -52,8 +47,7 @@ public sealed class HubErrorFilterTests : IDisposable
     }
 
     [Fact]
-    public async Task ShouldNotLogRefusedJoin()
-    {
+    public async Task ShouldNotLogRefusedJoin() {
         await Assert.ThrowsAsync<HubException>(() => filter.OnConnectedAsync(Lifetime(), _ => throw new HubException("ticket_full")));
 
         IReadOnlyList<FakeLogRecord> records = provider.Collector.GetSnapshot();
@@ -62,8 +56,7 @@ public sealed class HubErrorFilterTests : IDisposable
     }
 
     [Fact]
-    public async Task ShouldLogUnexpectedFailureWhileDisconnecting()
-    {
+    public async Task ShouldLogUnexpectedFailureWhileDisconnecting() {
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => filter.OnDisconnectedAsync(Lifetime(), null, (_, _) => throw new InvalidOperationException("broken leave")));
 
@@ -72,8 +65,7 @@ public sealed class HubErrorFilterTests : IDisposable
         Assert.Equal(LogLevel.Error, record.Level);
     }
 
-    public void Dispose()
-    {
+    public void Dispose() {
         loggers.Dispose();
         provider.Dispose();
     }
@@ -83,10 +75,8 @@ public sealed class HubErrorFilterTests : IDisposable
 
     private static HubLifetimeContext Lifetime() => new(new FakeCaller("cli-one"), new ServiceCollection().BuildServiceProvider(), new ProbeHub());
 
-    private sealed class ProbeHub : Hub
-    {
-        public static void Send()
-        {
+    private sealed class ProbeHub : Hub {
+        public static void Send() {
         }
     }
 }

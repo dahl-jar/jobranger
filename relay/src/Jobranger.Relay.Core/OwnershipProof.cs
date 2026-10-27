@@ -3,8 +3,7 @@ using NSec.Cryptography;
 
 namespace Jobranger.Relay.Core;
 
-public static class OwnershipProof
-{
+public static class OwnershipProof {
     public const string PairStartPurpose = "pair.start";
     public const string SessionCliPurpose = "session.cli";
     public const int PublicKeyBytes = 32;

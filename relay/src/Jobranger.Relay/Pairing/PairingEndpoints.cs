@@ -6,10 +6,8 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Jobranger.Relay.Pairing;
 
-internal static class PairingEndpoints
-{
-    public static IEndpointRouteBuilder MapPairing(this IEndpointRouteBuilder app)
-    {
+internal static class PairingEndpoints {
+    public static IEndpointRouteBuilder MapPairing(this IEndpointRouteBuilder app) {
         RouteGroupBuilder pair = app.MapGroup("/pair")
             .RequireCors(SiteCors.Policy)
             .AddEndpointFilter(new RequestVersionFilter());
@@ -25,25 +23,21 @@ internal static class PairingEndpoints
         NonceStore nonces,
         PairedChannels paired,
         RelayRateLimiter limiter,
-        ILoggerFactory loggers)
-    {
+        ILoggerFactory loggers) {
         ChannelId? channel = ParseChannel(request.Channel);
-        ProblemHttpResult? refused = channel switch
-        {
+        ProblemHttpResult? refused = channel switch {
             null => RateLimiting.Throttle(http, limiter.AttemptAcquireForAddress(http, RateLimiting.Nonce), RateLimiting.Nonce),
             { } owner when paired.Touch(owner) => RateLimiting.ThrottleChannel(http, limiter, owner, RelayRole.Cli),
             { } owner => RateLimiting.Throttle(http, limiter.AttemptAcquireForUnpairedChannel(http, owner), RateLimiting.Nonce),
         };
-        if (refused is not null)
-        {
+        if (refused is not null) {
             return refused;
         }
 
         RelayNonce? issued = channel is { } bound
             ? nonces.IssueForChannel(bound)
             : nonces.IssueForNetwork(ClientPartition.Network(http.Connection.RemoteIpAddress));
-        if (issued is not { } nonce)
-        {
+        if (issued is not { } nonce) {
             return RelayLog.For(loggers).Reject(http, RelayProblems.RelayFull);
         }
 
@@ -61,17 +55,14 @@ internal static class PairingEndpoints
         ChannelHandle handles,
         TimeProvider time,
         RelayMetrics metrics,
-        ILoggerFactory loggers)
-    {
+        ILoggerFactory loggers) {
         ILogger logger = RelayLog.For(loggers);
         ProofResult proof = ProofCheck.Check(request, OwnershipProof.PairStartPurpose, nonces);
-        if (proof.Problem is { } problem)
-        {
+        if (proof.Problem is { } problem) {
             return logger.Reject(http, problem);
         }
 
-        if (pairings.Start(proof.Channel, ClientPartition.Network(http.Connection.RemoteIpAddress)) is not { } pending)
-        {
+        if (pairings.Start(proof.Channel, ClientPartition.Network(http.Connection.RemoteIpAddress)) is not { } pending) {
             return logger.Reject(http, RelayProblems.RelayFull);
         }
 
@@ -91,17 +82,14 @@ internal static class PairingEndpoints
         ChannelHandle handles,
         TimeProvider time,
         RelayMetrics metrics,
-        ILoggerFactory loggers)
-    {
+        ILoggerFactory loggers) {
         ILogger logger = RelayLog.For(loggers);
-        if (!PairingCode.TryParse(request.Code, out PairingCode code))
-        {
+        if (!PairingCode.TryParse(request.Code, out PairingCode code)) {
             return logger.Reject(http, RelayProblems.InvalidCodeFormat);
         }
 
         ClaimResult claim = pairings.Claim(code);
-        if (claim is not { Outcome: ClaimOutcome.Claimed, Channel: { } channel })
-        {
+        if (claim is not { Outcome: ClaimOutcome.Claimed, Channel: { } channel }) {
             return logger.Reject(http, claim.Outcome == ClaimOutcome.Expired ? RelayProblems.CodeExpired : RelayProblems.WrongCode);
         }
 

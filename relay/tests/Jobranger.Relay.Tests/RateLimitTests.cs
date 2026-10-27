@@ -1,13 +1,13 @@
 using System.Net;
 using System.Text.Json.Nodes;
 using Jobranger.Relay.Security;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Jobranger.Relay.Tests;
 
-public sealed class RateLimitTests(RelayFactory factory) : IClassFixture<RelayFactory>
-{
+public sealed class RateLimitTests(RelayFactory factory) : IClassFixture<RelayFactory> {
     private const int claimBurst = 5;
     private const int noncesPerWindow = 30;
     private const int pairStartsPerClient = 10;
@@ -15,8 +15,7 @@ public sealed class RateLimitTests(RelayFactory factory) : IClassFixture<RelayFa
     private const int claimsPastBlockBurst = 30;
 
     [Fact]
-    public async Task ShouldReturn429AfterClaimBurstFromOneAddress()
-    {
+    public async Task ShouldReturn429AfterClaimBurstFromOneAddress() {
         using RelayApi api = RelayApi.For(factory, Addresses.Next());
         await api.Claims(claimBurst);
 
@@ -27,8 +26,7 @@ public sealed class RateLimitTests(RelayFactory factory) : IClassFixture<RelayFa
     }
 
     [Fact]
-    public async Task ShouldReportTimeLeftUntilNextClaimToken()
-    {
+    public async Task ShouldReportTimeLeftUntilNextClaimToken() {
         using RelayApi api = RelayApi.For(factory, Addresses.Next());
         await api.Claims(claimBurst);
         factory.Time.Advance(TimeSpan.FromSeconds(10));
@@ -39,11 +37,9 @@ public sealed class RateLimitTests(RelayFactory factory) : IClassFixture<RelayFa
     }
 
     [Fact]
-    public async Task ShouldReportTimeLeftInNonceWindow()
-    {
+    public async Task ShouldReportTimeLeftInNonceWindow() {
         using RelayApi api = RelayApi.For(factory, Addresses.Next());
-        for (int nonce = 0; nonce < noncesPerWindow; nonce++)
-        {
+        for (int nonce = 0; nonce < noncesPerWindow; nonce++) {
             await api.Nonce();
         }
 
@@ -55,8 +51,7 @@ public sealed class RateLimitTests(RelayFactory factory) : IClassFixture<RelayFa
     }
 
     [Fact]
-    public async Task ShouldTypeRateLimitProblem()
-    {
+    public async Task ShouldTypeRateLimitProblem() {
         using RelayApi api = RelayApi.For(factory, Addresses.Next());
         await api.Claims(claimBurst);
 
@@ -67,11 +62,9 @@ public sealed class RateLimitTests(RelayFactory factory) : IClassFixture<RelayFa
     }
 
     [Fact]
-    public async Task ShouldExposeRetryAfterToSite()
-    {
+    public async Task ShouldExposeRetryAfterToSite() {
         using RelayApi api = RelayApi.For(factory, Addresses.Next());
-        using HttpRequestMessage request = new(HttpMethod.Post, "/pair/claim")
-        {
+        using HttpRequestMessage request = new(HttpMethod.Post, "/pair/claim") {
             Content = new StringContent("{\"v\":1,\"code\":\"BBBB-BBBB\"}", System.Text.Encoding.UTF8, RelayApi.JsonType),
         };
         request.Headers.Add("Origin", RelayFactory.SiteOrigin);
@@ -82,8 +75,7 @@ public sealed class RateLimitTests(RelayFactory factory) : IClassFixture<RelayFa
     }
 
     [Fact]
-    public async Task ShouldKeepClaimLimitPerClientAddress()
-    {
+    public async Task ShouldKeepClaimLimitPerClientAddress() {
         using RelayApi limited = RelayApi.For(factory, Addresses.Next());
         using RelayApi other = RelayApi.For(factory, Addresses.Next());
         await limited.Claims(claimBurst);
@@ -94,8 +86,7 @@ public sealed class RateLimitTests(RelayFactory factory) : IClassFixture<RelayFa
     }
 
     [Fact]
-    public async Task ShouldShareClaimLimitAcrossOneIpv6Prefix64()
-    {
+    public async Task ShouldShareClaimLimitAcrossOneIpv6Prefix64() {
         string prefix = Addresses.NextBlock();
         using RelayApi first = RelayApi.For(factory, $"{prefix}:0:0:0:0:1");
         using RelayApi second = RelayApi.For(factory, $"{prefix}:0:aaaa:bbbb:cccc:2");
@@ -107,11 +98,9 @@ public sealed class RateLimitTests(RelayFactory factory) : IClassFixture<RelayFa
     }
 
     [Fact]
-    public async Task ShouldLimitPairStartsAcrossOneIpv6Prefix48()
-    {
+    public async Task ShouldLimitPairStartsAcrossOneIpv6Prefix48() {
         string block = Addresses.NextBlock();
-        for (int prefix = 1; prefix <= clientsPerBlockShare; prefix++)
-        {
+        for (int prefix = 1; prefix <= clientsPerBlockShare; prefix++) {
             using RelayApi api = RelayApi.For(factory, $"{block}:{prefix:x}::1");
             await PairStarts(api, pairStartsPerClient);
         }
@@ -123,14 +112,12 @@ public sealed class RateLimitTests(RelayFactory factory) : IClassFixture<RelayFa
     }
 
     [Fact]
-    public async Task ShouldConfinePairStartFloodToOneShardPerIpv4Network()
-    {
-        using var capped = factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+    public async Task ShouldConfinePairStartFloodToOneShardPerIpv4Network() {
+        using WebApplicationFactory<Program> capped = factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
             services.AddSingleton(new RelayRateLimiter(factory.Time, maxPartitions: 1))));
         using RelayApi known = RelayApi.For(capped, "192.0.2.1");
         await PairStarts(known, 1);
-        for (int client = 1; client <= pairStartsPerClient; client++)
-        {
+        for (int client = 1; client <= pairStartsPerClient; client++) {
             using RelayApi flood = RelayApi.For(capped, $"203.0.113.{client}");
             await PairStarts(flood, 1);
         }
@@ -142,10 +129,8 @@ public sealed class RateLimitTests(RelayFactory factory) : IClassFixture<RelayFa
     }
 
     [Fact]
-    public async Task ShouldLimitPairStartsAcrossOneIpv4Network()
-    {
-        for (int host = 1; host <= clientsPerBlockShare; host++)
-        {
+    public async Task ShouldLimitPairStartsAcrossOneIpv4Network() {
+        for (int host = 1; host <= clientsPerBlockShare; host++) {
             using RelayApi api = RelayApi.For(factory, $"198.51.100.{host}");
             await PairStarts(api, pairStartsPerClient);
         }
@@ -157,10 +142,8 @@ public sealed class RateLimitTests(RelayFactory factory) : IClassFixture<RelayFa
     }
 
     [Fact]
-    public async Task ShouldKeepClaimLimitPerHostAcrossOneIpv4Network()
-    {
-        for (int host = 1; host <= clientsPerBlockShare + 1; host++)
-        {
+    public async Task ShouldKeepClaimLimitPerHostAcrossOneIpv4Network() {
+        for (int host = 1; host <= clientsPerBlockShare + 1; host++) {
             using RelayApi api = RelayApi.For(factory, $"100.68.5.{host}");
             await api.Claims(claimBurst);
         }
@@ -172,8 +155,7 @@ public sealed class RateLimitTests(RelayFactory factory) : IClassFixture<RelayFa
     }
 
     [Fact]
-    public async Task ShouldNotSpendBlockBudgetOnRefusedClaims()
-    {
+    public async Task ShouldNotSpendBlockBudgetOnRefusedClaims() {
         string block = Addresses.NextBlock();
         using RelayApi retrying = RelayApi.For(factory, $"{block}:1::1");
         using RelayApi neighbour = RelayApi.For(factory, $"{block}:2::1");
@@ -187,8 +169,7 @@ public sealed class RateLimitTests(RelayFactory factory) : IClassFixture<RelayFa
     [Theory]
     [InlineData("127.0.0.1")]
     [InlineData("::1")]
-    public async Task ShouldIgnoreForwardedAddressFromUntrustedPeer(string peer)
-    {
+    public async Task ShouldIgnoreForwardedAddressFromUntrustedPeer(string peer) {
         using RelayApi limited = RelayApi.For(factory, Addresses.Next(), peer);
         using RelayApi spoofed = RelayApi.For(factory, Addresses.Next(), peer);
         await limited.Claims(claimBurst);
@@ -198,10 +179,8 @@ public sealed class RateLimitTests(RelayFactory factory) : IClassFixture<RelayFa
         Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
     }
 
-    private static async Task PairStarts(RelayApi api, int count)
-    {
-        for (int start = 0; start < count; start++)
-        {
+    private static async Task PairStarts(RelayApi api, int count) {
+        for (int start = 0; start < count; start++) {
             using HttpResponseMessage response = await api.Post("/pair/start", new JsonObject { ["v"] = 1 });
         }
     }

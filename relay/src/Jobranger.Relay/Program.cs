@@ -13,8 +13,7 @@ const long maxRequestBodyBytes = 16_384;
 const int startupFailureExitCode = 1;
 const string startupCategory = "Jobranger.Relay.Startup";
 
-try
-{
+try {
     WebApplicationBuilder builder = WebApplication.CreateSlimBuilder(args);
 
     builder.Logging.AddRelayJsonConsole();
@@ -27,8 +26,7 @@ try
     builder.Services.AddSingleton(services => new PairingStore(services.GetRequiredService<TimeProvider>()));
     builder.Services.AddSingleton(services => new NonceStore(services.GetRequiredService<TimeProvider>()));
     builder.Services.AddSingleton(services => new PairedChannels(services.GetRequiredService<TimeProvider>()));
-    builder.Services.ConfigureHttpJsonOptions(json =>
-    {
+    builder.Services.ConfigureHttpJsonOptions(json => {
         json.SerializerOptions.TypeInfoResolverChain.Insert(0, RelayJsonContext.Default);
         json.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
         json.SerializerOptions.AllowDuplicateProperties = false;
@@ -63,9 +61,7 @@ try
 
     app.Run();
     return 0;
-}
-catch (Exception failure) when (failure is not HostAbortedException)
-{
+} catch (Exception failure) when (failure is not HostAbortedException) {
     using ILoggerFactory startup = LoggerFactory.Create(logging => logging.AddRelayJsonConsole());
     startup.CreateLogger(startupCategory).StartupFailed(failure);
     return startupFailureExitCode;

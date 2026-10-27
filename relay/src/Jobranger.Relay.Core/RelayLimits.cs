@@ -1,7 +1,6 @@
 namespace Jobranger.Relay.Core;
 
-public static class RelayLimits
-{
+public static class RelayLimits {
     public const int MaxWrongGuesses = 5;
     public const int MaxPendingPairings = 2_000;
     public const int MaxPendingPairingsPerNetwork = 64;
