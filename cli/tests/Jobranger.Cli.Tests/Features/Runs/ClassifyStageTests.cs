@@ -8,6 +8,7 @@ using Jobranger.Cli.Features.Budget;
 using Jobranger.Cli.Features.Providers;
 using Jobranger.Cli.Features.Runs;
 using Jobranger.Cli.Http;
+using Jobranger.Cli.Storage;
 using Jobranger.Cli.Tests.Mocks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -36,6 +37,7 @@ public sealed class ClassifyStageTests : IDisposable {
     private const int overLimitDescriptionChars = 800_000;
     private const int attemptRuns = 3;
     private const int refusedRuns = 4;
+    private const string devicesVersion = "4";
     private const string attemptsQuery = "SELECT COALESCE(label, 'NULL') || '|' || label_attempts FROM ads ORDER BY id";
 
     private static readonly ModelPrices prices = new(1m, 5m, 0.1m, 1.25m, 2m);
@@ -659,6 +661,19 @@ public sealed class ClassifyStageTests : IDisposable {
         await stage.RunAsync(Input(client), CancellationToken.None);
 
         Assert.Equal("error|" + version, db.Scalar(assessedQuery));
+    }
+
+    [Fact]
+    public async Task ShouldKeepOldLabel_WhenUpgradedAdGetsOneBadReply() {
+        UpsertOutdated();
+        db.Execute("UPDATE ads SET label_attempts = 2");
+        new StateStore(db.Connection).Set(StateStore.SchemaVersionKey, devicesVersion);
+        Migrations.Migrate(db.Connection, Migrations.All);
+        FakeModelClient client = new((_, _) => Task.FromResult(FakeModelClient.Reply(JavaReply, StopKind.Truncated)));
+
+        await stage.RunAsync(Input(client), CancellationToken.None);
+
+        Assert.Equal("junior|" + AdFixtures.OutdatedVersion, db.Scalar(assessedQuery));
     }
 
     [Fact]
