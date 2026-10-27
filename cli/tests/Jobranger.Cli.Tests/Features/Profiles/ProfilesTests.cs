@@ -217,6 +217,13 @@ public sealed class ProfilesTests : IDisposable {
     [InlineData("summary: s\nprofessional_years: 1\nstack: [a\u0007]\n", "3")]
     [InlineData("professional_years: 1\nsummary: \"a\\t\u2028b\"\n", "2")]
     [InlineData("professional_years: 1\nsummary: 'a\u2028#b'\n", "2")]
+    [InlineData("professional_years: 1\nsummary: a\n- x\nstack: [b]\u2028\n", "3")]
+    [InlineData("professional_years: 1\nsummary: a\u2028b\n- x\n", "3")]
+    [InlineData("summary: Line one\n  Built X\u2028#1 team\n  line three\nprofessional_years: 1\n", "2")]
+    [InlineData("summary: a\u2028\n\tb: 1\nprofessional_years: 1\n", "2")]
+    [InlineData(ProfileSeparatorTests.FactsProfile + "Built X.\n      \u0085Led Y.\n", "7")]
+    [InlineData(ProfileSeparatorTests.FactsProfile + "'Built X.\n      \u0085Led Y.'\n", "7")]
+    [InlineData(ProfileSeparatorTests.FactsProfile + "'Built X.\u2028\t\n      Led Y.'\n", "6")]
     public void ShouldNameLine_WhenProfileIsNotYaml(string yaml, string line) {
         string path = Write(yaml);
 
