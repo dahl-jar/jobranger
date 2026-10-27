@@ -22,4 +22,48 @@ internal interface IMessages {
     string UnknownArgument(string token);
 
     string InvalidOption(string option);
+
+    string ConfigUnknownKey { get; }
+
+    string ConfigRequired { get; }
+
+    string ConfigNotBoolean { get; }
+
+    string ConfigNotNumber { get; }
+
+    string ConfigNotText { get; }
+
+    string ConfigNotList { get; }
+
+    string ConfigNotSection { get; }
+
+    string ConfigRunTimeFormat { get; }
+
+    string ConfigNotOllamaUrl { get; }
+
+    string ConfigNotSmtpUrl { get; }
+
+    string ConfigNotAddress { get; }
+
+    string ConfigNotSender { get; }
+
+    string ConfigAddressMissing { get; }
+
+    string ConfigSmtpUrlMissing { get; }
+
+    string ConfigAliasUsed { get; }
+
+    string ConfigDuplicateKey { get; }
+
+    string ConfigNotUtf8 { get; }
+
+    string ConfigNotServiceUrl { get; }
+
+    string ConfigNotChoice(string allowed);
+
+    string ConfigAmountOutOfRange(decimal max);
+
+    string ConfigRunTimesTooClose(int hours);
+
+    string ConfigNotYaml(int line);
 }

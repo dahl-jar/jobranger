@@ -1,0 +1,36 @@
+version: 1
+profile:
+  path: ~/profile.yaml
+  cv_name: null
+  cv_read_at: null
+targets:
+  subfields: []
+  limits:
+    levels: [junior, mid, none]
+    years: [0-1, 1-3]
+    hide_masters: true
+  places: []
+  relocate: true
+sources:
+  nav: true
+  employers: true
+  finn: false
+  linkedin: false
+  employer_feeds: []
+schedule:
+  times: ['03:00', '15:00']
+model:
+  provider: null
+  model: null
+  ollama_url: http://localhost:11434
+  monthly_limit_usd: null
+  price: null
+notify:
+  website: true
+  email:
+    on: false
+    address: null
+    via: smtp
+    smtp_url: null
+    smtp_user: null
+    sender: null

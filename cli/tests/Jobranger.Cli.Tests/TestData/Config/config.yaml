@@ -1,0 +1,44 @@
+# jobranger settings
+version: 1
+profile:
+  path: ~/.config/jobranger/profile.yaml
+  cv_name: cv.pdf
+  cv_read_at: "2026-10-01T08:00:00+00:00"
+# what to look for
+targets:
+  subfields: [backend, fullstack]
+  limits: # filters
+    levels: [junior, mid, none]
+    years: [0-1, 1-3]
+    hide_masters: true
+  places: [Bergen, Ålesund] # where
+  relocate: true # chosen during setup
+sources:
+  nav: true
+  employers: true
+  finn: false
+  linkedin: false
+  employer_feeds:
+  - kind: teamtailor
+    key: employer
+    company: Employer AS
+    board: https://employer.example.test/jobs.rss?per_page=200
+schedule:
+  times: ['03:00', '15:00']
+model:
+  provider: anthropic
+  model: claude-haiku-4-5
+  ollama_url: http://localhost:11434
+  monthly_limit_usd: 5
+  price: null
+notify:
+  website: true
+  email:
+    on: true
+    address: user@example.com
+    via: smtp
+    smtp_url: smtp://smtp.example.test:587
+    smtp_user: user
+    sender: jobranger <user@example.com>
+language: nb
+# end of settings

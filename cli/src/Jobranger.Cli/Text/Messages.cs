@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Frozen;
+using Jobranger.Cli.Platform;
 
 namespace Jobranger.Cli.Text;
 
@@ -14,14 +15,12 @@ internal static class Messages {
     private static readonly IMessages english = new EnglishMessages();
     private static readonly IMessages norwegian = new NorwegianMessages();
 
-    public static IMessages For(IDictionary environment) {
-        string? locale = Read(environment, localeAllVariable) ?? Read(environment, localeVariable);
-        Language language = locale is null ? defaultLanguage : LanguageFromLocale(locale);
+    public static IMessages For(Language? configured, IDictionary environment) {
+        string? locale = EnvironmentVariables.Read(environment, localeAllVariable)
+            ?? EnvironmentVariables.Read(environment, localeVariable);
+        Language language = configured ?? (locale is null ? defaultLanguage : LanguageFromLocale(locale));
         return language == Language.Nb ? norwegian : english;
     }
-
-    private static string? Read(IDictionary environment, string name) =>
-        environment[name] is string { Length: > 0 } value ? value : null;
 
     private static Language LanguageFromLocale(string locale) {
         string primary = locale.Split(localeSeparators)[0];

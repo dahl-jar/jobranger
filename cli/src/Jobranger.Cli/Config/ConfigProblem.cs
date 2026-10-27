@@ -1,0 +1,26 @@
+namespace Jobranger.Cli.Config;
+
+internal enum ConfigProblem {
+    UnknownKey,
+    Required,
+    NotBoolean,
+    NotNumber,
+    NotText,
+    NotList,
+    NotSection,
+    NotChoice,
+    AmountOutOfRange,
+    RunTimeFormat,
+    RunTimesTooClose,
+    NotOllamaUrl,
+    NotSmtpUrl,
+    NotAddress,
+    NotSender,
+    AddressMissing,
+    SmtpUrlMissing,
+    AliasUsed,
+    DuplicateKey,
+    NotYaml,
+    NotUtf8,
+    NotServiceUrl,
+}

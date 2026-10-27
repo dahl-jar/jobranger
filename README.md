@@ -14,6 +14,12 @@ jobranger fetches job ads from FINN, NAV, LinkedIn and employer job boards, chec
 
 Development setup and checks are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## CLI files
+
+The C# CLI keeps `config.yaml` and `profile.yaml` in `~/.config/jobranger`. The database goes in `~/Library/Application Support/jobranger` on macOS and `~/.local/share/jobranger` on Linux, and the run lock and logs in `~/Library/Application Support/jobranger` on macOS and `~/.local/state/jobranger` on Linux. `JOBRANGER_CONFIG_DIR`, `JOBRANGER_DATA_DIR` and `JOBRANGER_STATE_DIR` set each folder directly. Next come absolute `XDG_CONFIG_HOME`, `XDG_DATA_HOME` and `XDG_STATE_HOME`, each with `jobranger` appended.
+
+Files are written with mode 0600 in 0700 folders, and a folder open to group or others is set to 0700 with a warning in the log. Saving `config.yaml` keeps comments with their keys, the file's key order and the header comment on top. Blank lines and comments inside lists are dropped. A config error names the setting and the problem, for example `targets.limits.hide_masters: is not true or false`, and never the value. `language: en` or `language: nb` picks the CLI language. Without it, `LC_ALL` or `LANG` decides.
+
 ## Website
 
 `/` is the landing page with install steps and an example match. `/setup` walks through install, `jobranger init`, pairing and scheduling with example terminal output, one step per `?step=1` to `?step=8`.

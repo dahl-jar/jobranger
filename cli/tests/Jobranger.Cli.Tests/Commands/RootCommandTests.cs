@@ -123,5 +123,5 @@ public sealed class RootCommandTests {
     }
 
     private static RootCommand CreateRoot(RecordingConsole console, string lang) =>
-        new(CliServices.Create(console.Console, console.ErrorConsole, Locales.Environment(lang)));
+        new(CliServices.Create(console.Console, console.ErrorConsole, Locales.EnvironmentWithoutConfig(lang)));
 }

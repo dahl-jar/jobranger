@@ -6,5 +6,11 @@ internal static class Locales {
     public const string LangVariable = "LANG";
     public const string LcAllVariable = "LC_ALL";
 
-    public static Dictionary<string, string> Environment(string lang) => new() { [LangVariable] = lang };
+    public const string ConfigDirVariable = "JOBRANGER_CONFIG_DIR";
+
+    private static readonly string absentConfigDir =
+        Path.Combine(Path.GetTempPath(), "jobranger-absent-" + Guid.NewGuid().ToString("N"));
+
+    public static Dictionary<string, string> EnvironmentWithoutConfig(string lang) =>
+        new() { [LangVariable] = lang, [ConfigDirVariable] = absentConfigDir };
 }

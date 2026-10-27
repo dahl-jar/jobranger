@@ -15,12 +15,12 @@ public sealed class MessagesTests {
     [InlineData("en_GB.UTF-8", Locales.Norwegian, typeof(EnglishMessages))]
     [InlineData("", Locales.Norwegian, typeof(NorwegianMessages))]
     public void ShouldPickLanguage_WhenLcAllOrLangIsSet(string? lcAll, string lang, Type expected) {
-        Dictionary<string, string> environment = Locales.Environment(lang);
+        Dictionary<string, string> environment = Locales.EnvironmentWithoutConfig(lang);
         if (lcAll is not null) {
             environment[Locales.LcAllVariable] = lcAll;
         }
 
-        IMessages messages = Messages.For(environment);
+        IMessages messages = Messages.For(null, environment);
 
         Assert.IsType(expected, messages);
     }
@@ -30,9 +30,9 @@ public sealed class MessagesTests {
     [InlineData("C")]
     [InlineData("nbx_NO")]
     public void ShouldPickEnglish_WhenLangIsMissingOrUnknown(string? lang) {
-        Dictionary<string, string> environment = lang is null ? [] : Locales.Environment(lang);
+        Dictionary<string, string> environment = lang is null ? [] : Locales.EnvironmentWithoutConfig(lang);
 
-        IMessages messages = Messages.For(environment);
+        IMessages messages = Messages.For(null, environment);
 
         Assert.IsType<EnglishMessages>(messages);
     }
@@ -41,7 +41,7 @@ public sealed class MessagesTests {
     [InlineData(Locales.English)]
     [InlineData(Locales.Norwegian)]
     public void ShouldNameToken_WhenArgumentIsUnknown(string lang) {
-        IMessages messages = Messages.For(Locales.Environment(lang));
+        IMessages messages = Messages.For(null, Locales.EnvironmentWithoutConfig(lang));
 
         string error = messages.UnknownArgument("extra");
 
@@ -52,7 +52,7 @@ public sealed class MessagesTests {
     [InlineData(Locales.English)]
     [InlineData(Locales.Norwegian)]
     public void ShouldNameOption_WhenOptionIsMisused(string lang) {
-        IMessages messages = Messages.For(Locales.Environment(lang));
+        IMessages messages = Messages.For(null, Locales.EnvironmentWithoutConfig(lang));
 
         string error = messages.InvalidOption("--count");
 
@@ -63,7 +63,7 @@ public sealed class MessagesTests {
     [InlineData(Locales.English)]
     [InlineData(Locales.Norwegian)]
     public void ShouldNameProgram_WhenHelpHintIsShown(string lang) {
-        IMessages messages = Messages.For(Locales.Environment(lang));
+        IMessages messages = Messages.For(null, Locales.EnvironmentWithoutConfig(lang));
 
         string hint = messages.HelpHint("jobranger");
 
