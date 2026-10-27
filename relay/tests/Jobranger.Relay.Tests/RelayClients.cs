@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using System.Text.Json.Nodes;
 using Jobranger.Relay.Core;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -16,14 +15,7 @@ internal static class RelayClients
 
     private static readonly TimeSpan handleLifetime = TimeSpan.FromMinutes(5);
 
-    public static ChannelId NewChannel(RelayFactory factory)
-    {
-        ChannelId channel = UnpairedChannel();
-        factory.Services.GetRequiredService<PairedChannels>().Record(channel);
-        return channel;
-    }
-
-    public static ChannelId UnpairedChannel() => ChannelId.FromPublicKey(RandomNumberGenerator.GetBytes(channelKeyBytes));
+    public static ChannelId NewChannel() => ChannelId.FromPublicKey(RandomNumberGenerator.GetBytes(channelKeyBytes));
 
     public static string Handle(RelayFactory factory, ChannelId channel, RelayRole role)
     {

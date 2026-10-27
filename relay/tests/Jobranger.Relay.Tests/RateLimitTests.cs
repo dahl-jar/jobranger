@@ -10,8 +10,9 @@ public sealed class RateLimitTests(RelayFactory factory) : IClassFixture<RelayFa
 {
     private const int claimBurst = 5;
     private const int noncesPerWindow = 30;
-    private const int pairStartsPerPrefix64 = 10;
-    private const int prefixes64PerBlock = 5;
+    private const int pairStartsPerClient = 10;
+    private const int clientsPerBlockShare = 5;
+    private const int claimsPastBlockBurst = 30;
 
     [Fact]
     public async Task ShouldReturn429AfterClaimBurstFromOneAddress()
@@ -109,10 +110,10 @@ public sealed class RateLimitTests(RelayFactory factory) : IClassFixture<RelayFa
     public async Task ShouldLimitPairStartsAcrossOneIpv6Prefix48()
     {
         string block = Addresses.NextBlock();
-        for (int prefix = 1; prefix <= prefixes64PerBlock; prefix++)
+        for (int prefix = 1; prefix <= clientsPerBlockShare; prefix++)
         {
             using RelayApi api = RelayApi.For(factory, $"{block}:{prefix:x}::1");
-            await PairStarts(api, pairStartsPerPrefix64);
+            await PairStarts(api, pairStartsPerClient);
         }
 
         using RelayApi fresh = RelayApi.For(factory, $"{block}:ffff::1");
@@ -128,7 +129,7 @@ public sealed class RateLimitTests(RelayFactory factory) : IClassFixture<RelayFa
             services.AddSingleton(new RelayRateLimiter(factory.Time, maxPartitions: 1))));
         using RelayApi known = RelayApi.For(capped, "192.0.2.1");
         await PairStarts(known, 1);
-        for (int client = 1; client <= pairStartsPerPrefix64; client++)
+        for (int client = 1; client <= pairStartsPerClient; client++)
         {
             using RelayApi flood = RelayApi.For(capped, $"203.0.113.{client}");
             await PairStarts(flood, 1);
@@ -138,6 +139,49 @@ public sealed class RateLimitTests(RelayFactory factory) : IClassFixture<RelayFa
         using HttpResponseMessage response = await neighbour.Post("/pair/start", new JsonObject { ["v"] = 1 });
 
         Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ShouldLimitPairStartsAcrossOneIpv4Network()
+    {
+        for (int host = 1; host <= clientsPerBlockShare; host++)
+        {
+            using RelayApi api = RelayApi.For(factory, $"198.51.100.{host}");
+            await PairStarts(api, pairStartsPerClient);
+        }
+
+        using RelayApi fresh = RelayApi.For(factory, "198.51.100.200");
+        using HttpResponseMessage response = await fresh.Post("/pair/start", new JsonObject { ["v"] = 1 });
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ShouldKeepClaimLimitPerHostAcrossOneIpv4Network()
+    {
+        for (int host = 1; host <= clientsPerBlockShare + 1; host++)
+        {
+            using RelayApi api = RelayApi.For(factory, $"100.68.5.{host}");
+            await api.Claims(claimBurst);
+        }
+
+        using RelayApi seventh = RelayApi.For(factory, "100.68.5.200");
+        using HttpResponseMessage response = await seventh.Claim("BBBB-BBBB");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ShouldNotSpendBlockBudgetOnRefusedClaims()
+    {
+        string block = Addresses.NextBlock();
+        using RelayApi retrying = RelayApi.For(factory, $"{block}:1::1");
+        using RelayApi neighbour = RelayApi.For(factory, $"{block}:2::1");
+        await retrying.Claims(claimsPastBlockBurst);
+
+        using HttpResponseMessage response = await neighbour.Claim("BBBB-BBBB");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Theory]

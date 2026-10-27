@@ -1,6 +1,6 @@
 namespace Jobranger.Relay.Core;
 
-public sealed class ChannelRegistry(TimeProvider time, Func<ChannelId, bool> mayOpen) : IDisposable
+public sealed class ChannelRegistry(TimeProvider time) : IDisposable
 {
     private static readonly Presence offline = new(false, 0);
 
@@ -22,7 +22,7 @@ public sealed class ChannelRegistry(TimeProvider time, Func<ChannelId, bool> may
     {
         lock (gate)
         {
-            return channels.TryGetValue(channel, out ChannelMembers? members) ? members.Admits(role, grant) : OpenOutcome(channel);
+            return channels.TryGetValue(channel, out ChannelMembers? members) ? members.Admits(role, grant) : JoinOutcome.Joined;
         }
     }
 
@@ -32,12 +32,6 @@ public sealed class ChannelRegistry(TimeProvider time, Func<ChannelId, bool> may
         {
             if (!channels.TryGetValue(channel, out ChannelMembers? members))
             {
-                JoinOutcome opened = OpenOutcome(channel);
-                if (opened != JoinOutcome.Joined)
-                {
-                    return new JoinResult(opened, null);
-                }
-
                 members = new ChannelMembers(time);
                 channels.Add(channel, members);
             }
@@ -110,6 +104,4 @@ public sealed class ChannelRegistry(TimeProvider time, Func<ChannelId, bool> may
             channels.Clear();
         }
     }
-
-    private JoinOutcome OpenOutcome(ChannelId channel) => mayOpen(channel) ? JoinOutcome.Joined : JoinOutcome.Unpaired;
 }

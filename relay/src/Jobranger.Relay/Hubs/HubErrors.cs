@@ -11,13 +11,11 @@ internal static class HubErrors
     public const string SidInUse = "sid_in_use";
     public const string TooManySessions = "too_many_sessions";
     public const string ChannelFull = "channel_full";
-    public const string Unpaired = "unpaired";
     public const string TicketFull = "ticket_full";
 
     public static string For(JoinOutcome outcome) => outcome switch
     {
         JoinOutcome.ChannelFull => ChannelFull,
-        JoinOutcome.Unpaired => Unpaired,
         JoinOutcome.TicketFull => TicketFull,
         _ => throw new ArgumentOutOfRangeException(nameof(outcome), outcome, "outcome must be a refusal"),
     };

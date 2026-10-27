@@ -29,12 +29,7 @@ public sealed class PairingStore(
             DateTimeOffset now = time.GetUtcNow();
             Drain(now);
             pendingByChannel.TryGetValue(channel, out Entry? previous);
-            int othersPending = pendingByChannel.Count - (previous is null ? 0 : 1);
-            int networkPending = pendingByNetwork.GetValueOrDefault(network) - (previous?.Network == network ? 1 : 0);
-            if (othersPending >= maxPending
-                || networkPending >= maxPendingPerNetwork
-                || (previous is null && entries.Count >= maxEntries && !TryEvictOldestTombstone())
-                || !TryDrawFreeCode(out PairingCode code))
+            if (!TryMakeRoom(previous, network) || !TryDrawFreeCode(out PairingCode code))
             {
                 return null;
             }
@@ -88,15 +83,6 @@ public sealed class PairingStore(
         }
     }
 
-    public bool IsPending(ChannelId channel)
-    {
-        lock (gate)
-        {
-            Drain(time.GetUtcNow());
-            return pendingByChannel.ContainsKey(channel);
-        }
-    }
-
     public void Sweep()
     {
         lock (gate)
@@ -109,6 +95,15 @@ public sealed class PairingStore(
     {
         int byExpiry = left.ExpiresAt.CompareTo(right.ExpiresAt);
         return byExpiry != 0 ? byExpiry : string.CompareOrdinal(left.Selector, right.Selector);
+    }
+
+    private bool TryMakeRoom(Entry? previous, string network)
+    {
+        int othersPending = pendingByChannel.Count - (previous is null ? 0 : 1);
+        int networkPending = pendingByNetwork.GetValueOrDefault(network) - (previous?.Network == network ? 1 : 0);
+        return othersPending < maxPending
+            && networkPending < maxPendingPerNetwork
+            && (previous is not null || entries.Count < maxEntries || TryEvictOldestTombstone());
     }
 
     private bool TryDrawFreeCode(out PairingCode code)

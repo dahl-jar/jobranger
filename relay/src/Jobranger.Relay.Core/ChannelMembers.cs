@@ -36,6 +36,7 @@ internal sealed class ChannelMembers(TimeProvider time) : IDisposable
         {
             string? replaced = cli;
             cli = connectionId;
+            ReleaseSids();
             return new JoinResult(JoinOutcome.Joined, replaced);
         }
 
@@ -67,6 +68,7 @@ internal sealed class ChannelMembers(TimeProvider time) : IDisposable
             }
 
             cli = null;
+            ReleaseSids();
             return new Departure(Presence, []);
         }
 
@@ -122,6 +124,12 @@ internal sealed class ChannelMembers(TimeProvider time) : IDisposable
     {
         cliBytes.Dispose();
         browserBytes.Dispose();
+    }
+
+    private void ReleaseSids()
+    {
+        sidOwners.Clear();
+        sidsByBrowser.Clear();
     }
 
     private int SocketsOf(string grant) =>

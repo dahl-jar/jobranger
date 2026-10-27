@@ -15,6 +15,7 @@ internal static class RateLimiting
     public const string PairClaim = "pair-claim";
     public const string Session = "session";
     public const string SessionChannel = "session-channel";
+    public const string UnpairedChannel = "unpaired-channel";
     public const string HubSockets = "hub-sockets";
 
     private const int minRetryAfterSeconds = 1;
@@ -47,27 +48,26 @@ internal static class RateLimiting
         PairStart => new WindowLimiter(RelayLimits.PairStartsPerWindow * scale, RelayLimits.PairStartWindow, time),
         Session => new WindowLimiter(RelayLimits.FailedSessionsPerWindow * scale, RelayLimits.SessionRequestWindow, time),
         SessionChannel => new WindowLimiter(RelayLimits.SessionsPerChannelWindow * scale, RelayLimits.SessionRequestWindow, time),
-        Nonce => new WindowLimiter(RelayLimits.NonceRequestsPerWindow * scale, RelayLimits.NonceRequestWindow, time),
+        Nonce or UnpairedChannel => new WindowLimiter(RelayLimits.NonceRequestsPerWindow * scale, RelayLimits.NonceRequestWindow, time),
         HubSockets => new ConcurrencyLimiter(new ConcurrencyLimiterOptions
         {
             PermitLimit = RelayLimits.HubSocketsPerClient * scale,
             QueueLimit = 0,
         }),
         _ => throw new ArgumentOutOfRangeException(
-            nameof(policy), policy, "policy must be nonce, pair-start, pair-claim, session, session-channel or hub-sockets"),
+            nameof(policy), policy, "policy must be nonce, pair-start, pair-claim, session, session-channel, unpaired-channel or hub-sockets"),
     };
 
-    public static ProblemHttpResult? Throttle(
-        HttpContext http, RelayRateLimiter limiter, ChannelId? channel, RelayRole role, string addressPolicy)
+    public static ProblemHttpResult? Throttle(HttpContext http, RateLimitLease lease, string policy)
     {
-        (RateLimitLease lease, string policy) = channel is { } paired
-            ? (limiter.AttemptAcquireForChannel(paired, role), SessionChannel)
-            : (limiter.AttemptAcquireForAddress(http, addressPolicy), addressPolicy);
         using (lease)
         {
             return lease.IsAcquired ? null : Refuse(http, lease, policy);
         }
     }
+
+    public static ProblemHttpResult? ThrottleChannel(HttpContext http, RelayRateLimiter limiter, ChannelId channel, RelayRole role) =>
+        Throttle(http, limiter.AttemptAcquireForChannel(http, channel, role), SessionChannel);
 
     public static ProblemHttpResult Refuse(HttpContext http, RateLimitLease lease, string? policy)
     {

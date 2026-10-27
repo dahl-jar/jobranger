@@ -27,14 +27,20 @@ internal static class PairingEndpoints
         RelayRateLimiter limiter,
         ILoggerFactory loggers)
     {
-        ChannelId? channel = TouchPaired(request.Channel, paired);
-        if (RateLimiting.Throttle(http, limiter, channel, RelayRole.Cli, RateLimiting.Nonce) is { } refused)
+        ChannelId? channel = ParseChannel(request.Channel);
+        ProblemHttpResult? refused = channel switch
+        {
+            null => RateLimiting.Throttle(http, limiter.AttemptAcquireForAddress(http, RateLimiting.Nonce), RateLimiting.Nonce),
+            { } owner when paired.Touch(owner) => RateLimiting.ThrottleChannel(http, limiter, owner, RelayRole.Cli),
+            { } owner => RateLimiting.Throttle(http, limiter.AttemptAcquireForUnpairedChannel(http, owner), RateLimiting.Nonce),
+        };
+        if (refused is not null)
         {
             return refused;
         }
 
-        RelayNonce? issued = channel is { } owner
-            ? nonces.IssueForChannel(owner)
+        RelayNonce? issued = channel is { } bound
+            ? nonces.IssueForChannel(bound)
             : nonces.IssueForNetwork(ClientPartition.Network(http.Connection.RemoteIpAddress));
         if (issued is not { } nonce)
         {
@@ -44,12 +50,8 @@ internal static class PairingEndpoints
         return TypedResults.Ok(new NonceResponse(nonce.Value, Expiry.WholeSeconds(nonce.ExpiresAt)));
     }
 
-    private static ChannelId? TouchPaired(string? channel, PairedChannels paired) =>
-        channel is not null
-            && CanonicalBase64Url.TryDecode(channel, SHA256.HashSizeInBytes, out _)
-            && paired.Touch(new ChannelId(channel))
-            ? new ChannelId(channel)
-            : null;
+    private static ChannelId? ParseChannel(string? channel) =>
+        channel is not null && CanonicalBase64Url.TryDecode(channel, SHA256.HashSizeInBytes, out _) ? new ChannelId(channel) : null;
 
     private static Results<Ok<PairStartResponse>, ProblemHttpResult> StartPairing(
         ProofRequest request,

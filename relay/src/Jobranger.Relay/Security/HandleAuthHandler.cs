@@ -2,6 +2,7 @@ using System.Text.Encodings.Web;
 using Jobranger.Relay.Core;
 using Jobranger.Relay.Hubs;
 using Jobranger.Relay.Options;
+using Jobranger.Relay.Pairing;
 using Jobranger.Relay.Telemetry;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -24,9 +25,6 @@ internal sealed class HandleAuthHandler(
     public const string HubPath = "/hub";
 
     private const string tokenQuery = "access_token";
-    private const string invalidHandle = "invalid_handle";
-    private const string wrongOrigin = "wrong_origin";
-    private const string missingHandle = "missing_handle";
     private const string samplerPrefix = "hub-auth:";
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
@@ -38,14 +36,14 @@ internal sealed class HandleAuthHandler(
 
         if (handles.Verify(token) is not { } claims)
         {
-            return Task.FromResult(AuthenticateResult.Fail(invalidHandle));
+            return Task.FromResult(AuthenticateResult.Fail(RelayProblems.InvalidHandle.Code));
         }
 
         StringValues origins = Request.Headers.Origin;
         bool fromSite = origins is [{ } origin] && string.Equals(origin, relay.Value.SiteOrigin, StringComparison.Ordinal);
         if (!fromSite && (origins.Count > 0 || claims.Role == RelayRole.Web))
         {
-            return Task.FromResult(AuthenticateResult.Fail(wrongOrigin));
+            return Task.FromResult(AuthenticateResult.Fail(RelayProblems.WrongOrigin.Code));
         }
 
         return Task.FromResult(AuthenticateResult.Success(
@@ -54,20 +52,20 @@ internal sealed class HandleAuthHandler(
 
     protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
     {
-        AuthenticateResult result = await HandleAuthenticateOnceSafeAsync();
-        string reason = result.Failure?.Message ?? missingHandle;
-        metrics.ConnectionRejected(reason);
-        if (sampler.ShouldLog(samplerPrefix + reason))
+        RelayProblem problem = Refusal(await HandleAuthenticateOnceSafeAsync());
+        metrics.ConnectionRejected(problem.Code);
+        if (sampler.ShouldLog(samplerPrefix + problem.Code))
         {
-            RelayLog.For(loggers).HubAuthRefused(reason);
+            RelayLog.For(loggers).HubAuthRefused(problem.Code);
         }
 
-        if (FailureCharge.Charge(Context) is { } refused)
-        {
-            await refused.ExecuteAsync(Context);
-            return;
-        }
-
-        await base.HandleChallengeAsync(properties);
+        await (FailureCharge.Charge(Context) ?? problem.ToResult()).ExecuteAsync(Context);
     }
+
+    private static RelayProblem Refusal(AuthenticateResult result) => result.Failure?.Message switch
+    {
+        null => RelayProblems.MissingHandle,
+        string reason when reason == RelayProblems.WrongOrigin.Code => RelayProblems.WrongOrigin,
+        _ => RelayProblems.InvalidHandle,
+    };
 }

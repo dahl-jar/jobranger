@@ -54,7 +54,7 @@ public sealed class HubErrorFilterTests : IDisposable
     [Fact]
     public async Task ShouldNotLogRefusedJoin()
     {
-        await Assert.ThrowsAsync<HubException>(() => filter.OnConnectedAsync(Lifetime(), _ => throw new HubException("unpaired")));
+        await Assert.ThrowsAsync<HubException>(() => filter.OnConnectedAsync(Lifetime(), _ => throw new HubException("ticket_full")));
 
         IReadOnlyList<FakeLogRecord> records = provider.Collector.GetSnapshot();
 

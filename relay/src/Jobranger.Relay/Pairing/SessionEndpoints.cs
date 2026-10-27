@@ -35,11 +35,12 @@ internal static class SessionEndpoints
             return Failed(http, logger, problem);
         }
 
-        ChannelId? channel = paired.Touch(proof.Channel) ? proof.Channel : null;
-        if (RateLimiting.Throttle(http, limiter, channel, RelayRole.Cli, RateLimiting.Session) is { } refused)
+        if (RateLimiting.ThrottleChannel(http, limiter, proof.Channel, RelayRole.Cli) is { } refused)
         {
             return refused;
         }
+
+        paired.Record(proof.Channel);
 
         DateTimeOffset handleExpires = Expiry.After(time, RelayLimits.HandleLifetime);
         logger.SessionStarted(RelayRole.Cli, proof.Channel.Value);
@@ -65,7 +66,7 @@ internal static class SessionEndpoints
         }
 
         paired.Record(channel);
-        if (RateLimiting.Throttle(http, limiter, channel, RelayRole.Web, RateLimiting.Session) is { } refused)
+        if (RateLimiting.ThrottleChannel(http, limiter, channel, RelayRole.Web) is { } refused)
         {
             return refused;
         }

@@ -33,9 +33,7 @@ internal static class HubSetup
         builder.Logging.AddFilter(connectionHandlerCategory, LogLevel.None);
 
         IServiceCollection services = builder.Services;
-        services.AddSingleton(provider => new ChannelRegistry(
-            provider.GetRequiredService<TimeProvider>(),
-            MayOpen(provider.GetRequiredService<PairedChannels>(), provider.GetRequiredService<PairingStore>())));
+        services.AddSingleton<ChannelRegistry>();
         services.AddSingleton<EnvelopeFilter>();
         services.AddSingleton<HubConnections>();
         services.AddSingleton<HubLifetimeManager<RelayHub>, RelayLifetimeManager>();
@@ -105,7 +103,4 @@ internal static class HubSetup
         listener.SendBufferSize = RelayLimits.KernelSocketBufferBytes;
         return listener;
     }
-
-    private static Func<ChannelId, bool> MayOpen(PairedChannels paired, PairingStore pairings) =>
-        channel => paired.Touch(channel) || pairings.IsPending(channel);
 }

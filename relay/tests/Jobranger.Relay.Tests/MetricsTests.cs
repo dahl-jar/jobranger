@@ -101,7 +101,7 @@ public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFact
     [Fact]
     public async Task ShouldCountForwardedEnvelopes()
     {
-        ChannelId channel = RelayClients.NewChannel(factory);
+        ChannelId channel = RelayClients.NewChannel();
         await using HubPeer cli = await RelayClients.ConnectCliAsync(factory, channel);
         await using HubPeer browser = await RelayClients.ConnectWebAsync(factory, channel);
         JsonObject envelope = Envelopes.Data(channel, Envelopes.NewSid());
@@ -117,7 +117,7 @@ public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFact
     [Fact]
     public async Task ShouldCountRejectedEnvelopesByReason()
     {
-        ChannelId channel = RelayClients.NewChannel(factory);
+        ChannelId channel = RelayClients.NewChannel();
         await using HubPeer browser = await RelayClients.ConnectWebAsync(factory, channel);
         JsonObject envelope = Envelopes.WithUnsupportedVersion(channel);
         using MetricCollector<long> rejected = Collector("relay.envelopes.rejected");
@@ -130,14 +130,16 @@ public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFact
     [Fact]
     public async Task ShouldCountRefusedHubJoinsByReason()
     {
+        string handle = RelayClients.Handle(factory, RelayClients.NewChannel(), RelayRole.Web);
+        await using HubPeer first = await RelayClients.ConnectAsync(factory, handle, RelayFactory.SiteOrigin);
+        await using HubPeer second = await RelayClients.ConnectAsync(factory, handle, RelayFactory.SiteOrigin);
         using MetricCollector<long> refused = Collector("relay.connections.rejected");
-        await using HubPeer cli = RelayClients.Build(
-            factory, RelayClients.Handle(factory, RelayClients.UnpairedChannel(), RelayRole.Cli), null);
-        await cli.Connection.StartAsync(TestContext.Current.CancellationToken);
+        await using HubPeer third = RelayClients.Build(factory, handle, RelayFactory.SiteOrigin);
+        await third.Connection.StartAsync(TestContext.Current.CancellationToken);
 
-        await cli.Closed;
+        await third.Closed;
 
-        Assert.Equal([("unpaired", 1L)], ByTag(refused, "reason"));
+        Assert.Equal([("ticket_full", 1L)], ByTag(refused, "reason"));
     }
 
     [Fact]
@@ -155,7 +157,7 @@ public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFact
     public async Task ShouldReportActiveChannels()
     {
         await using RelayFactory own = new();
-        await using HubPeer cli = await RelayClients.ConnectCliAsync(own, RelayClients.NewChannel(own));
+        await using HubPeer cli = await RelayClients.ConnectCliAsync(own, RelayClients.NewChannel());
         using MetricCollector<int> active = new(own.Services.GetRequiredService<IMeterFactory>(), meterName, "relay.channels.active");
 
         active.RecordObservableInstruments();

@@ -19,6 +19,9 @@ internal static class RelayProblems
     public static readonly RelayProblem InvalidSignature = new(StatusCodes.Status400BadRequest, "invalid_signature");
     public static readonly RelayProblem InvalidTicket = new(StatusCodes.Status400BadRequest, "invalid_ticket");
     public static readonly RelayProblem TicketExpired = new(StatusCodes.Status410Gone, "ticket_expired");
+    public static readonly RelayProblem MissingHandle = new(StatusCodes.Status401Unauthorized, "missing_handle");
+    public static readonly RelayProblem InvalidHandle = new(StatusCodes.Status401Unauthorized, "invalid_handle");
+    public static readonly RelayProblem WrongOrigin = new(StatusCodes.Status401Unauthorized, "wrong_origin");
     public static readonly RelayProblem RateLimited = new(StatusCodes.Status429TooManyRequests, "rate_limited");
     public static readonly RelayProblem RelayFull = new(StatusCodes.Status503ServiceUnavailable, "relay_full");
 

@@ -19,9 +19,7 @@ public static class RelayLimits
     public const int ClaimRefillTokens = 1;
     public const int BlockLimitScale = 5;
     public const int RateLimitStateBudgetBytes = 80 * 1024 * 1024;
-    public const int RateLimitStores = 8;
     public const int PartitionBytes = 512;
-    public const int MaxPartitionsPerPolicy = RateLimitStateBudgetBytes / (RateLimitStores * PartitionBytes);
     public const int OverflowShards = 256;
     public const int MaxPairedChannels = 20_000;
     public const int SessionRoles = 2;

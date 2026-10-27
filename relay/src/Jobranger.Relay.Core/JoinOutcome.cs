@@ -4,6 +4,5 @@ public enum JoinOutcome
 {
     Joined,
     ChannelFull,
-    Unpaired,
     TicketFull,
 }

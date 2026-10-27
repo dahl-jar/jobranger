@@ -1,8 +1,6 @@
 using System.Net;
 using System.Text.Json.Nodes;
-using Jobranger.Relay.Core;
 using Jobranger.Relay.Security;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -68,32 +66,6 @@ public sealed class SessionLimitTests(RelayFactory factory) : IClassFixture<Rela
     }
 
     [Fact]
-    public async Task ShouldEvictLeastRecentChannelWhenStoreIsFull()
-    {
-        using var full = factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
-            services.AddSingleton(new PairedChannels(factory.Time, capacity: 1))));
-        using CliKey leastRecent = new();
-        using CliKey newest = new();
-        using RelayApi pairing = RelayApi.For(full, Addresses.NextIpv4(secondOctet));
-        await pairing.Paired(leastRecent);
-        await pairing.Paired(newest);
-        for (int request = 1; request <= sessionsPerChannel; request++)
-        {
-            using HttpResponseMessage admitted = await CliSession(full, newest);
-        }
-
-        using HttpResponseMessage refused = await CliSession(full, newest);
-        int evictedRefusals = 0;
-        for (int request = 0; request <= sessionsPerChannel; request++)
-        {
-            using HttpResponseMessage response = await CliSession(full, leastRecent);
-            evictedRefusals += response.StatusCode == HttpStatusCode.TooManyRequests ? 1 : 0;
-        }
-
-        Assert.Equal((HttpStatusCode.TooManyRequests, 0), (refused.StatusCode, evictedRefusals));
-    }
-
-    [Fact]
     public async Task ShouldRefuseFailedSessionsPastAddressLimit()
     {
         using RelayApi api = RelayApi.For(factory, Addresses.NextIpv4(secondOctet));
@@ -106,12 +78,6 @@ public sealed class SessionLimitTests(RelayFactory factory) : IClassFixture<Rela
         using HttpResponseMessage refused = await api.WebSession("not-a-ticket");
 
         Assert.Equal((HttpStatusCode.BadRequest, HttpStatusCode.TooManyRequests), (last.StatusCode, refused.StatusCode));
-    }
-
-    private static async Task<HttpResponseMessage> CliSession(WebApplicationFactory<Program> host, CliKey key)
-    {
-        using RelayApi api = RelayApi.For(host, Addresses.NextIpv4(secondOctet));
-        return await api.Post(cliRoute, key.Proof(CliKey.SessionCli, await api.Nonce()));
     }
 
     private async Task<HttpResponseMessage> Session(string route, CliKey key, string ticket)

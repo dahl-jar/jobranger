@@ -1,6 +1,7 @@
 using System.Buffers.Text;
 using System.Text;
 using System.Text.Json.Nodes;
+using Jobranger.Relay.Core;
 using NSec.Cryptography;
 
 namespace Jobranger.Relay.Tests;
@@ -23,6 +24,8 @@ internal sealed class CliKey : IDisposable
     {
         key = Key.Import(ed25519, seed, KeyBlobFormat.RawPrivateKey);
     }
+
+    public ChannelId Channel => ChannelId.FromPublicKey(key.PublicKey.Export(KeyBlobFormat.RawPublicKey));
 
     public string PublicKey => Base64Url.EncodeToString(key.PublicKey.Export(KeyBlobFormat.RawPublicKey));
 

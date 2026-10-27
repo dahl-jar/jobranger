@@ -1,6 +1,9 @@
 using System.Net;
 using Jobranger.Relay.Core;
+using Jobranger.Relay.Hubs;
+using Jobranger.Relay.Security;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Testing;
 
 namespace Jobranger.Relay.Tests;
@@ -8,6 +11,8 @@ namespace Jobranger.Relay.Tests;
 public sealed class HubAuthTests(RelayFactory factory) : IClassFixture<RelayFactory>
 {
     private const string foreignOrigin = "https://other.test";
+    private const string issuedWebHandle = "issued-web-handle";
+    private const string issuedCliHandle = "issued-cli-handle";
     private const int socketsPerAddress = 10;
     private const int browsersInFullChannel = 7;
     private const int failedAttemptsPerWindow = 120;
@@ -16,37 +21,8 @@ public sealed class HubAuthTests(RelayFactory factory) : IClassFixture<RelayFact
     private const int smallHubSocketCap = 2;
     private const int socketsPerNetwork = 16;
 
-    [Fact]
-    public async Task ShouldRefuseSocketWithoutHandle()
-    {
-        await using HubPeer peer = RelayClients.Build(factory, null, null);
-
-        string refusal = await Refusal(peer);
-
-        Assert.Contains("401", refusal, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task ShouldRefuseCliSocketFromForeignOrigin()
-    {
-        string handle = RelayClients.Handle(factory, RelayClients.NewChannel(factory), RelayRole.Cli);
-        await using HubPeer peer = RelayClients.Build(factory, handle, foreignOrigin);
-
-        string refusal = await Refusal(peer);
-
-        Assert.Contains("401", refusal, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task ShouldRefuseBrowserSocketWithoutOrigin()
-    {
-        string handle = RelayClients.Handle(factory, RelayClients.NewChannel(factory), RelayRole.Web);
-        await using HubPeer peer = RelayClients.Build(factory, handle, null);
-
-        string refusal = await Refusal(peer);
-
-        Assert.Contains("401", refusal, StringComparison.Ordinal);
-    }
+    private static readonly TimeSpan gateWait = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan gatePoll = TimeSpan.FromMilliseconds(10);
 
     [Fact]
     public async Task ShouldRefuseEleventhHubSocketFromOneAddress()
@@ -55,10 +31,10 @@ public sealed class HubAuthTests(RelayFactory factory) : IClassFixture<RelayFact
         List<HubPeer> open = [];
         for (int socket = 0; socket < socketsPerAddress; socket++)
         {
-            open.Add(await RelayClients.ConnectCliAsync(factory, RelayClients.NewChannel(factory), address));
+            open.Add(await RelayClients.ConnectCliAsync(factory, RelayClients.NewChannel(), address));
         }
 
-        string handle = RelayClients.Handle(factory, RelayClients.NewChannel(factory), RelayRole.Cli);
+        string handle = RelayClients.Handle(factory, RelayClients.NewChannel(), RelayRole.Cli);
         await using HubPeer extra = RelayClients.Build(factory, handle, null, address);
 
         string refusal = await Refusal(extra);
@@ -73,7 +49,7 @@ public sealed class HubAuthTests(RelayFactory factory) : IClassFixture<RelayFact
     [Fact]
     public async Task ShouldRefuseBrowserBeyondChannelLimitWithReason()
     {
-        ChannelId channel = RelayClients.NewChannel(factory);
+        ChannelId channel = RelayClients.NewChannel();
         List<HubPeer> open = [await RelayClients.ConnectCliAsync(factory, channel)];
         for (int browser = 0; browser < browsersInFullChannel; browser++)
         {
@@ -96,7 +72,7 @@ public sealed class HubAuthTests(RelayFactory factory) : IClassFixture<RelayFact
     [Fact]
     public async Task ShouldNotLogHubAccessToken()
     {
-        ChannelId channel = RelayClients.NewChannel(factory);
+        ChannelId channel = RelayClients.NewChannel();
         string cliHandle = RelayClients.Handle(factory, channel, RelayRole.Cli);
         string webHandle = RelayClients.Handle(factory, channel, RelayRole.Web);
         await using (HubPeer cli = await RelayClients.ConnectAsync(factory, cliHandle, null))
@@ -140,27 +116,10 @@ public sealed class HubAuthTests(RelayFactory factory) : IClassFixture<RelayFact
     }
 
     [Fact]
-    public async Task ShouldChargeRefusedJoinToAddress()
-    {
-        string address = Addresses.Next();
-        await FailAuth(address, failedAttemptsPerWindow - 1);
-        await using (HubPeer unpaired = RelayClients.Build(
-            factory, RelayClients.Handle(factory, RelayClients.UnpairedChannel(), RelayRole.Cli), null, address))
-        {
-            await unpaired.Connection.StartAsync(TestContext.Current.CancellationToken);
-            Assert.Equal("unpaired", await unpaired.Closed);
-        }
-
-        string refusal = await BadHandleRefusal(address);
-
-        Assert.Contains("429", refusal, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public async Task ShouldChargeTicketFullJoinToAddress()
     {
         string address = Addresses.Next();
-        ChannelId channel = RelayClients.NewChannel(factory);
+        ChannelId channel = RelayClients.NewChannel();
         string handle = RelayClients.Handle(factory, channel, RelayRole.Web);
         await using HubPeer first = await RelayClients.ConnectAsync(factory, handle, RelayFactory.SiteOrigin);
         await using HubPeer second = await RelayClients.ConnectAsync(factory, handle, RelayFactory.SiteOrigin);
@@ -196,27 +155,17 @@ public sealed class HubAuthTests(RelayFactory factory) : IClassFixture<RelayFact
     }
 
     [Fact]
-    public async Task ShouldAnswer503RelayFullAtHubSocketCap()
+    public async Task ShouldAnswer503RelayFullWithRetryAfterAtHubSocketCap()
     {
         await using RelayFactory small = SmallRelay();
-        await using HubPeer first = await RelayClients.ConnectCliAsync(small, RelayClients.NewChannel(small));
-        await using HubPeer second = await RelayClients.ConnectCliAsync(small, RelayClients.NewChannel(small));
+        await using HubPeer first = await RelayClients.ConnectCliAsync(small, RelayClients.NewChannel());
+        await using HubPeer second = await RelayClients.ConnectCliAsync(small, RelayClients.NewChannel());
 
         using HttpResponseMessage response = await Upgrade(small, Addresses.Next());
 
-        Assert.Equal((HttpStatusCode.ServiceUnavailable, "relay_full"), await RelayApi.Problem(response));
-    }
-
-    [Fact]
-    public async Task ShouldTellClientWhenToRetryAtHubSocketCap()
-    {
-        await using RelayFactory small = SmallRelay();
-        await using HubPeer first = await RelayClients.ConnectCliAsync(small, RelayClients.NewChannel(small));
-        await using HubPeer second = await RelayClients.ConnectCliAsync(small, RelayClients.NewChannel(small));
-
-        using HttpResponseMessage response = await Upgrade(small, Addresses.Next());
-
-        Assert.Equal(TimeSpan.FromSeconds(30), response.Headers.RetryAfter?.Delta);
+        Assert.Equal(
+            ((HttpStatusCode.ServiceUnavailable, "relay_full"), (TimeSpan?)TimeSpan.FromSeconds(30)),
+            (await RelayApi.Problem(response), response.Headers.RetryAfter?.Delta));
     }
 
     [Fact]
@@ -229,7 +178,7 @@ public sealed class HubAuthTests(RelayFactory factory) : IClassFixture<RelayFact
         using HttpResponseMessage refused = await Upgrade(own, $"{block}:ff::1");
         (HttpStatusCode, string?) sameNetwork = await RelayApi.Problem(refused);
 
-        await using HubPeer otherNetwork = await RelayClients.ConnectCliAsync(own, RelayClients.NewChannel(own), Addresses.Next());
+        await using HubPeer otherNetwork = await RelayClients.ConnectCliAsync(own, RelayClients.NewChannel(), Addresses.Next());
         Assert.Equal(((HttpStatusCode.ServiceUnavailable, "relay_full"), HubConnectionState.Connected), (sameNetwork, otherNetwork.Connection.State));
         foreach (HubPeer peer in open)
         {
@@ -244,8 +193,10 @@ public sealed class HubAuthTests(RelayFactory factory) : IClassFixture<RelayFact
         string block = Addresses.NextBlock();
         List<HubPeer> open = await FillNetwork(own, block);
 
+        string address = $"{block}:ff::1";
         await open[0].DisposeAsync();
-        await using HubPeer later = await RelayClients.ConnectCliAsync(own, RelayClients.NewChannel(own), $"{block}:ff::1");
+        await WaitForGateSlot(own, address);
+        await using HubPeer later = await RelayClients.ConnectCliAsync(own, RelayClients.NewChannel(), address);
 
         Assert.Equal(HubConnectionState.Connected, later.Connection.State);
         foreach (HubPeer peer in open.Skip(1))
@@ -260,7 +211,7 @@ public sealed class HubAuthTests(RelayFactory factory) : IClassFixture<RelayFact
     public async Task ShouldLogRefusalReasonForRejectedHubSocket(bool validHandle, string? origin, string reason)
     {
         await using RelayFactory own = new();
-        string handle = validHandle ? RelayClients.Handle(own, RelayClients.NewChannel(own), RelayRole.Cli) : "not-a-handle";
+        string handle = validHandle ? RelayClients.Handle(own, RelayClients.NewChannel(), RelayRole.Cli) : "not-a-handle";
         await using HubPeer peer = RelayClients.Build(own, handle, origin, Addresses.Next());
         await Refusal(peer);
 
@@ -269,15 +220,38 @@ public sealed class HubAuthTests(RelayFactory factory) : IClassFixture<RelayFact
         Assert.Contains(records, record => record.Message == $"hub auth refused reason={reason}");
     }
 
+    [Theory]
+    [InlineData(null, null, "missing_handle")]
+    [InlineData("not-a-handle", null, "invalid_handle")]
+    [InlineData(issuedWebHandle, null, "wrong_origin")]
+    [InlineData(issuedCliHandle, foreignOrigin, "wrong_origin")]
+    public async Task ShouldNameRefusalInUnauthorizedProblem(string? token, string? origin, string code)
+    {
+        string? handle = token switch
+        {
+            issuedWebHandle => RelayClients.Handle(factory, RelayClients.NewChannel(), RelayRole.Web),
+            issuedCliHandle => RelayClients.Handle(factory, RelayClients.NewChannel(), RelayRole.Cli),
+            _ => token,
+        };
+        using RelayApi api = RelayApi.For(factory, Addresses.Next());
+        using HttpRequestMessage upgrade = HubUpgrade(handle, origin);
+
+        using HttpResponseMessage response = await api.Send(upgrade);
+
+        Assert.Equal((HttpStatusCode.Unauthorized, code), await RelayApi.Problem(response));
+    }
+
     [Fact]
     public async Task ShouldAdmitHubSocketAfterOneCloses()
     {
         await using RelayFactory small = SmallRelay();
-        await using HubPeer first = await RelayClients.ConnectCliAsync(small, RelayClients.NewChannel(small));
-        HubPeer second = await RelayClients.ConnectCliAsync(small, RelayClients.NewChannel(small));
+        await using HubPeer first = await RelayClients.ConnectCliAsync(small, RelayClients.NewChannel());
+        HubPeer second = await RelayClients.ConnectCliAsync(small, RelayClients.NewChannel());
+        string address = Addresses.Next();
         await second.DisposeAsync();
+        await WaitForGateSlot(small, address);
 
-        await using HubPeer third = await RelayClients.ConnectCliAsync(small, RelayClients.NewChannel(small));
+        await using HubPeer third = await RelayClients.ConnectCliAsync(small, RelayClients.NewChannel(), address);
 
         Assert.Equal(HubConnectionState.Connected, third.Connection.State);
     }
@@ -285,7 +259,7 @@ public sealed class HubAuthTests(RelayFactory factory) : IClassFixture<RelayFact
     [Fact]
     public async Task ShouldNotServeNegotiate()
     {
-        string handle = RelayClients.Handle(factory, RelayClients.NewChannel(factory), RelayRole.Cli);
+        string handle = RelayClients.Handle(factory, RelayClients.NewChannel(), RelayRole.Cli);
         using RelayApi api = RelayApi.For(factory, Addresses.Next());
 
         using HttpResponseMessage response = await api.PostRaw($"/hub/negotiate?negotiateVersion=1&access_token={Uri.EscapeDataString(handle)}", "");
@@ -300,13 +274,27 @@ public sealed class HubAuthTests(RelayFactory factory) : IClassFixture<RelayFact
         return small;
     }
 
+    private static async Task WaitForGateSlot(RelayFactory relay, string address)
+    {
+        HubSocketGate gate = relay.Services.GetRequiredService<HubSocketGate>();
+        string network = ClientPartition.Network(IPAddress.Parse(address));
+        using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+        deadline.CancelAfter(gateWait);
+        while (!gate.TryEnter(network))
+        {
+            await Task.Delay(gatePoll, deadline.Token);
+        }
+
+        gate.Exit(network);
+    }
+
     private static async Task<List<HubPeer>> FillNetwork(RelayFactory relay, string block)
     {
         List<HubPeer> open = [];
         for (int socket = 0; socket < socketsPerNetwork; socket++)
         {
             string address = $"{block}:{socket / socketsPerAddress:x}::1";
-            open.Add(await RelayClients.ConnectCliAsync(relay, RelayClients.NewChannel(relay), address));
+            open.Add(await RelayClients.ConnectCliAsync(relay, RelayClients.NewChannel(), address));
         }
 
         return open;
@@ -315,17 +303,23 @@ public sealed class HubAuthTests(RelayFactory factory) : IClassFixture<RelayFact
     private static async Task<HttpResponseMessage> Upgrade(RelayFactory relay, string address)
     {
         using RelayApi api = RelayApi.For(relay, address);
-        using HttpRequestMessage upgrade = HubUpgrade(RelayClients.Handle(relay, RelayClients.NewChannel(relay), RelayRole.Cli));
+        using HttpRequestMessage upgrade = HubUpgrade(RelayClients.Handle(relay, RelayClients.NewChannel(), RelayRole.Cli));
         return await api.Send(upgrade);
     }
 
-    private static HttpRequestMessage HubUpgrade(string handle)
+    private static HttpRequestMessage HubUpgrade(string? handle, string? origin = null)
     {
-        HttpRequestMessage upgrade = new(HttpMethod.Get, $"/hub?access_token={Uri.EscapeDataString(handle)}");
+        string query = handle is null ? string.Empty : $"?access_token={Uri.EscapeDataString(handle)}";
+        HttpRequestMessage upgrade = new(HttpMethod.Get, $"/hub{query}");
         upgrade.Headers.Connection.Add("Upgrade");
         upgrade.Headers.Upgrade.Add(new System.Net.Http.Headers.ProductHeaderValue("websocket"));
         upgrade.Headers.Add("Sec-WebSocket-Version", "13");
         upgrade.Headers.Add("Sec-WebSocket-Key", "dGhlIHNhbXBsZSBub25jZQ==");
+        if (origin is not null)
+        {
+            upgrade.Headers.Add("Origin", origin);
+        }
+
         return upgrade;
     }
 
