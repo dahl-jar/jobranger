@@ -32,6 +32,11 @@ internal static class SourceFixtures {
 
     public static readonly SourcePlan BasePlan = CatalogueEntry.Load().PlanFor(new Targets());
 
+    public static readonly EmployerFeed AshbyFeed = new("ashby", "example-one", "Org One AS", "example-one");
+
+    public static readonly EmployerFeed TeamtailorFeed =
+        new("teamtailor", "example", "Example AS", "https://careers.example.test/jobs.rss");
+
     public static FetchContext Context(
         HttpMessageHandler handler,
         IReadOnlySet<string>? known = null,

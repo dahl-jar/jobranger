@@ -13,6 +13,8 @@ internal sealed record SourceBatch {
 
     public IReadOnlyDictionary<string, bool> Active { get; init; } = new Dictionary<string, bool>();
 
+    public IReadOnlySet<string>? ListedIds { get; init; }
+
     public FinnSync? FinnSync { get; init; }
 
     public IReadOnlyList<PageResult> Pages { get; init; } = [];

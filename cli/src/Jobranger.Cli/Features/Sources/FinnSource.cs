@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Text;
 using Jobranger.Cli.Http;
 using Jobranger.Cli.Logging;
-using Jobranger.Cli.Storage;
 using Jobranger.Cli.Text;
 
 namespace Jobranger.Cli.Features.Sources;
@@ -21,8 +20,6 @@ internal sealed class FinnSource : ISource {
     private const long republishedIdGap = 2_000_000;
 
     private static readonly Uri finnRoot = new("https://www.finn.no");
-    private static readonly TimeSpan firstRunWindow = TimeSpan.FromDays(7);
-    private static readonly TimeSpan cursorOverlap = TimeSpan.FromDays(1);
     private static readonly SourceRequestOptions options = new();
 
     public string Name => SourceName;
@@ -39,7 +36,7 @@ internal sealed class FinnSource : ISource {
     private static async Task<SourceBatch> ScanAsync(FetchContext context, Scan scan, CancellationToken cancellationToken) {
         Exception? recentError = null;
         try {
-            scan.Recent = await RecentAsync(context, Since(context), cancellationToken).ConfigureAwait(false);
+            scan.Recent = await RecentAsync(context, SourceCursors.Start(context, recentKey), cancellationToken).ConfigureAwait(false);
         } catch (Exception error) when (SourceHttp.IsFailure(error, cancellationToken)) {
             LogEvents.FinnRecentFailed(context.Logger, error);
             recentError = error;
@@ -66,13 +63,6 @@ internal sealed class FinnSource : ISource {
         await FetchPagesAsync(context, scan, cancellationToken).ConfigureAwait(false);
         return Batch(context, scan);
     }
-
-    private static DateTimeOffset Since(FetchContext context) =>
-        context.Cursors.TryGetValue(recentKey, out string? stored)
-        && DateTimeOffset.TryParse(stored, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal,
-            out DateTimeOffset since)
-            ? since
-            : context.RunStarted - firstRunWindow;
 
     private static async Task<RecentScan> RecentAsync(
         FetchContext context, DateTimeOffset since, CancellationToken cancellationToken) {
@@ -192,7 +182,7 @@ internal sealed class FinnSource : ISource {
             SeenIds = new HashSet<string>(recentIds.Concat(categoryIds), StringComparer.Ordinal),
             Cursors = scan.Recent is null
                 ? new Dictionary<string, string>()
-                : new Dictionary<string, string> { [recentKey] = StoredTime.Format(context.RunStarted - cursorOverlap) },
+                : new Dictionary<string, string> { [recentKey] = SourceCursors.Advanced(context.RunStarted) },
             FinnSync = new FinnSync(
                 categoryIds,
                 recentIds,

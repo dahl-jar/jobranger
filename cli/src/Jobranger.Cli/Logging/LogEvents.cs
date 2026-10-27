@@ -56,4 +56,16 @@ internal static partial class LogEvents {
         Level = LogLevel.Warning,
         Message = "relay refused pairing status={Status} error_type={ErrorType}")]
     public static partial void PairingRefused(ILogger logger, int status, string errorType);
+
+    [LoggerMessage(
+        EventName = "ashby.job.skipped",
+        Level = LogLevel.Warning,
+        Message = "skipped job without id, title, url or listing state source={Source}")]
+    public static partial void AshbyJobSkipped(ILogger logger, string source);
+
+    [LoggerMessage(
+        EventName = "teamtailor.item.skipped",
+        Level = LogLevel.Warning,
+        Message = "skipped feed item without guid, title or link source={Source}")]
+    public static partial void TeamtailorItemSkipped(ILogger logger, string source);
 }

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:tt="https://teamtailor.com">
+  <channel>
+    <title>Example careers</title>
+    <item>
+      <title>Graduate Developer</title>
+      <description><![CDATA[<p>Build <strong>Java</strong> services.</p>]]></description>
+      <pubDate>Mon, 24 Aug 2026 08:15:00 +0200</pubDate>
+      <link>https://careers.example.test/jobs/100-graduate-developer</link>
+      <guid isPermaLink="false">100</guid>
+      <tt:remoteStatus>hybrid</tt:remoteStatus>
+      <tt:department>Engineering</tt:department>
+      <tt:role>Software Development</tt:role>
+      <tt:locations>
+        <tt:location>
+          <tt:name>Head office</tt:name>
+          <tt:address>Storgata 1</tt:address>
+          <tt:zip>0155</tt:zip>
+          <tt:city>Oslo</tt:city>
+          <tt:country>Norway</tt:country>
+        </tt:location>
+      </tt:locations>
+    </item>
+    <item>
+      <title>Developer Sweden</title>
+      <description><![CDATA[<p>Build services in Stockholm.</p>]]></description>
+      <pubDate>Tue, 25 Aug 2026 09:00:00 +0200</pubDate>
+      <link>https://careers.example.test/jobs/101-developer-sweden</link>
+      <guid isPermaLink="false">101</guid>
+      <tt:department>Engineering</tt:department>
+      <tt:locations>
+        <tt:location>
+          <tt:name>Stockholm</tt:name>
+          <tt:city>Stockholm</tt:city>
+          <tt:country>Sweden</tt:country>
+        </tt:location>
+      </tt:locations>
+    </item>
+  </channel>
+</rss>
