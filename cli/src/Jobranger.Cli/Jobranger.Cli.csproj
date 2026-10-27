@@ -18,8 +18,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" />
+    <PackageReference Include="Microsoft.ML.Tokenizers" />
     <PackageReference Include="Spectre.Console" />
     <PackageReference Include="System.CommandLine" />
+    <PackageReference Include="System.Numerics.Tensors" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="$(NuGetPackageRoot)microsoft.ml.onnxruntime\*\runtimes\win-*\native\*.dll" />
   </ItemGroup>
 
   <ItemGroup>

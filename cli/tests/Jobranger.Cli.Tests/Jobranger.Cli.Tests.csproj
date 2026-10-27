@@ -22,4 +22,8 @@
     <ProjectReference Include="..\..\src\Jobranger.Cli\Jobranger.Cli.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Golden\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

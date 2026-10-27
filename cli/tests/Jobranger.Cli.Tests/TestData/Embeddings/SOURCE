@@ -1,0 +1,6 @@
+tokenizer.json.gz is tokenizer.json from sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2,
+gzipped with `gzip -9 -n`.
+
+url:     https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2/resolve/e8f8c211226b894fcb81acc59f3b34ba3efd5f42/tokenizer.json
+sha256:  2c3387be76557bd40970cec13153b3bbf80407865484b209e655e5e4729076b8 (uncompressed)
+license: Apache-2.0, https://www.apache.org/licenses/LICENSE-2.0
