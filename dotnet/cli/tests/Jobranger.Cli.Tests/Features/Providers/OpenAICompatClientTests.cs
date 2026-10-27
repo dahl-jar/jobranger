@@ -308,7 +308,7 @@ public sealed class OpenAICompatClientTests {
 
         await client.ClassifyAsync(Prompt, OpenAISchema, TestContext.Current.CancellationToken);
 
-        Assert.Equal("Basic dXNlcjpTZWNyZXQ0Mg==", handler.Last.Header("Authorization"));
+        Assert.Equal(BasicHeader(OllamaUser, OllamaPassword), handler.Last.Header("Authorization"));
     }
 
     private static OpenAICompatClient Client(

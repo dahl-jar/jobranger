@@ -359,7 +359,7 @@ public sealed class ModelsListTests {
 
         await ListAsync(handler, ProviderName.Ollama, null, OllamaCredentialRoot);
 
-        Assert.Equal("Basic dXNlcjpTZWNyZXQ0Mg==", handler.Last.Header("Authorization"));
+        Assert.Equal(BasicHeader(OllamaUser, OllamaPassword), handler.Last.Header("Authorization"));
     }
 
     [Fact]

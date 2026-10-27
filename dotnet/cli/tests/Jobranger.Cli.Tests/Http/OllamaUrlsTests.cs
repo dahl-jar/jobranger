@@ -1,4 +1,5 @@
 using Jobranger.Cli.Http;
+using static Jobranger.Cli.Tests.Mocks.ProviderFixtures;
 
 namespace Jobranger.Cli.Tests.Http;
 
@@ -35,7 +36,9 @@ public sealed class OllamaUrlsTests {
 
     [Fact]
     public void ShouldSendEmptyPassword_WhenUserinfoHasNoPassword() {
-        Assert.Equal("Basic dXNlcjo=", OllamaUrls.BasicAuth("http://user@box:11434")?.ToString());
+        string? header = OllamaUrls.BasicAuth("http://user@box:11434")?.ToString();
+
+        Assert.Equal(BasicHeader(OllamaUser, string.Empty), header);
     }
 
     [Fact]

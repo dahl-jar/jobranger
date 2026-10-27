@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json.Nodes;
 using Jobranger.Cli.Features.Providers;
 using Jobranger.Cli.Http;
@@ -12,7 +13,9 @@ internal static class ProviderFixtures {
     public const string RouterModel = "vendor/model-one";
     public const string OllamaModel = "llama3.2";
     public const string OllamaRoot = "http://box:11434";
-    public const string OllamaCredentialRoot = "http://user:Secret42@box:11434";
+    public const string OllamaUser = "user";
+    public const string OllamaPassword = "Secret42";
+    public const string OllamaCredentialRoot = "http://" + OllamaUser + userSeparator + OllamaPassword + "@box:11434";
     public const string ReplyText = "{\"is_programming_job\":true}";
     public const string ErrorBody = "{\"error\":{\"message\":\"failed\"}}";
     public const string AnthropicTimeout = "Request timed out or interrupted. This could be due to a network timeout, "
@@ -23,8 +26,13 @@ internal static class ProviderFixtures {
     private const string goldenFolder = "Golden";
     private const string providersFolder = "Providers";
     private const string requestsFolder = "Requests";
+    private const string basicScheme = "Basic ";
+    private const string userSeparator = ":";
 
     public static ClassifyPrompt Prompt { get; } = LoadPrompt();
+
+    public static string BasicHeader(string user, string password) =>
+        basicScheme + Convert.ToBase64String(Encoding.UTF8.GetBytes(user + userSeparator + password));
 
     public static JsonObject AnthropicSchema => Node(Golden("anthropic-schema.json")).AsObject();
 
