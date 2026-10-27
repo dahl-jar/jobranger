@@ -24,6 +24,8 @@ public sealed class RelayFactory : WebApplicationFactory<Program> {
 
     public int? HubSocketCap { get; set; }
 
+    internal HubRequestEnds HubRequestEnds { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder) {
         builder.UseSetting("Relay:SiteOrigin", SiteOrigin);
         builder.UseSetting("Relay:HandleKey", HandleKey);
@@ -32,6 +34,7 @@ public sealed class RelayFactory : WebApplicationFactory<Program> {
         builder.ConfigureLogging(logging => logging.AddFakeLogging());
         builder.ConfigureTestServices(services => {
             services.AddSingleton<TimeProvider>(Time);
+            services.AddSingleton<IStartupFilter>(HubRequestEnds);
             services.AddSingleton<IStartupFilter, PeerAddressFilter>();
             services.AddSingleton<IStartupFilter, LocalPortFilter>();
             if (HubSocketCap is { } cap) {

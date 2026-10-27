@@ -6,6 +6,8 @@ namespace Jobranger.Relay.Core.Tests;
 public sealed class BucketLimiterTests : IDisposable {
     private const int burst = 5;
     private const int refill = 1;
+    private const int largeBurst = 10;
+    private const int largeRefill = 5;
 
     private static readonly TimeSpan period = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan partPeriod = TimeSpan.FromSeconds(10);
@@ -19,7 +21,7 @@ public sealed class BucketLimiterTests : IDisposable {
 
     [Fact]
     public void ShouldRefuseRequestBeyondBurst() {
-        Taken(burst);
+        limiter.Take(burst);
 
         using RateLimitLease lease = limiter.AttemptAcquire();
 
@@ -28,7 +30,7 @@ public sealed class BucketLimiterTests : IDisposable {
 
     [Fact]
     public void ShouldReportTimeToNextTokenAsRetryAfter() {
-        Taken(burst);
+        limiter.Take(burst);
         time.Advance(partPeriod);
 
         using RateLimitLease lease = limiter.AttemptAcquire();
@@ -38,9 +40,9 @@ public sealed class BucketLimiterTests : IDisposable {
 
     [Fact]
     public void ShouldRefillOneTokenEachPeriod() {
-        Taken(burst);
+        limiter.Take(burst);
         time.Advance(period);
-        Taken(refill);
+        limiter.Take(refill);
 
         using RateLimitLease lease = limiter.AttemptAcquire();
 
@@ -50,7 +52,7 @@ public sealed class BucketLimiterTests : IDisposable {
     [Fact]
     public void ShouldNotRefillAboveBurst() {
         time.Advance(period * 10);
-        Taken(burst);
+        limiter.Take(burst);
 
         using RateLimitLease lease = limiter.AttemptAcquire();
 
@@ -59,7 +61,7 @@ public sealed class BucketLimiterTests : IDisposable {
 
     [Fact]
     public void ShouldNotBeIdleWhileBucketIsBelowBurst() {
-        Taken(1);
+        limiter.Take(1);
         time.Advance(period - TimeSpan.FromSeconds(1));
 
         TimeSpan? idle = limiter.IdleDuration;
@@ -69,7 +71,7 @@ public sealed class BucketLimiterTests : IDisposable {
 
     [Fact]
     public void ShouldBeIdleSinceBucketRefilled() {
-        Taken(2);
+        limiter.Take(2);
         time.Advance((period * 2) + partPeriod);
 
         TimeSpan? idle = limiter.IdleDuration;
@@ -79,7 +81,7 @@ public sealed class BucketLimiterTests : IDisposable {
 
     [Fact]
     public void ShouldKeepCountingIdleTimeWhileBucketStaysFull() {
-        Taken(2);
+        limiter.Take(2);
         time.Advance((period * 3) + partPeriod);
         _ = limiter.IdleDuration;
         time.Advance(period);
@@ -91,10 +93,8 @@ public sealed class BucketLimiterTests : IDisposable {
 
     [Fact]
     public void ShouldRefillSeveralTokensEachPeriod() {
-        using BucketLimiter large = new(10, 5, period, time);
-        for (int take = 0; take < 10; take++) {
-            using RateLimitLease taken = large.AttemptAcquire();
-        }
+        using BucketLimiter large = new(largeBurst, largeRefill, period, time);
+        large.Take(largeBurst);
 
         time.Advance((period * 2) + partPeriod);
 
@@ -111,11 +111,4 @@ public sealed class BucketLimiterTests : IDisposable {
     }
 
     public void Dispose() => limiter.Dispose();
-
-    private void Taken(int count) {
-        for (int take = 0; take < count; take++) {
-            using RateLimitLease lease = limiter.AttemptAcquire();
-            Assert.True(lease.IsAcquired);
-        }
-    }
 }

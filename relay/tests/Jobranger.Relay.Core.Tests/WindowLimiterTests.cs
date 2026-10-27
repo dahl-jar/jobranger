@@ -18,7 +18,7 @@ public sealed class WindowLimiterTests : IDisposable {
 
     [Fact]
     public void ShouldRefuseRequestBeyondPermitsInWindow() {
-        Taken(permits);
+        limiter.Take(permits);
 
         using RateLimitLease lease = limiter.AttemptAcquire();
 
@@ -27,7 +27,7 @@ public sealed class WindowLimiterTests : IDisposable {
 
     [Fact]
     public void ShouldReportTimeLeftInWindowAsRetryAfter() {
-        Taken(permits);
+        limiter.Take(permits);
         time.Advance(partWindow);
 
         using RateLimitLease lease = limiter.AttemptAcquire();
@@ -37,7 +37,7 @@ public sealed class WindowLimiterTests : IDisposable {
 
     [Fact]
     public void ShouldAdmitAgainOnceWindowEnds() {
-        Taken(permits);
+        limiter.Take(permits);
         time.Advance(window);
 
         using RateLimitLease lease = limiter.AttemptAcquire();
@@ -47,7 +47,7 @@ public sealed class WindowLimiterTests : IDisposable {
 
     [Fact]
     public void ShouldNotBeIdleWhileWindowHoldsUsedPermits() {
-        Taken(1);
+        limiter.Take(1);
         time.Advance(window - TimeSpan.FromSeconds(1));
 
         TimeSpan? idle = limiter.IdleDuration;
@@ -57,7 +57,7 @@ public sealed class WindowLimiterTests : IDisposable {
 
     [Fact]
     public void ShouldBeIdleSinceWindowEnded() {
-        Taken(1);
+        limiter.Take(1);
         time.Advance(window + partWindow);
 
         TimeSpan? idle = limiter.IdleDuration;
@@ -67,7 +67,7 @@ public sealed class WindowLimiterTests : IDisposable {
 
     [Fact]
     public void ShouldBeIdleFromWindowEnd() {
-        Taken(1);
+        limiter.Take(1);
         time.Advance(window);
 
         TimeSpan? idle = limiter.IdleDuration;
@@ -77,7 +77,7 @@ public sealed class WindowLimiterTests : IDisposable {
 
     [Fact]
     public void ShouldOfferOnlyRetryAfterOnRefusal() {
-        Taken(permits);
+        limiter.Take(permits);
 
         using RateLimitLease lease = limiter.AttemptAcquire();
 
@@ -103,11 +103,4 @@ public sealed class WindowLimiterTests : IDisposable {
     }
 
     public void Dispose() => limiter.Dispose();
-
-    private void Taken(int count) {
-        for (int take = 0; take < count; take++) {
-            using RateLimitLease lease = limiter.AttemptAcquire();
-            Assert.True(lease.IsAcquired);
-        }
-    }
 }

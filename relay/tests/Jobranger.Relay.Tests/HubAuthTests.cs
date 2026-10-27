@@ -1,10 +1,7 @@
 using System.Net;
 using Jobranger.Contracts.Channels;
 using Jobranger.Relay.Core;
-using Jobranger.Relay.Hubs;
-using Jobranger.Relay.Security;
 using Microsoft.AspNetCore.SignalR.Client;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Testing;
 
 namespace Jobranger.Relay.Tests;
@@ -20,9 +17,6 @@ public sealed class HubAuthTests(RelayFactory factory) : IClassFixture<RelayFact
     private const int requestsBeyondBlockShare = 60;
     private const int smallHubSocketCap = 2;
     private const int socketsPerNetwork = 16;
-
-    private static readonly TimeSpan gateWait = TimeSpan.FromSeconds(10);
-    private static readonly TimeSpan gatePoll = TimeSpan.FromMilliseconds(10);
 
     [Fact]
     public async Task ShouldRefuseEleventhHubSocketFromOneAddress() {
@@ -222,10 +216,11 @@ public sealed class HubAuthTests(RelayFactory factory) : IClassFixture<RelayFact
     public async Task ShouldAdmitHubSocketAfterOneCloses() {
         await using RelayFactory small = SmallRelay();
         await using HubPeer first = await RelayClients.ConnectCliAsync(small, RelayClients.NewChannel());
-        HubPeer second = await RelayClients.ConnectCliAsync(small, RelayClients.NewChannel());
+        string closed = Addresses.Next();
+        HubPeer second = await RelayClients.ConnectCliAsync(small, RelayClients.NewChannel(), closed);
         string address = Addresses.Next();
         await second.DisposeAsync();
-        await WaitForGateSlot(small, address);
+        await WaitForGateSlot(small, closed);
 
         await using HubPeer third = await RelayClients.ConnectCliAsync(small, RelayClients.NewChannel(), address);
 
@@ -248,17 +243,8 @@ public sealed class HubAuthTests(RelayFactory factory) : IClassFixture<RelayFact
         return small;
     }
 
-    private static async Task WaitForGateSlot(RelayFactory relay, string address) {
-        HubSocketGate gate = relay.Services.GetRequiredService<HubSocketGate>();
-        string network = ClientPartition.Network(IPAddress.Parse(address));
-        using CancellationTokenSource deadline = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        deadline.CancelAfter(gateWait);
-        while (!gate.TryEnter(network)) {
-            await Task.Delay(gatePoll, deadline.Token);
-        }
-
-        gate.Exit(network);
-    }
+    private static Task WaitForGateSlot(RelayFactory relay, string networkAddress) =>
+        relay.HubRequestEnds.Ended(networkAddress);
 
     private static async Task<List<HubPeer>> FillNetwork(RelayFactory relay, string block) {
         List<HubPeer> open = [];
