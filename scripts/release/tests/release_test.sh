@@ -12,6 +12,9 @@ release_title="$release_dir/release_title.sh"
 pulls="$release_dir/tests/mocks/pulls.json"
 repository="owner/jobranger"
 
+while read -r variable; do
+  unset "$variable"
+done < <(git rev-parse --local-env-vars)
 export GIT_CONFIG_GLOBAL=/dev/null
 export GIT_CONFIG_NOSYSTEM=1
 
@@ -98,18 +101,32 @@ EOF
   chmod 0755 stub/uname
 }
 
+stub_curl() {
+  mkdir -p stub
+  cat >stub/curl <<EOF
+#!/bin/sh
+for url; do :; done
+echo "\$url" >>"$PWD/curl.log"
+exit 22
+EOF
+  chmod 0755 stub/curl
+}
+
 run_install() {
   stub_uname
   STUB_UNAME_S="$1" STUB_UNAME_M="$2" \
-    JOBRANGER_DOWNLOAD_URL="file://$PWD/out" \
     JOBRANGER_INSTALL_DIR="$PWD/bin-install" \
     PATH="$PWD/stub:$PATH" \
     sh out/install.sh
 }
 
+run_local_install() {
+  JOBRANGER_DOWNLOAD_URL="file://$PWD/out" run_install "$1" "$2"
+}
+
 install_failure() {
   local status=0
-  run_install "$1" "$2" >/dev/null 2>stderr.txt || status=$?
+  run_local_install "$1" "$2" >/dev/null 2>stderr.txt || status=$?
   assert_eq 1 "$status"
   cat stderr.txt
 }
@@ -123,7 +140,7 @@ stub_gh() {
   mkdir -p stub
   cat >stub/gh <<EOF
 #!/bin/sh
-[ "\$1 \$2 \$3" = "api repos/$repository/commits/$2/pulls --jq" ] || exit 1
+[ "\$1 \$2 \$3" = "api repos/$repository/commits/HEAD/pulls --jq" ] || exit 1
 exec jq -r "\$4" "$1"
 EOF
   chmod 0755 stub/gh
@@ -134,13 +151,13 @@ title_of() {
 }
 
 should_use_pr_title_when_set() {
-  stub_gh "$pulls" HEAD
+  stub_gh "$pulls"
 
   assert_eq "fix: pr title" "$(title_of HEAD 'fix: pr title')"
 }
 
 should_use_merged_pr_title_when_pr_title_empty() {
-  stub_gh "$pulls" HEAD
+  stub_gh "$pulls"
 
   assert_eq "fix: merged change" "$(title_of HEAD '')"
 }
@@ -149,7 +166,7 @@ should_use_commit_subject_when_no_merged_pr() {
   git init -q
   commit 'feat: commit subject'
   echo '[]' >none.json
-  stub_gh "$PWD/none.json" HEAD
+  stub_gh "$PWD/none.json"
 
   assert_eq "feat: commit subject" "$(title_of HEAD '')"
 }
@@ -209,11 +226,13 @@ should_pick_highest_version_numerically() {
   assert_eq "version=0.10.1" "$(version_of 'fix: x')"
 }
 
-should_stamp_version_into_install_script() {
+should_download_from_release_tag_when_no_url_is_set() {
   build_release
+  stub_curl
 
-  assert_contains "$(cat out/install.sh)" "version=\"$fixture_version\""
-  assert_eq 0 "$(grep -c __JOBRANGER_VERSION__ out/install.sh)"
+  run_install Linux x86_64 2>/dev/null || true
+
+  assert_contains "$(cat curl.log)" "/releases/download/cli-v$fixture_version/$linux_archive"
 }
 
 should_list_every_asset_in_checksums() {
@@ -239,7 +258,7 @@ should_install_build_for_platform() {
   local row system machine rid output
   for row in "Linux x86_64 linux-x64" "Darwin arm64 osx-arm64"; do
     read -r system machine rid <<<"$row"
-    output="$(run_install "$system" "$machine")"
+    output="$(run_local_install "$system" "$machine")"
     [ -x bin-install/jobranger ] || fail "bin-install/jobranger is not executable"
     assert_eq "$rid" "$(bin-install/jobranger)"
     assert_contains "$output" "jobranger $fixture_version installed to"
