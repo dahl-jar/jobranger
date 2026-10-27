@@ -33,7 +33,7 @@ WRITTEN_NUMBERS: dict[str, int] = {
     "nine": 9,
     "ten": 10,
 }
-MARKERS = frozenset({"minimum", "minimum of", "minst", "at least"})
+PYTHON_ONLY_FOLDS = str.maketrans({"İ": "ɪ", "ı": "ɪ", "ſ": "ʃ"})
 YEAR_PHRASE = re.compile(
     r"\b(?:(minimum(?: of)?|minst|at least) "
     r"((?:[0-9]{1,2}|en|ett|to|tre|fire|fem|seks|sju|syv|åtte|ni|ti|one|two|three"
@@ -69,19 +69,18 @@ class StatedYears:
 
 
 def stated_years(text: str) -> StatedYears | None:
-    if GRADUATE_ROUTE.search(text):
+    if GRADUATE_ROUTE.search(_unfold(text)):
         return None
     best: StatedYears | None = None
     for segment in ITEM_SPLIT.split(text):
         item = " ".join(segment.split())
-        if not item or _is_optional(item):
+        unfolded = _unfold(item)
+        if not item or _is_optional(unfolded):
             continue
-        for found in YEAR_PHRASE.finditer(item):
+        for found in YEAR_PHRASE.finditer(unfolded):
             years = _years(found)
-            if years is None:
-                continue
             if best is None or years < best.years:
-                best = StatedYears(years, found.group(0))
+                best = StatedYears(years, item[found.start() : found.end()])
     return best
 
 
@@ -115,11 +114,12 @@ def _is_optional(item: str) -> bool:
     return bool(PREFERENCE_WORD.search(rest) or EQUIVALENT_ROUTE.search(rest))
 
 
-def _years(found: re.Match[str]) -> int | None:
-    marker = found.group(1)
-    if marker is not None and marker.lower() not in MARKERS:
-        return None
+def _unfold(text: str) -> str:
+    return text.translate(PYTHON_ONLY_FOLDS)
+
+
+def _years(found: re.Match[str]) -> int:
     raw = found.group(2) or found.group(3)
     if raw[0].isascii() and raw[0].isdigit():
         return int(raw)
-    return WRITTEN_NUMBERS.get(raw.lower())
+    return WRITTEN_NUMBERS[raw.lower()]

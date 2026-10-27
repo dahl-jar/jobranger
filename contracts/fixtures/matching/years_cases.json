@@ -389,5 +389,135 @@
     "phrase": null,
     "status": "strong",
     "years": null
+  },
+  {
+    "id": "dotless_i_range_end",
+    "title": "Utvikler",
+    "description": "Minimum tre-fıre års erfaring",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "long_s_unit",
+    "title": "Developer",
+    "description": "Minimum 3 yearſ of experience",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "dotless_i_tail_word",
+    "title": "Developer",
+    "description": "Minimum 3 years of experıence",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "dotless_i_erfaring",
+    "title": "Utvikler",
+    "description": "Minimum 3 års erfarıng",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "long_s_plus_unit",
+    "title": "Developer",
+    "description": "3+ yearſ experience",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "dotless_i_preference",
+    "title": "Utvikler",
+    "description": "Minimum 5 års erfaring, ønskelıg",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 5,
+    "phrase": "Minimum 5 års erfaring",
+    "status": "unsuitable",
+    "years": 5
+  },
+  {
+    "id": "long_s_equivalent",
+    "title": "Utvikler",
+    "description": "Minimum 5 års erfaring eller tilſvarende",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 5,
+    "phrase": "Minimum 5 års erfaring",
+    "status": "unsuitable",
+    "years": 5
+  },
+  {
+    "id": "dotted_i_tail_word",
+    "title": "Developer",
+    "description": "Minimum 3 years of experİence",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "dotless_i_phrase",
+    "title": "Utvikler",
+    "description": "Minimum 3 års ıt-erfaring",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 3,
+    "phrase": "Minimum 3 års ıt-erfaring",
+    "status": "unsuitable",
+    "years": 3
+  },
+  {
+    "id": "long_s_graduate",
+    "title": "Developer",
+    "description": "Minimum 3 years of experience. New graduateſ welcome",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 3,
+    "phrase": "Minimum 3 years of experience",
+    "status": "unsuitable",
+    "years": 3
   }
 ]
