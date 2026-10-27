@@ -54,6 +54,11 @@ export function formatDue(deadline: string | null | undefined, today: string, te
   return { due: formatDayMonth(date, text), note: from === undefined ? '' : dueNote(daysBetween(from, date), text) }
 }
 
+export function formatDate(iso: string, text: Messages = en): string {
+  const date = toLocalDate(iso)
+  return date === undefined ? '' : formatDayMonth(date, text)
+}
+
 export function formatDay(iso: string, today: string, text: Messages = en): string {
   const date = toLocalDate(iso)
   if (date === undefined) {

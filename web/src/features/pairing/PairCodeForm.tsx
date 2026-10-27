@@ -5,34 +5,15 @@ import { Icon } from '@/shared/ui/Icon'
 import { PAIR_CODE_LENGTH } from '@/features/pairing/pairCode'
 import styles from '@/features/pairing/PairPage.module.css'
 import type { EndReason, FormError } from '@/features/pairing/pairingMachine'
-
-const FORM_MESSAGES: Record<FormError, string> = {
-  empty: 'Enter the code from your terminal.',
-  invalid: `Check the code. It has ${PAIR_CODE_LENGTH} letters.`,
-  wrong: "That code doesn't match. Check your terminal.",
-  expired: 'This code has expired. Run jobranger pair again.',
-  rateLimited: 'Too many tries. Wait a minute and try again.',
-  unreachable: "Can't reach the relay. Try again.",
-  storage: "This browser can't save the pairing. Allow site data and try again.",
-}
-
-const END_MESSAGES: Record<EndReason, string> = {
-  refused: 'Pairing refused in the terminal.',
-  timeout: 'Your terminal stopped waiting. Run jobranger pair again.',
-  silent: "Your machine didn't answer. Run jobranger pair again.",
-  cancelled: 'Pairing cancelled. Run jobranger pair again.',
-  dropped: 'The connection dropped. Run jobranger pair again.',
-  failed: 'Pairing failed. Run jobranger pair again.',
-  revoked: 'Your machine unpaired this browser.',
-  ticket: 'Pair this browser again.',
-}
+import type { Messages } from '@/shared/i18n/en'
+import { useText } from '@/shared/i18n/languageContext'
 
 const CODE_MAX_LENGTH = PAIR_CODE_LENGTH + 1
-const PRIVACY_LINES = [
-  'Your data stays on your machine.',
-  'This page sees only what your machine sends while open.',
-  'Unpair with jobranger unpair.',
-]
+
+function formMessage(error: FormError, text: Messages): string {
+  const errors = text.pairing.errors
+  return error === 'invalid' ? errors.invalid(PAIR_CODE_LENGTH) : errors[error]
+}
 
 interface PairCodeFormProps {
   error: FormError | undefined
@@ -46,7 +27,9 @@ export function PairCodeForm({ error, ended, busy, onSubmit }: PairCodeFormProps
   const input = useRef<HTMLInputElement>(null)
   const helpId = useId()
   const errorId = useId()
-  const message = error === undefined ? ended && END_MESSAGES[ended] : FORM_MESSAGES[error]
+  const text = useText()
+  const words = text.pairing
+  const message = error === undefined ? ended && words.ended[ended] : formMessage(error, text)
 
   useEffect(() => {
     if (error !== undefined) input.current?.focus()
@@ -60,19 +43,22 @@ export function PairCodeForm({ error, ended, busy, onSubmit }: PairCodeFormProps
   return (
     <>
       <h1 tabIndex={-1} className={styles.title}>
-        Connect your machine
+        {words.titles.connect}
       </h1>
-      <p className={styles.lead}>Pair this page with jobranger on your computer. No account needed.</p>
+      <p className={styles.lead}>{words.form.lead}</p>
       <ol className={styles.steps}>
         <li className={styles.step}>
           <span className={styles.number}>1</span>
           <div className={styles.stepBody}>
-            <h2 className={styles.stepTitle}>Run this in your terminal</h2>
+            <h2 className={styles.stepTitle}>{words.form.runThis}</h2>
             <div className={styles.command}>
               <span className={styles.prompt}>$ </span>jobranger pair
             </div>
             <p className={styles.note}>
-              Not installed yet? <Link to="/#install">Install jobranger</Link> or <Link to="/setup">see the setup</Link>.
+              {words.form.notInstalled}
+              <Link to="/#install">{words.form.install}</Link>
+              {words.form.or}
+              <Link to="/setup">{words.form.seeSetup}</Link>.
             </p>
           </div>
         </li>
@@ -80,7 +66,7 @@ export function PairCodeForm({ error, ended, busy, onSubmit }: PairCodeFormProps
           <span className={styles.number}>2</span>
           <form className={styles.stepBody} onSubmit={submit} noValidate>
             <label htmlFor="pair-code" className={styles.stepTitle}>
-              Enter the code it shows
+              {words.form.enterCode}
             </label>
             <div className={styles.codeRow}>
               <input
@@ -100,7 +86,7 @@ export function PairCodeForm({ error, ended, busy, onSubmit }: PairCodeFormProps
                 aria-describedby={message === undefined ? helpId : `${errorId} ${helpId}`}
               />
               <button type="submit" className={`${buttons.primary} ${styles.large}`} disabled={busy}>
-                {busy ? 'Connecting...' : 'Connect'}
+                {busy ? words.form.connectingBusy : words.form.connect}
               </button>
             </div>
             {message !== undefined && (
@@ -110,13 +96,13 @@ export function PairCodeForm({ error, ended, busy, onSubmit }: PairCodeFormProps
               </p>
             )}
             <p id={helpId} className={styles.note}>
-              {PAIR_CODE_LENGTH} letters, valid for 10 minutes.
+              {words.form.help(PAIR_CODE_LENGTH)}
             </p>
           </form>
         </li>
       </ol>
       <ul className={styles.privacy}>
-        {PRIVACY_LINES.map((line) => (
+        {words.privacy.map((line) => (
           <li key={line}>
             <span className={styles.ok}>
               <Icon name="check" />

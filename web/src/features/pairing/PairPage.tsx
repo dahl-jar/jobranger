@@ -10,16 +10,20 @@ import { defaultPairingDeps, PairingFlow } from '@/features/pairing/pairingFlow'
 import { PairedSession } from '@/features/pairing/PairedSession'
 import { type EndReason, pairingReducer, type PairingState } from '@/features/pairing/pairingMachine'
 import { asRecord } from '@/shared/asRecord'
+import type { Messages } from '@/shared/i18n/en'
+import { useText } from '@/shared/i18n/languageContext'
 
-const TITLES: Record<PairingState['name'], string> = {
-  loading: 'Connect your machine',
-  form: 'Connect your machine',
-  claiming: 'Connect your machine',
-  handshaking: 'Connecting',
-  confirming: 'Check the words',
-  waiting: 'Waiting for your terminal',
-  connected: 'Paired',
-  paired: 'Paired',
+type TitleKey = keyof Messages['pairing']['titles']
+
+const TITLES: Record<PairingState['name'], TitleKey> = {
+  loading: 'connect',
+  form: 'connect',
+  claiming: 'connect',
+  handshaking: 'connecting',
+  confirming: 'check',
+  waiting: 'waiting',
+  connected: 'paired',
+  paired: 'paired',
 }
 
 const ARRIVAL_REASONS: Record<string, EndReason> = { ticket: 'ticket', revoked: 'revoked', refused: 'refused' }
@@ -43,23 +47,24 @@ function Progress({ title, text }: { title: string; text: string }) {
 }
 
 function WordCompare({ words, onAnswer }: { words: string[]; onAnswer: (match: boolean) => void }) {
+  const text = useText().pairing
   return (
     <>
       <h1 tabIndex={-1} className={styles.title}>
-        Do these words match your terminal?
+        {text.wordsTitle}
       </h1>
-      <ol aria-label="Confirmation words" className={styles.words}>
+      <ol aria-label={text.wordsLabel} className={styles.words}>
         {words.map((word, index) => (
           <li key={`${index}-${word}`}>{word}</li>
         ))}
       </ol>
-      <p className={styles.lead}>Answer in your terminal too.</p>
+      <p className={styles.lead}>{text.answerInTerminal}</p>
       <div className={styles.actions}>
         <button type="button" className={buttons.primary} onClick={() => onAnswer(true)}>
-          Yes, they match
+          {text.wordsMatch}
         </button>
         <button type="button" className={buttons.outline} onClick={() => onAnswer(false)}>
-          No
+          {text.wordsDiffer}
         </button>
       </div>
     </>
@@ -96,7 +101,8 @@ export function PairPage() {
   const flow = useRef<PairingFlow | undefined>(undefined)
   const main = useViewFocus(state)
   const [arrival] = useState(() => arrivalReason(location.state))
-  usePageTitle(TITLES[state.name])
+  const pairing = useText().pairing
+  usePageTitle(pairing.titles[TITLES[state.name]])
 
   useEffect(() => {
     const current = new PairingFlow(deps, dispatch)
@@ -117,9 +123,9 @@ export function PairPage() {
           onSubmit={(code) => void flow.current?.submit(code)}
         />
       )}
-      {state.name === 'handshaking' && <Progress title="Connecting to your machine" text="Keep jobranger pair running in your terminal." />}
+      {state.name === 'handshaking' && <Progress title={pairing.handshakeTitle} text={pairing.handshakeText} />}
       {state.name === 'confirming' && <WordCompare words={state.words} onAnswer={(match) => flow.current?.answer(match)} />}
-      {state.name === 'waiting' && <Progress title="Waiting for your terminal" text="Answer in your terminal to finish pairing." />}
+      {state.name === 'waiting' && <Progress title={pairing.titles.waiting} text={pairing.waitingText} />}
       {state.name === 'connected' && <PairConnected status={state.status} onUnpair={() => void flow.current?.unpair()} />}
       {state.name === 'paired' && <PairedSession onEnded={(reason) => dispatch({ type: 'sessionEnded', reason })} />}
     </main>

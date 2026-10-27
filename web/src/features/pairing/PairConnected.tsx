@@ -3,15 +3,18 @@ import buttons from '@/shared/ui/button.module.css'
 import { Icon } from '@/shared/ui/Icon'
 import styles from '@/features/pairing/PairPage.module.css'
 import type { Status } from '@/features/relay/contract/payload.gen'
+import { formatClock, formatDate } from '@/shared/format/dates'
+import type { Messages } from '@/shared/i18n/en'
+import { useText } from '@/shared/i18n/languageContext'
 
 const CONNECTED_ICON_SIZE = 18
-const RUN_TIME = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 const APP_HOME = '/app/today'
 
-function lastRunText(status: Status): string {
-  if (status.last_run === null) return 'No run yet'
-  const matches = status.last_run.matches === 1 ? '1 match' : `${status.last_run.matches} matches`
-  return `${RUN_TIME.format(new Date(status.last_run.finished_at))}, ${matches}`
+function lastRunText(status: Status, text: Messages): string {
+  const words = text.pairing
+  if (status.last_run === null) return words.noRun
+  const finishedAt = status.last_run.finished_at
+  return words.runSummary(formatDate(finishedAt, text), formatClock(finishedAt), status.last_run.matches)
 }
 
 interface PairConnectedProps {
@@ -21,10 +24,12 @@ interface PairConnectedProps {
 }
 
 export function PairConnected({ status, connection, onUnpair }: PairConnectedProps) {
+  const text = useText()
+  const words = text.pairing
   const facts = status && [
-    ['Machine', status.machine],
-    ['Version', `jobranger ${status.cli_version}`],
-    ['Last run', lastRunText(status)],
+    [words.machine, status.machine],
+    [words.version, text.settings.connection.version(status.cli_version)],
+    [words.lastRun, lastRunText(status, text)],
   ]
 
   return (
@@ -32,7 +37,7 @@ export function PairConnected({ status, connection, onUnpair }: PairConnectedPro
       {connection === undefined ? (
         <p role="status" className={styles.connected}>
           <Icon name="strong" size={CONNECTED_ICON_SIZE} />
-          Connected
+          {words.connected}
         </p>
       ) : (
         <p role="status" className={styles.lead}>
@@ -40,7 +45,7 @@ export function PairConnected({ status, connection, onUnpair }: PairConnectedPro
         </p>
       )}
       <h1 tabIndex={-1} className={`${styles.title} ${styles.pairedTitle}`}>
-        Your computer is paired
+        {words.pairedTitle}
       </h1>
       {facts && (
         <dl className={styles.facts}>
@@ -52,14 +57,14 @@ export function PairConnected({ status, connection, onUnpair }: PairConnectedPro
           ))}
         </dl>
       )}
-      <p className={styles.lead}>Roles and places apply right away. Limits and profile apply from the next run.</p>
+      <p className={styles.lead}>{words.applies}</p>
       <div className={styles.actions}>
         <Link to={APP_HOME} className={`${buttons.primary} ${styles.large}`}>
-          Open jobranger
+          {words.open}
           <Icon name="forward" />
         </Link>
         <button type="button" className={styles.linkButton} onClick={onUnpair}>
-          Pair a different machine
+          {words.pairDifferent}
         </button>
       </div>
     </>

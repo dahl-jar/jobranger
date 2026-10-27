@@ -13,19 +13,12 @@ import { clearPairing, loadPairing, savePairing } from '@/features/relay/keyStor
 import type { ConnectRelay } from '@/features/relay/transport'
 import { createQueryClient } from '@/app/queryClient'
 import { RelayDepsContext } from '@/features/relay/relayContext'
-import { LAST_SEEN_KEY, relayDeps, SEEN_AT, storedPairing, TEST_AGENT, withoutCliKey } from '@/test/relayFixtures'
+import { CLAIM_OK, LAST_SEEN_KEY, relayDeps, SEEN_AT, storedPairing, TEST_AGENT, withoutCliKey } from '@/test/relayFixtures'
 import { CliPeer, FakeRelay, type PeerOptions, TEST_CHANNEL } from '@/test/fakeRelay'
 import { flush, until } from '@/test/flush'
 import { cliPairTag } from '@/test/fakeCli'
 import { decodeBase64Url } from '@/features/relay/base64url'
 
-const CLAIM_OK: ClaimResult = {
-  kind: 'ok',
-  channel: TEST_CHANNEL,
-  handle: 'handle-one',
-  ticket: 'ticket-one',
-  ticketExpiresAt: '2027-01-11T08:00:00Z',
-}
 const STATUS = JSON.stringify(payloadFixtures.status)
 
 async function renderPair(claimResult: ClaimResult | Promise<ClaimResult> = CLAIM_OK, peerOptions: PeerOptions = {}, connect?: ConnectRelay) {

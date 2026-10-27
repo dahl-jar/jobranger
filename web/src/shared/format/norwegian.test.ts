@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { formatDay, formatDayInSentence, formatDue } from '@/shared/format/dates'
+import { formatDate, formatDay, formatDayInSentence, formatDue } from '@/shared/format/dates'
 import { formatUsd } from '@/shared/format/money'
 import { formatCount } from '@/shared/format/numbers'
 import { formatTokens } from '@/shared/format/tokens'
@@ -55,6 +55,16 @@ describe('formatDay in bokmål', () => {
     ['2026-12-15', `15.${NO_BREAK_SPACE}des`],
   ])('should name the month of %s as %s', (iso, label) => {
     expect(formatDay(iso, TODAY, nb)).toBe(label)
+  })
+})
+
+describe('formatDate', () => {
+  it('should show the day and month in bokmål', () => {
+    expect(formatDate('2026-10-08T12:00:00', nb)).toBe(`8.${NO_BREAK_SPACE}okt`)
+  })
+
+  it('should show nothing for day "2026-02-30"', () => {
+    expect(formatDate('2026-02-30', nb)).toBe('')
   })
 })
 

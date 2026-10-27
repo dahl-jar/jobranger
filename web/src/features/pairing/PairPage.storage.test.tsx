@@ -3,13 +3,13 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { ClaimResult } from '@/features/pairing/claimPairing'
 import { PairPage } from '@/features/pairing/PairPage'
 import { PairingDepsContext } from '@/features/pairing/pairingDeps'
 import { payloadFixtures } from '@/features/relay/contract/fixtures.gen'
 import { clearPairing, loadPairing, probeStorage, savePairing, StorageError } from '@/features/relay/keyStore'
-import { CliPeer, FakeRelay, TEST_CHANNEL } from '@/test/fakeRelay'
+import { CliPeer, FakeRelay } from '@/test/fakeRelay'
 import { until } from '@/test/flush'
+import { CLAIM_OK, TEST_AGENT } from '@/test/relayFixtures'
 
 vi.mock('@/features/relay/keyStore', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/relay/keyStore')>()
@@ -21,13 +21,6 @@ vi.mock('@/features/relay/keyStore', async (importOriginal) => {
   }
 })
 
-const CLAIM_OK: ClaimResult = {
-  kind: 'ok',
-  channel: TEST_CHANNEL,
-  handle: 'handle-one',
-  ticket: 'ticket-one',
-  ticketExpiresAt: '2027-01-11T08:00:00Z',
-}
 const STORAGE_MESSAGE = "This browser can't save the pairing. Allow site data and try again."
 const BLOCKED = new DOMException('storage blocked', 'InvalidStateError')
 
@@ -38,7 +31,7 @@ async function renderPage() {
   const user = userEvent.setup()
   render(
     <MemoryRouter initialEntries={['/pair']}>
-      <PairingDepsContext value={{ claim, connect: relay.connect, agent: 'Firefox on macOS' }}>
+      <PairingDepsContext value={{ claim, connect: relay.connect, agent: TEST_AGENT }}>
         <PairPage />
       </PairingDepsContext>
     </MemoryRouter>,

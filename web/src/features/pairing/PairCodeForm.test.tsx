@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { createEvent, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import { PairCodeForm } from '@/features/pairing/PairCodeForm'
@@ -14,6 +14,21 @@ function renderForm({ error, ended }: { error?: FormError; ended?: EndReason } =
 }
 
 describe('PairCodeForm', () => {
+  it('should describe the code field with the error and the help line', () => {
+    const input = renderForm({ error: 'wrong' })
+
+    expect(input).toHaveAccessibleDescription("That code doesn't match. Check your terminal. 8 letters, valid for 10 minutes.")
+  })
+
+  it('should keep the page from reloading on submit', () => {
+    const form = renderForm().closest('form')
+    const submit = createEvent.submit(form ?? document.body)
+
+    fireEvent(form ?? document.body, submit)
+
+    expect(submit.defaultPrevented).toBe(true)
+  })
+
   it('should say the terminal stopped waiting after the word compare timed out', () => {
     renderForm({ ended: 'timeout' })
 

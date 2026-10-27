@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider, useLocation } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createQueryClient } from '@/app/queryClient'
+import { AddApplicationForm } from '@/features/applications/AddApplicationForm'
+import { disconnectedError } from '@/features/relay/commands'
 import { QUERY_KEYS } from '@/app/queryKeys'
 import { type ConnectionState, type ConnectionStore, createConnectionStore } from '@/features/relay/connectionStore'
 import { payloadFixtures } from '@/features/relay/contract/fixtures.gen'
@@ -31,7 +33,7 @@ interface Rendered {
   store: ConnectionStore
 }
 
-function renderGate(state: ConnectionState, { withList = false } = {}): Rendered {
+function renderGate(state: ConnectionState, { withList = false, page = <ListProbe /> } = {}): Rendered {
   const store = createConnectionStore()
   store.dispatch(state)
   const retryNow = vi.fn()
@@ -44,9 +46,7 @@ function renderGate(state: ConnectionState, { withList = false } = {}): Rendered
       {
         path: '/app/today',
         element: (
-          <ConnectionGate>
-            <ListProbe />
-          </ConnectionGate>
+          <ConnectionGate>{page}</ConnectionGate>
         ),
       },
       { path: '/pair', element: <PairProbe /> },
@@ -103,10 +103,10 @@ describe('ConnectionGate', () => {
   })
 
   it.each([
-    ['handshake', 'The connection check failed. Pair again.'],
-    ['cli_key', 'The connection check failed. Pair again.'],
-    ['unknown_device', "Your machine doesn't know this browser. Pair again."],
-  ] as const)('should ask to pair again when the %s check fails', (reason, text) => {
+    ['the handshake', 'handshake', 'The connection check failed. Pair again.'],
+    ['the machine key', 'cli_key', 'The connection check failed. Pair again.'],
+    ['the browser key', 'unknown_device', "Your machine doesn't know this browser. Pair again."],
+  ] as const)('should ask to pair again when %s check fails', (_, reason, text) => {
     renderGate({ kind: 'failed', reason })
 
     expect(screen.getByRole('heading').textContent).toBe(text)
@@ -158,12 +158,12 @@ describe('ConnectionGate', () => {
   })
 
   it.each<[string, ConnectionState, string]>([
-    ['offline', { kind: 'machineOffline', lastSeen: SEEN }, 'Your machine went offline at 14:02. Changes are paused.'],
-    ['offline at an unknown time', { kind: 'machineOffline', lastSeen: undefined }, 'Your machine went offline. Changes are paused.'],
-    ['behind a relay outage', { kind: 'relayDown', retryAt: 0 }, "Can't reach the relay. Changes are paused."],
-    ['reconnecting', { kind: 'connecting' }, 'Reconnecting to your machine. Changes are paused.'],
-    ['off the network', { kind: 'networkOffline' }, "You're offline. Changes are paused."],
-  ])('should keep a loaded list read-only while the machine is %s', (_, state, notice) => {
+    ['the machine is offline', { kind: 'machineOffline', lastSeen: SEEN }, 'Your machine went offline at 14:02. Changes are paused.'],
+    ['the machine went offline at an unknown time', { kind: 'machineOffline', lastSeen: undefined }, 'Your machine went offline. Changes are paused.'],
+    ['the relay is down', { kind: 'relayDown', retryAt: 0 }, "Can't reach the relay. Changes are paused."],
+    ['the session reconnects', { kind: 'connecting' }, 'Reconnecting to your machine. Changes are paused.'],
+    ['the browser is offline', { kind: 'networkOffline' }, "You're offline. Changes are paused."],
+  ])('should keep a loaded list read-only when %s', (_, state, notice) => {
     renderGate(state, { withList: true })
 
     expect([screen.getByRole('status').textContent, screen.getByText(/^list/).textContent]).toEqual([notice, 'list, edits off'])
@@ -173,6 +173,26 @@ describe('ConnectionGate', () => {
     renderGate({ kind: 'ready' })
 
     expect(screen.getByRole('status')).toHaveTextContent('Loading your list...')
+  })
+
+  it('should keep "Not saved" when the connection drops during a save', async () => {
+    const user = userEvent.setup()
+    let failSave: (error: Error) => void = () => undefined
+    const pending = new Promise<void>((_, reject) => {
+      failSave = reject
+    })
+    const page = <AddApplicationForm onAdd={() => pending} onCancel={vi.fn()} disabled={false} />
+    const { store } = renderGate({ kind: 'ready' }, { withList: true, page })
+    await user.type(screen.getByLabelText('Company'), 'Org Three AS')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+
+    await act(async () => {
+      store.dispatch({ kind: 'connecting' })
+      failSave(disconnectedError())
+    })
+
+    expect(screen.getByLabelText('Company')).toHaveValue('Org Three AS')
+    expect(screen.getByRole('alert')).toHaveTextContent('Not saved: connection lost.')
   })
 
   it('should show the list with edits on when ready', () => {

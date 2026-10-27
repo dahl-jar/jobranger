@@ -7,6 +7,7 @@ import { ApplicationsPage } from '@/features/applications/ApplicationsPage'
 import { ApplicationsSummary } from '@/features/applications/ApplicationsSummary'
 import { StatusMenu } from '@/features/applications/StatusMenu'
 import { applicationsSnapshot, foundApplication, handApplication, pinTimeZone, TODAY } from '@/features/applications/testData'
+import { CommandError } from '@/features/relay/commands'
 import { payloadFixtures } from '@/features/relay/contract/fixtures.gen'
 import { expectNoEnglish } from '@/test/english'
 import { renderNorwegian } from '@/test/render'
@@ -63,6 +64,17 @@ describe('applications in bokmål', () => {
 
     expect(await screen.findByLabelText('Notat')).toHaveAttribute('placeholder', 'f.eks. Søkte via en anbefaling')
     expect(screen.getByLabelText('Selskap')).not.toHaveAttribute('placeholder')
+  })
+
+  it('should say the machine did not answer in bokmål', async () => {
+    const user = userEvent.setup()
+    const onAdd = vi.fn(() => Promise.reject(new CommandError('timeout', 'no answer from your machine.')))
+    renderNorwegian(<AddApplicationForm onAdd={onAdd} onCancel={vi.fn()} disabled={false} />)
+    await user.type(await screen.findByLabelText('Selskap'), 'Org Three AS')
+
+    await user.click(screen.getByRole('button', { name: 'Legg til' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Ikke lagret: ingen svar fra maskinen din.')
   })
 
   it('should ask for a company in bokmål', async () => {

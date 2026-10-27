@@ -2,6 +2,7 @@ import { RelayUnreachableError } from '@/features/relay/handleClient'
 import { clearPairingOf, generateWebKeys, loadPairing, type StoredPairing } from '@/features/relay/keyStore'
 import type { SeenStorage } from '@/features/relay/lastSeen'
 import type { RelayDeps } from '@/features/relay/relayContext'
+import type { ClaimResult } from '@/features/pairing/claimPairing'
 import { type CliPeer, type FakeRelay, TEST_CHANNEL } from '@/test/fakeRelay'
 import { until } from '@/test/flush'
 
@@ -9,6 +10,13 @@ export const LONG_DELAY_MS = 60_000
 export const TEST_AGENT = 'Firefox on macOS'
 export const LAST_SEEN_KEY = 'jobranger.lastSeen'
 export const SEEN_AT = '2026-10-13T14:02:00.000Z'
+export const CLAIM_OK: ClaimResult = {
+  kind: 'ok',
+  channel: TEST_CHANNEL,
+  handle: 'handle-one',
+  ticket: 'ticket-one',
+  ticketExpiresAt: '2027-01-11T08:00:00Z',
+}
 const CLI_KEY_BYTES = 32
 
 export async function storedPairing(overrides: Partial<StoredPairing> = {}): Promise<StoredPairing> {

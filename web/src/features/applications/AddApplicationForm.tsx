@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import styles from '@/features/applications/Applications.module.css'
 import { COMPANY_MAX_CHARS, NOTE_MAX_CHARS, TITLE_MAX_CHARS } from '@/features/applications/limits'
 import type { ApplicationCreate } from '@/features/relay/contract/payload.gen'
+import { commandErrorText } from '@/features/shell/commandErrorText'
 import { useText } from '@/shared/i18n/languageContext'
 import { Button } from '@/shared/ui/Button'
 import button from '@/shared/ui/button.module.css'
@@ -59,7 +60,7 @@ export function AddApplicationForm({ onAdd, onCancel, disabled }: AddApplication
       setDraft(EMPTY_DRAFT)
       companyRef.current?.focus()
     } catch (caught: unknown) {
-      setError({ kind: 'save', message: caught instanceof Error ? caught.message : String(caught) })
+      setError({ kind: 'save', message: commandErrorText(caught, text) })
     }
     setSaving(false)
   }
