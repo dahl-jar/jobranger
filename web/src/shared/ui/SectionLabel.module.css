@@ -19,3 +19,7 @@
   margin-top: 10px;
   background: var(--ink);
 }
+
+.soft {
+  background: var(--rule);
+}

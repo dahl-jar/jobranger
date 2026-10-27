@@ -74,13 +74,20 @@ function indexDays(usage: UsageSnapshot): DaysByKey {
   return new Map(usage.days.map((day) => [day.day, day]))
 }
 
+function limitShare(spent: Money, limit: Money): number {
+  return limit > 0 ? spent / limit : 1
+}
+
+export function limitPercent(spent: Money, limit: Money): number {
+  return Math.min(PERCENT_MAX, Math.round(limitShare(spent, limit) * PERCENT_MAX))
+}
+
 function summarizeBudget(spent: Money, limit: Money | null): UsageBudget {
   if (limit === null) return { line: 'No monthly limit', percent: 0, nearLimit: false, action: 'Set a limit' }
-  const share = limit > 0 ? spent / limit : 1
   return {
     line: `${formatUsd(spent)} of ${formatUsd(limit)}`,
-    percent: Math.min(PERCENT_MAX, Math.round(share * PERCENT_MAX)),
-    nearLimit: share > NEAR_LIMIT_SHARE,
+    percent: limitPercent(spent, limit),
+    nearLimit: limitShare(spent, limit) > NEAR_LIMIT_SHARE,
     action: 'Edit limit',
   }
 }

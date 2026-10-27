@@ -1,4 +1,5 @@
 import { Link } from 'react-router'
+import { JOBS_PATH } from '@/app/paths'
 import styles from '@/features/run/run.module.css'
 import { SOURCE_LABELS, type EndedRun } from '@/features/run/runView'
 import type { RunFinished } from '@/features/relay/contract/payload.gen'
@@ -39,7 +40,7 @@ function FinishedRun({ result, onDismiss }: { result: RunFinished; onDismiss: ()
       <p className={styles.summary}>{counts}</p>
       {failed !== '' && <p className={styles.note}>Could not read {failed}.</p>}
       {result.budget_paused && <p className={styles.note}>AI checks paused at your monthly limit.</p>}
-      <Link to="/app/today" className={`${button.primary} ${button.size36} ${styles.seeNew}`} onClick={onDismiss}>
+      <Link to={JOBS_PATH} className={`${button.primary} ${button.size36} ${styles.seeNew}`} onClick={onDismiss}>
         See new matches
       </Link>
       <DismissButton onDismiss={onDismiss} />

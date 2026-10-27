@@ -1,0 +1,51 @@
+import { useId, type ReactNode } from 'react'
+import { Link, Navigate, NavLink, useParams } from 'react-router'
+import { JOBS_PATH, SETTINGS_PATH } from '@/app/paths'
+import { SavedLine, type SaveResult } from '@/features/settings/SavedLine'
+import { SETTINGS_SECTIONS, type SettingsSectionId } from '@/features/settings/settingsSections'
+import styles from '@/features/settings/Settings.module.css'
+import { Icon } from '@/shared/ui/Icon'
+
+const DEFAULT_SECTION: SettingsSectionId = 'search'
+
+interface SettingsLayoutProps {
+  editsDisabled: boolean
+  saveResult: SaveResult | undefined
+  renderSection: (section: SettingsSectionId) => ReactNode
+}
+
+export function SettingsLayout({ editsDisabled, saveResult, renderSection }: SettingsLayoutProps) {
+  const titleId = useId()
+  const { section } = useParams()
+  const current = SETTINGS_SECTIONS.find((candidate) => candidate.id === section)
+  if (current === undefined) return <Navigate to={`${SETTINGS_PATH}/${DEFAULT_SECTION}`} replace />
+
+  return (
+    <div className={styles.layout}>
+      <nav aria-label="Settings" className={styles.nav}>
+        <Link to={JOBS_PATH} className={styles.back}>
+          <Icon name="back" />
+          Back to jobs
+        </Link>
+        <div className={styles.navRule} />
+        {SETTINGS_SECTIONS.map((entry) => (
+          <NavLink key={entry.id} to={`${SETTINGS_PATH}/${entry.id}`} className={styles.navLink ?? ''}>
+            {entry.label}
+          </NavLink>
+        ))}
+      </nav>
+      <section aria-labelledby={titleId} className={styles.section}>
+        <div className={styles.header}>
+          <h2 id={titleId} className={styles.title}>
+            {current.label}
+          </h2>
+          <SavedLine result={saveResult} />
+        </div>
+        <p className={styles.sectionNote}>{current.note}</p>
+        <fieldset disabled={editsDisabled && current.locksOffline} className={styles.body}>
+          {renderSection(current.id)}
+        </fieldset>
+      </section>
+    </div>
+  )
+}
