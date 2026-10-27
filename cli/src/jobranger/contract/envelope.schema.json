@@ -10,13 +10,11 @@
   "$defs": {
     "Channel": {"type": "string", "pattern": "^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$", "maxLength": 43},
     "Sid": {"type": "string", "pattern": "^[A-Za-z0-9_-]{21}[AQgw]$", "maxLength": 22},
-    "Seq": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+    "Seq": {"type": "integer", "minimum": 1, "maximum": 4294967295},
     "Base64Url": {
       "type": "string",
       "pattern": "^(?:[A-Za-z0-9_-]{4})*(?:[A-Za-z0-9_-][AQgw]|[A-Za-z0-9_-]{2}[AEIMQUYcgkosw048])?$",
-      "not": {"pattern": "[^A-Za-z0-9_-]"},
-      "minLength": 4,
-      "maxLength": 61440
+      "not": {"pattern": "[^A-Za-z0-9_-]"}
     },
     "EnvelopeHello": {
       "type": "object",
@@ -27,7 +25,7 @@
         "sid": {"$ref": "#/$defs/Sid"},
         "seq": {"const": 0},
         "kind": {"const": "hello"},
-        "ciphertext": {"$ref": "#/$defs/Base64Url"}
+        "ciphertext": {"$ref": "#/$defs/Base64Url", "type": "string", "minLength": 4, "maxLength": 5462}
       }
     },
     "EnvelopeData": {
@@ -39,7 +37,7 @@
         "sid": {"$ref": "#/$defs/Sid"},
         "seq": {"$ref": "#/$defs/Seq"},
         "kind": {"const": "data"},
-        "ciphertext": {"$ref": "#/$defs/Base64Url"}
+        "ciphertext": {"$ref": "#/$defs/Base64Url", "type": "string", "minLength": 22, "maxLength": 61440}
       }
     }
   }

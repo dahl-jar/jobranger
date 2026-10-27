@@ -1,6 +1,6 @@
 import type { ErrorObject } from 'ajv'
 import type { Envelope } from './envelope.gen'
-import type { Payload } from './payload.gen'
+import type { AdsSnapshot, HiddenKind, Payload } from './payload.gen'
 import { scanJson, structureProblem } from './scan'
 import { payloadSchema } from './schemas.gen'
 import { type StandaloneValidator, validateEnvelope, validatePayload } from './validate.gen'
@@ -8,6 +8,7 @@ import { type StandaloneValidator, validateEnvelope, validatePayload } from './v
 const MIN_YEAR = 1
 const DATE_PARTS = /^(\d{4})-(\d{2})-(\d{2})/
 const TIMESTAMP_PATTERN = new RegExp(payloadSchema.$defs.Timestamp.pattern)
+const HIDDEN_KINDS: readonly string[] = payloadSchema.$defs.HiddenKind.enum
 
 export class ContractError extends Error {
   readonly errors: readonly string[]
@@ -56,8 +57,29 @@ function decodeWith<T>(raw: unknown, validate: StandaloneValidator<T>, tag: stri
   throw new ContractError(errorMessages(validate.errors), tagOf(raw, tag))
 }
 
+function hiddenCountProblem(snapshot: AdsSnapshot): string | undefined {
+  const counts = snapshot.hidden_counts
+  const kindTotal = Object.entries(counts)
+    .filter(([kind]) => HIDDEN_KINDS.includes(kind))
+    .reduce((total, [, count]) => total + count, 0)
+  if (kindTotal !== snapshot.hidden_total) {
+    return '/hidden_counts must sum to hidden_total'
+  }
+  const listed = new Map<HiddenKind, number>()
+  for (const ad of snapshot.hidden) {
+    listed.set(ad.kind, (listed.get(ad.kind) ?? 0) + 1)
+  }
+  const undercounted = [...listed].find(([kind, count]) => counts[kind] < count)
+  return undercounted && `/hidden_counts/${undercounted[0]} must not be below the listed hidden ads`
+}
+
 export function parsePayload(text: string): Payload {
-  return decodeWith(parseJson(text), validatePayload, 'type')
+  const payload = decodeWith(parseJson(text), validatePayload, 'type')
+  const problem = payload.type === 'ads.snapshot' ? hiddenCountProblem(payload) : undefined
+  if (problem) {
+    throw new ContractError([problem], payload.type)
+  }
+  return payload
 }
 
 export function parseEnvelope(text: string): Envelope {

@@ -16,7 +16,7 @@ export const envelopeFixtures = {
     "sid": "AAECAwQFBgcICQoLDA0ODw",
     "seq": 0,
     "kind": "hello",
-    "ciphertext": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISIjJCUmJygpKissLS4v"
+    "ciphertext": "eyJ0IjoiYWJvcnQifQ"
   } satisfies Envelope,
 }
 
@@ -120,8 +120,7 @@ export const payloadFixtures = {
         "found_at": "2026-10-11T03:02:00Z",
         "today": false,
         "kind": "years",
-        "reason": "Requires 5 years",
-        "shown_anyway": false
+        "reason": "Requires 5 years"
       },
       {
         "id": "nav-9911",
@@ -134,11 +133,193 @@ export const payloadFixtures = {
         "found_at": "2026-10-12T03:01:00Z",
         "today": true,
         "kind": "other",
-        "reason": "Other area: IT operations",
+        "reason": "Other area: IT operations"
+      }
+    ],
+    "hidden_total": 2,
+    "hidden_counts": {
+      "senior": 0,
+      "years": 1,
+      "masters": 0,
+      "role": 0,
+      "place": 0,
+      "other": 1
+    },
+    "closed": [
+      {
+        "id": "finn-398877665",
+        "closed_on": "2026-10-08",
+        "company": "Employer Three AS",
+        "title": "Software Engineer",
+        "source": "finn",
+        "reason": "removed",
+        "mark": "none"
+      }
+    ],
+    "closed_total": 9
+  } satisfies Payload,
+  "ads.snapshot.on-request": {
+    "type": "ads.snapshot",
+    "v": 1,
+    "generated_at": "2026-10-12T03:05:00Z",
+    "as_of": "2026-10-12",
+    "active": [
+      {
+        "id": "finn-401234567",
+        "company": "Employer One AS",
+        "title": "Data Engineer",
+        "place": "Trondheim",
+        "role_type": "data_engineering",
+        "source": "finn",
+        "published_at": "2026-10-06T07:30:00Z",
+        "found_at": "2026-10-06T09:00:00Z",
+        "url": "https://jobs.example.test/ad/401234567",
+        "deadline": "2026-10-20",
+        "fit": "on_request",
+        "is_new": false,
+        "today": true,
+        "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+        "reason": "Python and SQL pipelines match the data platform work.",
+        "gaps": [
+          "No Airflow in the profile"
+        ],
+        "checks": [
+          {
+            "text": "Python",
+            "state": "met"
+          },
+          {
+            "text": "Kafka",
+            "state": "partly"
+          },
+          {
+            "text": "Airflow",
+            "state": "missing"
+          }
+        ],
+        "mark": null,
+        "marked_at": null,
+        "shown_anyway": true
+      }
+    ],
+    "active_total": 1,
+    "hidden": [],
+    "hidden_total": 0,
+    "hidden_counts": {
+      "senior": 0,
+      "years": 0,
+      "masters": 0,
+      "role": 0,
+      "place": 0,
+      "other": 0
+    },
+    "closed": [],
+    "closed_total": 0
+  } satisfies Payload,
+  "ads.snapshot.truncated": {
+    "type": "ads.snapshot",
+    "v": 1,
+    "generated_at": "2026-10-12T03:05:00Z",
+    "as_of": "2026-10-12",
+    "active": [
+      {
+        "id": "finn-401234567",
+        "company": "Employer One AS",
+        "title": "Data Engineer",
+        "place": "Trondheim",
+        "role_type": "data_engineering",
+        "source": "finn",
+        "published_at": "2026-10-06T07:30:00Z",
+        "found_at": "2026-10-06T09:00:00Z",
+        "url": "https://jobs.example.test/ad/401234567",
+        "deadline": "2026-10-20",
+        "fit": "strong",
+        "is_new": false,
+        "today": true,
+        "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+        "reason": "Python and SQL pipelines match the data platform work.",
+        "gaps": [
+          "No Airflow in the profile"
+        ],
+        "checks": [
+          {
+            "text": "Python",
+            "state": "met"
+          },
+          {
+            "text": "Kafka",
+            "state": "partly"
+          },
+          {
+            "text": "Airflow",
+            "state": "missing"
+          }
+        ],
+        "mark": null,
+        "marked_at": null,
         "shown_anyway": false
+      },
+      {
+        "id": "nav-7f3c2a",
+        "company": "Employer Two AS",
+        "title": "Fullstack Developer",
+        "place": "",
+        "role_type": "fullstack",
+        "source": "nav",
+        "published_at": null,
+        "found_at": "2026-10-12T03:01:00Z",
+        "url": "https://jobs.example.test/ad/7f3c2a",
+        "deadline": null,
+        "fit": "partial",
+        "is_new": true,
+        "today": true,
+        "summary": "",
+        "reason": "React work fits, the backend is Go.",
+        "gaps": [],
+        "checks": [],
+        "mark": "applied",
+        "marked_at": "2026-10-12T07:45:00Z",
+        "shown_anyway": true
+      }
+    ],
+    "active_total": 120,
+    "hidden": [
+      {
+        "id": "teamtailor-5521",
+        "company": "Org Two AS",
+        "title": "Senior Backend Engineer",
+        "place": "Oslo",
+        "role_type": "backend",
+        "source": "teamtailor",
+        "url": "https://jobs.example.test/ad/5521",
+        "found_at": "2026-10-11T03:02:00Z",
+        "today": false,
+        "kind": "years",
+        "reason": "Requires 5 years"
+      },
+      {
+        "id": "nav-9911",
+        "company": "Org Three AS",
+        "title": "IT-driftstekniker",
+        "place": "Bergen",
+        "role_type": null,
+        "source": "nav",
+        "url": "https://jobs.example.test/ad/9911",
+        "found_at": "2026-10-12T03:01:00Z",
+        "today": true,
+        "kind": "other",
+        "reason": "Other area: IT operations"
       }
     ],
     "hidden_total": 41,
+    "hidden_counts": {
+      "senior": 12,
+      "years": 9,
+      "masters": 3,
+      "role": 8,
+      "place": 4,
+      "other": 5
+    },
     "closed": [
       {
         "id": "finn-398877665",
@@ -674,6 +855,13 @@ export const payloadFixtures = {
     "type": "guidance.reset",
     "v": 1,
     "id": "00000000-0000-4000-8000-000000000015"
+  } satisfies Payload,
+  "guidance.snapshot.default": {
+    "type": "guidance.snapshot",
+    "v": 1,
+    "text": "",
+    "is_default": true,
+    "limit": 12000
   } satisfies Payload,
   "guidance.snapshot": {
     "type": "guidance.snapshot",

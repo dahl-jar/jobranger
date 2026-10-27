@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ENVELOPE_INVALID_COUNT, PAYLOAD_INVALID_COUNT } from '@/test/fixtureCounts'
 import { envelopeFixtures, payloadFixtures } from './fixtures.gen'
-import { MAX_INTEGER_DIGITS, MAX_JSON_DEPTH } from './limits'
+import { CIPHERTEXT_B64_MAX_CHARS, GCM_TAG_BYTES, HELLO_MAX_BYTES, MAX_INTEGER_DIGITS, MAX_JSON_DEPTH } from './limits'
 import { ContractError, parseEnvelope, parsePayload, parseTimestamp } from './validate'
 
 const invalidPayloads = Object.entries(
@@ -17,6 +17,9 @@ const invalidEnvelopes = Object.entries(
   }),
 )
 const OVERSIZE_EMAIL = `a@${'b.'.repeat(4_000_000)}cc`
+const MAX_SEQ = 2 ** 32 - 1
+const HELLO_MIN_CIPHERTEXT = 'AAAA'
+const base64UrlChars = (bytes: number) => Math.ceil((bytes * 4) / 3)
 const adMarkText = JSON.stringify(payloadFixtures['ad.mark'])
 const nested = (depth: number) => `${'['.repeat(depth)}${']'.repeat(depth)}`
 const withExtra = (extra: string) => adMarkText.replace('"v":1,', `"v":1,"extra":${extra},`)
@@ -53,6 +56,24 @@ describe('parsePayload', () => {
     ['non-string type', JSON.stringify({ type: 5, v: 1 }), rejection(['/ tag "type" must be string'])],
   ])('should name the failing field and message type for %s', (_, text, error) => {
     expect(() => parsePayload(text)).toThrow(error)
+  })
+
+  it.each([
+    ['ads.snapshot.hidden-counts-sum-mismatch.json', '/hidden_counts must sum to hidden_total'],
+    ['ads.snapshot.hidden-counts-extra-string.json', '/hidden_counts must sum to hidden_total'],
+    ['ads.snapshot.hidden-counts-extra-masks-sum.json', '/hidden_counts must sum to hidden_total'],
+    ['ads.snapshot.hidden-kind-under-count.json', '/hidden_counts/senior must not be below the listed hidden ads'],
+  ])('should name the hidden count rule for %s', (name, problem) => {
+    const raw = invalidPayloads.find(([path]) => path.endsWith(`/${name}`))?.[1]
+
+    expect(() => parsePayload(JSON.stringify(raw))).toThrow(rejection([problem], 'ads.snapshot'))
+  })
+
+  it('should ignore an unknown hidden count key', () => {
+    const snapshot = payloadFixtures['ads.snapshot']
+    const raw = { ...snapshot, hidden_counts: { ...snapshot.hidden_counts, unknown: 'a' } }
+
+    expect(parsePayload(JSON.stringify(raw))).toEqual(raw)
   })
 
   it('should reject an oversize email address before its pattern runs', () => {
@@ -118,9 +139,20 @@ describe('parseEnvelope', () => {
   })
 
   it('should name the kind when an envelope is rejected', () => {
-    const text = JSON.stringify({ ...envelopeFixtures.data, seq: 2 ** 53 })
+    const text = JSON.stringify({ ...envelopeFixtures.data, seq: MAX_SEQ + 1 })
 
-    expect(() => parseEnvelope(text)).toThrow(rejection(['/seq must be <= 9007199254740991'], 'data'))
+    expect(() => parseEnvelope(text)).toThrow(rejection([`/seq must be <= ${MAX_SEQ}`], 'data'))
+  })
+
+  it.each([
+    ['first seq', { ...envelopeFixtures.data, seq: 1 }],
+    ['last seq', { ...envelopeFixtures.data, seq: MAX_SEQ }],
+    ['shortest hello step', { ...envelopeFixtures.hello, ciphertext: HELLO_MIN_CIPHERTEXT }],
+    ['shortest data ciphertext', { ...envelopeFixtures.data, ciphertext: 'A'.repeat(base64UrlChars(GCM_TAG_BYTES)) }],
+    ['longest data ciphertext', { ...envelopeFixtures.data, ciphertext: 'A'.repeat(CIPHERTEXT_B64_MAX_CHARS) }],
+    ['longest hello step', { ...envelopeFixtures.hello, ciphertext: 'A'.repeat(base64UrlChars(HELLO_MAX_BYTES)) }],
+  ])('should accept envelope at bound for %s', (_, envelope) => {
+    expect(parseEnvelope(JSON.stringify(envelope))).toEqual(envelope)
   })
 
   it('should reject a duplicate kind', () => {

@@ -1,0 +1,58 @@
+{
+  "type": "ads.snapshot",
+  "v": 1,
+  "generated_at": "2026-10-12T03:05:00Z",
+  "as_of": "2026-10-12",
+  "active": [
+    {
+      "id": "finn-401234567",
+      "company": "Employer One AS",
+      "title": "Data Engineer",
+      "place": "Trondheim",
+      "role_type": "data_engineering",
+      "source": "finn",
+      "published_at": "2026-10-06T07:30:00Z",
+      "found_at": "2026-10-06T09:00:00Z",
+      "url": "https://jobs.example.test/ad/401234567",
+      "deadline": "2026-10-20",
+      "fit": "on_request",
+      "is_new": false,
+      "today": true,
+      "summary": "Build pipelines and data models for a new group-wide data platform, reporting to the CTO.",
+      "reason": "Python and SQL pipelines match the data platform work.",
+      "gaps": [
+        "No Airflow in the profile"
+      ],
+      "checks": [
+        {
+          "text": "Python",
+          "state": "met"
+        },
+        {
+          "text": "Kafka",
+          "state": "partly"
+        },
+        {
+          "text": "Airflow",
+          "state": "missing"
+        }
+      ],
+      "mark": null,
+      "marked_at": null,
+      "shown_anyway": true
+    }
+  ],
+  "active_total": 1,
+  "hidden": [],
+  "hidden_total": 0,
+  "hidden_counts": {
+    "senior": 0,
+    "years": 0,
+    "masters": 0,
+    "role": 0,
+    "place": 0,
+    "other": 0
+  },
+  "closed": [],
+  "closed_total": 0
+}

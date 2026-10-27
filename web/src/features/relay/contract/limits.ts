@@ -6,6 +6,7 @@ export const STEP_TIMEOUT_SECONDS = 15
 export const PAIR_CONFIRM_TIMEOUT_SECONDS = 120
 export const HELLO_MAX_BYTES = 4096
 export const AGENT_MAX_BYTES = 256
+export const AGENT_DISPLAY_MAX_CHARS = 48
 export const CHUNK_DATA_MAX_BYTES = 32768
 export const CHUNK_MAX_COUNT = 256
 export const CV_MAX_BYTES = 5242880

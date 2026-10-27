@@ -59,7 +59,7 @@ export type RoleId =
   | "game";
 export type SourceId = "nav" | "finn" | "linkedin" | "teamtailor" | "ashby";
 export type Url = string;
-export type Fit = "strong" | "partial";
+export type Fit = "strong" | "partial" | "on_request";
 export type ShortText = string;
 export type CheckState = "met" | "partly" | "missing";
 export type Mark = "applied" | "skipped" | "not_for_me";
@@ -121,6 +121,7 @@ export interface AdsSnapshot {
   active_total: Count;
   hidden: HiddenAd[];
   hidden_total: Count;
+  hidden_counts: HiddenCounts;
   closed: ClosedAd[];
   closed_total: Count;
 }
@@ -162,7 +163,14 @@ export interface HiddenAd {
   today: boolean;
   kind: HiddenKind;
   reason: string;
-  shown_anyway: boolean;
+}
+export interface HiddenCounts {
+  senior: Count;
+  years: Count;
+  masters: Count;
+  role: Count;
+  place: Count;
+  other: Count;
 }
 export interface ClosedAd {
   id: AdId;
@@ -463,7 +471,7 @@ export interface ApplicationCreate {
   type: "application.create";
   v: 1;
   id: MessageId;
-  company: Company;
+  company: string;
   title: string;
   note: Note;
 }

@@ -173,7 +173,7 @@ class ActiveAd(BaseModel):
         StrictStr, Field(max_length=2048, pattern="^https?://[\\x21-\\x7e]+$")
     ]
     deadline: date | None
-    fit: Literal["strong", "partial"]
+    fit: Literal["strong", "partial", "on_request"]
     is_new: StrictBool
     today: StrictBool
     summary: Annotated[StrictStr, Field(max_length=700)]
@@ -221,7 +221,18 @@ class HiddenAd(BaseModel):
     today: StrictBool
     kind: Literal["senior", "years", "masters", "role", "place", "other"]
     reason: Annotated[StrictStr, Field(max_length=120, min_length=1)]
-    shown_anyway: StrictBool
+
+
+class HiddenCounts(BaseModel):
+    model_config = ConfigDict(
+        extra="ignore",
+    )
+    senior: Annotated[StrictInt, Field(ge=0, le=9007199254740991)]
+    years: Annotated[StrictInt, Field(ge=0, le=9007199254740991)]
+    masters: Annotated[StrictInt, Field(ge=0, le=9007199254740991)]
+    role: Annotated[StrictInt, Field(ge=0, le=9007199254740991)]
+    place: Annotated[StrictInt, Field(ge=0, le=9007199254740991)]
+    other: Annotated[StrictInt, Field(ge=0, le=9007199254740991)]
 
 
 class ClosedAd(BaseModel):
@@ -281,7 +292,7 @@ class Application(BaseModel):
     source: Literal["nav", "finn", "linkedin", "teamtailor", "ashby"] | None
     url: Url | None
     deadline: date | None
-    fit: Literal["strong", "partial"] | None
+    fit: Literal["strong", "partial", "on_request"] | None
     status: Literal["waiting", "interview", "offer", "accepted", "rejected"]
     note: Annotated[StrictStr, Field(max_length=2000)]
     applied_at: Annotated[
@@ -648,6 +659,7 @@ class AdsSnapshot(BaseModel):
     active_total: Annotated[StrictInt, Field(ge=0, le=9007199254740991)]
     hidden: Annotated[list[HiddenAd], Field(max_length=500)]
     hidden_total: Annotated[StrictInt, Field(ge=0, le=9007199254740991)]
+    hidden_counts: HiddenCounts
     closed: Annotated[list[ClosedAd], Field(max_length=200)]
     closed_total: Annotated[StrictInt, Field(ge=0, le=9007199254740991)]
 
@@ -736,7 +748,7 @@ class GuidanceSnapshot(BaseModel):
     )
     type: Literal["guidance.snapshot"]
     v: Annotated[StrictInt, Field(ge=1, le=1)]
-    text: Annotated[StrictStr, Field(max_length=12000, min_length=1)]
+    text: Annotated[StrictStr, Field(max_length=12000)]
     is_default: StrictBool
     limit: Annotated[StrictInt, Field(ge=1, le=9007199254740991)]
 
@@ -967,7 +979,14 @@ class ApplicationCreate(BaseModel):
         StrictStr,
         Field(pattern="^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"),
     ]
-    company: Annotated[StrictStr, Field(max_length=200, min_length=1)]
+    company: Annotated[
+        StrictStr,
+        Field(
+            max_length=200,
+            min_length=1,
+            pattern="[^\\u0000-\\u0020\\u007f-\\u00a0\\u00ad\\u034f\\u061c\\u115f-\\u1160\\u1680\\u17b4-\\u17b5\\u180b-\\u180f\\u2000-\\u200f\\u2028-\\u202f\\u205f-\\u206f\\u2800\\u3000\\u3164\\ufe00-\\ufe0f\\ufeff\\uffa0\\ufff0-\\ufff8\U0001bca0-\U0001bca3\U0001d173-\U0001d17a\U000e0000-\U000e0fff]",
+        ),
+    ]
     title: Annotated[StrictStr, Field(max_length=200)]
     note: Annotated[StrictStr, Field(max_length=2000)]
 

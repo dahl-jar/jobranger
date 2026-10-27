@@ -6,11 +6,13 @@ namespace Jobranger.Relay.Core;
 public static class EnvelopeRules
 {
     private const int envelopeVersion = 1;
-    private const long maxSeq = 9007199254740991;
+    private const long maxSeq = uint.MaxValue;
     private const int channelLength = 43;
     private const int sidLength = 22;
-    private const int ciphertextMinChars = 4;
+    private const int helloMinChars = 4;
     private const int base64Quantum = 4;
+    private const int bytesPerQuantum = 3;
+    private const int ceilingAddend = bytesPerQuantum - 1;
     private const int oneByteRemainder = 2;
     private const int twoByteRemainder = 3;
     private const string helloKind = "hello";
@@ -45,18 +47,27 @@ public static class EnvelopeRules
     private static bool IsValid(Envelope envelope)
     {
         return envelope.V == envelopeVersion
-            && HasValidSeq(envelope)
             && IsCanonicalBase64Url(envelope.Channel, channelLength, channelLength)
             && IsCanonicalBase64Url(envelope.Sid, sidLength, sidLength)
-            && IsCanonicalBase64Url(envelope.Ciphertext, ciphertextMinChars, ContractLimits.CiphertextB64MaxChars);
+            && HasValidKindFields(envelope);
     }
 
-    private static bool HasValidSeq(Envelope envelope) => envelope.Kind switch
+    private static bool HasValidKindFields(Envelope envelope) => envelope.Kind switch
     {
-        helloKind => envelope.Seq == 0,
-        dataKind => envelope.Seq is >= 0 and <= maxSeq,
+        helloKind => envelope.Seq == 0
+            && IsCanonicalBase64Url(
+                envelope.Ciphertext,
+                helloMinChars,
+                Base64UrlChars(ContractLimits.HelloMaxBytes)),
+        dataKind => envelope.Seq is >= 1 and <= maxSeq
+            && IsCanonicalBase64Url(
+                envelope.Ciphertext,
+                Base64UrlChars(ContractLimits.GcmTagBytes),
+                ContractLimits.CiphertextB64MaxChars),
         _ => false,
     };
+
+    private static int Base64UrlChars(int bytes) => ((bytes * base64Quantum) + ceilingAddend) / bytesPerQuantum;
 
     private static bool IsCanonicalBase64Url(string text, int minLength, int maxLength)
     {

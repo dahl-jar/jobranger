@@ -254,7 +254,8 @@ export const payloadSchema = {
       "type": "string",
       "enum": [
         "strong",
-        "partial"
+        "partial",
+        "on_request"
       ]
     },
     "RunMode": {
@@ -443,7 +444,7 @@ export const payloadSchema = {
       "maxLength": 120,
       "pattern": "\\.([pP][dD][fF]|[tT][xX][tT]|[mM][dD])$",
       "not": {
-        "pattern": "[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\u202a-\\u202e\\u2066-\\u2069/\\\\]"
+        "pattern": "[\\u0000-\\u001f\\u007f-\\u009f\\u00ad\\u034f\\u061c\\u115f-\\u1160\\u17b4-\\u17b5\\u180b-\\u180f\\u200b\\u200e-\\u200f\\u2028-\\u202e\\u2060-\\u206f\\u3164\\ufe00-\\ufe0f\\ufeff\\uffa0\\ufff0-\\ufff8\ud82f\udca0-\ud82f\udca3\ud834\udd73-\ud834\udd7a\udb40\udc00-\udb43\udfff/\\\\]"
       }
     },
     "Recheck": {
@@ -663,8 +664,7 @@ export const payloadSchema = {
         "found_at",
         "today",
         "kind",
-        "reason",
-        "shown_anyway"
+        "reason"
       ],
       "properties": {
         "id": {
@@ -709,9 +709,37 @@ export const payloadSchema = {
           "type": "string",
           "minLength": 1,
           "maxLength": 120
+        }
+      }
+    },
+    "HiddenCounts": {
+      "type": "object",
+      "required": [
+        "senior",
+        "years",
+        "masters",
+        "role",
+        "place",
+        "other"
+      ],
+      "properties": {
+        "senior": {
+          "$ref": "#/$defs/Count"
         },
-        "shown_anyway": {
-          "type": "boolean"
+        "years": {
+          "$ref": "#/$defs/Count"
+        },
+        "masters": {
+          "$ref": "#/$defs/Count"
+        },
+        "role": {
+          "$ref": "#/$defs/Count"
+        },
+        "place": {
+          "$ref": "#/$defs/Count"
+        },
+        "other": {
+          "$ref": "#/$defs/Count"
         }
       }
     },
@@ -1608,6 +1636,7 @@ export const payloadSchema = {
         "active_total",
         "hidden",
         "hidden_total",
+        "hidden_counts",
         "closed",
         "closed_total"
       ],
@@ -1643,6 +1672,9 @@ export const payloadSchema = {
         },
         "hidden_total": {
           "$ref": "#/$defs/Count"
+        },
+        "hidden_counts": {
+          "$ref": "#/$defs/HiddenCounts"
         },
         "closed": {
           "type": "array",
@@ -1815,6 +1847,9 @@ export const payloadSchema = {
         "month": {
           "type": "string",
           "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+          "not": {
+            "pattern": "^0000-"
+          },
           "minLength": 7,
           "maxLength": 7
         },
@@ -1883,7 +1918,6 @@ export const payloadSchema = {
         },
         "text": {
           "type": "string",
-          "minLength": 1,
           "maxLength": 12000
         },
         "is_default": {
@@ -2374,7 +2408,9 @@ export const payloadSchema = {
           "$ref": "#/$defs/MessageId"
         },
         "company": {
-          "$ref": "#/$defs/Company"
+          "$ref": "#/$defs/Company",
+          "type": "string",
+          "pattern": "[^\\u0000-\\u0020\\u007f-\\u00a0\\u00ad\\u034f\\u061c\\u115f-\\u1160\\u1680\\u17b4-\\u17b5\\u180b-\\u180f\\u2000-\\u200f\\u2028-\\u202f\\u205f-\\u206f\\u2800\\u3000\\u3164\\ufe00-\\ufe0f\\ufeff\\uffa0\\ufff0-\\ufff8\ud82f\udca0-\ud82f\udca3\ud834\udd73-\ud834\udd7a\udb40\udc00-\udb43\udfff]"
         },
         "title": {
           "type": "string",
@@ -2843,17 +2879,15 @@ export const envelopeSchema = {
     },
     "Seq": {
       "type": "integer",
-      "minimum": 0,
-      "maximum": 9007199254740991
+      "minimum": 1,
+      "maximum": 4294967295
     },
     "Base64Url": {
       "type": "string",
       "pattern": "^(?:[A-Za-z0-9_-]{4})*(?:[A-Za-z0-9_-][AQgw]|[A-Za-z0-9_-]{2}[AEIMQUYcgkosw048])?$",
       "not": {
         "pattern": "[^A-Za-z0-9_-]"
-      },
-      "minLength": 4,
-      "maxLength": 61440
+      }
     },
     "EnvelopeHello": {
       "type": "object",
@@ -2882,7 +2916,10 @@ export const envelopeSchema = {
           "const": "hello"
         },
         "ciphertext": {
-          "$ref": "#/$defs/Base64Url"
+          "$ref": "#/$defs/Base64Url",
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 5462
         }
       }
     },
@@ -2913,7 +2950,10 @@ export const envelopeSchema = {
           "const": "data"
         },
         "ciphertext": {
-          "$ref": "#/$defs/Base64Url"
+          "$ref": "#/$defs/Base64Url",
+          "type": "string",
+          "minLength": 22,
+          "maxLength": 61440
         }
       }
     }

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+from collections import Counter
 from collections.abc import Iterator, Mapping, Sequence
 from functools import cache
 from importlib import resources
@@ -257,6 +258,24 @@ def oversize_array(
     return None
 
 
+def hidden_count_problem(document: Mapping[str, Any]) -> tuple[str, str] | None:
+    counts: Mapping[str, int] = document["hidden_counts"]
+    kinds: list[str] = schema_document("payload")[DEFS]["HiddenKind"]["enum"]
+    if sum(counts[kind] for kind in kinds) != document["hidden_total"]:
+        return f"{ROOT_PATH}.hidden_counts", "hidden_total"
+    listed = Counter(ad["kind"] for ad in document["hidden"])
+    for kind, count in listed.items():
+        if counts[kind] < count:
+            return f"{ROOT_PATH}.hidden_counts.{kind}", "below_listed"
+    return None
+
+
+def contract_error(
+    schema: str, path: object, rule: object, message_type: str | None
+) -> ContractError:
+    return ContractError(f"{schema} {path} fails {rule}", message_type)
+
+
 def decode[ModelT: BaseModel](
     raw: bytes, schema: str, model: type[ModelT], tag: str
 ) -> ModelT:
@@ -266,23 +285,26 @@ def decode[ModelT: BaseModel](
         message_type = None
     name = tagged_defs(schema, tag).get(message_type or "")
     if not isinstance(document, dict) or name is None:
-        message = f"{schema} {ROOT_PATH}.{tag} fails const"
-        raise ContractError(message, message_type)
+        raise contract_error(schema, f"{ROOT_PATH}.{tag}", "const", message_type)
     defs = schema_document(schema)[DEFS]
     found = oversize(document, defs[name], defs, ROOT_PATH)
     if found is not None:
-        message = f"{schema} {found[0]} fails {found[1]}"
-        raise ContractError(message, message_type)
+        raise contract_error(schema, found[0], found[1], message_type)
     violation = next(iter(branch_validator(schema, name).iter_errors(document)), None)
     if violation is not None:
-        message = f"{schema} {violation.json_path} fails {violation.validator}"
-        raise ContractError(message, message_type)
+        raise contract_error(
+            schema, violation.json_path, violation.validator, message_type
+        )
+    problem = hidden_count_problem(document) if name == "AdsSnapshot" else None
+    if problem is not None:
+        raise contract_error(schema, problem[0], problem[1], message_type)
     try:
         return model.model_validate(document)
     except ValidationError as error:
         first = error.errors(include_input=False)[0]
-        message = f"{schema} {first['loc']} fails {first['type']}"
-        raise ContractError(message, message_type) from error
+        raise contract_error(
+            schema, first["loc"], first["type"], message_type
+        ) from error
 
 
 def decode_payload(raw: bytes) -> Payload:

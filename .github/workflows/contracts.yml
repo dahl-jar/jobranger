@@ -13,6 +13,11 @@ on:
       - relay/src/Jobranger.Relay.Core/Envelope*.cs
       - relay/tests/Jobranger.Relay.Core.Tests/EnvelopeContractTests.cs
       - .github/workflows/contracts.yml
+      - cli/pyproject.toml
+      - cli/uv.lock
+      - web/package.json
+      - web/pnpm-lock.yaml
+      - .gitattributes
   pull_request:
     paths:
       - relay/src/Jobranger.Relay.Core/ContractLimits.cs
@@ -24,6 +29,11 @@ on:
       - relay/src/Jobranger.Relay.Core/Envelope*.cs
       - relay/tests/Jobranger.Relay.Core.Tests/EnvelopeContractTests.cs
       - .github/workflows/contracts.yml
+      - cli/pyproject.toml
+      - cli/uv.lock
+      - web/package.json
+      - web/pnpm-lock.yaml
+      - .gitattributes
   workflow_dispatch:
 
 permissions:

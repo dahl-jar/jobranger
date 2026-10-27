@@ -21,6 +21,7 @@ CONSTRAINED_FLOAT = re.compile(
 )
 FLOAT_ROOT = "RootModel[StrictFloat]"
 JSDOC_BLOCK = re.compile(r"^[ \t]*/\*\*\n(?:[ \t]*\*.*\n)*?[ \t]*\*/\n", re.MULTILINE)
+NON_ASCII = re.compile(r"[^\x00-\x7f]")
 INDENT = "  "
 
 
@@ -50,6 +51,14 @@ def strip_jsdoc(text: str) -> str:
     return JSDOC_BLOCK.sub("", text)
 
 
+def utf16_escape(match: re.Match[str]) -> str:
+    return json.dumps(match.group())[1:-1]
+
+
+def escape_non_ascii(text: str) -> str:
+    return NON_ASCII.sub(utf16_escape, text)
+
+
 def rewrite(path: Path, *transforms: Callable[[str], str]) -> None:
     text = path.read_text(encoding="utf-8")
     for transform in transforms:
@@ -62,7 +71,7 @@ def rewrite(path: Path, *transforms: Callable[[str], str]) -> None:
 
 
 def typescript_literal(value: object, depth: int) -> str:
-    text = json.dumps(value, indent=len(INDENT), ensure_ascii=False)
+    text = json.dumps(value, indent=len(INDENT), ensure_ascii=True)
     return text.replace("\n", "\n" + INDENT * depth)
 
 
@@ -122,6 +131,7 @@ def main(root: Path) -> None:
         rewrite(typescript_out / f"{name}.gen.ts", strip_jsdoc)
     copy_schemas(contracts, python_out)
     write_ts_schemas(contracts, typescript_out / "schemas.gen.ts")
+    rewrite(typescript_out / "validate.gen.js", escape_non_ascii)
     write_ts_fixtures(contracts / "fixtures", typescript_out / "fixtures.gen.ts")
 
 

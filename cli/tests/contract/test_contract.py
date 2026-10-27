@@ -11,7 +11,7 @@ import time
 from datetime import UTC, datetime, timedelta
 from functools import cache
 from pathlib import Path
-from typing import Any
+from typing import Any, get_args
 
 import pytest
 from jsonschema import Draft202012Validator
@@ -30,6 +30,8 @@ from jobranger.contract.codec import (
 from jobranger.contract.envelope import Envelope, EnvelopeData
 from jobranger.contract.fields import decode_base64, encode_url, parse_timestamp
 from jobranger.contract.payload import Chunk, Payload
+from jobranger.matching.guidance import GUIDANCE_LIMIT
+from jobranger.matching.rules import DisplayFit
 
 CONTRACTS_DIR = "contracts"
 CONTRACTS_MARKER = Path(CONTRACTS_DIR) / "payload.schema.json"
@@ -51,8 +53,39 @@ WEB_CONTRACT = ROOT / "web" / "src" / "features" / "relay" / "contract"
 CLI_CONTRACT = ROOT / "cli" / "src" / "jobranger" / "contract"
 WORKFLOWS = ROOT / ".github" / "workflows"
 RELAY_LIMITS = ROOT / "relay" / "src" / "Jobranger.Relay.Core" / "ContractLimits.cs"
+SESSION_SPEC = CONTRACTS / "session" / "v1.md"
+IGNORABLES = CONTRACTS / "unicode" / "default-ignorable-15.0.0.json"
+BMP_MAX = 0xFFFF
+JOINERS = {0x200C, 0x200D}
+NAME_CONTROLS = [(0x0000, 0x001F), (0x007F, 0x009F), (0x2028, 0x2029)]
+NAME_SEPARATORS = "/\\\\"
+COMPANY_BLANKS = [
+    (0x0000, 0x0020),
+    (0x007F, 0x00A0),
+    (0x1680, 0x1680),
+    (0x2000, 0x200A),
+    (0x2028, 0x2029),
+    (0x202F, 0x202F),
+    (0x205F, 0x205F),
+    (0x2800, 0x2800),
+    (0x3000, 0x3000),
+]
+IGNORABLE_FIXTURES = [
+    ("cv.upload.name", "name", JOINERS),
+    ("application.create.company", "company", set()),
+]
 BOUNDARY_BUDGET_SECONDS = 1.0
 INVALID_SUFFIX = "-invalid"
+EXTRA_KEY_FIXTURES = {
+    "ads.snapshot.hidden-counts-extra-string.json",
+    "ads.snapshot.hidden-counts-extra-masks-sum.json",
+}
+READER_RULE_FIXTURES = {
+    "ads.snapshot.hidden-counts-sum-mismatch.json",
+    "ads.snapshot.hidden-kind-under-count.json",
+    *EXTRA_KEY_FIXTURES,
+}
+HELLO_MIN_CIPHERTEXT = "AAAA"
 GENERATED = [
     CLI_CONTRACT / "payload.py",
     CLI_CONTRACT / "envelope.py",
@@ -73,11 +106,12 @@ HAND_WRITTEN = [
 SIGNALR_INVOCATION = (
     '{{"type":1,"invocationId":"1","target":"Send","arguments":[{}]}}\x1e'
 )
-MAX_SEQ = 2**53 - 1
+MAX_SEQ = 2**32 - 1
 CHANNEL = "A" * 43
 SID = "A" * 22
 TEXT_FILLERS = {"escaped control": "\u0001", "astral": "\U0001f600"}
 WORST_NAME_CHAR = "\U0001f600"
+VISIBLE_CHAR = "a"
 WORST_URL_CHAR = '"'
 WORST_MONEY = 1.2345678901234567e-07
 WORST_TIMESTAMP = "2026-10-09T03:00:00.123456789+02:00"
@@ -89,6 +123,8 @@ MAX_LENGTH_URL = URL_PREFIX + "a" * (limits.URL_MAX_CHARS - len(URL_PREFIX))
 PATTERN_LENGTH = re.compile(r"\{[0-9]+,([0-9]+)\}\$$")
 RELAY_LIMIT = re.compile(r"public const (?:int|long) ([A-Za-z0-9]+) = ([0-9_]+);")
 PASCAL_WORD = re.compile(r"(?<!^)(?=[A-Z])")
+SPEC_CONSTANT = re.compile(r"`([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)`")
+SPEC_VALUE = re.compile(r"`([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)` \(([0-9,]+)\)")
 WEB_LIMIT = re.compile(r"^export const ([A-Z][A-Z0-9_]*) = ([0-9_]+)$", re.MULTILINE)
 
 
@@ -142,6 +178,8 @@ def command_names() -> list[str]:
 
 
 def golden_twin(path: Path) -> Path:
+    if path.parent.name == "envelope-invalid":
+        return envelope_twin(path)
     stem = path.stem
     while "." in stem:
         stem = stem.rsplit(".", 1)[0]
@@ -149,6 +187,13 @@ def golden_twin(path: Path) -> Path:
         if twin.exists():
             return twin
     pytest.fail(f"no golden payload fixture is a prefix of {path.name}")
+
+
+def envelope_twin(path: Path) -> Path:
+    twin = FIXTURES / "envelope" / f"{path.stem.split('-', 1)[0]}.json"
+    if not twin.exists():
+        pytest.fail(f"{path.name} does not start with a golden envelope kind")
+    return twin
 
 
 type Leaf = tuple[str | int, ...]
@@ -227,6 +272,54 @@ def base64_chars(byte_count: int) -> int:
     return 4 * math.ceil(byte_count / 3)
 
 
+def base64url_chars(byte_count: int) -> int:
+    return math.ceil(byte_count * 4 / 3)
+
+
+def envelope_ciphertext(name: str) -> dict[str, Any]:
+    node: dict[str, Any] = schema("envelope")["$defs"][name]["properties"]["ciphertext"]
+    return node
+
+
+type CodeRange = tuple[int, int]
+
+
+def ignorable_ranges() -> list[CodeRange]:
+    return [(int(start, 16), int(end, 16)) for start, end in load(IGNORABLES)["ranges"]]
+
+
+def merged_ranges(ranges: list[CodeRange], allowed: set[int]) -> list[CodeRange]:
+    points = sorted(
+        {point for start, end in ranges for point in range(start, end + 1)} - allowed
+    )
+    merged: list[CodeRange] = []
+    for point in points:
+        if merged and merged[-1][1] == point - 1:
+            merged[-1] = (merged[-1][0], point)
+        else:
+            merged.append((point, point))
+    return merged
+
+
+def class_item(point: int) -> str:
+    return f"\\u{point:04x}" if point <= BMP_MAX else chr(point)
+
+
+def char_class(ranges: list[CodeRange]) -> str:
+    return "".join(
+        class_item(start) if start == end else f"{class_item(start)}-{class_item(end)}"
+        for start, end in ranges
+    )
+
+
+def holds_point(text: str, bounds: CodeRange) -> bool:
+    return any(bounds[0] <= ord(char) <= bounds[1] for char in text)
+
+
+def range_tag(start: int, end: int) -> str:
+    return f"u{start:04x}" if start == end else f"u{start:04x}-u{end:04x}"
+
+
 def frame_bytes(plaintext_bytes: int) -> int:
     ciphertext = base64.urlsafe_b64encode(bytes(plaintext_bytes + limits.GCM_TAG_BYTES))
     envelope = EnvelopeData(
@@ -290,6 +383,8 @@ def worst_string(
     if bounded:
         return WORST_URL_CHAR * int(bounded.group(1))
     assert "maxLength" in node, f"unbounded string {node}"
+    if pattern and not re.search(pattern, filler):
+        return VISIBLE_CHAR + filler * (size - 1)
     return filler * size
 
 
@@ -342,13 +437,27 @@ def test_should_accept_golden_fixture(path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    "path", fixtures("envelope-invalid", "payload-invalid"), ids=fixture_id
+    "path",
+    [
+        path
+        for path in fixtures("envelope-invalid", "payload-invalid")
+        if path.name not in READER_RULE_FIXTURES
+    ],
+    ids=fixture_id,
 )
 def test_should_reject_invalid_fixture(path: Path) -> None:
     assert not schema_for(path).is_valid(load(path))
 
 
-@pytest.mark.parametrize("path", fixtures("payload-invalid"), ids=fixture_id)
+@pytest.mark.parametrize(
+    "path",
+    [
+        path
+        for path in fixtures("envelope-invalid", "payload-invalid")
+        if path.name not in EXTRA_KEY_FIXTURES
+    ],
+    ids=fixture_id,
+)
 def test_should_change_one_leaf_of_golden_twin(path: Path) -> None:
     leaves = changed_leaves(load(golden_twin(path)), load(path))
 
@@ -379,6 +488,36 @@ def test_should_round_trip_golden_envelope(path: Path) -> None:
     envelope = decode_envelope(path.read_bytes())
 
     assert canonical(json.loads(encode(envelope))) == canonical(load(path))
+
+
+@pytest.mark.parametrize(
+    ("fixture", "change"),
+    [
+        ("data.json", {"seq": 1}),
+        ("data.json", {"seq": MAX_SEQ}),
+        ("hello.json", {"ciphertext": HELLO_MIN_CIPHERTEXT}),
+        ("data.json", {"ciphertext": "A" * base64url_chars(limits.GCM_TAG_BYTES)}),
+        ("data.json", {"ciphertext": "A" * limits.CIPHERTEXT_B64_MAX_CHARS}),
+        (
+            "hello.json",
+            {"ciphertext": "A" * base64url_chars(limits.HELLO_MAX_BYTES)},
+        ),
+    ],
+    ids=[
+        "first seq",
+        "last seq",
+        "shortest hello step",
+        "shortest data ciphertext",
+        "longest data ciphertext",
+        "longest hello step",
+    ],
+)
+def test_should_accept_envelope_at_bound(fixture: str, change: dict[str, Any]) -> None:
+    raw = {**load(FIXTURES / "envelope" / fixture), **change}
+
+    envelope = decode_envelope(json.dumps(raw).encode("utf-8"))
+
+    assert canonical(json.loads(encode(envelope))) == canonical(raw)
 
 
 def test_should_have_one_golden_per_payload_type() -> None:
@@ -627,6 +766,45 @@ def test_should_name_failing_path(
     assert (str(caught.value), caught.value.message_type) == (message, message_type)
 
 
+@pytest.mark.parametrize(
+    ("fixture", "message"),
+    [
+        (
+            "ads.snapshot.hidden-counts-sum-mismatch.json",
+            "payload $.hidden_counts fails hidden_total",
+        ),
+        (
+            "ads.snapshot.hidden-kind-under-count.json",
+            "payload $.hidden_counts.senior fails below_listed",
+        ),
+        (
+            "ads.snapshot.hidden-counts-extra-string.json",
+            "payload $.hidden_counts fails hidden_total",
+        ),
+        (
+            "ads.snapshot.hidden-counts-extra-masks-sum.json",
+            "payload $.hidden_counts fails hidden_total",
+        ),
+    ],
+)
+def test_should_name_hidden_count_rule(fixture: str, message: str) -> None:
+    raw = (FIXTURES / "payload-invalid" / fixture).read_bytes()
+
+    with pytest.raises(ContractError) as caught:
+        decode_payload(raw)
+
+    assert (str(caught.value), caught.value.message_type) == (message, "ads.snapshot")
+
+
+def test_should_ignore_unknown_hidden_count_key() -> None:
+    raw = load(FIXTURES / "payload" / "ads.snapshot.json")
+    raw["hidden_counts"]["unknown"] = "a"
+
+    message = decode_payload(json.dumps(raw).encode("utf-8"))
+
+    assert message.root.type == "ads.snapshot"
+
+
 def test_should_reject_whole_float_in_integer_field() -> None:
     raw = (FIXTURES / "payload" / "run.cancel.json").read_text(encoding="utf-8")
     whole_float = raw.replace('"run_id": 42', '"run_id": 42.0').encode("utf-8")
@@ -717,7 +895,15 @@ def test_should_fit_largest_single_payload_in_one_frame() -> None:
         ),
         (
             limits.CIPHERTEXT_B64_MAX_CHARS,
-            schema("envelope")["$defs"]["Base64Url"]["maxLength"],
+            envelope_ciphertext("EnvelopeData")["maxLength"],
+        ),
+        (
+            base64url_chars(limits.GCM_TAG_BYTES),
+            envelope_ciphertext("EnvelopeData")["minLength"],
+        ),
+        (
+            base64url_chars(limits.HELLO_MAX_BYTES),
+            envelope_ciphertext("EnvelopeHello")["maxLength"],
         ),
         (
             limits.CV_MAX_BYTES,
@@ -733,6 +919,14 @@ def test_should_fit_largest_single_payload_in_one_frame() -> None:
         ),
         (limits.URL_MAX_CHARS, payload_defs()["Url"]["maxLength"]),
         (
+            GUIDANCE_LIMIT,
+            payload_defs()["GuidanceUpdate"]["properties"]["text"]["maxLength"],
+        ),
+        (
+            GUIDANCE_LIMIT,
+            payload_defs()["GuidanceSnapshot"]["properties"]["text"]["maxLength"],
+        ),
+        (
             limits.CONTRACT_VERSION,
             max(
                 payload_defs()[name]["properties"]["v"]["const"]
@@ -743,6 +937,12 @@ def test_should_fit_largest_single_payload_in_one_frame() -> None:
 )
 def test_should_match_limits_with_schema(actual: int, expected: int) -> None:
     assert actual == expected
+
+
+def test_should_offer_every_display_fit_in_schema() -> None:
+    fits = set(get_args(DisplayFit.__value__))
+
+    assert set(payload_defs()["Fit"]["enum"]) == fits
 
 
 def test_should_match_web_limits_with_cli_limits() -> None:
@@ -768,6 +968,84 @@ def test_should_match_relay_limits_with_cli_limits() -> None:
 
     assert relay
     assert relay == {name: getattr(limits, name) for name in relay}
+
+
+def test_should_define_every_limit_named_in_session_spec() -> None:
+    named = set(SPEC_CONSTANT.findall(SESSION_SPEC.read_text(encoding="utf-8")))
+
+    missing = sorted(name for name in named if not hasattr(limits, name))
+
+    assert missing == []
+
+
+def test_should_match_limit_values_stated_in_session_spec() -> None:
+    text = SESSION_SPEC.read_text(encoding="utf-8")
+    stated = {
+        name: int(value.replace(",", "")) for name, value in SPEC_VALUE.findall(text)
+    }
+
+    defined = {name: getattr(limits, name, None) for name in stated}
+
+    assert defined == stated
+
+
+def test_should_build_file_name_class_from_default_ignorables() -> None:
+    ranges = merged_ranges(NAME_CONTROLS + ignorable_ranges(), JOINERS)
+
+    expected = f"[{char_class(ranges)}{NAME_SEPARATORS}]"
+
+    assert payload_defs()["FileName"]["not"]["pattern"] == expected
+
+
+def test_should_build_company_class_from_default_ignorables() -> None:
+    ranges = merged_ranges(COMPANY_BLANKS + ignorable_ranges(), set())
+
+    expected = f"[^{char_class(ranges)}]"
+
+    company = payload_defs()["ApplicationCreate"]["properties"]["company"]
+    assert company["pattern"] == expected
+
+
+@pytest.mark.parametrize(("prefix", "field", "allowed"), IGNORABLE_FIXTURES)
+def test_should_have_one_fixture_per_ignorable_range(
+    prefix: str, field: str, allowed: set[int]
+) -> None:
+    expected = {
+        f"{prefix}-ignorable-{range_tag(start, end)}.json": (start, end)
+        for start, end in merged_ranges(ignorable_ranges(), allowed)
+    }
+
+    found = {
+        path.name: next(
+            (
+                bounds
+                for bounds in expected.values()
+                if holds_point(load(path)[field], bounds)
+            ),
+            None,
+        )
+        for path in (FIXTURES / "payload-invalid").glob(f"{prefix}-ignorable-*.json")
+    }
+
+    assert found == expected
+
+
+def test_should_have_golden_snapshot_with_partial_hidden_list() -> None:
+    truncated = [
+        path.name
+        for path in (FIXTURES / "payload").glob("ads.snapshot*.json")
+        if len(load(path)["hidden"]) < load(path)["hidden_total"]
+    ]
+
+    assert truncated != []
+
+
+def test_should_require_count_for_every_hidden_kind() -> None:
+    counts = payload_defs()["AdsSnapshot"]["properties"]["hidden_counts"]
+
+    assert sorted(resolve(counts)["required"]) == sorted(
+        payload_defs()["HiddenKind"]["enum"]
+    )
 
 
 def test_should_accept_saved_without_recheck() -> None:
@@ -814,6 +1092,22 @@ def test_should_keep_generated_code_free_of_comments(path: Path) -> None:
     ]
 
     assert comments == []
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        *sorted(CONTRACTS.glob("*.schema.json")),
+        *sorted(CLI_CONTRACT.glob("*.schema.json")),
+        WEB_CONTRACT / "schemas.gen.ts",
+        WEB_CONTRACT / "validate.gen.js",
+    ],
+    ids=path_id,
+)
+def test_should_keep_schema_text_ascii(path: Path) -> None:
+    text = path.read_text(encoding="utf-8")
+
+    assert text.isascii()
 
 
 def test_should_decode_canonical_base64() -> None:
@@ -964,6 +1258,11 @@ def test_should_not_mark_hand_written_code_as_generated(path: Path) -> None:
         ("contracts.yml", "relay/src/Jobranger.Relay.Core/ContractLimits.cs"),
         ("cli.yml", "relay/src/Jobranger.Relay.Core/ContractLimits.cs"),
         ("relay.yml", "contracts/**"),
+        ("contracts.yml", "cli/pyproject.toml"),
+        ("contracts.yml", "cli/uv.lock"),
+        ("contracts.yml", "web/package.json"),
+        ("contracts.yml", "web/pnpm-lock.yaml"),
+        ("contracts.yml", ".gitattributes"),
     ],
 )
 def test_should_run_workflow_on_contract_change(workflow: str, path: str) -> None:

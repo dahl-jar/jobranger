@@ -2756,8 +2756,7 @@
       "found_at": "2026-10-11T03:02:00Z",
       "today": false,
       "kind": "years",
-      "reason": "Requires 5 years",
-      "shown_anyway": false
+      "reason": "Requires 5 years"
     },
     {
       "id": "nav-9911",
@@ -2770,11 +2769,18 @@
       "found_at": "2026-10-12T03:01:00Z",
       "today": true,
       "kind": "other",
-      "reason": "Other area: IT operations",
-      "shown_anyway": false
+      "reason": "Other area: IT operations"
     }
   ],
-  "hidden_total": 41,
+  "hidden_total": 2,
+  "hidden_counts": {
+    "senior": 0,
+    "years": 1,
+    "masters": 0,
+    "role": 0,
+    "place": 0,
+    "other": 1
+  },
   "closed": [
     {
       "id": "finn-398877665",

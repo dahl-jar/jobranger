@@ -11,7 +11,10 @@ public sealed class EnvelopeContractTests
     private static readonly string goldenFolder = Path.Combine(contracts, "fixtures", "envelope");
     private static readonly string invalidFolder = Path.Combine(contracts, "fixtures", "envelope-invalid");
     private const string missingPropertyPattern = "*-without-*.json";
-    private const long maxSeq = 9007199254740991;
+    private const long maxSeq = 4294967295;
+    private const int dataCiphertextMinChars = 22;
+    private const int helloCiphertextMinChars = 4;
+    private const int helloCiphertextMaxChars = 5462;
 
     public static TheoryData<string> GoldenFixtures => FileNames(goldenFolder, "*.json");
 
@@ -81,7 +84,7 @@ public sealed class EnvelopeContractTests
     [Fact]
     public void ShouldFindEveryInvalidFixture()
     {
-        Assert.Equal(35, InvalidFixtures.Count);
+        Assert.Equal(37, InvalidFixtures.Count);
     }
 
     [Theory]
@@ -119,7 +122,7 @@ public sealed class EnvelopeContractTests
     }
 
     [Theory]
-    [InlineData(0)]
+    [InlineData(1)]
     [InlineData(maxSeq)]
     public void ShouldAcceptDataSeqAtBounds(long seq)
     {
@@ -127,6 +130,19 @@ public sealed class EnvelopeContractTests
         string bounded = json.Replace("\"seq\": 1,", $"\"seq\": {seq},", StringComparison.Ordinal);
 
         Assert.True(EnvelopeRules.TryParse(Encoding.UTF8.GetBytes(bounded), out _));
+    }
+
+    [Theory]
+    [InlineData("data.json", dataCiphertextMinChars)]
+    [InlineData("data.json", ContractLimits.CiphertextB64MaxChars)]
+    [InlineData("hello.json", helloCiphertextMinChars)]
+    [InlineData("hello.json", helloCiphertextMaxChars)]
+    public void ShouldAcceptCiphertextAtBounds(string fileName, int length)
+    {
+        JsonNode envelope = JsonNode.Parse(File.ReadAllText(Path.Combine(goldenFolder, fileName)))!;
+        envelope["ciphertext"] = new string('A', length);
+
+        Assert.True(EnvelopeRules.TryParse(Encoding.UTF8.GetBytes(envelope.ToJsonString()), out _));
     }
 
     private static byte[] WithExtra(string extra)

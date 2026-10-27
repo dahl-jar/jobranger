@@ -75,7 +75,7 @@
     },
     "RoleType": {"anyOf": [{"$ref": "#/$defs/RoleId"}, {"const": "general_software"}]},
     "SourceId": {"type": "string", "enum": ["nav", "finn", "linkedin", "teamtailor", "ashby"]},
-    "Fit": {"type": "string", "enum": ["strong", "partial"]},
+    "Fit": {"type": "string", "enum": ["strong", "partial", "on_request"]},
     "RunMode": {"type": "string", "enum": ["scheduled", "manual", "dry_run"]},
     "Mark": {"type": "string", "enum": ["applied", "skipped", "not_for_me"]},
     "CheckState": {"type": "string", "enum": ["met", "partly", "missing"]},
@@ -115,7 +115,7 @@
       "minLength": 1,
       "maxLength": 120,
       "pattern": "\\.([pP][dD][fF]|[tT][xX][tT]|[mM][dD])$",
-      "not": {"pattern": "[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\u202a-\\u202e\\u2066-\\u2069/\\\\]"}
+      "not": {"pattern": "[\\u0000-\\u001f\\u007f-\\u009f\\u00ad\\u034f\\u061c\\u115f-\\u1160\\u17b4-\\u17b5\\u180b-\\u180f\\u200b\\u200e-\\u200f\\u2028-\\u202e\\u2060-\\u206f\\u3164\\ufe00-\\ufe0f\\ufeff\\uffa0\\ufff0-\\ufff8\ud82f\udca0-\ud82f\udca3\ud834\udd73-\ud834\udd7a\udb40\udc00-\udb43\udfff/\\\\]"}
     },
     "Recheck": {
       "type": "object",
@@ -175,8 +175,7 @@
     "HiddenAd": {
       "type": "object",
       "required": [
-        "id", "company", "title", "place", "role_type", "source", "url", "found_at", "today", "kind", "reason",
-        "shown_anyway"
+        "id", "company", "title", "place", "role_type", "source", "url", "found_at", "today", "kind", "reason"
       ],
       "properties": {
         "id": {"$ref": "#/$defs/AdId"},
@@ -189,8 +188,19 @@
         "found_at": {"$ref": "#/$defs/Timestamp"},
         "today": {"type": "boolean"},
         "kind": {"$ref": "#/$defs/HiddenKind"},
-        "reason": {"type": "string", "minLength": 1, "maxLength": 120},
-        "shown_anyway": {"type": "boolean"}
+        "reason": {"type": "string", "minLength": 1, "maxLength": 120}
+      }
+    },
+    "HiddenCounts": {
+      "type": "object",
+      "required": ["senior", "years", "masters", "role", "place", "other"],
+      "properties": {
+        "senior": {"$ref": "#/$defs/Count"},
+        "years": {"$ref": "#/$defs/Count"},
+        "masters": {"$ref": "#/$defs/Count"},
+        "role": {"$ref": "#/$defs/Count"},
+        "place": {"$ref": "#/$defs/Count"},
+        "other": {"$ref": "#/$defs/Count"}
       }
     },
     "ClosedAd": {
@@ -461,8 +471,8 @@
     "AdsSnapshot": {
       "type": "object",
       "required": [
-        "type", "v", "generated_at", "as_of", "active", "active_total", "hidden", "hidden_total", "closed",
-        "closed_total"
+        "type", "v", "generated_at", "as_of", "active", "active_total", "hidden", "hidden_total", "hidden_counts",
+        "closed", "closed_total"
       ],
       "properties": {
         "type": {"const": "ads.snapshot"},
@@ -473,6 +483,7 @@
         "active_total": {"$ref": "#/$defs/Count"},
         "hidden": {"type": "array", "items": {"$ref": "#/$defs/HiddenAd"}, "maxItems": 500},
         "hidden_total": {"$ref": "#/$defs/Count"},
+        "hidden_counts": {"$ref": "#/$defs/HiddenCounts"},
         "closed": {"type": "array", "items": {"$ref": "#/$defs/ClosedAd"}, "maxItems": 200},
         "closed_total": {"$ref": "#/$defs/Count"}
       }
@@ -523,7 +534,13 @@
       "properties": {
         "type": {"const": "usage.snapshot"},
         "v": {"const": 1},
-        "month": {"type": "string", "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$", "minLength": 7, "maxLength": 7},
+        "month": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$",
+          "not": {"pattern": "^0000-"},
+          "minLength": 7,
+          "maxLength": 7
+        },
         "month_tokens": {"$ref": "#/$defs/Count"},
         "today_tokens": {"$ref": "#/$defs/Count"},
         "month_usd": {"$ref": "#/$defs/Money"},
@@ -547,7 +564,7 @@
       "properties": {
         "type": {"const": "guidance.snapshot"},
         "v": {"const": 1},
-        "text": {"type": "string", "minLength": 1, "maxLength": 12000},
+        "text": {"type": "string", "maxLength": 12000},
         "is_default": {"type": "boolean"},
         "limit": {"$ref": "#/$defs/Limit"}
       }
@@ -718,7 +735,11 @@
         "type": {"const": "application.create"},
         "v": {"const": 1},
         "id": {"$ref": "#/$defs/MessageId"},
-        "company": {"$ref": "#/$defs/Company"},
+        "company": {
+          "$ref": "#/$defs/Company",
+          "type": "string",
+          "pattern": "[^\\u0000-\\u0020\\u007f-\\u00a0\\u00ad\\u034f\\u061c\\u115f-\\u1160\\u1680\\u17b4-\\u17b5\\u180b-\\u180f\\u2000-\\u200f\\u2028-\\u202f\\u205f-\\u206f\\u2800\\u3000\\u3164\\ufe00-\\ufe0f\\ufeff\\uffa0\\ufff0-\\ufff8\ud82f\udca0-\ud82f\udca3\ud834\udd73-\ud834\udd7a\udb40\udc00-\udb43\udfff]"
+        },
         "title": {"type": "string", "maxLength": 200},
         "note": {"$ref": "#/$defs/Note"}
       }

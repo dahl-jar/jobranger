@@ -5,6 +5,15 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, RootModel, StrictInt, StrictStr
 
 
+class Base64Url(RootModel[StrictStr]):
+    root: Annotated[
+        StrictStr,
+        Field(
+            pattern="^(?:[A-Za-z0-9_-]{4})*(?:[A-Za-z0-9_-][AQgw]|[A-Za-z0-9_-]{2}[AEIMQUYcgkosw048])?$"
+        ),
+    ]
+
+
 class EnvelopeHello(BaseModel):
     model_config = ConfigDict(
         extra="ignore",
@@ -19,7 +28,7 @@ class EnvelopeHello(BaseModel):
     ciphertext: Annotated[
         StrictStr,
         Field(
-            max_length=61440,
+            max_length=5462,
             min_length=4,
             pattern="^(?:[A-Za-z0-9_-]{4})*(?:[A-Za-z0-9_-][AQgw]|[A-Za-z0-9_-]{2}[AEIMQUYcgkosw048])?$",
         ),
@@ -35,13 +44,13 @@ class EnvelopeData(BaseModel):
         StrictStr, Field(max_length=43, pattern="^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$")
     ]
     sid: Annotated[StrictStr, Field(max_length=22, pattern="^[A-Za-z0-9_-]{21}[AQgw]$")]
-    seq: Annotated[StrictInt, Field(ge=0, le=9007199254740991)]
+    seq: Annotated[StrictInt, Field(ge=1, le=4294967295)]
     kind: Literal["data"]
     ciphertext: Annotated[
         StrictStr,
         Field(
             max_length=61440,
-            min_length=4,
+            min_length=22,
             pattern="^(?:[A-Za-z0-9_-]{4})*(?:[A-Za-z0-9_-][AQgw]|[A-Za-z0-9_-]{2}[AEIMQUYcgkosw048])?$",
         ),
     ]
