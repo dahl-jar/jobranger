@@ -18,6 +18,7 @@ internal sealed class Paths(IDictionary environment) {
     private const string linuxStateRoot = ".local/state";
     private const string configFileName = "config.yaml";
     private const string profileFileName = "profile.yaml";
+    private const string secretsFileName = "secrets.json";
     private const string dbFileName = "jobranger.db";
     private const string runLockFileName = "run.lock";
     private const string versionCheckFileName = "version_check.json";
@@ -45,6 +46,8 @@ internal sealed class Paths(IDictionary environment) {
     public string ConfigPath() => Path.Combine(ConfigDir(), configFileName);
 
     public string ProfilePath() => Path.Combine(ConfigDir(), profileFileName);
+
+    public string SecretsPath() => Path.Combine(ConfigDir(), secretsFileName);
 
     public string DbPath() => Path.Combine(DataDir(), dbFileName);
 

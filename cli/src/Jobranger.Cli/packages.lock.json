@@ -2,6 +2,16 @@
   "version": 2,
   "dependencies": {
     "net10.0": {
+      "Ace4896.DBus.Services.Secrets": {
+        "type": "Direct",
+        "requested": "[1.6.0, )",
+        "resolved": "1.6.0",
+        "contentHash": "nxsuG/mGrBZKgbaS4K+WIk6/ujwNhbqNntaD0g4xV/RI7B37q58bT52jQdBpM0Yu59FSxtrofXYWIpQI+lvwSQ==",
+        "dependencies": {
+          "Tmds.DBus.Generator": "0.92.0",
+          "Tmds.DBus.Protocol": "0.92.0"
+        }
+      },
       "Microsoft.Data.Sqlite": {
         "type": "Direct",
         "requested": "[10.0.13, )",
@@ -122,6 +132,17 @@
         "dependencies": {
           "SQLitePCLRaw.core": "2.1.13"
         }
+      },
+      "Tmds.DBus.Generator": {
+        "type": "Transitive",
+        "resolved": "0.92.0",
+        "contentHash": "fsxJjegaS65KdGcTnjg013fxvAClcGby/Jp1HfKr/tPKCkZ0os7ML4X1KDBi8dfIsxEgM8zVhP72iHehliu0tA=="
+      },
+      "Tmds.DBus.Protocol": {
+        "type": "CentralTransitive",
+        "requested": "[0.95.1, )",
+        "resolved": "0.95.1",
+        "contentHash": "IbGhqZAqqgB/DkT70+lAk4MNv95tZtsTMFQ+S3uGy0aTfOkGVeFjeNJsX8dBI/3+CPnO5XW6lRQKGeFEgHElKw=="
       }
     },
     "net10.0/linux-x64": {

@@ -1,3 +1,6 @@
+using Jobranger.Cli.Secrets;
+using Jobranger.Cli.Tests.Secrets;
+
 namespace Jobranger.Cli.Tests;
 
 public sealed class TestIsolationTests(TestIsolation isolation) {
@@ -34,12 +37,19 @@ public sealed class TestIsolationTests(TestIsolation isolation) {
     [Fact]
     public void ShouldKeepOnlyAllowedSwitches_WhenProductVariablesAreInherited() {
         string[] inherited = [
-            "JOBRANGER_EMBEDDINGS_LIVE", "JOBRANGER_EMBEDDINGS_CACHE", "JOBRANGER_INSTALL_METHOD",
-            "JOBRANGER_CONFIG_DIR", "PATH",
+            "JOBRANGER_EMBEDDINGS_LIVE", "JOBRANGER_EMBEDDINGS_CACHE", LiveSecretStores.LiveVariable,
+            "JOBRANGER_INSTALL_METHOD", "JOBRANGER_CONFIG_DIR", "PATH",
         ];
 
         string[] cleared = TestIsolation.VariablesToClear(inherited);
 
         Assert.Equal(["JOBRANGER_INSTALL_METHOD", "JOBRANGER_CONFIG_DIR"], cleared);
+    }
+
+    [Fact]
+    public void ShouldForceFileSecretStore_WhenAssemblyStarts() {
+        string? store = Environment.GetEnvironmentVariable(SecretStores.SelectVariable);
+
+        Assert.Equal(SecretStores.FileOnly, store);
     }
 }

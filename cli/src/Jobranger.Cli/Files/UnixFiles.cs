@@ -33,12 +33,13 @@ internal static partial class UnixFiles {
     private const int linuxLinkLoop = 40;
     private const int macWouldBlock = 35;
     private const int linuxWouldBlock = 11;
-    private const int palWriteOnly = 0x0001;
-    private const int palCloseOnExec = 0x0010;
-    private const int palCreate = 0x0020;
-    private const int palExclusive = 0x0040;
-    private const int palCreateNewFlags = palWriteOnly | palCloseOnExec | palCreate | palExclusive;
-    private const int ownerReadWriteMode = 0x180;
+    private const int runtimeWriteOnly = 0x1;
+    private const int runtimeCloseOnExec = 0x10;
+    private const int runtimeCreate = 0x20;
+    private const int runtimeExclusive = 0x40;
+    private const int runtimeNoFollow = 0x200;
+    private const int createNewFlags =
+        runtimeWriteOnly | runtimeCreate | runtimeExclusive | runtimeNoFollow | runtimeCloseOnExec;
 
     private static readonly int readNoFollowFlags = OperatingSystem.IsMacOS()
         ? macNonBlock | macNoFollow | macCloseOnExec
@@ -53,6 +54,17 @@ internal static partial class UnixFiles {
     public static SafeFileHandle? OpenLockNoFollow(string path, out int error) =>
         Open(path, readNoFollowFlags | readWrite, out error);
 
+    public static bool TryCreateNew(string path, UnixFileMode mode, out int error) {
+        nint descriptor = NativeOpen(path, createNewFlags, (int)mode);
+        if (descriptor == failed) {
+            error = Marshal.GetLastPInvokeError();
+            return false;
+        }
+        new SafeFileHandle(descriptor, ownsHandle: true).Dispose();
+        error = 0;
+        return true;
+    }
+
     public static SafeFileHandle? OpenAppendNoFollow(string path, out int error) =>
         Open(path, appendNoFollowFlags, out error);
 
@@ -66,16 +78,6 @@ internal static partial class UnixFiles {
             rest = rest[written..];
         }
         return true;
-    }
-
-    public static SafeFileHandle? CreateNewPrivate(string path, out int error) {
-        nint descriptor = RuntimeOpen(path, palCreateNewFlags, ownerReadWriteMode);
-        if (descriptor == failed) {
-            error = Marshal.GetLastPInvokeError();
-            return null;
-        }
-        error = 0;
-        return new SafeFileHandle(descriptor, ownsHandle: true);
     }
 
     public static bool IsRegularPath(string path) {
@@ -128,12 +130,11 @@ internal static partial class UnixFiles {
     [LibraryImport(linuxLibc, EntryPoint = "open", StringMarshalling = StringMarshalling.Utf8, SetLastError = true)]
     private static partial int LinuxOpen(string path, int flags);
 
+    [LibraryImport(runtimeNative, EntryPoint = "SystemNative_Open", StringMarshalling = StringMarshalling.Utf8, SetLastError = true)]
+    private static partial nint NativeOpen(string path, int flags, int mode);
+
     [LibraryImport(runtimeNative, EntryPoint = "SystemNative_Write", SetLastError = true)]
     private static partial int NativeWrite(SafeFileHandle handle, ReadOnlySpan<byte> buffer, int bufferSize);
-
-    [LibraryImport(runtimeNative, EntryPoint = "SystemNative_Open", StringMarshalling = StringMarshalling.Utf8,
-        SetLastError = true)]
-    private static partial nint RuntimeOpen(string path, int flags, int mode);
 
     [LibraryImport(runtimeNative, EntryPoint = "SystemNative_LStat", StringMarshalling = StringMarshalling.Utf8)]
     private static partial int LinkStatus(string path, Span<byte> status);

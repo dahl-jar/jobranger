@@ -1,4 +1,6 @@
+using Jobranger.Cli.Secrets;
 using Jobranger.Cli.Tests;
+using Jobranger.Cli.Tests.Secrets;
 
 [assembly: AssemblyFixture(typeof(TestIsolation))]
 
@@ -8,7 +10,8 @@ public sealed class TestIsolation : IDisposable {
     private const string productPrefix = "JOBRANGER_";
     private const string rootPrefix = "jobranger-tests-";
 
-    private static readonly string[] allowedSwitches = ["JOBRANGER_EMBEDDINGS_LIVE", "JOBRANGER_EMBEDDINGS_CACHE"];
+    private static readonly string[] allowedSwitches =
+        ["JOBRANGER_EMBEDDINGS_LIVE", "JOBRANGER_EMBEDDINGS_CACHE", LiveSecretStores.LiveVariable];
 
     private static readonly string[] proxyVariables =
         ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"];
@@ -35,6 +38,7 @@ public sealed class TestIsolation : IDisposable {
         foreach ((string name, string folder) in userDirectories) {
             Set(name, Directory.CreateDirectory(Path.Combine(Root, folder)).FullName);
         }
+        Set(SecretStores.SelectVariable, SecretStores.FileOnly);
     }
 
     public string Root { get; }

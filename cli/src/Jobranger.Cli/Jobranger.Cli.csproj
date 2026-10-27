@@ -19,6 +19,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Ace4896.DBus.Services.Secrets" />
     <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="Microsoft.ML.OnnxRuntime" />
@@ -31,6 +32,10 @@
 
   <ItemGroup>
     <None Remove="$(NuGetPackageRoot)microsoft.ml.onnxruntime\*\runtimes\win-*\native\*.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Secrets\key-folds-*.json" LogicalName="Jobranger.Cli.Secrets.key-folds.json" />
   </ItemGroup>
 
   <ItemGroup>

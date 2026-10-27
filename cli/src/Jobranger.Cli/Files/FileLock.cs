@@ -51,15 +51,8 @@ internal sealed class FileLock : IDisposable {
     public void Dispose() => handle.Dispose();
 
     private static void CreateIfMissing(string path) {
-        try {
-            using FileStream created = new(path, new FileStreamOptions {
-                Mode = FileMode.CreateNew,
-                Access = FileAccess.Write,
-                Share = FileShare.ReadWrite,
-                UnixCreateMode = PrivateFile.OwnerOnlyFileMode,
-            });
-        } catch (IOException error) when (UnixFiles.IsExisting(error.HResult)) {
-            return;
+        if (!UnixFiles.TryCreateNew(path, PrivateFile.OwnerOnlyFileMode, out int error) && !UnixFiles.IsExisting(error)) {
+            throw PrivateFile.OpenError(path, error);
         }
     }
 }

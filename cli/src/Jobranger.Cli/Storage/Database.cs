@@ -44,8 +44,7 @@ internal static partial class Database {
     [UnsupportedOSPlatform("windows")]
     private static void CreatePrivate(string path, ILogger logger) {
         lock (createLock) {
-            using SafeFileHandle? created = UnixFiles.CreateNewPrivate(path, out int error);
-            if (created is not null) {
+            if (UnixFiles.TryCreateNew(path, PrivateFile.OwnerOnlyFileMode, out int error)) {
                 return;
             }
             if (!UnixFiles.IsExisting(error)) {

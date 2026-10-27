@@ -266,6 +266,11 @@
         "resolved": "4.6.2",
         "contentHash": "yQgmjfFximrNm9LIV3mL6T5MzjeC+epeE5rl4hXxAlYmxby7RM1dPSkIKXk9HNkl6G54h2JHOmLD46+Pey+IRg=="
       },
+      "Tmds.DBus.Generator": {
+        "type": "Transitive",
+        "resolved": "0.92.0",
+        "contentHash": "fsxJjegaS65KdGcTnjg013fxvAClcGby/Jp1HfKr/tPKCkZ0os7ML4X1KDBi8dfIsxEgM8zVhP72iHehliu0tA=="
+      },
       "xunit.analyzers": {
         "type": "Transitive",
         "resolved": "2.1.0",
@@ -327,6 +332,7 @@
       "jobranger": {
         "type": "Project",
         "dependencies": {
+          "Ace4896.DBus.Services.Secrets": "[1.6.0, )",
           "Microsoft.Data.Sqlite": "[10.0.13, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.13, )",
           "Microsoft.ML.OnnxRuntime": "[1.31.0, )",
@@ -335,6 +341,16 @@
           "System.CommandLine": "[2.0.13, )",
           "System.Numerics.Tensors": "[10.0.13, )",
           "YamlDotNet": "[18.1.0, )"
+        }
+      },
+      "Ace4896.DBus.Services.Secrets": {
+        "type": "CentralTransitive",
+        "requested": "[1.6.0, )",
+        "resolved": "1.6.0",
+        "contentHash": "nxsuG/mGrBZKgbaS4K+WIk6/ujwNhbqNntaD0g4xV/RI7B37q58bT52jQdBpM0Yu59FSxtrofXYWIpQI+lvwSQ==",
+        "dependencies": {
+          "Tmds.DBus.Generator": "0.92.0",
+          "Tmds.DBus.Protocol": "0.92.0"
         }
       },
       "Microsoft.Data.Sqlite": {
@@ -392,6 +408,12 @@
         "requested": "[10.0.13, )",
         "resolved": "10.0.13",
         "contentHash": "E4JC7KcY4j1yx9uy8tVsHlGThnwLdUWtUz6aLHCqbN/jbtwbwbZgnVEF9atUr/7ynFCbo8Rbij056Y9bWM9ALg=="
+      },
+      "Tmds.DBus.Protocol": {
+        "type": "CentralTransitive",
+        "requested": "[0.95.1, )",
+        "resolved": "0.95.1",
+        "contentHash": "IbGhqZAqqgB/DkT70+lAk4MNv95tZtsTMFQ+S3uGy0aTfOkGVeFjeNJsX8dBI/3+CPnO5XW6lRQKGeFEgHElKw=="
       },
       "YamlDotNet": {
         "type": "CentralTransitive",

@@ -41,7 +41,40 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - uses: ./.github/actions/dotnet-setup
-      - run: dotnet test --project cli/tests/Jobranger.Cli.Tests -c Release --no-build --minimum-expected-tests 632
+      - run: dotnet test --project cli/tests/Jobranger.Cli.Tests -c Release --no-build --minimum-expected-tests 718
+
+  secrets-macos:
+    name: Secret store on macOS
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - uses: ./.github/actions/dotnet-setup
+      - run: security add-generic-password -A -s jobranger-ci-python -a anthropic_api_key -w sk-fake-python-1234
+      - run: dotnet test --project cli/tests/Jobranger.Cli.Tests -c Release --no-build --filter-namespace Jobranger.Cli.Tests.Secrets
+        env:
+          JOBRANGER_SECRET_STORE_LIVE: "1"
+
+  secrets-linux:
+    name: Secret store on Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - uses: ./.github/actions/dotnet-setup
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
+        with:
+          python-version: "3.12"
+
+      - run: sudo apt-get update && sudo apt-get install -y dbus dbus-x11 gnome-keyring
+      - run: |
+          dbus-run-session -- bash -euo pipefail -c '
+            printf %s ci-password | gnome-keyring-daemon --unlock --components=secrets >/dev/null
+            printf %s sk-fake-python-1234 | uvx --from keyring==25.7.0 keyring set jobranger-ci-python anthropic_api_key
+            dotnet test --project cli/tests/Jobranger.Cli.Tests -c Release --no-build --filter-namespace Jobranger.Cli.Tests.Secrets
+          '
+        env:
+          JOBRANGER_SECRET_STORE_LIVE: "1"
 
   publish:
     name: Publish ${{ matrix.rid }}
