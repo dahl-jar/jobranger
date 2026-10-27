@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import io
 import re
 import stat
 import sys
@@ -43,6 +44,8 @@ OWNER_READ_WRITE = 0o600
 OWNER_ONLY_DIR = 0o700
 COMMENT = "# chosen during setup"
 LONG_LABEL = "a" * 64
+NON_ASCII_PLACE = "Tromsø"
+ASCII_LOCALE = "ascii"
 CREDENTIAL_SMTP_URLS = [
     f"smtp://user:{SMTP_PASSWORD}@smtp.example.test",
     f"smtp://user:Qa/{SMTP_PASSWORD}#x@smtp.example.test:587",
@@ -81,6 +84,21 @@ def test_should_keep_comments_when_saving_config(config_path: Path) -> None:
     save_config(config_path, changed)
 
     assert COMMENT in config_path.read_text()
+
+
+def test_should_load_non_ascii_config_when_locale_is_ascii(
+    config_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config = default_config()
+    places = config.targets.model_copy(update={"places": (NON_ASCII_PLACE,)})
+    save_config(config_path, config.model_copy(update={"targets": places}))
+    monkeypatch.setattr(io, "text_encoding", _ascii_locale)
+
+    assert load_config(config_path).targets.places == (NON_ASCII_PLACE,)
+
+
+def _ascii_locale(encoding: str | None) -> str:
+    return encoding or ASCII_LOCALE
 
 
 def test_should_remove_key_dropped_from_model_when_saving(config_path: Path) -> None:
@@ -505,6 +523,7 @@ def test_should_reject_email_address_when_it_is_not_one_address(address: str) ->
         "jobranger\t<user@example.com>",
         "jobranger <a@b.test>\nBcc: c@d.test",
         "a@b.test,c@d.test",
+        "user@",
         "jobranger <usér@example.com>",
         f"jobranger <user@{LONG_LABEL}.example.test>",
     ],
@@ -513,6 +532,7 @@ def test_should_reject_email_address_when_it_is_not_one_address(address: str) ->
         "inner tab",
         "line break",
         "two addresses",
+        "no domain",
         "non-ascii local part",
         "long domain label",
     ],

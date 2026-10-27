@@ -68,9 +68,11 @@ public sealed class FileSecretStoreTests : IDisposable {
         Assert.Throws<PrivateFileException>(() => file.Lock(TestContext.Current.CancellationToken));
         File.SetUnixFileMode(temp.Path, FileModes.OwnerOnlyDir);
 
-        using FileLock? relocked = FileLock.TryAcquire(file.Path + ".lock", NullLogger.Instance);
+        Exception? error = Record.Exception(
+            () => FileLock.Acquire(file.Path + ".lock", TestWaits.Step, NullLogger.Instance, TestContext.Current.CancellationToken)
+                .Dispose());
 
-        Assert.NotNull(relocked);
+        Assert.Null(error);
     }
 
     [Fact]

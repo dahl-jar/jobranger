@@ -139,6 +139,7 @@ public sealed class UpdatesTests : IDisposable {
             ColorSystem = ColorSystemSupport.NoColors,
             Interactive = interactive ? InteractionSupport.Yes : InteractionSupport.No,
             Out = new AnsiConsoleOutput(errors),
+            EnvironmentVariables = [],
         });
         return new UpdatesEntry(
             console, messages ?? new EnglishMessages(), environment, temp.File("version_check.json"), path,
