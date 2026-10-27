@@ -53,14 +53,9 @@ CLI_CONTRACT = ROOT / "cli-python" / "src" / "jobranger" / "contract"
 WORKFLOWS = ROOT / ".github" / "workflows"
 RELEASE_WORKFLOW = "release-cli.yml"
 RELEASE_GATE_JOB = "version"
-COMPONENT_WORKFLOWS = [
-    "cli.yml",
-    "cli-python.yml",
-    "contracts.yml",
-    "edge.yml",
-    "relay.yml",
-    "web.yml",
-]
+COMPONENT_WORKFLOWS = sorted(
+    path.name for path in WORKFLOWS.glob("*.yml") if path.name != RELEASE_WORKFLOW
+)
 SESSION_SPEC = CONTRACTS / "session" / "v1.md"
 IGNORABLES = CONTRACTS / "unicode" / "default-ignorable-15.0.0.json"
 BMP_MAX = 0xFFFF

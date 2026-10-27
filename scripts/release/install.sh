@@ -15,7 +15,7 @@ detect_rid() {
   platform="$(uname -s) $(uname -m)"
   case "$platform" in
     "Darwin arm64") echo osx-arm64 ;;
-    "Linux x86_64" | "Linux amd64") echo linux-x64 ;;
+    "Linux x86_64") echo linux-x64 ;;
     *) fail "no build for $platform, builds exist for macOS arm64 and Linux x64" ;;
   esac
 }

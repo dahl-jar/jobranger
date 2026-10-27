@@ -21,6 +21,7 @@ sha256() {
   fi | awk '{ print $1 }'
 }
 
+mkdir -p "$out_dir"
 assets=()
 for rid in "${rids[@]}"; do
   archive="jobranger-$version-$rid.tar.gz"
@@ -28,7 +29,6 @@ for rid in "${rids[@]}"; do
     echo "missing archive $archive" >&2
     exit 1
   fi
-  mkdir -p "$out_dir"
   cp "$archives_dir/$archive" "$out_dir/$archive"
   assets+=("$archive")
 done

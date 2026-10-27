@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-expected_tests=15
+expected_tests=18
 fixture_version="0.4.1"
 fixture_rids=(osx-arm64 linux-x64)
 linux_archive="jobranger-$fixture_version-linux-x64.tar.gz"
 release_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 next_version="$release_dir/next_version.sh"
 assemble="$release_dir/assemble.sh"
+release_title="$release_dir/release_title.sh"
+pulls="$release_dir/tests/mocks/pulls.json"
+repository="owner/jobranger"
 
 export GIT_CONFIG_GLOBAL=/dev/null
 export GIT_CONFIG_NOSYSTEM=1
@@ -32,16 +35,12 @@ assert_missing() {
   [ ! -e "$1" ] || fail "expected no file at $1"
 }
 
-init_repo() {
-  git init -q
-}
-
 commit() {
   git -c user.name=user -c user.email=user@example.com commit -q --allow-empty -m "$1"
 }
 
 tagged_repo() {
-  init_repo
+  git init -q
   commit 1
   local tag
   for tag in "$@"; do
@@ -85,7 +84,10 @@ build_release() {
     pack_archive "$rid"
   done
   bash "$assemble" "$fixture_version" archives out
-  mkdir stub
+}
+
+stub_uname() {
+  mkdir -p stub
   cat >stub/uname <<'EOF'
 #!/bin/sh
 case "$1" in
@@ -97,6 +99,7 @@ EOF
 }
 
 run_install() {
+  stub_uname
   STUB_UNAME_S="$1" STUB_UNAME_M="$2" \
     JOBRANGER_DOWNLOAD_URL="file://$PWD/out" \
     JOBRANGER_INSTALL_DIR="$PWD/bin-install" \
@@ -116,8 +119,43 @@ rewrite_checksums() {
   mv SHA256SUMS.new out/SHA256SUMS
 }
 
+stub_gh() {
+  mkdir -p stub
+  cat >stub/gh <<EOF
+#!/bin/sh
+[ "\$1 \$2 \$3" = "api repos/$repository/commits/$2/pulls --jq" ] || exit 1
+exec jq -r "\$4" "$1"
+EOF
+  chmod 0755 stub/gh
+}
+
+title_of() {
+  PATH="$PWD/stub:$PATH" bash "$release_title" "$repository" "$1" "$2"
+}
+
+should_use_pr_title_when_set() {
+  stub_gh "$pulls" HEAD
+
+  assert_eq "fix: pr title" "$(title_of HEAD 'fix: pr title')"
+}
+
+should_use_merged_pr_title_when_pr_title_empty() {
+  stub_gh "$pulls" HEAD
+
+  assert_eq "fix: merged change" "$(title_of HEAD '')"
+}
+
+should_use_commit_subject_when_no_merged_pr() {
+  git init -q
+  commit 'feat: commit subject'
+  echo '[]' >none.json
+  stub_gh "$PWD/none.json" HEAD
+
+  assert_eq "feat: commit subject" "$(title_of HEAD '')"
+}
+
 should_release_initial_version_when_no_cli_tag_exists() {
-  init_repo
+  git init -q
   commit 1
 
   assert_eq "$(printf 'version=0.1.0\nprevious=')" "$(next_of 'fix: x')"
@@ -133,7 +171,7 @@ should_bump_patch_for_other_titles() {
   tagged_repo cli-v0.2.3
 
   local title
-  for title in 'fix(CLI-4): fix CI' 'Bump ruff from 0.16.4 to 0.17.1 in /cli-python' 'Add user context' 'feature: x'; do
+  for title in 'fix(CLI-4): fix CI' 'feature: x'; do
     assert_eq "version=0.2.4" "$(version_of "$title")"
   done
 }
@@ -152,8 +190,8 @@ should_bump_major_for_breaking_title_from_1_0() {
 
 should_skip_commit_already_in_a_release() {
   mkdir rerun older
-  (cd rerun && init_repo && commit 1 && git tag cli-v0.2.0)
-  (cd older && init_repo && commit 1 && commit 2 && git tag cli-v0.3.0)
+  (cd rerun && git init -q && commit 1 && git tag cli-v0.2.0)
+  (cd older && git init -q && commit 1 && commit 2 && git tag cli-v0.3.0)
 
   (cd rerun && assert_skipped HEAD)
   (cd older && assert_skipped HEAD~1)

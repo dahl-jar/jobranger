@@ -86,13 +86,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          title="$PR_TITLE"
-          if [ -z "$title" ]; then
-            title="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq '[.[] | select(.merged_at != null)][0].title // empty')"
-          fi
-          if [ -z "$title" ]; then
-            title="$(git log -1 --format=%s "$GITHUB_SHA")"
-          fi
+          title="$(bash scripts/release/release_title.sh "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$PR_TITLE")"
           bash scripts/release/next_version.sh "$GITHUB_SHA" "$title" | tee -a "$GITHUB_OUTPUT"
 
   build:
