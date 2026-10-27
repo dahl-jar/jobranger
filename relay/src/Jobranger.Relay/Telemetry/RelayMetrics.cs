@@ -1,5 +1,5 @@
 using System.Diagnostics.Metrics;
-using Jobranger.Relay.Core;
+using Jobranger.Relay.Core.Channels;
 
 namespace Jobranger.Relay.Telemetry;
 

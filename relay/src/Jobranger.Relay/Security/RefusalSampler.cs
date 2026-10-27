@@ -1,4 +1,4 @@
-using Jobranger.Relay.Core;
+using Jobranger.Relay.Core.Limits;
 
 namespace Jobranger.Relay.Security;
 

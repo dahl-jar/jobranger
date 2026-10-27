@@ -1,4 +1,4 @@
-using Jobranger.Relay.Core;
+using Jobranger.Relay.Core.Limits;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Connections.Features;
 

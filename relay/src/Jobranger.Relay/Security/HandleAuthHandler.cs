@@ -1,8 +1,8 @@
 using System.Text.Encodings.Web;
-using Jobranger.Relay.Core;
+using Jobranger.Relay.Composition;
+using Jobranger.Relay.Core.Tokens;
+using Jobranger.Relay.Endpoints;
 using Jobranger.Relay.Hubs;
-using Jobranger.Relay.Options;
-using Jobranger.Relay.Pairing;
 using Jobranger.Relay.Telemetry;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Logging.Abstractions;

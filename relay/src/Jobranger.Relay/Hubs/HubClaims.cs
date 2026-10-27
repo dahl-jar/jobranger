@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using Jobranger.Contracts.Channels;
-using Jobranger.Relay.Core;
+using Jobranger.Relay.Core.Tokens;
 using Microsoft.AspNetCore.SignalR;
 
 namespace Jobranger.Relay.Hubs;

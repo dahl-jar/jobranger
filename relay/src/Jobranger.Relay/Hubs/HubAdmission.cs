@@ -1,6 +1,7 @@
 using System.Globalization;
-using Jobranger.Relay.Core;
-using Jobranger.Relay.Pairing;
+using Jobranger.Relay.Core.Channels;
+using Jobranger.Relay.Core.Limits;
+using Jobranger.Relay.Endpoints;
 using Jobranger.Relay.Security;
 using Microsoft.AspNetCore.SignalR;
 

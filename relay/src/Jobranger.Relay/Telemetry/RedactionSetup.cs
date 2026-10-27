@@ -1,4 +1,4 @@
-using Jobranger.Relay.Options;
+using Jobranger.Relay.Composition;
 using Microsoft.Extensions.Compliance.Classification;
 using Microsoft.Extensions.Compliance.Redaction;
 using Microsoft.Extensions.Options;

@@ -1,8 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Jobranger.Relay.Core;
+using Jobranger.Relay.Core.Channels;
+using Jobranger.Relay.Endpoints;
 using Jobranger.Relay.Hubs;
-using Jobranger.Relay.Pairing;
 
 namespace Jobranger.Relay;
 

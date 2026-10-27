@@ -1,4 +1,4 @@
-using Jobranger.Relay.Core;
+using Jobranger.Relay.Core.Limits;
 using Jobranger.Relay.Security;
 using Jobranger.Relay.Telemetry;
 using Microsoft.AspNetCore.SignalR;

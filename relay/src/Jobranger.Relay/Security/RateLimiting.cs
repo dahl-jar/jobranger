@@ -1,8 +1,10 @@
 using System.Globalization;
 using System.Threading.RateLimiting;
 using Jobranger.Contracts.Channels;
-using Jobranger.Relay.Core;
-using Jobranger.Relay.Pairing;
+using Jobranger.Relay.Core.Limits;
+using Jobranger.Relay.Core.Sweeping;
+using Jobranger.Relay.Core.Tokens;
+using Jobranger.Relay.Endpoints;
 using Jobranger.Relay.Telemetry;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.RateLimiting;
@@ -24,6 +26,7 @@ internal static class RateLimiting {
 
     public static IServiceCollection AddRelayRateLimits(this IServiceCollection services) {
         services.AddSingleton(provider => new RelayRateLimiter(provider.GetRequiredService<TimeProvider>()));
+        services.AddSingleton<ISweepable>(provider => provider.GetRequiredService<RelayRateLimiter>());
         services.AddSingleton<RefusalSampler>();
         services.AddSingleton<FailurePolicies>();
         services.AddRateLimiter(_ => { });

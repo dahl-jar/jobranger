@@ -1,63 +1,22 @@
-using System.Text.Json.Serialization;
-using Jobranger.Relay;
-using Jobranger.Relay.Core;
-using Jobranger.Relay.Health;
-using Jobranger.Relay.Hubs;
-using Jobranger.Relay.Options;
-using Jobranger.Relay.Pairing;
-using Jobranger.Relay.Security;
+using Jobranger.Relay.Composition;
 using Jobranger.Relay.Telemetry;
-using Microsoft.Extensions.Options;
 
-const long maxRequestBodyBytes = 16_384;
 const int startupFailureExitCode = 1;
 const string startupCategory = "Jobranger.Relay.Startup";
 
 try {
     WebApplicationBuilder builder = WebApplication.CreateSlimBuilder(args);
 
-    builder.Logging.AddRelayJsonConsole();
-    builder.WebHost.ConfigureKestrel(kestrel => kestrel.Limits.MaxRequestBodySize = maxRequestBodyBytes);
-    builder.Services.AddOptions<RelayOptions>().BindConfiguration(RelayOptions.Section).ValidateOnStart();
-    builder.Services.AddSingleton<IValidateOptions<RelayOptions>, RelayOptionsValidator>();
-    builder.Services.AddSingleton(TimeProvider.System);
-    builder.Services.AddSingleton(services => services.GetRequiredService<IOptions<RelayOptions>>().Value.ToHandleKeys());
-    builder.Services.AddSingleton<ChannelHandle>();
-    builder.Services.AddSingleton(services => new PairingStore(services.GetRequiredService<TimeProvider>()));
-    builder.Services.AddSingleton(services => new NonceStore(services.GetRequiredService<TimeProvider>()));
-    builder.Services.AddSingleton(services => new PairedChannels(services.GetRequiredService<TimeProvider>()));
-    builder.Services.ConfigureHttpJsonOptions(json => {
-        json.SerializerOptions.TypeInfoResolverChain.Insert(0, RelayJsonContext.Default);
-        json.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
-        json.SerializerOptions.AllowDuplicateProperties = false;
-    });
-    builder.Services.Configure<RouteHandlerOptions>(routes => routes.ThrowOnBadRequest = false);
-    builder.Services.AddProblemDetails(problems => problems.CustomizeProblemDetails = RelayProblems.Customize);
-    builder.Services.AddProxyHeaders();
-    builder.Services.AddSiteCors();
-    builder.Services.AddRelayRateLimits();
-    builder.Services.AddRelayHealth();
-    builder.Services.AddRelayMetrics();
-    builder.AddRelayRedaction();
+    builder.Services.AddRelayOptions();
+    builder.Services.AddRelayCore();
+    builder.Services.AddRelaySecurity();
+    builder.AddRelayTelemetry();
     builder.AddRelayHub();
 
     WebApplication app = builder.Build();
 
-    app.UseRelayMetrics();
-    app.Use(HubSetup.HideNegotiate);
-    app.UseForwardedHeaders();
-    app.UseExceptionHandler();
-    app.UseStatusCodePages();
-    app.UseCors();
-    app.UseRateLimiter();
-    app.Use(FailureCharge.ChargeBadRequests);
-    app.UseAuthentication();
-    app.UseAuthorization();
-    app.Use(HubAdmission.Check);
-    app.MapPairing();
-    app.MapSessions();
-    app.MapRelayHub();
-    app.MapRelayHealth();
+    app.UseRelay();
+    app.MapRelay();
 
     app.Run();
     return 0;

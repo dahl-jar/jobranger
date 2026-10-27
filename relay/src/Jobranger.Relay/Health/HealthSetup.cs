@@ -1,5 +1,7 @@
-using Jobranger.Relay.Core;
-using Jobranger.Relay.Security;
+using Jobranger.Relay.Core.Limits;
+using Jobranger.Relay.Core.Nonces;
+using Jobranger.Relay.Core.Pairing;
+using Jobranger.Relay.Core.Sweeping;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -20,7 +22,6 @@ internal static class HealthSetup {
         services.AddSingleton<ISweepable>(provider => provider.GetRequiredService<PairingStore>());
         services.AddSingleton<ISweepable>(provider => provider.GetRequiredService<NonceStore>());
         services.AddSingleton<ISweepable>(provider => provider.GetRequiredService<PairedChannels>());
-        services.AddSingleton<ISweepable>(provider => provider.GetRequiredService<RelayRateLimiter>());
         services.AddHostedService<SweeperService>();
         services.AddLogging(logging => logging.AddFilter(healthCheckCategory, LogLevel.None));
         services.AddHealthChecks()

@@ -1,4 +1,4 @@
-using Jobranger.Relay.Options;
+using Jobranger.Relay.Composition;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;

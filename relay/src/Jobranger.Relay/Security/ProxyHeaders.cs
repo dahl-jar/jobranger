@@ -1,4 +1,4 @@
-using Jobranger.Relay.Options;
+using Jobranger.Relay.Composition;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Options;
 

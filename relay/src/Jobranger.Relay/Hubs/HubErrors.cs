@@ -1,4 +1,4 @@
-using Jobranger.Relay.Core;
+using Jobranger.Relay.Core.Channels;
 
 namespace Jobranger.Relay.Hubs;
 

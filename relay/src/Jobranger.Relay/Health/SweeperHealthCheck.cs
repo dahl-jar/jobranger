@@ -1,4 +1,4 @@
-using Jobranger.Relay.Core;
+using Jobranger.Relay.Core.Sweeping;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Jobranger.Relay.Health;

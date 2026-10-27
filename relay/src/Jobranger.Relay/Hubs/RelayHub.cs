@@ -1,7 +1,8 @@
 using System.Text.Json;
 using Jobranger.Contracts.Channels;
 using Jobranger.Contracts.Envelopes;
-using Jobranger.Relay.Core;
+using Jobranger.Relay.Core.Channels;
+using Jobranger.Relay.Core.Tokens;
 using Jobranger.Relay.Security;
 using Jobranger.Relay.Telemetry;
 using Microsoft.AspNetCore.SignalR;
