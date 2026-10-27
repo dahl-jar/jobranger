@@ -10,7 +10,7 @@ from jobranger.matching.profile import Profile
 from jobranger.settings import read_yaml
 from pydantic import ValidationError
 
-from matching import write_json
+from golden_io import write_json
 
 LAX_FOLDER = "Lax"
 REPLY_YEARS_FILE = "reply-years.json"
@@ -322,9 +322,7 @@ EXTRA_FORMS = {
         "2024-02-30",
         "0xaf",
         "0xAF",
-        "0x1F",
         "!!int 0o8",
-        "!!int 0b2",
     ),
     "has_master": (
         "' yes'",

@@ -13,6 +13,8 @@ from jobranger.providers.base import ClassifyPrompt
 from jobranger.providers.openai_compat import OpenAICompatProvider, base_url_for
 from jobranger.providers.prices import spec_for
 
+from golden_io import write_json
+
 FAKE_KEY = "sk-fake-golden-key-0001"
 OLLAMA_URL = "http://box:11434"
 ANTHROPIC_MODEL = "claude-sonnet-5-5"
@@ -82,11 +84,6 @@ def compat_body(kind: str, prompt: ClassifyPrompt) -> bytes:
 
 def compat_schema(body: bytes) -> object:
     return json.loads(body)["response_format"]["json_schema"]["schema"]
-
-
-def write_json(path: Path, value: object) -> None:
-    text = json.dumps(value, ensure_ascii=False, indent=2)
-    path.write_text(text + "\n", encoding="utf-8")
 
 
 def main() -> None:

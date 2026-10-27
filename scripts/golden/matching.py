@@ -28,12 +28,13 @@ from jobranger.settings import Limits, Targets
 from openai.lib._parsing._completions import type_to_response_format_param
 from pydantic import TypeAdapter
 
+from golden_io import write_json, write_text
+
 VERSION = "test-version"
 ASSESSMENT_DATE = "2026-10-09"
 CASE_COMPANY = "Org One AS"
 CASE_LOCATION = "Oslo"
 CASE_SOURCE = "case"
-LINE_BREAK = "\n"
 ALL_ROLES = (
     "backend",
     "frontend",
@@ -96,25 +97,6 @@ def case_ad(case: dict[str, str]) -> Ad:
         url=f"https://jobs.example.test/{case['id']}",
         description=case["description"],
     )
-
-
-def write_text(path: Path, text: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(text.encode("utf-8"))
-
-
-def escape_invisible(text: str) -> str:
-    return "".join(
-        json.dumps(character)[1:-1]
-        if not character.isprintable() and character != LINE_BREAK
-        else character
-        for character in text
-    )
-
-
-def write_json(path: Path, value: object) -> None:
-    text = json.dumps(value, ensure_ascii=False, indent=2) + LINE_BREAK
-    write_text(path, escape_invisible(text))
 
 
 def export_prompts(inputs: Path, out: Path) -> None:

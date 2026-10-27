@@ -33,11 +33,11 @@ internal static partial class ProfileFile {
             return null;
         }
         ConfigSection section = new(values, string.Empty, profileKeys, errors, tree.Scalars);
-        Profile profile = Fields(section, errors);
+        Profile profile = ReadProfile(section, errors);
         return errors.Count == 0 ? profile : null;
     }
 
-    private static Profile Fields(ConfigSection section, List<ConfigError> errors) {
+    private static Profile ReadProfile(ConfigSection section, List<ConfigError> errors) {
         string? summary = section.RequiredStrictText(SummaryKey);
         double? years = Years(section, errors);
         Dictionary<string, List<Evidence>> lists = ReadEvidenceLists(section, errors);
