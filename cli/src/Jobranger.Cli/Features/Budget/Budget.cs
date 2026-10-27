@@ -20,7 +20,9 @@ internal sealed class Budget(SqliteConnection connection) {
     private const long adTokensHigh = 2_000;
     private const long outputTokensHigh = 1_600;
     private const int charsPerToken = 2;
+    private const int promptCharsPerToken = 4;
     private const string reservedName = "reserved_usd";
+    private const string callName = "call_usd";
     private const string perAdName = "per_ad_usd";
 
     private static readonly ModelPrices free = new(0m, 0m, 0m, 0m, 0m);
@@ -75,8 +77,9 @@ internal sealed class Budget(SqliteConnection connection) {
 
     public void RecordRead(DateOnly day, int adsRead) => store.Add(day, new UsageCounts(AdsRead: adsRead));
 
-    public bool Allowed(AppConfig config, ModelPrices? prices, DateOnly today, decimal reservedUsd) {
+    public bool Allowed(AppConfig config, ModelPrices? prices, DateOnly today, decimal reservedUsd, decimal callUsd) {
         RequireAmount(reservedName, reservedUsd);
+        RequireAmount(callName, callUsd);
         if (config.Model.MonthlyLimitUsd is not decimal limit) {
             return true;
         }
@@ -89,7 +92,7 @@ internal sealed class Budget(SqliteConnection connection) {
         long cacheWrite = reservedUsd == 0 ? Micros(CacheWriteCost(prices)) : 0;
         long needed = Micros(MonthSpend(today))
             + Micros(reservedUsd)
-            + Micros(EstimateAdCost(prices, false, today))
+            + Micros(callUsd)
             + cacheWrite;
         return needed < Micros(limit);
     }
@@ -113,6 +116,11 @@ internal sealed class Budget(SqliteConnection connection) {
 
     public decimal EstimateAdCost(ModelPrices prices, bool batch, DateOnly today) =>
         Math.Max(ConstantAdCost(prices, batch), HistoryAdCost(today));
+
+    public decimal EstimateCallCost(ModelPrices prices, long promptChars, long outputTokens, DateOnly today) {
+        TokenCounts tokens = new(promptChars / promptCharsPerToken, 0, 0, 0, outputTokens);
+        return Math.Max(EstimateAdCost(prices, false, today), Cost(prices, tokens, batch: false));
+    }
 
     public decimal AdsPerDay(DateOnly today) {
         List<UsageDay> days = CheckedDays(RecentDays(today));

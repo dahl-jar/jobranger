@@ -26,12 +26,17 @@ public sealed class ClassifyStageTests : IDisposable {
     private const string labelsQuery = "SELECT label FROM ads ORDER BY id";
     private const string assessedQuery = "SELECT label || '|' || assessment_version FROM ads";
     private const string busyAd = "finn:2";
+    private const int longDescriptionChars = 600_000;
+    private const decimal longCallUsd = 0.16m;
+    private const decimal longLimitUsd = 0.30m;
+    private const int refusedRuns = 4;
 
     private static readonly ModelPrices prices = new(1m, 5m, 0.1m, 1.25m, 2m);
     private static readonly PromptSetup prompt =
         new("system text", version, MatchingFixtures.EvidenceIds, MatchingFixtures.EducationIds);
 
     private static readonly TimeSpan busyPause = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan lateReplyDelay = TimeSpan.FromMilliseconds(50);
 
     private readonly TestDatabase db = new();
     private readonly FakeTimeProvider time = AdFixtures.Clock();
@@ -115,7 +120,6 @@ public sealed class ClassifyStageTests : IDisposable {
     [Theory]
     [InlineData("Auth", "Auth")]
     [InlineData("BadRequest", "ProviderDown")]
-    [InlineData("NotFound", "ProviderDown")]
     public async Task ShouldStopWithAdsPending_WhenProviderRefusesCall(string kind, string expected) {
         UpsertAds(2);
         FakeModelClient client = new((_, _) => throw new ApiException(Enum.Parse<ApiErrorKind>(kind), "model call failed"));
@@ -126,6 +130,20 @@ public sealed class ClassifyStageTests : IDisposable {
         Assert.Equal(
             (new ClassifyOutcome(2, Enum.Parse<StopReason>(expected)), 1, "classify.provider.failed"),
             (outcome, client.Calls, logger.LatestRecord.Id.Name));
+    }
+
+    [Fact]
+    public async Task ShouldLabelAdError_WhenProviderRejectsItsContentEveryRun() {
+        await RunWithFirstAdRefused(ApiErrorKind.BadRequest);
+
+        Assert.Equal("error,junior", Labels());
+    }
+
+    [Fact]
+    public async Task ShouldKeepAdPending_WhenProviderRejectsKeyEveryRun() {
+        await RunWithFirstAdRefused(ApiErrorKind.Auth);
+
+        Assert.Equal("NULL,NULL", Labels());
     }
 
     [Fact]
@@ -214,14 +232,42 @@ public sealed class ClassifyStageTests : IDisposable {
     }
 
     [Fact]
-    public async Task ShouldKeepErrorLabel_WhenVersionIsRefreshed() {
+    public async Task ShouldGiveFreshAttempts_WhenPromptVersionChanges() {
         ads.Upsert(Pending(1, "Utvikler", "Org One AS"));
-        db.Execute("UPDATE ads SET label_attempts = 3, assessment_version = $0", version);
-        await stage.RunAsync(Input(null), CancellationToken.None);
+        db.Execute("UPDATE ads SET label_attempts = 3, assessment_version = $0", AdFixtures.OutdatedVersion);
 
-        ads.ResetUnassessed(version);
+        await stage.RunAsync(Input(FakeModelClient.Answering(JavaReply)), CancellationToken.None);
 
-        Assert.Equal("error", Labels());
+        Assert.Equal("junior|" + version, db.Scalar(assessedQuery));
+    }
+
+    [Theory]
+    [InlineData(true, "1")]
+    [InlineData(false, null)]
+    public async Task ShouldLogOutdatedCount_WhenAdsHaveOlderAssessment(bool outdated, string? expected) {
+        ads.Upsert(Pending(1, "Utvikler", "Org One AS"));
+        ads.SetClassification("finn:1", AdFixtures.Classification, outdated ? AdFixtures.OutdatedVersion : version);
+        FakeLogger logger = new();
+
+        await StageWith(events, logger).RunAsync(Input(null), CancellationToken.None);
+
+        string? logged = logger.Collector.GetSnapshot()
+            .SingleOrDefault(record => record.Id.Name == "classify.outdated")?.GetStructuredStateValue("Count");
+        Assert.Equal(expected, logged);
+    }
+
+    [Fact]
+    public async Task ShouldStopAsCancelled_WhenRunIsCancelledDuringPause() {
+        UpsertAds(1);
+        using CancellationTokenSource run = new();
+        FakeModelClient client = new(async (_, _) => {
+            await run.CancelAsync();
+            throw new ApiException(ApiErrorKind.RateLimit, "busy", busyPause);
+        });
+
+        ClassifyOutcome outcome = await stage.RunAsync(Input(client), run.Token);
+
+        Assert.Equal(new ClassifyOutcome(1, StopReason.Cancelled), outcome);
     }
 
     [Fact]
@@ -274,9 +320,13 @@ public sealed class ClassifyStageTests : IDisposable {
         UpsertAds(10);
         FakeModelClient client = new((_, _) => Task.FromResult(FakeModelClient.Reply(JavaReply, cost: 1m)));
 
-        ClassifyOutcome outcome = await stage.RunAsync(Input(client, limit: 2.50m), CancellationToken.None);
+        FakeLogger logger = new();
 
-        Assert.Equal((2, new ClassifyOutcome(8, StopReason.Budget)), (client.Calls, outcome));
+        ClassifyOutcome outcome = await StageWith(events, logger).RunAsync(Input(client, limit: 2.50m), CancellationToken.None);
+
+        Assert.Equal(
+            (2, new ClassifyOutcome(8, StopReason.Budget), "classify.budget_paused"),
+            (client.Calls, outcome, logger.LatestRecord.Id.Name));
     }
 
     [Fact]
@@ -289,6 +339,23 @@ public sealed class ClassifyStageTests : IDisposable {
         ClassifyOutcome outcome = await stage.RunAsync(Input(client, limit: 3.50m), CancellationToken.None);
 
         Assert.Equal((4, new ClassifyOutcome(0, null)), (client.Calls, outcome));
+    }
+
+    [Fact]
+    public async Task ShouldReserveLongPromptCost_WhenStartingCall() {
+        UpsertAds(1);
+        for (int index = 2; index <= 5; index++) {
+            ads.Upsert(Pending(index, "Utvikler", "Org" + index.ToString(CultureInfo.InvariantCulture) + " AS") with {
+                Description = new string('x', longDescriptionChars),
+            });
+        }
+        FakeModelClient client = new((prompt, _) => Task.FromResult(FakeModelClient.Reply(
+            JavaReply, cost: prompt.User.Length > longDescriptionChars ? longCallUsd : 0.01m)));
+
+        await stage.RunAsync(Input(client, limit: longLimitUsd), CancellationToken.None);
+
+        decimal spent = (decimal)(double)db.Scalar("SELECT cost_usd FROM usage_days")!;
+        Assert.True(spent < longLimitUsd, $"spent {spent} USD of a {longLimitUsd} USD limit");
     }
 
     [Theory]
@@ -314,9 +381,30 @@ public sealed class ClassifyStageTests : IDisposable {
     }
 
     [Fact]
-    public async Task ShouldStopAsProviderDown_WhenThreeCallsFailInARow() {
+    public async Task ShouldResetPause_WhenCallSucceedsBetweenRefusals() {
         UpsertAds(2);
-        FakeModelClient client = new((_, _) => throw new ApiException(ApiErrorKind.Server, "model call failed"));
+        ConcurrentQueue<DateTimeOffset> started = new();
+        int[] refusedCalls = [1, 3];
+        FakeModelClient client = null!;
+        client = new FakeModelClient((_, _) => {
+            started.Enqueue(time.GetUtcNow());
+            return refusedCalls.Contains(client.Calls)
+                ? throw new ApiException(ApiErrorKind.RateLimit, "busy")
+                : Task.FromResult(FakeModelClient.Reply(JavaReply));
+        });
+
+        await ApiClock.RunAsync(time, stage.RunAsync(Input(client), CancellationToken.None));
+
+        DateTimeOffset[] times = [.. started];
+        Assert.True(times[3] - times[2] < busyPause, $"retry started {times[3] - times[2]} after the second refusal");
+    }
+
+    [Theory]
+    [InlineData("Server")]
+    [InlineData("Connection")]
+    public async Task ShouldStopAsProviderDown_WhenThreeCallsFailInARow(string kind) {
+        UpsertAds(2);
+        FakeModelClient client = new((_, _) => throw new ApiException(Enum.Parse<ApiErrorKind>(kind), "model call failed"));
 
         ClassifyOutcome outcome = await stage.RunAsync(Input(client), CancellationToken.None);
 
@@ -331,10 +419,13 @@ public sealed class ClassifyStageTests : IDisposable {
         client = new FakeModelClient((_, _) => failingCalls.Contains(client.Calls)
             ? throw new ApiException(ApiErrorKind.Server, "model call failed")
             : Task.FromResult(FakeModelClient.Reply(JavaReply)));
+        FakeLogger logger = new();
 
-        ClassifyOutcome outcome = await stage.RunAsync(Input(client), CancellationToken.None);
+        ClassifyOutcome outcome = await StageWith(events, logger).RunAsync(Input(client), CancellationToken.None);
 
-        Assert.Equal((new ClassifyOutcome(0, null), "junior,junior"), (outcome, Labels()));
+        Assert.Equal(
+            (new ClassifyOutcome(0, null), "junior,junior", "classify.call_retried"),
+            (outcome, Labels(), logger.LatestRecord.Id.Name));
     }
 
     [Fact]
@@ -381,6 +472,45 @@ public sealed class ClassifyStageTests : IDisposable {
     }
 
     [Fact]
+    public async Task ShouldRecordSpendOfRunningCalls_WhenStageThrows() {
+        UpsertAds(5);
+        string[] lateAds = ["finn:4", "finn:5"];
+        FakeModelClient client = new(async (prompt, token) => {
+            if (lateAds.Contains(FakeModelClient.AdId(prompt))) {
+                await Task.Delay(Timeout.InfiniteTimeSpan, token).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+                await Task.Delay(lateReplyDelay, TestContext.Current.CancellationToken);
+            }
+            return FakeModelClient.Reply(JavaReply);
+        });
+
+        Task<ClassifyOutcome> running = StageWith(new FailingRunEvents(2), NullLogger.Instance)
+            .RunAsync(Input(client), CancellationToken.None);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => running.WaitAsync(TestWaits.Step, TestContext.Current.CancellationToken));
+        Assert.Equal(5L, db.Scalar("SELECT calls FROM usage_days"));
+    }
+
+    [Fact]
+    public async Task ShouldRethrowStageFailure_WhenSpendCannotBeRecorded() {
+        UpsertAds(3);
+        FakeModelClient client = new(async (prompt, token) => {
+            if (FakeModelClient.AdId(prompt) == busyAd) {
+                await Task.Delay(Timeout.InfiniteTimeSpan, token).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+                db.Execute("DROP TABLE usage_days");
+            }
+            return FakeModelClient.Reply(JavaReply);
+        });
+        FakeLogger logger = new();
+
+        Task<ClassifyOutcome> running = StageWith(new FailingRunEvents(2), logger).RunAsync(Input(client), CancellationToken.None);
+
+        Exception? thrown = await Record.ExceptionAsync(() => running.WaitAsync(TestWaits.Step, TestContext.Current.CancellationToken));
+        Assert.Equal(
+            (typeof(InvalidOperationException), "classify.spend.failed"),
+            (thrown?.GetType(), logger.LatestRecord.Id.Name));
+    }
+
+    [Fact]
     public async Task ShouldReclassifyAd_WhenAssessmentIsOutdated() {
         UpsertOutdated();
         FakeModelClient client = FakeModelClient.Answering(JavaReply);
@@ -412,6 +542,19 @@ public sealed class ClassifyStageTests : IDisposable {
     }
 
     [Fact]
+    public async Task ShouldClassifyNewDuplicateFirst_WhenItsGroupWasAssessedBefore() {
+        UpsertOutdated();
+        ads.Upsert(Pending(2, "Tester", "Org Two AS"));
+        ads.SetClassification("finn:2", AdFixtures.Classification, AdFixtures.OutdatedVersion);
+        ads.Upsert(Pending(2, "Tester", "Org Two AS") with { Id = "nav:2", Source = "nav" });
+        FakeModelClient client = FakeModelClient.Answering(JavaReply);
+
+        await stage.RunAsync(Input(client), CancellationToken.None);
+
+        Assert.NotEqual("finn:1", FakeModelClient.AdId(client.Prompts[0]));
+    }
+
+    [Fact]
     public async Task ShouldLabelError_WhenOutdatedAdRunsOutOfAttempts() {
         UpsertOutdated();
         db.Execute("UPDATE ads SET label_attempts = 2");
@@ -433,6 +576,18 @@ public sealed class ClassifyStageTests : IDisposable {
         Assert.Equal(0, outcome.UnknownEvidenceDropped);
     }
 
+    [Fact]
+    public async Task ShouldCountNoDroppedAd_WhenReplyLacksDisplayTitle() {
+        UpsertAds(1);
+        JsonObject reply = JsonNode.Parse(JavaReply)!.AsObject();
+        reply["display_title"] = null;
+        FakeModelClient client = FakeModelClient.Answering(reply.ToJsonString());
+
+        ClassifyOutcome outcome = await stage.RunAsync(Input(client), CancellationToken.None);
+
+        Assert.Equal((0, 1L), (outcome.UnknownEvidenceDropped, (long?)db.Scalar("SELECT label_attempts FROM ads")));
+    }
+
     private static ClassifyInput Input(IModelClient? client, decimal? limit = null, PromptSetup? setup = null) {
         AppConfig config = RunFixtures.Config("profile.yaml");
         return new ClassifyInput(
@@ -448,6 +603,16 @@ public sealed class ClassifyStageTests : IDisposable {
     private void UpsertAds(int count) {
         for (int index = 1; index <= count; index++) {
             ads.Upsert(Pending(index, "Utvikler", "Org" + index.ToString(CultureInfo.InvariantCulture) + " AS"));
+        }
+    }
+
+    private async Task RunWithFirstAdRefused(ApiErrorKind kind) {
+        UpsertAds(2);
+        FakeModelClient client = new((prompt, _) => FakeModelClient.AdId(prompt) == "finn:1"
+            ? throw new ApiException(kind, "model call failed")
+            : Task.FromResult(FakeModelClient.Reply(JavaReply)));
+        for (int run = 0; run < refusedRuns; run++) {
+            await stage.RunAsync(Input(client), CancellationToken.None);
         }
     }
 

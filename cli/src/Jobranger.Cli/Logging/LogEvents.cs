@@ -109,6 +109,12 @@ internal static partial class LogEvents {
     public static partial void ClassifyProviderFailed(ILogger logger, string failure);
 
     [LoggerMessage(
+        EventName = "classify.spend.failed",
+        Level = LogLevel.Error,
+        Message = "could not record spend of a finished model call")]
+    public static partial void ClassifySpendFailed(ILogger logger, Exception error);
+
+    [LoggerMessage(
         EventName = "apply.check.done",
         Level = LogLevel.Information,
         Message = "checked apply links checked={Checked} expired={Expired} unknown={Unknown} skipped={Skipped} blocked={Blocked}")]

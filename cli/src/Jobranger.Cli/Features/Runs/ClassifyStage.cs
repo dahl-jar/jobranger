@@ -5,6 +5,7 @@ using Jobranger.Cli.Features.Matching;
 using Jobranger.Cli.Features.Providers;
 using Jobranger.Cli.Http;
 using Jobranger.Cli.Logging;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using AdsEntry = Jobranger.Cli.Features.Ads.Ads;
 using BudgetEntry = Jobranger.Cli.Features.Budget.Budget;
@@ -43,8 +44,7 @@ internal sealed class ClassifyStage(
         kind is ApiErrorKind.RateLimit or ApiErrorKind.Overloaded or ApiErrorKind.Server or ApiErrorKind.Connection;
 
     private static async Task<ModelReply> CallAsync(
-        RunModel model, AdView representative, ClassifyInput input, CancellationToken cancellationToken) {
-        PromptText text = MatchingEntry.BuildPrompt(representative, input.Prompt.System, input.Today, []);
+        RunModel model, PromptText text, CancellationToken cancellationToken) {
         return await model.Client.ClassifyAsync(new ClassifyPrompt(text.System, text.User), model.Schema, cancellationToken)
             .ConfigureAwait(false);
     }
@@ -81,9 +81,9 @@ internal sealed class ClassifyStage(
             }
         } catch {
             await stage.CancelAsync().ConfigureAwait(false);
-            throw;
-        } finally {
             await calls.WhenAllDone().ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            RecordFinished(calls, input.Today, model);
+            throw;
         }
         return progress.Outcome();
     }
@@ -94,13 +94,15 @@ internal sealed class ClassifyStage(
             if (runToken.IsCancellationRequested) {
                 return StopReason.Cancelled;
             }
-            decimal perAd = model.Prices is ModelPrices prices
-                ? budget.EstimateAdCost(prices, batch: false, input.Today)
+            PromptText text = MatchingEntry.BuildPrompt(calls.Next, input.Prompt.System, input.Today, []);
+            decimal callUsd = model.Prices is ModelPrices prices
+                ? budget.EstimateCallCost(
+                    prices, text.System.Length + text.User.Length, RequestBodies.MaxOutputTokens, input.Today)
                 : 0m;
-            if (!budget.Allowed(input.Config, model.Prices, input.Today, calls.Running * perAd)) {
+            if (!budget.Allowed(input.Config, model.Prices, input.Today, calls.ReservedUsd, callUsd)) {
                 return calls.Running > 0 ? null : PauseBudget();
             }
-            calls.Start(representative => CallAsync(model, representative, input, stageToken));
+            calls.Start(CallAsync(model, text, stageToken), callUsd);
         }
         return null;
     }
@@ -122,7 +124,7 @@ internal sealed class ClassifyStage(
         try {
             reply = await call.ConfigureAwait(false);
         } catch (ApiException error) {
-            progress.Stopped ??= Fail(calls, representative, error);
+            progress.Stopped ??= Fail(calls, representative, error, groups[representative.Id]);
             return;
         } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
             progress.Stopped ??= StopReason.Cancelled;
@@ -131,19 +133,23 @@ internal sealed class ClassifyStage(
         calls.Answered();
         progress.Done++;
         Record(input.Today, model, reply);
-        if (StoreReply(input, representative, reply, groups[representative.Id])) {
+        bool citedUnknownEvidence = StoreReply(input, representative, reply, groups[representative.Id]);
+        if (citedUnknownEvidence) {
             progress.Dropped++;
         }
         events.Emit(new RunEvent(RunStage.Model, Checked: progress.Done, Total: progress.Total));
     }
 
-    private StopReason? Fail(ModelCalls calls, AdView representative, ApiException error) {
+    private StopReason? Fail(ModelCalls calls, AdView representative, ApiException error, IReadOnlyList<Ad> group) {
         string failure = WireNames.Of(error.Kind);
         if (IsRetryable(error.Kind) && calls.TryRequeue(representative, error)) {
             LogEvents.ClassifyCallRetried(logger, failure);
             return null;
         }
         LogEvents.ClassifyProviderFailed(logger, failure);
+        if (error.Kind == ApiErrorKind.BadRequest) {
+            BumpAttempts(group);
+        }
         return error.Kind == ApiErrorKind.Auth ? StopReason.Auth : StopReason.ProviderDown;
     }
 
@@ -152,6 +158,16 @@ internal sealed class ClassifyStage(
         decimal cost = reply.ReportedCostUsd
             ?? (model.Prices is ModelPrices prices ? BudgetEntry.Cost(prices, tokens, batch: false) : 0m);
         budget.Record(new SpendRecord(today, tokens, cost));
+    }
+
+    private void RecordFinished(ModelCalls calls, DateOnly today, RunModel model) {
+        foreach (ModelReply reply in calls.Finished()) {
+            try {
+                Record(today, model, reply);
+            } catch (SqliteException error) {
+                LogEvents.ClassifySpendFailed(logger, error);
+            }
+        }
     }
 
     private bool StoreReply(ClassifyInput input, AdView representative, ModelReply reply, IReadOnlyList<Ad> group) {
@@ -169,10 +185,12 @@ internal sealed class ClassifyStage(
             StoreGroup(group, classification, input.Prompt.Version);
             return false;
         }
-        ads.BumpLabelAttempts([.. group.Select(ad => ad.Id)]);
+        BumpAttempts(group);
         return assessment is not null
             && MatchingEntry.CitesUnknownEvidence(assessment, input.Prompt.Evidence, input.Prompt.Version);
     }
+
+    private void BumpAttempts(IReadOnlyList<Ad> group) => ads.BumpLabelAttempts([.. group.Select(ad => ad.Id)]);
 
     private (IReadOnlyList<AdView> Representatives, Dictionary<string, IReadOnlyList<Ad>> Groups) ReuseOrPickRepresentatives(
         string version, IReadOnlyList<Ad> outdated) {
@@ -214,6 +232,6 @@ internal sealed class ClassifyStage(
 
         public StopReason? Stopped { get; set; }
 
-        public ClassifyOutcome Outcome() => new(Stopped is null ? 0 : Total - Done, Stopped, Dropped);
+        public ClassifyOutcome Outcome() => new(Total - Done, Stopped, Dropped);
     }
 }

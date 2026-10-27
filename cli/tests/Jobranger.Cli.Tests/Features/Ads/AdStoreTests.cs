@@ -51,10 +51,9 @@ public sealed class AdStoreTests : IDisposable {
 
         store.ResetUnassessed(CurrentVersion);
 
-        Assert.Equal(
-            (Primary.Id, "0|" + CurrentVersion),
-            (store.PendingClassification(maxAttempts).Single().Id,
-                (string?)db.Scalar("SELECT label_attempts || '|' || assessment_version FROM ads")));
+        Ad pending = store.PendingClassification(maxAttempts).Single();
+        string? stored = (string?)db.Scalar("SELECT label_attempts || '|' || assessment_version FROM ads");
+        Assert.Equal((Primary.Id, "0|" + CurrentVersion), (pending.Id, stored));
     }
 
     [Fact]
