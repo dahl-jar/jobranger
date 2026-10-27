@@ -91,13 +91,15 @@ internal sealed class Budget(SqliteConnection connection) {
         return Fits(limit, prices, MonthSpend(today), reservedUsd, callUsd);
     }
 
-    public bool ExceedsLimit(AppConfig config, ModelPrices? prices, DateOnly today, decimal callUsd) {
+    public static bool ExceedsLimit(AppConfig config, ModelPrices? prices, decimal typicalUsd, decimal callUsd) {
         RequireAmount(callName, callUsd);
         return config.Model.MonthlyLimitUsd is decimal limit
             && prices is not null
-            && Fits(limit, prices, 0m, 0m, EstimateAdCost(prices, false, today))
+            && Fits(limit, prices, 0m, 0m, typicalUsd)
             && !Fits(limit, prices, 0m, 0m, callUsd);
     }
+
+    public static long TypicalPromptChars(long systemChars) => systemChars + (adTokensMean * charsPerToken);
 
     public int? AffordableCount(AppConfig config, ModelPrices? prices, DateOnly today, decimal perAdUsd) {
         RequireAmount(perAdName, perAdUsd);

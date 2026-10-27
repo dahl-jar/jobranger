@@ -14,6 +14,8 @@ public sealed class BudgetTests : IDisposable {
     private const int windowAds = 12;
     private const long oneMtok = 1_000_000;
     private const long promptCharsPerMtok = 2_000_000;
+    private const long systemChars = 100;
+    private const long typicalPromptChars = 2_230;
 
     private static readonly DateOnly today = new(2026, 10, 15);
     private static readonly ModelPrices free = new(0m, 0m, 0m, 0m, 0m);
@@ -77,7 +79,8 @@ public sealed class BudgetTests : IDisposable {
 
     [Fact]
     public void ShouldFlagCallOverLimit_WhenCallAndCacheWriteReachLimit() {
-        bool exceeds = budget.ExceedsLimit(Config(AdUsd + CacheWriteUsd + oneMicroUsd), Prices, today, AdUsd + oneMicroUsd);
+        bool exceeds = BudgetEntry.ExceedsLimit(
+            Config(AdUsd + CacheWriteUsd + oneMicroUsd), Prices, AdUsd, AdUsd + oneMicroUsd);
 
         Assert.True(exceeds);
     }
@@ -85,14 +88,14 @@ public sealed class BudgetTests : IDisposable {
     [Theory]
     [MemberData(nameof(FittingLimits))]
     public void ShouldNotFlagCallOverLimit_WhenCallCanFitLimit(decimal? limit, bool priced) {
-        bool exceeds = budget.ExceedsLimit(Config(limit), priced ? Prices : null, today, AdUsd);
+        bool exceeds = BudgetEntry.ExceedsLimit(Config(limit), priced ? Prices : null, AdUsd, AdUsd);
 
         Assert.False(exceeds);
     }
 
     [Fact]
     public void ShouldNotFlagCallOverLimit_WhenTypicalAdCannotFitLimit() {
-        bool exceeds = budget.ExceedsLimit(Config(AdUsd + CacheWriteUsd), Prices, today, 1m);
+        bool exceeds = BudgetEntry.ExceedsLimit(Config(AdUsd + CacheWriteUsd), Prices, AdUsd, 1m);
 
         Assert.False(exceeds);
     }
@@ -258,6 +261,13 @@ public sealed class BudgetTests : IDisposable {
         decimal estimate = budget.EstimateCallCost(Prices, promptCharsPerMtok, oneMtok, today);
 
         Assert.Equal(Prices.Input + Prices.Output, estimate);
+    }
+
+    [Fact]
+    public void ShouldAddMeanAdLength_WhenSizingTypicalPrompt() {
+        long promptChars = BudgetEntry.TypicalPromptChars(systemChars);
+
+        Assert.Equal(typicalPromptChars, promptChars);
     }
 
     [Fact]

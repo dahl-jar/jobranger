@@ -32,6 +32,7 @@ public sealed class ClassifyStageTests : IDisposable {
     private const decimal longCallUsd = 0.12m;
     private const decimal longLimitUsd = 0.26m;
     private const decimal remainingLimitUsd = 0.14m;
+    private const decimal belowCallLimitUsd = 0.02m;
     private const int overLimitDescriptionChars = 800_000;
     private const int attemptRuns = 3;
     private const int refusedRuns = 4;
@@ -54,6 +55,8 @@ public sealed class ClassifyStageTests : IDisposable {
         ads = new AdsEntry(db.Connection, time);
         stage = StageWith(events, NullLogger.Instance);
     }
+
+    public static TheoryData<decimal> LimitsBelowAnyCall() => [0m, belowCallLimitUsd];
 
     public void Dispose() => db.Dispose();
 
@@ -380,13 +383,13 @@ public sealed class ClassifyStageTests : IDisposable {
     [Fact]
     public async Task ShouldKeepClassifying_WhenLongAdDoesNotFitRemainingBudget() {
         UpsertAds(3);
-        ads.Upsert(Pending(4, "Utvikler", "Org4 AS") with { Description = new string('x', overLimitDescriptionChars) });
+        ads.Upsert(Pending(4, "Utvikler", "Org4 AS") with { Description = new string('x', longDescriptionChars) });
         ads.Upsert(Pending(5, "Utvikler", "Org5 AS"));
         FakeModelClient client = FakeModelClient.Answering(JavaReply);
 
-        await stage.RunAsync(Input(client, limit: longLimitUsd), CancellationToken.None);
+        await stage.RunAsync(Input(client, limit: remainingLimitUsd), CancellationToken.None);
 
-        Assert.Equal(4, client.Calls);
+        Assert.Equal("junior|0,junior|0,junior|0,NULL|0,junior|0", Attempts());
     }
 
     [Fact]
@@ -404,16 +407,18 @@ public sealed class ClassifyStageTests : IDisposable {
             ((string?)db.Scalar("SELECT label FROM ads"), client.Calls, logger.LatestRecord.Id.Name));
     }
 
-    [Fact]
-    public async Task ShouldKeepAdsPending_WhenLimitIsZero() {
+    [Theory]
+    [MemberData(nameof(LimitsBelowAnyCall))]
+    public async Task ShouldKeepAdsPending_WhenNoCallFitsLimit(decimal limit) {
         UpsertAds(2);
         FakeModelClient client = FakeModelClient.Answering(JavaReply);
+        ClassifyOutcome outcome = new(0, null);
 
         for (int run = 0; run < attemptRuns; run++) {
-            await stage.RunAsync(Input(client, limit: 0m), CancellationToken.None);
+            outcome = await stage.RunAsync(Input(client, limit: limit), CancellationToken.None);
         }
 
-        Assert.Equal("NULL|0,NULL|0", string.Join(',', TestDatabase.Rows(db.Connection, attemptsQuery)));
+        Assert.Equal(("NULL|0,NULL|0", StopReason.Budget), (Attempts(), outcome.Stopped));
     }
 
     [Fact]
@@ -425,9 +430,7 @@ public sealed class ClassifyStageTests : IDisposable {
 
         ClassifyOutcome outcome = await stage.RunAsync(Input(client, limit: remainingLimitUsd), CancellationToken.None);
 
-        Assert.Equal(
-            ("junior|0,NULL|0,junior|0", StopReason.Budget),
-            (string.Join(',', TestDatabase.Rows(db.Connection, attemptsQuery)), outcome.Stopped));
+        Assert.Equal(("junior|0,NULL|0,junior|0", StopReason.Budget), (Attempts(), outcome.Stopped));
     }
 
     [Theory]
@@ -715,4 +718,6 @@ public sealed class ClassifyStageTests : IDisposable {
     }
 
     private string Labels() => string.Join(',', TestDatabase.Rows(db.Connection, labelsQuery));
+
+    private string Attempts() => string.Join(',', TestDatabase.Rows(db.Connection, attemptsQuery));
 }

@@ -95,16 +95,15 @@ internal sealed class ClassifyStage(
         Dictionary<string, IReadOnlyList<Ad>> groups,
         CancellationToken stageToken,
         CancellationToken runToken) {
+        long typicalChars = BudgetEntry.TypicalPromptChars(input.Prompt.System.Length);
+        decimal typicalUsd = EstimateCallCost(model, typicalChars, input.Today);
         while (calls.CanStart) {
             if (runToken.IsCancellationRequested) {
                 return StopReason.Cancelled;
             }
             PromptText text = MatchingEntry.BuildPrompt(calls.Next, input.Prompt.System, input.Today, []);
-            decimal callUsd = model.Prices is ModelPrices prices
-                ? budget.EstimateCallCost(
-                    prices, text.System.Length + text.User.Length, RequestBodies.MaxOutputTokens, input.Today)
-                : 0m;
-            if (budget.ExceedsLimit(input.Config, model.Prices, input.Today, callUsd)) {
+            decimal callUsd = EstimateCallCost(model, text.System.Length + text.User.Length, input.Today);
+            if (BudgetEntry.ExceedsLimit(input.Config, model.Prices, typicalUsd, callUsd)) {
                 DropOverLimit(calls, groups);
             } else if (budget.Allowed(input.Config, model.Prices, input.Today, calls.ReservedUsd, callUsd)) {
                 calls.Start(CallAsync(model, text, stageToken), callUsd);
@@ -116,6 +115,11 @@ internal sealed class ClassifyStage(
         }
         return calls.Running == 0 && !calls.HasWaiting && calls.HasSetAside ? PauseBudget() : null;
     }
+
+    private decimal EstimateCallCost(RunModel model, long promptChars, DateOnly today) =>
+        model.Prices is ModelPrices prices
+            ? budget.EstimateCallCost(prices, promptChars, RequestBodies.MaxOutputTokens, today)
+            : 0m;
 
     private void DropOverLimit(ModelCalls calls, Dictionary<string, IReadOnlyList<Ad>> groups) {
         string adId = calls.Next.Id;
