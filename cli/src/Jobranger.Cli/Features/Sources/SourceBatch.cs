@@ -20,4 +20,6 @@ internal sealed record SourceBatch {
     public IReadOnlyList<PageResult> Pages { get; init; } = [];
 
     public bool Partial { get; init; }
+
+    public IReadOnlyDictionary<string, string> JobTitles { get; init; } = new Dictionary<string, string>();
 }

@@ -4,4 +4,7 @@ internal enum RunStage {
     SourceStarted,
     SourceDone,
     SourceFailed,
+    Model,
+    ApplyChecks,
+    Report,
 }

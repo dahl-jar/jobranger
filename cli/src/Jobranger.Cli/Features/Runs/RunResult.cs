@@ -1,0 +1,39 @@
+using Jobranger.Cli.Features.Matching;
+
+namespace Jobranger.Cli.Features.Runs;
+
+internal sealed record RunResult {
+    public long? RunId { get; init; }
+
+    public required RunStatus Status { get; init; }
+
+    public required RunMode Mode { get; init; }
+
+    public int AdsRead { get; init; }
+
+    public int NewAds { get; init; }
+
+    public IReadOnlyList<string> FailedSources { get; init; } = [];
+
+    public IReadOnlyList<string> SourcesRead { get; init; } = [];
+
+    public IReadOnlyList<string> ReportedIds { get; init; } = [];
+
+    public IReadOnlyList<string> CarriedIds { get; init; } = [];
+
+    public IReadOnlyList<string> SilentIds { get; init; } = [];
+
+    public IReadOnlyDictionary<HiddenKind, int> HiddenCounts { get; init; } = new Dictionary<HiddenKind, int>();
+
+    public int Pending { get; init; }
+
+    public StopReason? ModelStopped { get; init; }
+
+    public string? Version { get; init; }
+
+    public int Matches => ReportedIds.Count;
+
+    public int Hidden => HiddenCounts.Values.Sum();
+
+    public static RunResult Locked(RunMode mode) => new() { Status = RunStatus.Locked, Mode = mode };
+}

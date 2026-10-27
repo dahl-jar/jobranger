@@ -23,6 +23,7 @@ Golden/Requests/openai-schema.json
 Golden/Requests/openai.json
 Golden/Requests/openrouter.json
 Golden/Rules/rules.json
+Golden/RunPass/rows.json
 Golden/Schemas/anthropic.json
 Golden/Schemas/openai.json
 Golden/Store/rows.json

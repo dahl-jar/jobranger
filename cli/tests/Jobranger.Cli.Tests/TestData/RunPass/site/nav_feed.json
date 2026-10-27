@@ -1,0 +1,17 @@
+{
+  "feed_url": "/api/v1/feed/page-1",
+  "items": [
+    {
+      "_feed_entry": {
+        "uuid": "00000000-0000-4000-8000-0000000000a1",
+        "status": "ACTIVE"
+      }
+    },
+    {
+      "_feed_entry": {
+        "uuid": "00000000-0000-4000-8000-0000000000a2",
+        "status": "ACTIVE"
+      }
+    }
+  ]
+}

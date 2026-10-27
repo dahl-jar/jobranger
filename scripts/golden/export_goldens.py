@@ -20,6 +20,8 @@ PROVIDER_PROMPT = TESTS / "TestData/Providers/prompt.json"
 PROVIDER_REQUESTS = GOLDEN / "Requests"
 BUDGET_ESTIMATES = GOLDEN / "Budget/estimates.json"
 MATCHING_INPUTS = TESTS / "TestData/Matching"
+RUN_PASS_INPUTS = TESTS / "TestData/RunPass"
+RUN_PASS_GOLDEN = GOLDEN / "RunPass/rows.json"
 SOURCE = GOLDEN / "SOURCE"
 DRIVERS = (
     ("store_rows.py", ("--db", STORE_DB, "--out", STORE_ROWS)),
@@ -27,6 +29,7 @@ DRIVERS = (
     ("provider_requests.py", ("--prompt", PROVIDER_PROMPT, "--out", PROVIDER_REQUESTS)),
     ("budget_estimates.py", ("--out", BUDGET_ESTIMATES)),
     ("matching.py", ("--inputs", MATCHING_INPUTS, "--out", GOLDEN)),
+    ("run_pass.py", ("--inputs", RUN_PASS_INPUTS, "--out", RUN_PASS_GOLDEN)),
 )
 
 log = logging.getLogger("export_goldens")

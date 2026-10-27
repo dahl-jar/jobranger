@@ -35,6 +35,7 @@ public sealed class ApplyLinksTests {
     private static readonly TimeSpan checkDeadline = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan dripGap = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan settle = TimeSpan.FromSeconds(5);
+    private static readonly DateTimeOffset lateUtcEvening = new(2026, 10, 26, 23, 30, 0, TimeSpan.Zero);
 
     [Fact]
     public async Task ShouldReturnBlocked_WhenApplyLinkRedirectsToDataUrl() {
@@ -252,7 +253,7 @@ public sealed class ApplyLinksTests {
             : Page(activePage));
         using HttpClient client = new(handler);
 
-        await ads.CheckApplyLinksAsync(client, Now, AllTargets, TestContext.Current.CancellationToken);
+        await ads.CheckApplyLinksAsync(client, Now, Today, AllTargets, TestContext.Current.CancellationToken);
 
         Assert.Equal(
             ["finn:1|blocked|2026-10-09T10:00:00+00:00", "finn:2|active|2026-10-09T10:00:00+00:00"],
@@ -270,7 +271,7 @@ public sealed class ApplyLinksTests {
             : Page(activePage));
         using HttpClient client = new(handler);
 
-        await ads.CheckApplyLinksAsync(client, Now, AllTargets, TestContext.Current.CancellationToken);
+        await ads.CheckApplyLinksAsync(client, Now, Today, AllTargets, TestContext.Current.CancellationToken);
 
         Assert.Equal(
             ["finn:1|unknown|2026-10-09T10:00:00+00:00", "finn:2|active|2026-10-09T10:00:00+00:00"],
@@ -288,7 +289,7 @@ public sealed class ApplyLinksTests {
         await cancel.CancelAsync();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => ads.CheckApplyLinksAsync(client, Now, AllTargets, cancel.Token));
+            () => ads.CheckApplyLinksAsync(client, Now, Today, AllTargets, cancel.Token));
     }
 
     [Fact]
@@ -303,7 +304,7 @@ public sealed class ApplyLinksTests {
         FakeSourceHandler handler = new(_ => Page(activePage));
         using HttpClient client = new(handler);
 
-        await ads.CheckApplyLinksAsync(client, Now, AllTargets, TestContext.Current.CancellationToken);
+        await ads.CheckApplyLinksAsync(client, Now, Today, AllTargets, TestContext.Current.CancellationToken);
 
         Assert.Equal([new Uri(otherApplyUrl)], handler.Urls);
     }
@@ -318,9 +319,25 @@ public sealed class ApplyLinksTests {
         FakeSourceHandler handler = new(_ => Page(activePage));
         using HttpClient client = new(handler);
 
-        await ads.CheckApplyLinksAsync(client, Now, AllTargets, TestContext.Current.CancellationToken);
+        await ads.CheckApplyLinksAsync(client, Now, Today, AllTargets, TestContext.Current.CancellationToken);
 
         Assert.Equal(applyCheckLimit, handler.Urls.Count);
+    }
+
+    [Fact]
+    public async Task ShouldSkipApplyCheck_WhenDeadlinePassedInLocalDay() {
+        using TestDatabase db = new();
+        AdsEntry ads = new(db.Connection, Clock());
+        ads.Upsert(Numbered(1) with { ApplyUrl = applyUrl, Deadline = "2026-10-26" });
+        FakeSourceHandler handler = new(_ => Page(activePage));
+        using HttpClient client = new(handler);
+
+        await ads.CheckApplyLinksAsync(
+            client, lateUtcEvening, new DateOnly(2026, 10, 27), AllTargets, TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            (0, "finn:1|NULL|NULL"),
+            (handler.Urls.Count, string.Join(',', TestDatabase.Rows(db.Connection, statusQuery))));
     }
 
     private static async Task<ApplyStatus> CheckAsync(HttpMessageHandler handler, string url) {

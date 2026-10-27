@@ -72,7 +72,7 @@ internal sealed class FetchStage(TimeProvider time, IRunEvents events, TimeSpan 
     private FetchTally Record(FetchTally tally, SourceOutcome outcome, IBatchWriter writer) {
         int found = 0;
         if (outcome.Batch is SourceBatch batch) {
-            found = writer.Write(batch);
+            found = writer.Write(outcome.Error is null ? batch : batch with { Partial = true });
             tally = tally with { AdsRead = tally.AdsRead + batch.Read, NewAds = tally.NewAds + found };
         }
         if (outcome.Error is not null) {

@@ -1,0 +1,74 @@
+[
+  {
+    "url": "https://pam-stilling-feed.nav.no/api/publicToken",
+    "status": 200,
+    "type": "text/plain",
+    "file": "site/nav_token.txt"
+  },
+  {
+    "url": "https://pam-stilling-feed.nav.no/api/v1/feed",
+    "status": 200,
+    "type": "application/json",
+    "file": "site/nav_feed.json"
+  },
+  {
+    "url": "https://pam-stilling-feed.nav.no/api/v1/feedentry/00000000-0000-4000-8000-0000000000a1",
+    "status": 200,
+    "type": "application/json",
+    "file": "site/nav_entry_1.json"
+  },
+  {
+    "url": "https://pam-stilling-feed.nav.no/api/v1/feedentry/00000000-0000-4000-8000-0000000000a2",
+    "status": 200,
+    "type": "application/json",
+    "file": "site/nav_entry_2.json"
+  },
+  {
+    "url": "https://www.finn.no/job/search?sort=PUBLISHED_DESC&page=1",
+    "status": 200,
+    "type": "text/html",
+    "file": "site/finn_recent.html"
+  },
+  {
+    "url": "https://www.finn.no/job/search?occupation=0.23&page=1",
+    "status": 200,
+    "type": "text/html",
+    "file": "site/finn_category.html"
+  },
+  {
+    "url": "https://www.finn.no/job/ad/400000001",
+    "status": 200,
+    "type": "text/html",
+    "file": "site/finn_ad_1.html"
+  },
+  {
+    "url": "https://www.finn.no/job/ad/400000002",
+    "status": 200,
+    "type": "text/html",
+    "file": "site/finn_ad_2.html"
+  },
+  {
+    "url": "https://careers.example.test/jobs.rss",
+    "status": 200,
+    "type": "application/rss+xml",
+    "file": "site/teamtailor_jobs.xml"
+  },
+  {
+    "url": "https://apply.example.test/nav/1",
+    "status": 200,
+    "type": "text/html",
+    "file": "site/apply.html"
+  },
+  {
+    "url": "https://apply.example.test/nav/2",
+    "status": 200,
+    "type": "text/html",
+    "file": "site/apply.html"
+  },
+  {
+    "url": "https://apply.example.test/finn/1",
+    "status": 200,
+    "type": "text/html",
+    "file": "site/apply.html"
+  }
+]
