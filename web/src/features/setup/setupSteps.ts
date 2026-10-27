@@ -1,19 +1,11 @@
 import type { TerminalLine } from '@/features/setup/Terminal'
-import {
-  DEMO_DRY_RUN_LINE,
-  DEMO_FJELLNETT,
-  DEMO_HAVBRIS,
-  DEMO_HIDDEN_LINE,
-  DEMO_KYSTLINJE,
-  DEMO_NORMAL_DAY_LINE,
-  DEMO_PAIR_CODE,
-  DEMO_RUN_LINE,
-  type DemoAd,
-} from '@/shared/demo/demoData'
-import { FIT_LABELS } from '@/shared/ui/fit'
+import { demoAds, DEMO_PAIR_CODE, type DemoAd } from '@/shared/demo/demoData'
+import { en, type Messages } from '@/shared/i18n/en'
+
+export type SetupStepId = 'install' | 'model' | 'cv' | 'limits' | 'delivery' | 'dryRun' | 'pair' | 'schedule'
 
 export interface SetupStep {
-  id: 'install' | 'model' | 'cv' | 'limits' | 'delivery' | 'dryRun' | 'pair' | 'schedule'
+  id: SetupStepId
   title: string
   command: string
   body: string
@@ -21,173 +13,175 @@ export interface SetupStep {
 }
 
 const FIT_WIDTH = 13
+const FIT_GAP = 2
 const TITLE_WIDTH = 20
 const COMPANY_WIDTH = 17
 const PLACE_WIDTH = 11
+const VERSION = '0.4.1'
+const INSTALL_COMMAND = 'pip install jobranger'
+const INIT_COMMAND = 'jobranger init'
+const PAIR_COMMAND = 'jobranger pair'
+const SERVICE_COMMAND = 'jobranger service install'
 
-function dryRunLine(ad: DemoAd): TerminalLine {
-  const text = `  ${FIT_LABELS[ad.fit].padEnd(FIT_WIDTH)}${ad.title.padEnd(TITLE_WIDTH)}${ad.company.padEnd(COMPANY_WIDTH)}${ad.place.padEnd(PLACE_WIDTH)}${ad.due}`
-  return [ad.fit === 'strong' ? 'ok' : 'part', text]
+function fitWidth(text: Messages): number {
+  const { strong, partial } = text.ui.fit
+  return Math.max(FIT_WIDTH, strong.length + FIT_GAP, partial.length + FIT_GAP)
 }
 
-export function setupSteps(pairUrl: string): readonly [SetupStep, ...SetupStep[]] {
+function dryRunLine(ad: DemoAd, text: Messages): TerminalLine {
+  const fit = text.ui.fit[ad.fit].padEnd(fitWidth(text))
+  const line = `  ${fit}${ad.title.padEnd(TITLE_WIDTH)}${ad.company.padEnd(COMPANY_WIDTH)}${ad.place.padEnd(PLACE_WIDTH)}${ad.due}`
+  return [ad.fit === 'strong' ? 'ok' : 'part', line]
+}
+
+function stepText(text: Messages, id: SetupStepId): Pick<SetupStep, 'id' | 'title' | 'body'> {
+  return { id, ...text.setup.steps[id] }
+}
+
+export function setupSteps(pairUrl: string, text: Messages = en): readonly [SetupStep, ...SetupStep[]] {
+  const lines = text.setup.terminal
+  const demo = demoAds(text)
   return [
     {
-      id: 'install',
-      title: 'Install',
-      command: 'pip install jobranger',
-      body: 'pip, uv or pipx.',
+      ...stepText(text, 'install'),
+      command: INSTALL_COMMAND,
       lines: [
-        ['cmd', 'pip install jobranger'],
+        ['cmd', INSTALL_COMMAND],
         ['dim', 'Collecting jobranger'],
         ['dim', 'Installing collected packages: jobranger'],
-        ['ok', '✓ Successfully installed jobranger-0.4.1'],
+        ['ok', `✓ Successfully installed jobranger-${VERSION}`],
         ['blank', ''],
         ['cmd', 'jobranger --version'],
-        ['out', 'jobranger 0.4.1'],
+        ['out', `jobranger ${VERSION}`],
       ],
     },
     {
-      id: 'model',
-      title: 'Model and key',
-      command: 'jobranger init',
-      body: 'Your provider bills you for use. The key stays on this machine.',
+      ...stepText(text, 'model'),
+      command: INIT_COMMAND,
       lines: [
-        ['cmd', 'jobranger init'],
+        ['cmd', INIT_COMMAND],
         ['blank', ''],
-        ['head', 'jobranger setup · 1 of 5 · model'],
+        ['head', lines.model.head],
         ['blank', ''],
-        ['q', 'Which AI provider should read the ads?'],
+        ['q', lines.model.provider],
         ['sel', '  › Anthropic'],
         ['dim', '    (OpenAI, OpenRouter, Ollama)'],
         ['blank', ''],
-        ['q', 'API key   ••••••••••••••••3f9a'],
-        ['ok', '✓ Key works. Stored in ~/.config/jobranger on this machine only.'],
+        ['q', lines.model.key],
+        ['ok', lines.model.keyWorks],
       ],
     },
     {
-      id: 'cv',
-      title: 'Your CV and roles',
-      command: 'jobranger init',
-      body: 'jobranger reads your CV once. Fix anything wrong, then pick roles.',
+      ...stepText(text, 'cv'),
+      command: INIT_COMMAND,
       lines: [
-        ['head', 'jobranger setup · 2 of 5 · you'],
+        ['head', lines.cv.head],
         ['blank', ''],
-        ['q', 'Path to your CV   ~/Documents/CV.pdf'],
-        ['dim', '  Reading your CV...'],
-        ['out', '  Experience   2 years, backend developer'],
-        ['out', '  Education    Bachelor in computer science'],
-        ['out', '  Languages    Norwegian, English'],
-        ['out', '  Stack        Python, SQL, C#, .NET, React, Docker'],
-        ['q', 'Is this right? (Y/n)   y'],
+        ['q', lines.cv.path],
+        ['dim', lines.cv.reading],
+        ['out', lines.cv.experience],
+        ['out', lines.cv.education],
+        ['out', lines.cv.languages],
+        ['out', lines.cv.stack],
+        ['q', lines.cv.confirm],
         ['blank', ''],
-        ['q', 'Which roles? (space to pick, enter to go on)'],
-        ['sel', '  [x] Backend               [ ] Frontend'],
-        ['sel', '  [x] Fullstack             [ ] Mobile'],
-        ['sel', '  [x] Data engineering      [x] DevOps and platform'],
-        ['out', '  [ ] ML and AI'],
-        ['dim', '  Suggested from your CV: Backend, Fullstack, Data engineering'],
+        ['q', lines.cv.roles],
+        ['sel', lines.cv.rolesFirst],
+        ['sel', lines.cv.rolesSecond],
+        ['sel', lines.cv.rolesThird],
+        ['out', lines.cv.rolesFourth],
+        ['dim', lines.cv.suggested],
       ],
     },
     {
-      id: 'limits',
-      title: 'Limits and sources',
-      command: 'jobranger init',
-      body: 'Limits decide what gets hidden. FINN and LinkedIn are off unless you turn them on.',
+      ...stepText(text, 'limits'),
+      command: INIT_COMMAND,
       lines: [
-        ['head', 'jobranger setup · 3 of 5 · limits and sources'],
+        ['head', lines.limits.head],
         ['blank', ''],
-        ['q', 'Level   Junior, Mid-level, No level stated'],
-        ['q', 'Experience the ad asks for   0–1 years, 1–3 years'],
-        ['q', "Hide ads that require a master's?   yes"],
-        ['q', 'Places (empty = anywhere)   '],
-        ['dim', '  Anywhere in Norway, open to moving'],
+        ['q', lines.limits.level],
+        ['q', lines.limits.years],
+        ['q', lines.limits.masters],
+        ['q', lines.limits.places],
+        ['dim', lines.limits.anywhere],
         ['blank', ''],
-        ['out', 'Sources'],
-        ['ok', '  ✓ NAV              public job feed'],
-        ['ok', '  ✓ Employer feeds   Teamtailor and Ashby career pages'],
-        ['part', '  – FINN             off'],
-        ['part', '  – LinkedIn         off'],
-        ['dim', '    FINN and LinkedIn do not allow automated collection in their terms.'],
-        ['dim', '    Turn it on only for your own, personal use.'],
-        ['q', 'Turn on FINN or LinkedIn for personal use? (y/N)   n'],
+        ['out', lines.limits.sources],
+        ['ok', lines.limits.nav],
+        ['ok', lines.limits.employers],
+        ['part', lines.limits.finn],
+        ['part', lines.limits.linkedin],
+        ['dim', lines.limits.terms],
+        ['dim', lines.limits.personal],
+        ['q', lines.limits.optIn],
       ],
     },
     {
-      id: 'delivery',
-      title: 'Delivery',
-      command: 'jobranger init',
-      body: 'Website, email or both, and when to run.',
+      ...stepText(text, 'delivery'),
+      command: INIT_COMMAND,
       lines: [
-        ['head', 'jobranger setup · 4 of 5 · delivery'],
+        ['head', lines.delivery.head],
         ['blank', ''],
-        ['q', 'How do you want your matches?'],
-        ['sel', '  [x] Website   see and change everything in your browser'],
-        ['sel', '  [x] Email     a short list every morning'],
+        ['q', lines.delivery.how],
+        ['sel', lines.delivery.website],
+        ['sel', lines.delivery.email],
         ['blank', ''],
-        ['q', 'Email address   you@example.com'],
-        ['q', 'Send through   your mail account (SMTP)'],
-        ['ok', '✓ Test email sent to you@example.com'],
+        ['q', lines.delivery.address],
+        ['q', lines.delivery.sendThrough],
+        ['ok', lines.delivery.testSent],
         ['blank', ''],
-        ['q', 'Run times (24h, comma separated)   03:00, 15:00'],
+        ['q', lines.delivery.runTimes],
       ],
     },
     {
-      id: 'dryRun',
-      title: 'Dry run',
-      command: 'jobranger init',
-      body: 'Checks the last 7 days: real matches and expected model use.',
+      ...stepText(text, 'dryRun'),
+      command: INIT_COMMAND,
       lines: [
-        ['head', 'jobranger setup · 5 of 5 · dry run on the last 7 days'],
+        ['head', lines.dryRun.head],
         ['blank', ''],
-        ['out', '  NAV              1 204 ads    38 software'],
-        ['out', '  Teamtailor          86 ads     9 software'],
-        ['out', '  Ashby               41 ads     4 software'],
-        ['dim', `  ${DEMO_DRY_RUN_LINE}`],
+        ['out', lines.dryRun.nav],
+        ['out', lines.dryRun.teamtailor],
+        ['out', lines.dryRun.ashby],
+        ['dim', `  ${text.demo.dryRunLine}`],
         ['blank', ''],
-        dryRunLine(DEMO_HAVBRIS),
-        dryRunLine(DEMO_FJELLNETT),
-        dryRunLine(DEMO_KYSTLINJE),
-        ['out', '  ... 3 more'],
-        ['dim', `  ${DEMO_HIDDEN_LINE}`],
+        dryRunLine(demo.havbris, text),
+        dryRunLine(demo.fjellnett, text),
+        dryRunLine(demo.kystlinje, text),
+        ['out', lines.dryRun.more],
+        ['dim', `  ${text.demo.hiddenLine}`],
         ['blank', ''],
-        ['q', 'Any of these wrong? (enter to skip)'],
-        ['dim', `  ${DEMO_NORMAL_DAY_LINE}`],
-        ['ok', '✓ Saved ~/.config/jobranger/config.yaml'],
+        ['q', lines.dryRun.wrong],
+        ['dim', `  ${text.demo.normalDayLine}`],
+        ['ok', lines.dryRun.saved],
       ],
     },
     {
-      id: 'pair',
-      title: 'Pair the website',
-      command: 'jobranger pair',
-      body: 'One-time code, no account. Skip for email only.',
+      ...stepText(text, 'pair'),
+      command: PAIR_COMMAND,
       lines: [
-        ['cmd', 'jobranger pair'],
+        ['cmd', PAIR_COMMAND],
         ['blank', ''],
-        ['out', 'Open this page in your browser:'],
+        ['out', lines.pair.open],
         ['head', `  ${pairUrl}`],
         ['blank', ''],
-        ['out', 'and enter this code:'],
+        ['out', lines.pair.enter],
         ['big', `  ${DEMO_PAIR_CODE}`],
         ['blank', ''],
-        ['dim', 'The code expires in 10 minutes. Waiting for the website...'],
-        ['ok', '✓ Paired with Firefox on macOS.'],
+        ['dim', lines.pair.expires],
+        ['ok', lines.pair.paired],
       ],
     },
     {
-      id: 'schedule',
-      title: 'Run every night',
-      command: 'jobranger service install',
-      body: 'Runs at your times. Run by hand with jobranger run.',
+      ...stepText(text, 'schedule'),
+      command: SERVICE_COMMAND,
       lines: [
-        ['cmd', 'jobranger service install'],
-        ['ok', '✓ Scheduled at 03:00 and 15:00 every day.'],
-        ['dim', '  Next run in 6 h 12 min. See logs with: jobranger logs'],
+        ['cmd', SERVICE_COMMAND],
+        ['ok', lines.schedule.scheduled],
+        ['dim', lines.schedule.next],
         ['blank', ''],
         ['cmd', 'jobranger run'],
-        ['dim', 'Reading NAV, Teamtailor, Ashby...'],
-        ['out', DEMO_RUN_LINE],
-        ['ok', '✓ Sent to the website and to you@example.com'],
+        ['dim', lines.schedule.reading],
+        ['out', text.demo.runLine],
+        ['ok', lines.schedule.sent],
       ],
     },
   ]

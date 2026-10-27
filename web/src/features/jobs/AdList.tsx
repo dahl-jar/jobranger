@@ -3,6 +3,7 @@ import { AdRow } from '@/features/jobs/AdRow'
 import styles from '@/features/jobs/JobsView.module.css'
 import type { JobList } from '@/features/jobs/selectors'
 import type { ActiveAd, RoleOption } from '@/features/relay/contract/payload.gen'
+import { useText } from '@/shared/i18n/languageContext'
 
 interface AdListProps extends AdCallbacks {
   ads: readonly ActiveAd[]
@@ -14,8 +15,9 @@ interface AdListProps extends AdCallbacks {
 }
 
 export function AdList({ ads, today, roles, from, disabled, errors, onMark, onUnmark }: AdListProps) {
+  const empty = useText().jobs.empty
   if (ads.length === 0) {
-    return <p className={styles.empty}>No matches here for the roles you picked.</p>
+    return <p className={styles.empty}>{empty}</p>
   }
   return ads.map((ad) => (
     <AdRow

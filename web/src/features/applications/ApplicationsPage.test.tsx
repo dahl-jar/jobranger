@@ -3,12 +3,11 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { ApplicationsPage } from '@/features/applications/ApplicationsPage'
-import { applicationsSnapshot, foundApplication, handApplication, pinTimeZone } from '@/features/applications/testData'
+import { applicationsSnapshot, foundApplication, handApplication, pinTimeZone, TODAY } from '@/features/applications/testData'
 import type { RemoveWithUndo } from '@/features/applications/useRemoveWithUndo'
 import type { Application, ApplicationsSnapshot } from '@/features/relay/contract/payload.gen'
 import { renderRoutes } from '@/test/render'
 
-const TODAY = '2026-10-12'
 const bothListed: ApplicationsSnapshot = { ...applicationsSnapshot, applications: [foundApplication, handApplication] }
 
 type PageRemoval = Pick<RemoveWithUndo, 'pending' | 'undo'>
@@ -43,6 +42,11 @@ function renderPage(path: string, options: PageOptions = {}) {
     path,
   )
   return { ...view, removal, onCreate }
+}
+
+async function fillCompany(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'Add by hand' }))
+  await user.type(screen.getByLabelText('Company'), 'Org Three AS')
 }
 
 const companies = () =>
@@ -160,8 +164,7 @@ describe('ApplicationsPage', () => {
   it('should list every status after adding', async () => {
     const user = userEvent.setup()
     const { router, onCreate } = renderPage('/app/applications?status=interview')
-    await user.click(screen.getByRole('button', { name: 'Add by hand' }))
-    await user.type(screen.getByLabelText('Company'), 'Org Three AS')
+    await fillCompany(user)
 
     await user.click(screen.getByRole('button', { name: 'Add' }))
 
@@ -172,8 +175,7 @@ describe('ApplicationsPage', () => {
   it('should keep the status filter when the machine refuses the application', async () => {
     const user = userEvent.setup()
     const { router } = renderPage('/app/applications?status=interview', { onCreate: () => Promise.reject(new Error('no answer from your machine')) })
-    await user.click(screen.getByRole('button', { name: 'Add by hand' }))
-    await user.type(screen.getByLabelText('Company'), 'Org Three AS')
+    await fillCompany(user)
 
     await user.click(screen.getByRole('button', { name: 'Add' }))
 

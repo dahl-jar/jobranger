@@ -1,6 +1,7 @@
 import { useId, useState } from 'react'
 import { focusOnMount } from '@/features/settings/focusOnMount'
 import styles from '@/features/settings/Settings.module.css'
+import { useText } from '@/shared/i18n/languageContext'
 import { Button } from '@/shared/ui/Button'
 
 interface InlineConfirmProps {
@@ -13,6 +14,7 @@ interface InlineConfirmProps {
 
 export function InlineConfirm({ question, confirmLabel, isDanger = false, onConfirm, onCancel }: InlineConfirmProps) {
   const questionId = useId()
+  const cancel = useText().common.cancel
   const [isConfirmed, setConfirmed] = useState(false)
 
   function confirm() {
@@ -35,7 +37,7 @@ export function InlineConfirm({ question, confirmLabel, isDanger = false, onConf
         {confirmLabel}
       </Button>
       <button type="button" className={styles.textButton} onClick={() => onCancel()}>
-        Cancel
+        {cancel}
       </button>
     </div>
   )

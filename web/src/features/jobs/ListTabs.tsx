@@ -1,8 +1,8 @@
 import { NavLink } from 'react-router'
 import styles from '@/features/jobs/JobsView.module.css'
-import { LIST_LABELS } from '@/features/jobs/labels'
 import { listPath } from '@/features/jobs/paths'
 import type { JobList } from '@/features/jobs/selectors'
+import { useText } from '@/shared/i18n/languageContext'
 
 const JOB_LISTS: readonly JobList[] = ['today', 'active', 'hidden', 'closed', 'all']
 const APPLICATIONS_PATH = '/app/applications'
@@ -29,13 +29,15 @@ interface ListTabsProps {
 }
 
 export function ListTabs({ counts, applications }: ListTabsProps) {
+  const words = useText().jobs
+
   return (
-    <nav aria-label="Lists" className={styles.tabs}>
+    <nav aria-label={words.listsLabel} className={styles.tabs}>
       {JOB_LISTS.map((list) => (
-        <ListLink key={list} to={listPath(list)} label={LIST_LABELS[list]} count={counts[list]} />
+        <ListLink key={list} to={listPath(list)} label={words.lists[list]} count={counts[list]} />
       ))}
       <span aria-hidden="true" className={styles.divider} />
-      <ListLink to={APPLICATIONS_PATH} label="Applications" count={applications} />
+      <ListLink to={APPLICATIONS_PATH} label={words.applications} count={applications} />
     </nav>
   )
 }

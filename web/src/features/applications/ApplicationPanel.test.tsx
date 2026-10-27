@@ -7,13 +7,12 @@ import { ApplicationPanel } from '@/features/applications/ApplicationPanel'
 import { ApplicationsPage } from '@/features/applications/ApplicationsPage'
 import { NOTE_MAX_CHARS } from '@/features/applications/limits'
 import { ApplicationsTable } from '@/features/applications/ApplicationsTable'
-import { foundApplication, handApplication, pinTimeZone } from '@/features/applications/testData'
+import { foundApplication, handApplication, pinTimeZone, TODAY } from '@/features/applications/testData'
 import { payloadFixtures } from '@/features/relay/contract/fixtures.gen'
 import { type RemoveWithUndo, useRemoveWithUndo } from '@/features/applications/useRemoveWithUndo'
 import type { Application } from '@/features/relay/contract/payload.gen'
 import { renderRoutes } from '@/test/render'
 
-const TODAY = '2026-10-12'
 const SEARCH = '?sort=company.asc'
 const roles = payloadFixtures['config.snapshot'].roles
 

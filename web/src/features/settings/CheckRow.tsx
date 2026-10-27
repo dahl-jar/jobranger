@@ -9,11 +9,12 @@ interface CheckRowProps {
   type?: 'checkbox' | 'radio'
   name?: string
   id?: string
+  lang?: string
   onChange: (checked: boolean) => void
   ref?: Ref<HTMLInputElement>
 }
 
-export function CheckRow({ label, hint, checked, disabled = false, type = 'checkbox', name, id, onChange, ref }: CheckRowProps) {
+export function CheckRow({ label, hint, checked, disabled = false, type = 'checkbox', name, id, lang, onChange, ref }: CheckRowProps) {
   const generatedId = useId()
   const inputId = id ?? generatedId
   const hintId = `${inputId}-hint`
@@ -30,7 +31,7 @@ export function CheckRow({ label, hint, checked, disabled = false, type = 'check
         aria-describedby={hint === undefined ? undefined : hintId}
         onChange={(event) => onChange(event.target.checked)}
       />
-      <label htmlFor={inputId} className={styles.optionLabel}>
+      <label htmlFor={inputId} lang={lang} className={styles.optionLabel}>
         {label}
       </label>
       {hint !== undefined && (

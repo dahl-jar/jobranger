@@ -4,6 +4,7 @@ import { payloadSchema } from '@/features/relay/contract/schemas.gen'
 import { SettingsFieldset } from '@/features/settings/SettingsFieldset'
 import styles from '@/features/settings/Settings.module.css'
 import { useDraft } from '@/features/settings/useDraft'
+import { useText } from '@/shared/i18n/languageContext'
 
 const MAX_PRICE = payloadSchema.$defs.Money.maximum
 
@@ -18,6 +19,7 @@ export function PriceFields({ price, onChange }: { price: Price; onChange: (pric
   const [input, setInput] = useDraft(String(price.input_per_mtok))
   const [output, setOutput] = useDraft(String(price.output_per_mtok))
   const [isInvalid, setInvalid] = useState(false)
+  const words = useText().settings.price
 
   function commit() {
     const inputPrice = parsePrice(input)
@@ -32,22 +34,22 @@ export function PriceFields({ price, onChange }: { price: Price; onChange: (pric
   }
 
   const fields = [
-    { label: 'Input', value: input, setValue: setInput },
-    { label: 'Output', value: output, setValue: setOutput },
+    { key: 'input', label: words.input, value: input, setValue: setInput },
+    { key: 'output', label: words.output, value: output, setValue: setOutput },
   ]
 
   return (
-    <SettingsFieldset legend="Price">
+    <SettingsFieldset legend={words.legend}>
       <div className={styles.stack}>
-        <span>USD per 1M tokens</span>
+        <span>{words.unit}</span>
         <div className={styles.actions}>
           {fields.map((field) => (
-            <div key={field.label} className={styles.field}>
-              <label htmlFor={`${idPrefix}-${field.label}`}>{field.label}</label>
+            <div key={field.key} className={styles.field}>
+              <label htmlFor={`${idPrefix}-${field.key}`}>{field.label}</label>
               <span className={styles.money}>
                 $
                 <input
-                  id={`${idPrefix}-${field.label}`}
+                  id={`${idPrefix}-${field.key}`}
                   type="number"
                   min="0"
                   step="0.01"
@@ -63,10 +65,10 @@ export function PriceFields({ price, onChange }: { price: Price; onChange: (pric
       </div>
       {isInvalid && (
         <p role="alert" className={styles.error}>
-          Enter a price from 0 to {MAX_PRICE}.
+          {words.invalid(MAX_PRICE)}
         </p>
       )}
-      <p className={styles.note}>Estimates. Your provider&apos;s bill is the real cost.</p>
+      <p className={styles.note}>{words.note}</p>
     </SettingsFieldset>
   )
 }

@@ -2,14 +2,17 @@ import { fileURLToPath } from 'node:url'
 import react from '@vitejs/plugin-react'
 import { configDefaults, defineConfig } from 'vitest/config'
 import { findContracts } from './build/findContracts.ts'
-import { themeInitPlugin } from './build/themeInitPlugin.ts'
+import { initScriptPlugin } from './build/initScriptPlugin.ts'
 
 const THEME_INIT_ENTRY = fileURLToPath(new URL('./src/app/theme/themeInit.ts', import.meta.url))
+const LANGUAGE_INIT_ENTRY = fileURLToPath(new URL('./src/shared/i18n/languageInit.ts', import.meta.url))
+const THEME_INIT_FILE = 'theme-init.js'
+const LANGUAGE_INIT_FILE = 'language-init.js'
 const CONTRACTS = findContracts(fileURLToPath(new URL('.', import.meta.url)))
 const RELAY_TESTS = 'src/features/relay/**/*.test.ts'
 
 export default defineConfig({
-  plugins: [react(), themeInitPlugin(THEME_INIT_ENTRY)],
+  plugins: [react(), initScriptPlugin(THEME_INIT_ENTRY, THEME_INIT_FILE), initScriptPlugin(LANGUAGE_INIT_ENTRY, LANGUAGE_INIT_FILE)],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

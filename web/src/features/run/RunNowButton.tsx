@@ -1,5 +1,6 @@
 import styles from '@/features/run/run.module.css'
 import { Button } from '@/shared/ui/Button'
+import { useText } from '@/shared/i18n/languageContext'
 import { Icon } from '@/shared/ui/Icon'
 
 interface RunNowButtonProps {
@@ -12,10 +13,12 @@ interface RunNowButtonProps {
 const PLAY_ICON_SIZE = 12
 
 export function RunNowButton({ running, editsDisabled, pending = false, onRun }: RunNowButtonProps) {
+  const words = useText().run
+
   return (
     <Button variant="quiet" size={36} className={styles.small} disabled={running || editsDisabled || pending} onClick={onRun}>
       <Icon name="play" size={PLAY_ICON_SIZE} />
-      {running ? 'Running' : 'Run now'}
+      {running ? words.running : words.runNow}
     </Button>
   )
 }

@@ -2,6 +2,8 @@ import { afterAll, beforeAll, vi } from 'vitest'
 import { payloadFixtures } from '@/features/relay/contract/fixtures.gen'
 import type { Application, ApplicationsSnapshot } from '@/features/relay/contract/payload.gen'
 
+export const TODAY = '2026-10-12'
+
 export const applicationsSnapshot: ApplicationsSnapshot = payloadFixtures['applications.snapshot']
 
 const [found, byHand] = applicationsSnapshot.applications

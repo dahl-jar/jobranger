@@ -1,8 +1,6 @@
-import { formatDay } from '@/shared/format/dates'
+import { formatDayInSentence } from '@/shared/format/dates'
+import { en, type Messages } from '@/shared/i18n/en'
 
-const RELATIVE_DAYS: ReadonlySet<string> = new Set(['Today', 'Yesterday'])
-
-export function dayInSentence(iso: string, today: string): string {
-  const day = formatDay(iso, today)
-  return RELATIVE_DAYS.has(day) ? day.toLowerCase() : day
+export function dayInSentence(iso: string, today: string, text: Messages = en): string {
+  return formatDayInSentence(iso, today, text)
 }

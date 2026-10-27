@@ -6,6 +6,7 @@ import { AdFacts, AdSide, MarkError } from '@/features/jobs/AdSide'
 import { detailPath } from '@/features/jobs/paths'
 import type { JobList } from '@/features/jobs/selectors'
 import type { ActiveAd, RoleOption } from '@/features/relay/contract/payload.gen'
+import { useText } from '@/shared/i18n/languageContext'
 import { CheckList } from '@/shared/ui/CheckList'
 import { Icon } from '@/shared/ui/Icon'
 
@@ -20,6 +21,7 @@ interface AdRowProps extends AdCallbacks {
 
 export function AdRow({ ad, today, roles, from, disabled, error, onMark, onUnmark }: AdRowProps) {
   const titleId = useId()
+  const details = useText().jobs.details
   const isDimmed = ad.mark !== null && ad.mark !== 'applied'
   return (
     <article aria-labelledby={titleId} className={`${styles.row} ${isDimmed ? styles.dimmed : ''}`}>
@@ -42,7 +44,7 @@ export function AdRow({ ad, today, roles, from, disabled, error, onMark, onUnmar
         </div>
         <div className={styles.actions}>
           <Link to={detailPath(ad.id)} state={{ from }} className={styles.details}>
-            Details
+            {details}
             <Icon name="forward" />
           </Link>
           <AdActions

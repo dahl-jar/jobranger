@@ -20,6 +20,12 @@ function withTargets(targets: Partial<ConfigSnapshot['targets']>): ConfigSnapsho
 }
 
 describe('SearchSettings', () => {
+  it('should show no length alert before anything is typed', () => {
+    renderSearch()
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it.each([
     { group: 'Roles', timing: 'Applies now.' },
     { group: 'Level', timing: 'Applies from the next run.' },

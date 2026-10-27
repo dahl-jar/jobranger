@@ -1,11 +1,12 @@
 import styles from '@/features/jobs/AdRow.module.css'
-import { MARK_LABELS, roleLabel, SOURCE_NAMES } from '@/features/jobs/labels'
+import { roleLabel } from '@/features/jobs/labels'
 import type { ActiveAd, Mark, RoleOption } from '@/features/relay/contract/payload.gen'
-import { formatDay, formatDue } from '@/shared/format/dates'
+import { formatDayInSentence, formatDue } from '@/shared/format/dates'
+import type { Messages } from '@/shared/i18n/en'
+import { useText } from '@/shared/i18n/languageContext'
 import { FitMark } from '@/shared/ui/FitMark'
 import { Icon } from '@/shared/ui/Icon'
-
-const RELATIVE_DAY = /^[A-Za-z]/
+import { SOURCE_NAMES } from '@/shared/sources'
 
 const MARK_CLASSES: Record<Mark, string | undefined> = {
   applied: styles.markApplied,
@@ -13,27 +14,27 @@ const MARK_CLASSES: Record<Mark, string | undefined> = {
   not_for_me: styles.markNotForMe,
 }
 
-function markLabel(mark: Mark, markedAt: string | null, today: string): string {
-  if (mark !== 'applied' || markedAt === null) return MARK_LABELS[mark]
-  const day = formatDay(markedAt, today)
-  return `${MARK_LABELS.applied} ${RELATIVE_DAY.test(day) ? day.toLowerCase() : day}`
+function markLabel(mark: Mark, markedAt: string | null, today: string, text: Messages): string {
+  if (mark !== 'applied' || markedAt === null) return text.jobs.marks[mark]
+  return text.jobs.appliedOn(formatDayInSentence(markedAt, today, text))
 }
 
 export function AdSide({ ad, today }: { ad: ActiveAd; today: string }) {
-  const { due, note } = formatDue(ad.deadline, today)
+  const text = useText()
+  const { due, note } = formatDue(ad.deadline, today, text)
   return (
     <div className={styles.side}>
       <div className={styles.due}>{due}</div>
       <div className={styles.dueNote}>{note}</div>
-      {ad.shown_anyway && <div className={styles.dueNote}>shown by you</div>}
-      {ad.is_new && <div className={styles.isNew}>New, just now</div>}
+      {ad.shown_anyway && <div className={styles.dueNote}>{text.jobs.shownByYou}</div>}
+      {ad.is_new && <div className={styles.isNew}>{text.jobs.isNew}</div>}
       <div className={styles.fit}>
         <FitMark fit={ad.fit} />
       </div>
       {ad.mark !== null && (
         <div className={`${styles.markLabel} ${MARK_CLASSES[ad.mark] ?? ''}`}>
           <Icon name="pencil" />
-          {markLabel(ad.mark, ad.marked_at, today)}
+          {markLabel(ad.mark, ad.marked_at, today, text)}
         </div>
       )}
     </div>
@@ -41,6 +42,8 @@ export function AdSide({ ad, today }: { ad: ActiveAd; today: string }) {
 }
 
 export function AdFacts({ ad, roles }: { ad: ActiveAd; roles: readonly RoleOption[] }) {
+  const text = useText()
+
   return (
     <div className={styles.facts}>
       {ad.place !== '' && (
@@ -51,7 +54,7 @@ export function AdFacts({ ad, roles }: { ad: ActiveAd; roles: readonly RoleOptio
       )}
       <span className={styles.fact}>
         <Icon name="area" />
-        {roleLabel(ad.role_type, roles)}
+        {roleLabel(ad.role_type, roles, text)}
       </span>
       <span className={styles.fact}>
         <Icon name="source" />
@@ -62,10 +65,11 @@ export function AdFacts({ ad, roles }: { ad: ActiveAd; roles: readonly RoleOptio
 }
 
 export function MarkError({ error }: { error: string | undefined }) {
+  const notSaved = useText().common.notSaved
   if (error === undefined) return null
   return (
     <p role="alert" className={styles.error}>
-      Not saved: {error}
+      {notSaved(error)}
     </p>
   )
 }

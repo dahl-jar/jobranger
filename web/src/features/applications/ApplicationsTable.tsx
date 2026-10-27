@@ -4,17 +4,12 @@ import type { SortKey, SortState } from '@/features/applications/sortApplication
 import { StatusMenu } from '@/features/applications/StatusMenu'
 import type { Application, ApplicationStatus } from '@/features/relay/contract/payload.gen'
 import { formatDay } from '@/shared/format/dates'
+import { useText } from '@/shared/i18n/languageContext'
 import { Icon } from '@/shared/ui/Icon'
 
 const SORT_ICON_SIZE = 12
 
-const COLUMNS: readonly { key: SortKey; label: string }[] = [
-  { key: 'company', label: 'Company' },
-  { key: 'role', label: 'Role' },
-  { key: 'applied', label: 'Applied' },
-  { key: 'status', label: 'Status' },
-  { key: 'note', label: 'Note' },
-]
+const COLUMNS: readonly SortKey[] = ['company', 'role', 'applied', 'status', 'note']
 
 const ARIA_SORT = { asc: 'ascending', desc: 'descending' } as const
 const SORT_ICONS = { asc: 'up', desc: 'down' } as const
@@ -30,21 +25,24 @@ interface ApplicationsTableProps {
 }
 
 export function ApplicationsTable({ applications, sort, today, editsDisabled, onSort, onOpen, onStatusChange }: ApplicationsTableProps) {
+  const text = useText()
+  const words = text.applications
+
   return (
     <div className={styles.wrap}>
-      <div role="table" aria-label="Applications" className={styles.table}>
+      <div role="table" aria-label={words.heading} className={styles.table}>
         <div role="rowgroup">
           <div role="row" className={`${styles.row} ${styles.head}`}>
             {COLUMNS.map((column) => {
-              const sorted = sort.key === column.key
+              const sorted = sort.key === column
               return (
-                <span key={column.key} role="columnheader" aria-sort={sorted ? ARIA_SORT[sort.dir] : 'none'}>
+                <span key={column} role="columnheader" aria-sort={sorted ? ARIA_SORT[sort.dir] : 'none'}>
                   <button
                     type="button"
                     className={[styles.sortButton, sorted && styles.sorted].filter(Boolean).join(' ')}
-                    onClick={() => onSort(column.key)}
+                    onClick={() => onSort(column)}
                   >
-                    {column.label}
+                    {words.columns[column]}
                     <Icon name={sorted ? SORT_ICONS[sort.dir] : 'upDown'} size={SORT_ICON_SIZE} />
                   </button>
                 </span>
@@ -61,10 +59,10 @@ export function ApplicationsTable({ applications, sort, today, editsDisabled, on
                 </button>
               </span>
               <span role="cell" className={`${styles.cell} ${styles.role}`}>
-                {application.title || 'Role not set'}
+                {application.title || words.roleNotSet}
               </span>
               <span role="cell" className={styles.date}>
-                {formatDay(application.applied_at, today)}
+                {formatDay(application.applied_at, today, text)}
               </span>
               <span role="cell" className={styles.cell}>
                 <StatusMenu
@@ -76,10 +74,10 @@ export function ApplicationsTable({ applications, sort, today, editsDisabled, on
               <span role="cell" className={styles.cell}>
                 <button
                   type="button"
-                  aria-label={`Open note for ${application.company}`}
+                  aria-label={words.openNote(application.company)}
                   className={[styles.note, !application.note && styles.noNote].filter(Boolean).join(' ')}
                 >
-                  {application.note || 'Add a note'}
+                  {application.note || words.addNote}
                 </button>
               </span>
             </div>

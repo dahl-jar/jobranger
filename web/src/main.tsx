@@ -8,6 +8,7 @@ import { routes } from '@/app/router'
 import { reloadOnce } from '@/app/routeImport'
 import { forgetScroll } from '@/app/scrollPositions'
 import { ThemeProvider } from '@/app/theme/ThemeProvider'
+import { LanguageProvider } from '@/shared/i18n/LanguageProvider'
 
 const container = document.getElementById('root')
 if (container === null) throw new Error('index.html is missing the #root element')
@@ -25,8 +26,10 @@ window.addEventListener('vite:preloadError', (event) => {
 
 createRoot(container).render(
   <StrictMode>
-    <ThemeProvider>
-      <RouterProvider router={router} />
-    </ThemeProvider>
+    <LanguageProvider>
+      <ThemeProvider>
+        <RouterProvider router={router} />
+      </ThemeProvider>
+    </LanguageProvider>
   </StrictMode>,
 )

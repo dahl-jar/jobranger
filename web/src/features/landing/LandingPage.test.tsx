@@ -39,7 +39,7 @@ describe('LandingPage', () => {
   it('should show the hidden line under the example matches', async () => {
     renderLanding()
 
-    expect(await screen.findByText("41 hidden: 18 senior · 12 need 3+ yrs · 6 master's · 5 other areas")).toBeInTheDocument()
+    expect(await screen.findByText("41 hidden: 18 senior · 12 need 3+ yrs · 6 master's · 5 other roles")).toBeInTheDocument()
   })
 
   it.each([

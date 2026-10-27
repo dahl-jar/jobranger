@@ -14,4 +14,5 @@ afterEach(() => {
   localStorage.clear()
   sessionStorage.clear()
   document.documentElement.removeAttribute('data-theme')
+  document.documentElement.removeAttribute('lang')
 })

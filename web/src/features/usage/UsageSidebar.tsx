@@ -4,6 +4,7 @@ import { UsageChart } from '@/features/usage/UsageChart'
 import styles from '@/features/usage/usage.module.css'
 import { CHART_DAYS, summarizeUsage } from '@/features/usage/usageSummary'
 import type { Day, Money, UsageSnapshot } from '@/features/relay/contract/payload.gen'
+import { useText } from '@/shared/i18n/languageContext'
 import { ProgressBar } from '@/shared/ui/ProgressBar'
 import { SectionLabel } from '@/shared/ui/SectionLabel'
 
@@ -14,14 +15,16 @@ interface UsageSidebarProps {
 }
 
 export function UsageSidebar({ usage, today, monthlyLimitUsd }: UsageSidebarProps) {
-  const summary = summarizeUsage(usage, today, monthlyLimitUsd)
+  const text = useText()
+  const words = text.usage
+  const summary = summarizeUsage(usage, today, monthlyLimitUsd, text)
   const { budget } = summary
   return (
     <section>
-      <SectionLabel aside={<span className={styles.aside}>Last {CHART_DAYS} days</span>}>AI usage</SectionLabel>
+      <SectionLabel aside={<span className={styles.aside}>{words.lastDays(CHART_DAYS)}</span>}>{words.heading}</SectionLabel>
       <p className={styles.month}>
         <span className={styles.monthCost}>{summary.monthUsd}</span>
-        spent this month
+        {words.spent}
       </p>
       <div className={styles.budget}>
         <div className={styles.budgetLine}>
@@ -29,7 +32,7 @@ export function UsageSidebar({ usage, today, monthlyLimitUsd }: UsageSidebarProp
           <span className={styles.resets}>{summary.resets}</span>
         </div>
         <ProgressBar
-          label="Monthly limit used"
+          label={words.limitUsed}
           percent={budget.percent}
           tone={budget.nearLimit ? 'near' : 'ok'}
           className={styles.track}
@@ -40,15 +43,15 @@ export function UsageSidebar({ usage, today, monthlyLimitUsd }: UsageSidebarProp
       </div>
       <dl className={styles.figures}>
         <div>
-          <dt>Today</dt>
+          <dt>{words.today}</dt>
           <dd>{summary.todayUsd}</dd>
         </div>
         <div>
-          <dt>Daily avg</dt>
+          <dt>{words.average}</dt>
           <dd>{summary.averageUsd}</dd>
         </div>
         <div>
-          <dt>Peak</dt>
+          <dt>{words.peak}</dt>
           <dd>{summary.peakUsd}</dd>
         </div>
       </dl>

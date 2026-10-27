@@ -46,7 +46,7 @@ describe('ContextDocuments', () => {
     renderDocuments({ context: { ...CONTEXT, docs_limit: CONTEXT.docs.length } })
 
     expect(screen.getByLabelText('Add document')).toBeDisabled()
-    expect(screen.getByText('At most 1 documents.')).toBeInTheDocument()
+    expect(screen.getByText('At most 1 document.')).toBeInTheDocument()
   })
 
   it('should allow Add document under the limit', () => {

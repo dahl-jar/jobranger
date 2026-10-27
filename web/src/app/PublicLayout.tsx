@@ -4,10 +4,11 @@ import { PageLoading } from '@/app/PageLoading'
 import styles from '@/app/PublicLayout.module.css'
 import { canStoreScroll, scrollKey } from '@/app/scrollPositions'
 import { ThemeSwitch } from '@/app/theme/ThemeSwitch'
+import { useText } from '@/shared/i18n/languageContext'
 import { Icon } from '@/shared/ui/Icon'
 
 export interface PublicLayoutHandle {
-  subtitle?: string
+  subtitle?: string | ReactElement
   showHome?: boolean
   wide?: boolean
   nav?: ReactElement
@@ -15,7 +16,7 @@ export interface PublicLayoutHandle {
 }
 
 interface LayoutOptions {
-  subtitle: string | undefined
+  subtitle: string | ReactElement | undefined
   showHome: boolean
   wide: boolean
   nav: ReactElement | undefined
@@ -53,10 +54,14 @@ function useSlowNavigation(): boolean {
   return slow
 }
 
+function readSubtitle(subtitle: unknown): string | ReactElement | undefined {
+  return typeof subtitle === 'string' || isValidElement(subtitle) ? subtitle : undefined
+}
+
 function readHandle(handle: unknown): LayoutOptions {
   const fields = handle instanceof Object ? handle : {}
   return {
-    subtitle: 'subtitle' in fields && typeof fields.subtitle === 'string' ? fields.subtitle : undefined,
+    subtitle: 'subtitle' in fields ? readSubtitle(fields.subtitle) : undefined,
     showHome: 'showHome' in fields && fields.showHome === true,
     wide: 'wide' in fields && fields.wide === true,
     nav: 'nav' in fields && isValidElement(fields.nav) ? fields.nav : undefined,
@@ -68,6 +73,7 @@ export function PublicLayout() {
   const { subtitle, showHome, wide, nav, action } = readHandle(useMatches().at(-1)?.handle)
   useHeadingFocus()
   const busy = useSlowNavigation()
+  const text = useText()
   const [storesScroll] = useState(canStoreScroll)
 
   return (
@@ -86,7 +92,7 @@ export function PublicLayout() {
           {showHome && (
             <Link to="/" className={styles.home}>
               <Icon name="back" size={BACK_ICON_SIZE} />
-              Home
+              {text.common.home}
             </Link>
           )}
         </div>

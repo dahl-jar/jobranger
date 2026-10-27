@@ -5,6 +5,7 @@ import { setupSteps, type SetupStep } from '@/features/setup/setupSteps'
 import { Terminal } from '@/features/setup/Terminal'
 import { Button } from '@/shared/ui/Button'
 import button from '@/shared/ui/button.module.css'
+import { useText } from '@/shared/i18n/languageContext'
 import { Icon } from '@/shared/ui/Icon'
 import { usePageTitle } from '@/shared/usePageTitle'
 
@@ -19,14 +20,16 @@ function pickStep(steps: readonly [SetupStep, ...SetupStep[]], requested: string
 
 export function SetupPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const steps = setupSteps(`${window.location.origin}${PAIR_PATH}`)
+  const text = useText()
+  const words = text.setup
+  const steps = setupSteps(`${window.location.origin}${PAIR_PATH}`, text)
   const { step, number } = pickStep(steps, searchParams.get(STEP_PARAM))
   const nextStep = steps[number]
   const goTo = (target: number) => setSearchParams({ [STEP_PARAM]: String(target) }, { preventScrollReset: true })
   const headingRef = useRef<HTMLHeadingElement>(null)
   const shownNumber = useRef(number)
 
-  usePageTitle(`Setup, step ${number} of ${steps.length}`)
+  usePageTitle(words.pageTitle(number, steps.length))
 
   useEffect(() => {
     if (shownNumber.current === number) return
@@ -37,8 +40,8 @@ export function SetupPage() {
 
   return (
     <div className={styles.layout}>
-      <nav aria-label="Setup steps" className={styles.steps}>
-        <div className={styles.stepsLabel}>Steps</div>
+      <nav aria-label={words.stepsNav} className={styles.steps}>
+        <div className={styles.stepsLabel}>{words.stepsLabel}</div>
         <ol className={styles.stepList}>
           {steps.map((item, index) => {
             const itemNumber = index + 1
@@ -58,7 +61,7 @@ export function SetupPage() {
                       <span className={styles.check}>
                         <Icon name="check" />
                       </span>
-                      <span className="visually-hidden">, done</span>
+                      <span className="visually-hidden">{words.done}</span>
                     </>
                   )}
                 </Link>
@@ -66,13 +69,11 @@ export function SetupPage() {
             )
           })}
         </ol>
-        <p className={styles.caption}>Example run.</p>
+        <p className={styles.caption}>{words.caption}</p>
       </nav>
       <main className={styles.main}>
         <div className={styles.intro}>
-          <div className={styles.counter}>
-            Step {number} of {steps.length}
-          </div>
+          <div className={styles.counter}>{words.counter(number, steps.length)}</div>
           <h1 ref={headingRef} tabIndex={-1} className={styles.title}>
             {step.title}
           </h1>
@@ -82,23 +83,24 @@ export function SetupPage() {
         <div className={styles.controls}>
           <Button variant="quiet" className={button.compact} disabled={number === 1} onClick={() => goTo(number - 1)}>
             <Icon name="back" />
-            Back
+            {words.back}
           </Button>
           {nextStep === undefined ? (
             <Link to={PAIR_PATH} className={`${button.primary} ${button.compact} ${button.roomy}`}>
-              Connect the website
+              {words.connect}
               <Icon name="forward" />
             </Link>
           ) : (
             <Button className={`${button.compact} ${button.roomy}`} onClick={() => goTo(number + 1)}>
-              Next: {nextStep.title}
+              {words.next(nextStep.title)}
               <Icon name="forward" />
             </Button>
           )}
         </div>
         {step.id === 'pair' && (
           <p className={styles.pairHint}>
-            On the website: <Link to={PAIR_PATH}>enter the code</Link>.
+            {words.pairHintBefore}
+            <Link to={PAIR_PATH}>{words.pairHintLink}</Link>.
           </p>
         )}
       </main>

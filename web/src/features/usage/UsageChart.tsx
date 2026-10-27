@@ -1,5 +1,6 @@
 import styles from '@/features/usage/usage.module.css'
 import type { UsageBar } from '@/features/usage/usageSummary'
+import { useText } from '@/shared/i18n/languageContext'
 
 interface UsageChartProps {
   bars: readonly UsageBar[]
@@ -9,6 +10,8 @@ interface UsageChartProps {
 }
 
 export function UsageChart({ bars, label, peakTokens, firstDay }: UsageChartProps) {
+  const words = useText().usage
+
   return (
     <>
       <div className={styles.chart}>
@@ -23,11 +26,11 @@ export function UsageChart({ bars, label, peakTokens, firstDay }: UsageChartProp
               <span className={styles.tip} aria-hidden="true">
                 <span className={styles.tipDay}>{bar.day}</span>
                 <span className={styles.tipRow}>
-                  <span className={styles.tipLabel}>Tokens</span>
+                  <span className={styles.tipLabel}>{words.tokens}</span>
                   <span>{bar.tokens}</span>
                 </span>
                 <span className={styles.tipRow}>
-                  <span className={styles.tipLabel}>Cost</span>
+                  <span className={styles.tipLabel}>{words.cost}</span>
                   <span className={styles.tipCost}>{bar.usd}</span>
                 </span>
               </span>
@@ -37,7 +40,7 @@ export function UsageChart({ bars, label, peakTokens, firstDay }: UsageChartProp
       </div>
       <div className={styles.axis} aria-hidden="true">
         <span>{firstDay}</span>
-        <span>Today</span>
+        <span>{words.today}</span>
       </div>
     </>
   )

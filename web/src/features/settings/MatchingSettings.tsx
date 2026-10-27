@@ -2,6 +2,7 @@ import { useId, useRef, useState } from 'react'
 import type { ErrorMessage, GuidanceSnapshot } from '@/features/relay/contract/payload.gen'
 import styles from '@/features/settings/Settings.module.css'
 import { useDraft } from '@/features/settings/useDraft'
+import { useText } from '@/shared/i18n/languageContext'
 import { Button } from '@/shared/ui/Button'
 import { Icon } from '@/shared/ui/Icon'
 
@@ -22,6 +23,8 @@ function GuidanceEditor({ id, guidance, editsDisabled, onSave, onReset }: Editor
   const isOver = draft.length > guidance.limit
   const canSave = !editsDisabled && trimmed !== '' && trimmed !== guidance.text && !isOver
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const text = useText()
+  const words = text.settings.matching
 
   function save() {
     textareaRef.current?.focus()
@@ -32,13 +35,13 @@ function GuidanceEditor({ id, guidance, editsDisabled, onSave, onReset }: Editor
     <div id={id}>
       <textarea
         ref={textareaRef}
-        aria-label="Matching guidance"
+        aria-label={words.guidance}
         aria-describedby={counterId}
         className={styles.textarea}
         rows={GUIDANCE_ROWS}
         spellCheck={false}
         readOnly={editsDisabled}
-        placeholder="Add your own matching guidance"
+        placeholder={words.placeholder}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
       />
@@ -48,14 +51,14 @@ function GuidanceEditor({ id, guidance, editsDisabled, onSave, onReset }: Editor
         </span>
         <div className={styles.actions}>
           <button type="button" className={styles.textButton} disabled={editsDisabled || guidance.is_default} onClick={() => onReset()}>
-            Reset to default
+            {words.reset}
           </button>
           <Button size={44} disabled={!canSave} onClick={save}>
-            Save
+            {text.common.save}
           </Button>
         </div>
       </div>
-      <p className={styles.note}>Your guidance is added to the default. Search limits and the reply format stay fixed.</p>
+      <p className={styles.note}>{words.note}</p>
     </div>
   )
 }
@@ -71,6 +74,8 @@ interface MatchingSettingsProps {
 export function MatchingSettings({ guidance, errorCode, editsDisabled, onSave, onReset }: MatchingSettingsProps) {
   const editorId = useId()
   const [isOpen, setOpen] = useState(false)
+  const text = useText()
+  const words = text.settings.matching
   const isEdited = !guidance.is_default
 
   return (
@@ -78,28 +83,28 @@ export function MatchingSettings({ guidance, errorCode, editsDisabled, onSave, o
       <div className={styles.rule} />
       <div className={styles.toggleRow}>
         <div className={styles.actions}>
-          <span className={styles.strong}>Matching guidance</span>
+          <span className={styles.strong}>{words.guidance}</span>
           <span aria-hidden="true">·</span>
           <span className={isEdited ? `${styles.state} ${styles.edited}` : styles.state}>
             <Icon name={isEdited ? 'pencil' : 'page'} />
-            {isEdited ? 'Edited' : 'Default'}
+            {isEdited ? words.edited : words.default}
           </span>
         </div>
         <Button
           variant="quiet"
           size={40}
-          aria-label={`${isOpen ? 'Close' : 'Edit'} matching guidance`}
+          aria-label={isOpen ? words.closeGuidance : words.editGuidance}
           aria-expanded={isOpen}
           aria-controls={editorId}
           onClick={() => setOpen(!isOpen)}
         >
-          {isOpen ? 'Close' : 'Edit'}
+          {isOpen ? text.common.close : text.common.edit}
         </Button>
       </div>
       {isOpen && <GuidanceEditor id={editorId} guidance={guidance} editsDisabled={editsDisabled} onSave={onSave} onReset={onReset} />}
       {errorCode === 'guidance_empty' && (
         <p role="alert" className={styles.error}>
-          Write some guidance or reset to the default.
+          {words.empty}
         </p>
       )}
     </div>

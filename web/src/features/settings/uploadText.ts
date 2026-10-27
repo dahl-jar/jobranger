@@ -1,24 +1,22 @@
 import { CV_MAX_BYTES } from '@/features/relay/contract/limits'
 import { FILE_NAME_MAX_CHARS, type UploadReadError } from '@/features/settings/uploadFile'
+import type { Messages } from '@/shared/i18n/en'
 
 const BYTES_PER_MB = 1048576
 const MAX_UPLOAD_MB = CV_MAX_BYTES / BYTES_PER_MB
 
-export const WRONG_TYPE = 'Use a PDF, text or Markdown file.'
-export const UNREADABLE = "jobranger couldn't read this file. Try a PDF or text file."
-export const CONTEXT_FULL = 'Your notes and documents are full. Remove a document first.'
-
-export function readErrorText(error: UploadReadError, subject: 'CV' | 'file'): string {
+export function readErrorText(error: UploadReadError, subject: 'CV' | 'file', text: Messages): string {
+  const words = text.settings.upload
   switch (error) {
     case 'type':
-      return WRONG_TYPE
+      return words.wrongType
     case 'name':
-      return `Rename the file to under ${FILE_NAME_MAX_CHARS} characters, without special characters.`
+      return words.rename(FILE_NAME_MAX_CHARS)
     case 'empty':
-      return 'This file is empty.'
+      return words.empty
     case 'tooLarge':
-      return `The ${subject} must be under ${MAX_UPLOAD_MB} MB.`
+      return subject === 'CV' ? words.cvTooLarge(MAX_UPLOAD_MB) : words.fileTooLarge(MAX_UPLOAD_MB)
     case 'unreadable':
-      return UNREADABLE
+      return words.unreadable
   }
 }

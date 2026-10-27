@@ -2,6 +2,7 @@ import { useId, useState, type FormEvent } from 'react'
 import { payloadSchema } from '@/features/relay/contract/schemas.gen'
 import { focusOnMount } from '@/features/settings/focusOnMount'
 import styles from '@/features/settings/Settings.module.css'
+import { useText } from '@/shared/i18n/languageContext'
 import { Button } from '@/shared/ui/Button'
 
 const KEY_PATTERN = new RegExp(payloadSchema.$defs.KeyReplace.properties.key.pattern)
@@ -17,6 +18,8 @@ interface ReplaceKeyFormProps {
 export function ReplaceKeyForm({ focusOnOpen, onSave, onCancel }: ReplaceKeyFormProps) {
   const inputId = useId()
   const [isInvalid, setInvalid] = useState(false)
+  const text = useText()
+  const words = text.settings.model
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -35,7 +38,7 @@ export function ReplaceKeyForm({ focusOnOpen, onSave, onCancel }: ReplaceKeyForm
   return (
     <form className={styles.stack} onSubmit={submit}>
       <div className={styles.field}>
-        <label htmlFor={inputId}>New API key</label>
+        <label htmlFor={inputId}>{words.newKey}</label>
         <input
           ref={focusOnOpen ? focusOnMount : undefined}
           id={inputId}
@@ -49,15 +52,15 @@ export function ReplaceKeyForm({ focusOnOpen, onSave, onCancel }: ReplaceKeyForm
       </div>
       {isInvalid && (
         <p role="alert" className={styles.error}>
-          {`An API key has ${KEY_MIN_CHARS} or more characters and no spaces.`}
+          {words.badKey(KEY_MIN_CHARS)}
         </p>
       )}
       <div className={styles.toolRow}>
         <Button type="submit" size={40}>
-          Save key
+          {words.saveKey}
         </Button>
         <button type="button" className={styles.textButton} onClick={() => onCancel()}>
-          Cancel
+          {text.common.cancel}
         </button>
       </div>
     </form>

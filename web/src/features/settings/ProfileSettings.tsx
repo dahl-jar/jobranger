@@ -6,6 +6,7 @@ import { LimitedChips } from '@/features/settings/LimitedChips'
 import { SettingsGroup } from '@/features/settings/SettingsGroup'
 import { useDraft } from '@/features/settings/useDraft'
 import styles from '@/features/settings/Settings.module.css'
+import { useText } from '@/shared/i18n/languageContext'
 
 export type ProfilePatch = Omit<ProfileUpdate, 'type' | 'v' | 'id'>
 
@@ -46,9 +47,10 @@ interface ChipRowProps {
 }
 
 function ChipRow({ label, items, limit, onChange }: ChipRowProps) {
+  const add = useText().settings.profile.add
   return (
     <div className={styles.chipRowWrap}>
-      <LimitedChips label={label} items={items} limit={limit} placeholder="Add" className={styles.chipRow} onChange={onChange} />
+      <LimitedChips label={label} items={items} limit={limit} placeholder={add} className={styles.chipRow} onChange={onChange} />
     </div>
   )
 }
@@ -65,21 +67,23 @@ interface ProfileSettingsProps {
 }
 
 export function ProfileSettings({ profile, cvUpload, children, onUpdate }: ProfileSettingsProps) {
+  const words = useText().settings.profile
+
   return (
     <>
       {cvUpload}
-      <SettingsGroup title="Your profile">
-        <TextRow label="Experience" value={profile.summary} onCommit={(summary) => onUpdate({ summary })} />
-        <TextRow label="Education" value={profile.education} onCommit={(education) => onUpdate({ education })} />
-        <ChipRow label="Languages" items={profile.languages} limit={TERM_LIMIT} onChange={(languages) => onUpdate({ languages })} />
-        <ChipRow label="Stack" items={profile.stack} limit={TERM_LIMIT} onChange={(stack) => onUpdate({ stack })} />
+      <SettingsGroup title={words.heading}>
+        <TextRow label={words.experience} value={profile.summary} onCommit={(summary) => onUpdate({ summary })} />
+        <TextRow label={words.education} value={profile.education} onCommit={(education) => onUpdate({ education })} />
+        <ChipRow label={words.languages} items={profile.languages} limit={TERM_LIMIT} onChange={(languages) => onUpdate({ languages })} />
+        <ChipRow label={words.stack} items={profile.stack} limit={TERM_LIMIT} onChange={(stack) => onUpdate({ stack })} />
         <ChipRow
-          label="Projects"
+          label={words.projects}
           limit={PROJECT_LIMIT}
           items={profile.projects.map((project) => project.name)}
           onChange={(names) => onUpdate({ projects: projectEdits(profile.projects, names) })}
         />
-        <p className={styles.note}>Filled from your CV. Press Enter to add an item. Edits apply from the next run.</p>
+        <p className={styles.note}>{words.note}</p>
       </SettingsGroup>
       {children}
     </>

@@ -1,13 +1,13 @@
 import { useId } from 'react'
 import styles from '@/features/jobs/tables.module.css'
-import { capitalize, SOURCE_NAMES } from '@/features/jobs/labels'
+import { capitalize } from '@/features/jobs/labels'
 import { hiddenBreakdown, selectHidden } from '@/features/jobs/selectors'
 import type { AdsSnapshot, HiddenAd, HiddenKind, YearBand } from '@/features/relay/contract/payload.gen'
+import { useText } from '@/shared/i18n/languageContext'
 import { Icon } from '@/shared/ui/Icon'
+import { SOURCE_NAMES } from '@/shared/sources'
 
 const LOOSENING_KINDS: ReadonlySet<HiddenKind> = new Set(['years', 'senior', 'place'])
-const LOOSENS_NOTE = 'Show anyway also loosens this limit one step from the next run.'
-const ONLY_THIS_NOTE = 'Show anyway shows only this ad.'
 
 interface HiddenTableProps {
   snapshot: AdsSnapshot
@@ -36,6 +36,7 @@ interface HiddenRowProps {
 
 function HiddenRow({ ad, isMoved, disabled, onShowAnyway }: HiddenRowProps) {
   const titleId = useId()
+  const words = useText().jobs.hidden
   return (
     <div role="row" className={`${styles.hiddenRow} ${isMoved ? styles.shown : ''}`}>
       <span role="cell" className={styles.reason}>
@@ -43,7 +44,7 @@ function HiddenRow({ ad, isMoved, disabled, onShowAnyway }: HiddenRowProps) {
           <Icon name="notForMe" />
           {ad.reason}
         </span>
-        <span className={styles.note}>{LOOSENING_KINDS.has(ad.kind) ? LOOSENS_NOTE : ONLY_THIS_NOTE}</span>
+        <span className={styles.note}>{LOOSENING_KINDS.has(ad.kind) ? words.loosens : words.onlyThis}</span>
       </span>
       <span role="cell" className={styles.company}>
         {ad.company}
@@ -64,7 +65,7 @@ function HiddenRow({ ad, isMoved, disabled, onShowAnyway }: HiddenRowProps) {
           onClick={() => onShowAnyway(ad.id, !isMoved)}
         >
           <Icon name={isMoved ? 'check' : 'eye'} />
-          {isMoved ? 'Moved to Active' : 'Show anyway'}
+          {isMoved ? words.moved : words.showAnyway}
         </button>
       </span>
     </div>
@@ -72,13 +73,16 @@ function HiddenRow({ ad, isMoved, disabled, onShowAnyway }: HiddenRowProps) {
 }
 
 export function HiddenTable({ snapshot, reason, bands, movedIds, disabled, onReasonChange, onShowAnyway }: HiddenTableProps) {
-  const breakdown = hiddenBreakdown(snapshot, bands)
+  const text = useText()
+  const words = text.jobs.hidden
+  const columns = text.jobs.columns
+  const breakdown = hiddenBreakdown(snapshot, bands, text)
   const rows = selectHidden(snapshot, reason)
   const total = reason === undefined ? breakdown.total : snapshot.hidden_counts[reason]
   return (
     <>
       <div className={styles.pills}>
-        <ReasonPill label="All" count={breakdown.total} isPicked={reason === undefined} onPick={() => onReasonChange(undefined)} />
+        <ReasonPill label={words.all} count={breakdown.total} isPicked={reason === undefined} onPick={() => onReasonChange(undefined)} />
         {breakdown.parts.map((part) => (
           <ReasonPill
             key={part.kind}
@@ -90,14 +94,14 @@ export function HiddenTable({ snapshot, reason, bands, movedIds, disabled, onRea
         ))}
       </div>
       <div className={styles.scroll}>
-        <div role="table" aria-label="Hidden ads" className={styles.table}>
+        <div role="table" aria-label={words.label} className={styles.table}>
           <div role="row" className={`${styles.hiddenRow} ${styles.head}`}>
-            <span role="columnheader">Hidden because</span>
-            <span role="columnheader">Company</span>
-            <span role="columnheader">Role</span>
-            <span role="columnheader">Source</span>
+            <span role="columnheader">{columns.hiddenBecause}</span>
+            <span role="columnheader">{columns.company}</span>
+            <span role="columnheader">{columns.role}</span>
+            <span role="columnheader">{columns.source}</span>
             <span role="columnheader">
-              <span className="visually-hidden">Action</span>
+              <span className="visually-hidden">{columns.action}</span>
             </span>
           </div>
           {rows.map((ad) => (
@@ -105,9 +109,7 @@ export function HiddenTable({ snapshot, reason, bands, movedIds, disabled, onRea
           ))}
         </div>
       </div>
-      <p className={styles.footer}>
-        Showing {rows.length} of {total}. "Show anyway" moves the ad to Active.
-      </p>
+      <p className={styles.footer}>{words.footer(rows.length, total)}</p>
     </>
   )
 }

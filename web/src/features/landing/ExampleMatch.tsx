@@ -1,10 +1,9 @@
 import styles from '@/features/landing/LandingPage.module.css'
-import { DEMO_HAVBRIS, DEMO_HIDDEN_LINE, DEMO_KYSTLINJE, DEMO_MATCH_COUNT, type DemoAd } from '@/shared/demo/demoData'
+import { demoAds, DEMO_MATCH_COUNT, type DemoAd } from '@/shared/demo/demoData'
+import { useText } from '@/shared/i18n/languageContext'
 import { CheckList } from '@/shared/ui/CheckList'
 import { FitMark } from '@/shared/ui/FitMark'
 import { SectionLabel } from '@/shared/ui/SectionLabel'
-
-const EXAMPLE_ADS: readonly DemoAd[] = [DEMO_HAVBRIS, DEMO_KYSTLINJE]
 
 function ExampleAd({ ad }: { ad: DemoAd }) {
   return (
@@ -27,15 +26,17 @@ function ExampleAd({ ad }: { ad: DemoAd }) {
 }
 
 export function ExampleMatch() {
+  const text = useText()
+  const { havbris, kystlinje } = demoAds(text)
+  const example = text.landing.example
+
   return (
-    <section aria-label="Example match" className={styles.example}>
-      <SectionLabel aside={<span className={styles.exampleTag}>example</span>}>
-        Today, {DEMO_MATCH_COUNT} matches
-      </SectionLabel>
-      {EXAMPLE_ADS.map((ad) => (
+    <section aria-label={example.label} className={styles.example}>
+      <SectionLabel aside={<span className={styles.exampleTag}>{example.tag}</span>}>{example.heading(DEMO_MATCH_COUNT)}</SectionLabel>
+      {[havbris, kystlinje].map((ad) => (
         <ExampleAd key={ad.title} ad={ad} />
       ))}
-      <p className={styles.hiddenLine}>{DEMO_HIDDEN_LINE}</p>
+      <p className={styles.hiddenLine}>{text.demo.hiddenLine}</p>
     </section>
   )
 }

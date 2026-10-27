@@ -5,23 +5,17 @@ import { APPLICATIONS_PATH, openedFromList } from '@/features/applications/appli
 import { NOTE_MAX_CHARS } from '@/features/applications/limits'
 import { neighborButton, rowOrAddButton } from '@/features/applications/rowFocus'
 import { StatusMenu } from '@/features/applications/StatusMenu'
-import type { Application, ApplicationStatus, RoleOption, SourceId } from '@/features/relay/contract/payload.gen'
+import type { Application, ApplicationStatus, RoleOption } from '@/features/relay/contract/payload.gen'
 import { formatDay } from '@/shared/format/dates'
+import { useText } from '@/shared/i18n/languageContext'
 import { Button } from '@/shared/ui/Button'
 import button from '@/shared/ui/button.module.css'
 import { CheckList } from '@/shared/ui/CheckList'
 import { FitMark } from '@/shared/ui/FitMark'
 import { Icon } from '@/shared/ui/Icon'
+import { SOURCE_NAMES } from '@/shared/sources'
 
 const COMPANY_SEARCH_URL = 'https://www.google.com/search?q='
-
-const SOURCE_NAMES: Record<SourceId, string> = {
-  nav: 'NAV',
-  finn: 'FINN',
-  linkedin: 'LinkedIn',
-  teamtailor: 'Teamtailor',
-  ashby: 'Ashby',
-}
 
 const CLOSE_ICON_SIZE = 16
 const LINK_ICON_SIZE = 13
@@ -36,24 +30,158 @@ interface ApplicationPanelProps {
   onRemove: (application: Application) => void
 }
 
-export function ApplicationPanel(props: ApplicationPanelProps) {
-  return <PanelDialog key={props.application.id} {...props} />
+interface PanelPartProps {
+  application: Application
+  today: string
+}
+
+interface PanelHeadingProps {
+  application: Application
+  roles: readonly RoleOption[]
+  titleId: string
+  onClose: () => void
+}
+
+function PanelHeading({ application, roles, titleId, onClose }: PanelHeadingProps) {
+  const text = useText()
+  const words = text.applications.panel
+  const area = roles.find((role) => role.id === application.role_type)?.label
+  return (
+    <div className={styles.top}>
+      <div className={styles.heading}>
+        <div className={styles.company}>{application.company}</div>
+        <h2 id={titleId} className={styles.title}>
+          {application.title || text.applications.roleNotSet}
+        </h2>
+        <div className={styles.meta}>
+          <span>{application.place || words.placeNotSet}</span>
+          {area && <span>{area}</span>}
+          <span>{application.source ? SOURCE_NAMES[application.source] : words.byHand}</span>
+        </div>
+      </div>
+      <button type="button" aria-label={text.common.close} className={styles.close} onClick={onClose}>
+        <Icon name="close" size={CLOSE_ICON_SIZE} />
+      </button>
+    </div>
+  )
+}
+
+function PanelLinks({ application }: Pick<PanelPartProps, 'application'>) {
+  const words = useText().applications.panel
+  return (
+    <div className={styles.links}>
+      {application.source && application.url && (
+        <a href={application.url} target="_blank" rel="noopener noreferrer" className={styles.adLink}>
+          {words.openAd(SOURCE_NAMES[application.source])}
+          <Icon name="external" size={LINK_ICON_SIZE} />
+        </a>
+      )}
+      <a
+        href={`${COMPANY_SEARCH_URL}${encodeURIComponent(application.company)}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={styles.searchLink}
+      >
+        {words.lookUp}
+        <Icon name="external" size={LINK_ICON_SIZE} />
+      </a>
+    </div>
+  )
+}
+
+function PanelFacts({ application, today }: PanelPartProps) {
+  const text = useText()
+  const words = text.applications.panel
+  return (
+    <dl className={styles.facts}>
+      <div className={styles.fact}>
+        <dt className={styles.factLabel}>{words.applied}</dt>
+        <dd className={styles.factValue}>{formatDay(application.applied_at, today, text)}</dd>
+      </div>
+      <div className={styles.fact}>
+        <dt className={styles.factLabel}>{words.deadline}</dt>
+        <dd className={styles.factValue}>{application.deadline ? formatDay(application.deadline, today, text) : words.notSet}</dd>
+      </div>
+      <div className={styles.fact}>
+        <dt className={styles.factLabel}>{words.fit}</dt>
+        <dd className={styles.factValue}>{application.fit ? <FitMark fit={application.fit} /> : <span className={styles.muted}>{words.notChecked}</span>}</dd>
+      </div>
+      <div className={styles.fact}>
+        <dt className={styles.factLabel}>{words.cvSent}</dt>
+        <dd className={styles.factValue}>{application.cv_name ?? words.notRecorded}</dd>
+      </div>
+    </dl>
+  )
+}
+
+interface NoteFieldProps {
+  note: string
+  editsDisabled: boolean
+  onChange: (note: string) => void
+  onBlur: () => void
+}
+
+function NoteField({ note, editsDisabled, onChange, onBlur }: NoteFieldProps) {
+  const noteId = useId()
+  const noteLimitId = useId()
+  const words = useText().applications.panel
+  const atNoteLimit = note.length >= NOTE_MAX_CHARS
+  return (
+    <>
+      <label htmlFor={noteId} className={styles.sectionLabel}>
+        {words.note}
+      </label>
+      <textarea
+        id={noteId}
+        value={note}
+        rows={5}
+        readOnly={editsDisabled}
+        maxLength={NOTE_MAX_CHARS}
+        aria-describedby={atNoteLimit ? noteLimitId : undefined}
+        placeholder={words.notePlaceholder}
+        className={styles.note}
+        onChange={(event) => onChange(event.target.value.slice(0, NOTE_MAX_CHARS))}
+        onBlur={onBlur}
+      />
+      {atNoteLimit && (
+        <p id={noteLimitId} className={styles.limit}>
+          {words.noteStops(NOTE_MAX_CHARS)}
+        </p>
+      )}
+    </>
+  )
+}
+
+function PanelHistory({ application, today }: PanelPartProps) {
+  const historyId = useId()
+  const text = useText()
+  return (
+    <>
+      <h3 id={historyId} className={styles.sectionLabel}>
+        {text.applications.panel.history}
+      </h3>
+      <ul aria-labelledby={historyId} className={styles.history}>
+        {application.history.map((entry) => (
+          <li key={`${entry.at}-${entry.text}`} className={styles.historyRow}>
+            <span className={styles.muted}>{formatDay(entry.at, today, text)}</span>
+            <span>{entry.text}</span>
+          </li>
+        ))}
+      </ul>
+    </>
+  )
 }
 
 function PanelDialog({ application, today, roles, editsDisabled, onStatusChange, onNoteChange, onRemove }: ApplicationPanelProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const titleId = useId()
-  const noteId = useId()
-  const historyId = useId()
-  const noteLimitId = useId()
   const dialogRef = useRef<HTMLDialogElement>(null)
   const savedNote = useRef(application.note)
   const [note, setNote] = useState(application.note)
   const saveOnUnmount = useRef<() => void>(() => undefined)
   const pressedInside = useRef(false)
-  const area = roles.find((role) => role.id === application.role_type)?.label
-  const atNoteLimit = note.length >= NOTE_MAX_CHARS
+  const words = useText().applications.panel
 
   function saveNote() {
     if (note === savedNote.current) return
@@ -111,44 +239,12 @@ function PanelDialog({ application, today, roles, editsDisabled, onStatusChange,
   return (
     <dialog ref={dialogRef} aria-labelledby={titleId} className={styles.dialog} onCancel={onCancel} onPointerDown={onPointerDown} onClick={onBackdropClick}>
       <div className={styles.panel}>
-        <div className={styles.top}>
-          <div className={styles.heading}>
-            <div className={styles.company}>{application.company}</div>
-            <h2 id={titleId} className={styles.title}>
-              {application.title || 'Role not set'}
-            </h2>
-            <div className={styles.meta}>
-              <span>{application.place || 'Place not set'}</span>
-              {area && <span>{area}</span>}
-              <span>{application.source ? SOURCE_NAMES[application.source] : 'Added by hand'}</span>
-            </div>
-          </div>
-          <button type="button" aria-label="Close" className={styles.close} onClick={close}>
-            <Icon name="close" size={CLOSE_ICON_SIZE} />
-          </button>
-        </div>
-
-        <div className={styles.links}>
-          {application.source && application.url && (
-            <a href={application.url} target="_blank" rel="noopener noreferrer" className={styles.adLink}>
-              Open the ad on {SOURCE_NAMES[application.source]}
-              <Icon name="external" size={LINK_ICON_SIZE} />
-            </a>
-          )}
-          <a
-            href={`${COMPANY_SEARCH_URL}${encodeURIComponent(application.company)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.searchLink}
-          >
-            Look up the company
-            <Icon name="external" size={LINK_ICON_SIZE} />
-          </a>
-        </div>
+        <PanelHeading application={application} roles={roles} titleId={titleId} onClose={close} />
+        <PanelLinks application={application} />
 
         <div className={styles.doubleRule} />
         <div className={styles.statusRow}>
-          <span className={styles.factLabel}>Status</span>
+          <span className={styles.factLabel}>{words.status}</span>
           <span className={styles.statusMenu}>
             <StatusMenu
               status={application.status}
@@ -157,76 +253,33 @@ function PanelDialog({ application, today, roles, editsDisabled, onStatusChange,
             />
           </span>
         </div>
-        <dl className={styles.facts}>
-          <div className={styles.fact}>
-            <dt className={styles.factLabel}>Applied</dt>
-            <dd className={styles.factValue}>{formatDay(application.applied_at, today)}</dd>
-          </div>
-          <div className={styles.fact}>
-            <dt className={styles.factLabel}>Deadline</dt>
-            <dd className={styles.factValue}>{application.deadline ? formatDay(application.deadline, today) : 'Not set'}</dd>
-          </div>
-          <div className={styles.fact}>
-            <dt className={styles.factLabel}>Fit</dt>
-            <dd className={styles.factValue}>{application.fit ? <FitMark fit={application.fit} /> : <span className={styles.muted}>Not checked</span>}</dd>
-          </div>
-          <div className={styles.fact}>
-            <dt className={styles.factLabel}>CV sent</dt>
-            <dd className={styles.factValue}>{application.cv_name ?? 'Not recorded'}</dd>
-          </div>
-        </dl>
+        <PanelFacts application={application} today={today} />
 
         {application.checks.length > 0 && (
           <>
-            <h3 className={styles.sectionLabel}>What the ad asks for</h3>
+            <h3 className={styles.sectionLabel}>{words.asks}</h3>
             <div className={styles.checks}>
               <CheckList checks={application.checks} />
             </div>
           </>
         )}
 
-        <label htmlFor={noteId} className={styles.sectionLabel}>
-          Note
-        </label>
-        <textarea
-          id={noteId}
-          value={note}
-          rows={5}
-          readOnly={editsDisabled}
-          maxLength={NOTE_MAX_CHARS}
-          aria-describedby={atNoteLimit ? noteLimitId : undefined}
-          placeholder="e.g. Interview 14 Oct at 10:00, ask about the team"
-          className={styles.note}
-          onChange={(event) => setNote(event.target.value.slice(0, NOTE_MAX_CHARS))}
-          onBlur={saveNote}
-        />
-        {atNoteLimit && (
-          <p id={noteLimitId} className={styles.limit}>
-            Note stops at {NOTE_MAX_CHARS} characters.
-          </p>
-        )}
-
-        <h3 id={historyId} className={styles.sectionLabel}>
-          History
-        </h3>
-        <ul aria-labelledby={historyId} className={styles.history}>
-          {application.history.map((entry) => (
-            <li key={`${entry.at}-${entry.text}`} className={styles.historyRow}>
-              <span className={styles.muted}>{formatDay(entry.at, today)}</span>
-              <span>{entry.text}</span>
-            </li>
-          ))}
-        </ul>
+        <NoteField note={note} editsDisabled={editsDisabled} onChange={setNote} onBlur={saveNote} />
+        <PanelHistory application={application} today={today} />
 
         <div className={styles.actions}>
           <button type="button" className={styles.remove} disabled={editsDisabled} onClick={remove}>
-            Remove from list
+            {words.remove}
           </button>
           <Button className={`${button.compact} ${button.roomy}`} onClick={close}>
-            Done
+            {words.done}
           </Button>
         </div>
       </div>
     </dialog>
   )
+}
+
+export function ApplicationPanel(props: ApplicationPanelProps) {
+  return <PanelDialog key={props.application.id} {...props} />
 }

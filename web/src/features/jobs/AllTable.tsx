@@ -1,12 +1,14 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import styles from '@/features/jobs/tables.module.css'
-import { closedWhy, SOURCE_NAMES } from '@/features/jobs/labels'
+import { closedWhy } from '@/features/jobs/labels'
 import { detailPath } from '@/features/jobs/paths'
 import { selectActive, selectClosed } from '@/features/jobs/selectors'
 import type { AdsSnapshot, SourceId } from '@/features/relay/contract/payload.gen'
 import { formatDay, formatDue } from '@/shared/format/dates'
-import { FIT_LABELS } from '@/shared/ui/fit'
+import type { Messages } from '@/shared/i18n/en'
+import { useText } from '@/shared/i18n/languageContext'
+import { SOURCE_NAMES } from '@/shared/sources'
 
 interface AllRow {
   key: string
@@ -18,19 +20,19 @@ interface AllRow {
   isActive: boolean
 }
 
-function allRows(snapshot: AdsSnapshot): AllRow[] {
+function allRows(snapshot: AdsSnapshot, text: Messages): AllRow[] {
   const today = snapshot.as_of
   return [
     ...selectActive(snapshot).map((ad) => ({
       key: `active-${ad.id}`,
-      due: formatDue(ad.deadline, today).due,
+      due: formatDue(ad.deadline, today, text).due,
       company: ad.company,
       role: (
         <Link to={detailPath(ad.id)} state={{ from: 'all' }} className={styles.roleLink}>
           {ad.title}
         </Link>
       ),
-      state: FIT_LABELS[ad.fit],
+      state: text.ui.fit[ad.fit],
       source: ad.source,
       isActive: true,
     })),
@@ -39,16 +41,16 @@ function allRows(snapshot: AdsSnapshot): AllRow[] {
       due: '',
       company: ad.company,
       role: ad.title,
-      state: `Hidden: ${ad.reason}`,
+      state: text.jobs.hiddenState(ad.reason),
       source: ad.source,
       isActive: false,
     })),
     ...selectClosed(snapshot).map((ad) => ({
       key: `closed-${ad.id}`,
-      due: formatDay(ad.closed_on, today),
+      due: formatDay(ad.closed_on, today, text),
       company: ad.company,
       role: ad.title,
-      state: `Closed: ${closedWhy(ad)}`,
+      state: text.jobs.closedState(closedWhy(ad, text)),
       source: ad.source,
       isActive: false,
     })),
@@ -56,17 +58,19 @@ function allRows(snapshot: AdsSnapshot): AllRow[] {
 }
 
 export function AllTable({ snapshot }: { snapshot: AdsSnapshot }) {
-  const rows = allRows(snapshot)
+  const text = useText()
+  const words = text.jobs
+  const rows = allRows(snapshot, text)
   return (
     <>
       <div className={styles.scroll}>
-        <div role="table" aria-label="All ads" className={styles.table}>
+        <div role="table" aria-label={words.allLabel} className={styles.table}>
           <div role="row" className={`${styles.allRow} ${styles.head}`}>
-            <span role="columnheader">Deadline</span>
-            <span role="columnheader">Company</span>
-            <span role="columnheader">Role</span>
-            <span role="columnheader">State</span>
-            <span role="columnheader">Source</span>
+            <span role="columnheader">{words.columns.deadline}</span>
+            <span role="columnheader">{words.columns.company}</span>
+            <span role="columnheader">{words.columns.role}</span>
+            <span role="columnheader">{words.columns.state}</span>
+            <span role="columnheader">{words.columns.source}</span>
           </div>
           {rows.map((row) => (
             <div key={row.key} role="row" className={styles.allRow}>
@@ -89,7 +93,7 @@ export function AllTable({ snapshot }: { snapshot: AdsSnapshot }) {
           ))}
         </div>
       </div>
-      <p className={styles.footer}>Showing {rows.length}. Click a match to open it.</p>
+      <p className={styles.footer}>{words.allFooter(rows.length)}</p>
     </>
   )
 }

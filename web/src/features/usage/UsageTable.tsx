@@ -1,45 +1,48 @@
 import styles from '@/features/usage/usage.module.css'
 import { recentUsage, TABLE_DAYS, usageTotals } from '@/features/usage/usageSummary'
 import type { Day, UsageSnapshot } from '@/features/relay/contract/payload.gen'
+import { useText } from '@/shared/i18n/languageContext'
 import { SectionLabel } from '@/shared/ui/SectionLabel'
 
 export function UsageTable({ usage, today }: { usage: UsageSnapshot; today: Day }) {
-  const totals = usageTotals(usage)
-  const recent = recentUsage(usage, today)
+  const text = useText()
+  const words = text.usage
+  const totals = usageTotals(usage, text)
+  const recent = recentUsage(usage, today, text)
   return (
     <section>
-      <SectionLabel>Usage</SectionLabel>
+      <SectionLabel>{words.tableHeading}</SectionLabel>
       <dl className={styles.totals}>
         <div className={styles.total}>
-          <dt>This month · {totals.monthTokens} tokens</dt>
+          <dt>{words.month(usage.month_tokens, totals.monthTokens)}</dt>
           <dd>{totals.monthUsd}</dd>
         </div>
         <div className={styles.total}>
-          <dt>Today · {totals.todayTokens} tokens</dt>
+          <dt>{words.todayTokens(usage.today_tokens, totals.todayTokens)}</dt>
           <dd>{totals.todayUsd}</dd>
         </div>
       </dl>
       {recent.length === 0 ? (
-        <p className={styles.empty}>No runs in the last {TABLE_DAYS} days.</p>
+        <p className={styles.empty}>{words.noRuns(TABLE_DAYS)}</p>
       ) : (
-        <div role="region" aria-label="Usage per day" tabIndex={0} className={styles.tableScroll}>
+        <div role="region" aria-label={words.perDay} tabIndex={0} className={styles.tableScroll}>
           <table role="table" className={styles.table}>
             <thead role="rowgroup">
               <tr role="row">
                 <th role="columnheader" scope="col" className={styles.day}>
-                  Day
+                  {words.columns.day}
                 </th>
                 <th role="columnheader" scope="col" className={styles.read}>
-                  Ads read
+                  {words.columns.read}
                 </th>
                 <th role="columnheader" scope="col" className={styles.checked}>
-                  Checked by AI
+                  {words.columns.checked}
                 </th>
                 <th role="columnheader" scope="col" className={styles.tokens}>
-                  Tokens
+                  {words.columns.tokens}
                 </th>
                 <th role="columnheader" scope="col" className={styles.cost}>
-                  Cost
+                  {words.columns.cost}
                 </th>
               </tr>
             </thead>

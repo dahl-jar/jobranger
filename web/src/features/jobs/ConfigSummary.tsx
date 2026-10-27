@@ -2,6 +2,7 @@ import { Link } from 'react-router'
 import { summarizeTargets } from '@/features/jobs/summarizeTargets'
 import styles from '@/features/jobs/JobsView.module.css'
 import type { Targets } from '@/features/relay/contract/payload.gen'
+import { useText } from '@/shared/i18n/languageContext'
 import { Icon, type IconName } from '@/shared/ui/Icon'
 import { SectionLabel } from '@/shared/ui/SectionLabel'
 
@@ -23,24 +24,26 @@ function Fact({ icon, label, value }: { icon: IconName; label: string; value: st
 }
 
 export function ConfigSummary({ targets }: { targets: Targets }) {
-  const summary = summarizeTargets(targets)
+  const text = useText()
+  const words = text.jobs.config
+  const summary = summarizeTargets(targets, text)
   return (
     <section className={styles.block}>
       <SectionLabel
         aside={
-          <Link to={SEARCH_SETTINGS_PATH} aria-label="Edit config" className={styles.edit}>
+          <Link to={SEARCH_SETTINGS_PATH} aria-label={words.editLabel} className={styles.edit}>
             <Icon name="pencil" />
-            Edit
+            {text.common.edit}
           </Link>
         }
       >
-        Config
+        {words.heading}
       </SectionLabel>
       <div className={styles.facts}>
-        <Fact icon="level" label="Level" value={summary.level} />
-        <Fact icon="clock" label="Experience asked" value={summary.years} />
-        <Fact icon="cap" label="Master's" value={summary.masters} />
-        <Fact icon="place" label="Places" value={summary.places} />
+        <Fact icon="level" label={words.level} value={summary.level} />
+        <Fact icon="clock" label={words.years} value={summary.years} />
+        <Fact icon="cap" label={words.masters} value={summary.masters} />
+        <Fact icon="place" label={words.places} value={summary.places} />
       </div>
     </section>
   )

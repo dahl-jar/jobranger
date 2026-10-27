@@ -4,9 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { ApplicationsTable } from '@/features/applications/ApplicationsTable'
 import styles from '@/features/applications/ApplicationsTable.module.css'
 import type { SortState } from '@/features/applications/sortApplications'
-import { foundApplication, handApplication, pinTimeZone } from '@/features/applications/testData'
-
-const TODAY = '2026-10-12'
+import { foundApplication, handApplication, pinTimeZone, TODAY } from '@/features/applications/testData'
 
 function renderTable(sort: SortState = { key: 'applied', dir: 'desc' }) {
   const handlers = { onSort: vi.fn(), onOpen: vi.fn(), onStatusChange: vi.fn() }

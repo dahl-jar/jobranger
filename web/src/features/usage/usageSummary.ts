@@ -2,6 +2,7 @@ import type { Day, Money, UsageDay, UsageSnapshot } from '@/features/relay/contr
 import { formatDay, shiftDay } from '@/shared/format/dates'
 import { formatUsd } from '@/shared/format/money'
 import { formatTokens } from '@/shared/format/tokens'
+import { en, type Messages } from '@/shared/i18n/en'
 import { PERCENT_MAX } from '@/shared/ui/ProgressBar'
 
 export const CHART_DAYS = 14
@@ -35,7 +36,7 @@ interface UsageBudget {
   line: string
   percent: number
   nearLimit: boolean
-  action: 'Set a limit' | 'Edit limit'
+  action: string
 }
 
 interface UsageSummary {
@@ -82,13 +83,14 @@ export function limitPercent(spent: Money, limit: Money): number {
   return Math.min(PERCENT_MAX, Math.round(limitShare(spent, limit) * PERCENT_MAX))
 }
 
-function summarizeBudget(spent: Money, limit: Money | null): UsageBudget {
-  if (limit === null) return { line: 'No monthly limit', percent: 0, nearLimit: false, action: 'Set a limit' }
+function summarizeBudget(spent: Money, limit: Money | null, text: Messages): UsageBudget {
+  const words = text.usage
+  if (limit === null) return { line: words.noLimit, percent: 0, nearLimit: false, action: words.setLimit }
   return {
-    line: `${formatUsd(spent)} of ${formatUsd(limit)}`,
+    line: words.ofLimit(formatUsd(spent, text), formatUsd(limit, text)),
     percent: limitPercent(spent, limit),
     nearLimit: limitShare(spent, limit) > NEAR_LIMIT_SHARE,
-    action: 'Edit limit',
+    action: words.editLimit,
   }
 }
 
@@ -98,12 +100,12 @@ function averageCost(chartDays: UsageDay[], byDay: DaysByKey): number {
   return tracked.reduce((sum, day) => sum + day.cost_usd, 0) / tracked.length
 }
 
-function toBar(day: UsageDay, peakTokens: number, today: Day): UsageBar {
+function toBar(day: UsageDay, peakTokens: number, today: Day, text: Messages): UsageBar {
   const count = dayTokens(day)
   const scaled = peakTokens > 0 ? Math.round((count / peakTokens) * BAR_MAX_PX) : 0
-  const label = formatDay(day.day, today)
-  const tokens = formatTokens(count)
-  const usd = formatUsd(day.cost_usd)
+  const label = formatDay(day.day, today, text)
+  const tokens = formatTokens(count, text)
+  const usd = formatUsd(day.cost_usd, text)
   return {
     key: day.day,
     day: label,
@@ -111,54 +113,54 @@ function toBar(day: UsageDay, peakTokens: number, today: Day): UsageBar {
     usd,
     height: Math.max(BAR_MIN_PX, scaled),
     isToday: day.day === today,
-    tip: `${label}, ${tokens} tokens, ${usd}`,
+    tip: text.usage.tip(label, count, tokens, usd),
   }
 }
 
-function toRow(day: UsageDay, today: Day): UsageRow {
+function toRow(day: UsageDay, today: Day, text: Messages): UsageRow {
   return {
     key: day.day,
-    day: formatDay(day.day, today),
+    day: formatDay(day.day, today, text),
     adsRead: day.ads_read,
     adsChecked: day.ads_checked,
-    tokens: formatTokens(dayTokens(day)),
-    usd: formatUsd(day.cost_usd),
+    tokens: formatTokens(dayTokens(day), text),
+    usd: formatUsd(day.cost_usd, text),
   }
 }
 
-export function summarizeUsage(usage: UsageSnapshot, today: Day, monthlyLimitUsd: Money | null): UsageSummary {
+export function summarizeUsage(usage: UsageSnapshot, today: Day, monthlyLimitUsd: Money | null, text: Messages = en): UsageSummary {
   const byDay = indexDays(usage)
   const chartDays = lastDays(today, CHART_DAYS).map((day) => byDay.get(day) ?? emptyDay(day))
   const tokens = chartDays.map(dayTokens)
   const peakTokens = Math.max(...tokens)
   const peakCost = Math.max(...chartDays.map((day) => day.cost_usd))
   return {
-    monthUsd: formatUsd(usage.month_usd),
-    todayUsd: formatUsd(usage.today_usd),
-    averageUsd: formatUsd(averageCost(chartDays, byDay)),
-    peakUsd: formatUsd(peakCost),
-    peakTokens: formatTokens(peakTokens),
-    budget: summarizeBudget(usage.month_usd, monthlyLimitUsd),
-    resets: `Resets ${formatDay(usage.resets_on, today)}`,
-    bars: chartDays.map((day) => toBar(day, peakTokens, today)),
-    chartLabel: `Tokens per day for the last ${CHART_DAYS} days, from ${formatTokens(Math.min(...tokens))} to ${formatTokens(peakTokens)}`,
-    firstDay: formatDay(shiftDay(today, 1 - CHART_DAYS), today),
+    monthUsd: formatUsd(usage.month_usd, text),
+    todayUsd: formatUsd(usage.today_usd, text),
+    averageUsd: formatUsd(averageCost(chartDays, byDay), text),
+    peakUsd: formatUsd(peakCost, text),
+    peakTokens: formatTokens(peakTokens, text),
+    budget: summarizeBudget(usage.month_usd, monthlyLimitUsd, text),
+    resets: text.usage.resets(formatDay(usage.resets_on, today, text)),
+    bars: chartDays.map((day) => toBar(day, peakTokens, today, text)),
+    chartLabel: text.usage.chartLabel(CHART_DAYS, formatTokens(Math.min(...tokens), text), formatTokens(peakTokens, text)),
+    firstDay: formatDay(shiftDay(today, 1 - CHART_DAYS), today, text),
   }
 }
 
-export function recentUsage(usage: UsageSnapshot, today: Day): UsageRow[] {
+export function recentUsage(usage: UsageSnapshot, today: Day, text: Messages = en): UsageRow[] {
   const byDay = indexDays(usage)
   return lastDays(today, TABLE_DAYS)
     .flatMap((day) => byDay.get(day) ?? [])
     .reverse()
-    .map((day) => toRow(day, today))
+    .map((day) => toRow(day, today, text))
 }
 
-export function usageTotals(usage: UsageSnapshot): UsageTotals {
+export function usageTotals(usage: UsageSnapshot, text: Messages = en): UsageTotals {
   return {
-    monthUsd: formatUsd(usage.month_usd),
-    monthTokens: formatTokens(usage.month_tokens),
-    todayUsd: formatUsd(usage.today_usd),
-    todayTokens: formatTokens(usage.today_tokens),
+    monthUsd: formatUsd(usage.month_usd, text),
+    monthTokens: formatTokens(usage.month_tokens, text),
+    todayUsd: formatUsd(usage.today_usd, text),
+    todayTokens: formatTokens(usage.today_tokens, text),
   }
 }

@@ -4,6 +4,7 @@ import type { RunId, RunProgress as RunProgressMessage } from '@/features/relay/
 import { Button } from '@/shared/ui/Button'
 import { Icon, type IconName } from '@/shared/ui/Icon'
 import { ProgressBar } from '@/shared/ui/ProgressBar'
+import { useText } from '@/shared/i18n/languageContext'
 
 interface RunProgressProps {
   progress: RunProgressMessage
@@ -23,12 +24,14 @@ const STEP_ICONS: Record<StepState, IconName> = {
 }
 
 export function RunProgress({ progress, editsDisabled, pending = false, onCancel }: RunProgressProps) {
+  const text = useText()
+
   return (
     <div className={styles.progress}>
       <div className={styles.head}>
         <p role="status" className={styles.live}>
-          <span className={styles.title}>{runTitle(progress)}</span>
-          <span className={styles.percent}>{progress.percent}%</span>
+          <span className={styles.title}>{runTitle(progress, text)}</span>
+          <span className={styles.percent}>{text.numbers.percent(progress.percent)}</span>
         </p>
         <Button
           variant="quiet"
@@ -37,12 +40,12 @@ export function RunProgress({ progress, editsDisabled, pending = false, onCancel
           disabled={editsDisabled || pending}
           onClick={() => onCancel(progress.run_id)}
         >
-          Cancel
+          {text.common.cancel}
         </Button>
       </div>
-      <ProgressBar label="Run progress" percent={progress.percent} className={styles.track} />
+      <ProgressBar label={text.run.progress} percent={progress.percent} className={styles.track} />
       <ul className={styles.steps}>
-        {runSteps(progress).map((step) => (
+        {runSteps(progress, text).map((step) => (
           <li key={step.key} className={`${styles.step} ${styles[step.state]}`}>
             <Icon name={STEP_ICONS[step.state]} size={STEP_ICON_SIZE} />
             {step.text}

@@ -5,7 +5,6 @@ import { ClosedTable } from '@/features/jobs/ClosedTable'
 import { HiddenSummary } from '@/features/jobs/HiddenSummary'
 import { HiddenTable } from '@/features/jobs/HiddenTable'
 import styles from '@/features/jobs/JobsView.module.css'
-import { LIST_NOTES } from '@/features/jobs/labels'
 import { ListTabs } from '@/features/jobs/ListTabs'
 import {
   hiddenBreakdown,
@@ -15,6 +14,7 @@ import {
   selectToday,
 } from '@/features/jobs/selectors'
 import type { AdsSnapshot, ConfigSnapshot, HiddenKind } from '@/features/relay/contract/payload.gen'
+import { useText } from '@/shared/i18n/languageContext'
 
 interface JobsViewProps extends AdCallbacks {
   list: JobList
@@ -29,18 +29,37 @@ interface JobsViewProps extends AdCallbacks {
   onReasonChange: (reason: HiddenKind | undefined) => void
 }
 
+function MatchList(props: JobsViewProps & { list: 'today' | 'active' }) {
+  const { list, snapshot, config } = props
+  const text = useText()
+  return (
+    <>
+      <AdList
+        ads={list === 'today' ? selectToday(snapshot) : selectActive(snapshot)}
+        today={snapshot.as_of}
+        roles={config?.roles ?? []}
+        from={list}
+        disabled={props.disabled}
+        errors={props.errors}
+        onMark={props.onMark}
+        onUnmark={props.onUnmark}
+      />
+      {list === 'today' && <HiddenSummary breakdown={hiddenBreakdown(snapshot, config?.targets.years, text)} />}
+    </>
+  )
+}
+
 function ListBody(props: JobsViewProps) {
-  const { list, snapshot, config, reason, errors, disabled } = props
-  const bands = config?.targets.years
+  const { list, snapshot } = props
   switch (list) {
     case 'hidden':
       return (
         <HiddenTable
           snapshot={snapshot}
-          reason={reason}
-          bands={bands}
+          reason={props.reason}
+          bands={props.config?.targets.years}
           movedIds={props.movedIds}
-          disabled={disabled}
+          disabled={props.disabled}
           onReasonChange={props.onReasonChange}
           onShowAnyway={props.onShowAnyway}
         />
@@ -51,26 +70,13 @@ function ListBody(props: JobsViewProps) {
       return <AllTable snapshot={snapshot} />
     case 'today':
     case 'active':
-      return (
-        <>
-          <AdList
-            ads={list === 'today' ? selectToday(snapshot) : selectActive(snapshot)}
-            today={snapshot.as_of}
-            roles={config?.roles ?? []}
-            from={list}
-            disabled={disabled}
-            errors={errors}
-            onMark={props.onMark}
-            onUnmark={props.onUnmark}
-          />
-          {list === 'today' && <HiddenSummary breakdown={hiddenBreakdown(snapshot, bands)} />}
-        </>
-      )
+      return <MatchList {...props} list={list} />
   }
 }
 
 export function JobsView(props: JobsViewProps) {
-  const note = LIST_NOTES[props.list]
+  const notes: Partial<Record<JobList, string>> = useText().jobs.listNotes
+  const note = notes[props.list]
   return (
     <>
       <ListTabs counts={listCounts(props.snapshot)} applications={props.applications} />

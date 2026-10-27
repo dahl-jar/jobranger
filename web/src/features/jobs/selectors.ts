@@ -7,6 +7,7 @@ import type {
   Mark,
   YearBand,
 } from '@/features/relay/contract/payload.gen'
+import { en, type Messages } from '@/shared/i18n/en'
 
 export type JobList = 'today' | 'active' | 'hidden' | 'closed' | 'all'
 
@@ -28,17 +29,8 @@ const YEAR_BAND_CAPS: Record<YearBand, number | undefined> = {
   '6+': undefined,
 }
 const NO_YEARS = 0
-const UNKNOWN_YEARS_LABEL = 'need more yrs'
 
 const HIDDEN_KINDS: readonly HiddenKind[] = ['senior', 'years', 'masters', 'role', 'place', 'other']
-
-const HIDDEN_LABELS: Record<Exclude<HiddenKind, 'years'>, string> = {
-  senior: 'senior',
-  masters: "master's",
-  role: 'other roles',
-  place: 'other places',
-  other: 'other reasons',
-}
 
 function byDeadline(left: ActiveAd, right: ActiveAd): number {
   if (left.deadline !== right.deadline) {
@@ -86,14 +78,15 @@ function maxYears(bands: readonly YearBand[]): number | undefined {
   return max
 }
 
-function hiddenLabel(kind: HiddenKind, bands: readonly YearBand[] | undefined): string {
-  if (kind !== 'years') return HIDDEN_LABELS[kind]
+function hiddenLabel(kind: HiddenKind, bands: readonly YearBand[] | undefined, text: Messages): string {
+  const words = text.jobs.hidden
+  if (kind !== 'years') return words.kinds[kind]
   const cap = bands === undefined ? undefined : maxYears(bands)
-  return cap === undefined ? UNKNOWN_YEARS_LABEL : `need ${cap}+ yrs`
+  return cap === undefined ? words.yearsUnknown : words.yearsAbove(cap)
 }
 
-export function hiddenBreakdown(snapshot: AdsSnapshot, bands: readonly YearBand[] | undefined): HiddenBreakdown {
-  const parts = HIDDEN_KINDS.map((kind) => ({ kind, label: hiddenLabel(kind, bands), count: snapshot.hidden_counts[kind] }))
+export function hiddenBreakdown(snapshot: AdsSnapshot, bands: readonly YearBand[] | undefined, text: Messages = en): HiddenBreakdown {
+  const parts = HIDDEN_KINDS.map((kind) => ({ kind, label: hiddenLabel(kind, bands, text), count: snapshot.hidden_counts[kind] }))
     .filter((part) => part.count > 0)
     .toSorted((left, right) => right.count - left.count)
   return { total: snapshot.hidden_total, parts }

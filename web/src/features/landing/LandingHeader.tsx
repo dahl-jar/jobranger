@@ -1,20 +1,17 @@
 import { Link } from 'react-router'
 import styles from '@/features/landing/LandingPage.module.css'
+import { NAV_SECTIONS } from '@/features/landing/landingContent'
+import { useText } from '@/shared/i18n/languageContext'
 import button from '@/shared/ui/button.module.css'
 
-const NAV_LINKS = [
-  { href: '#how', label: 'How it works' },
-  { href: '#install', label: 'Install' },
-  { href: '#free', label: 'Free' },
-  { href: '#faq', label: 'Questions' },
-] as const
-
 export function LandingNav() {
+  const words = useText().landing.nav
+
   return (
-    <nav aria-label="Main" className={styles.nav}>
-      {NAV_LINKS.map((link) => (
+    <nav aria-label={words.label} className={styles.nav}>
+      {NAV_SECTIONS.map((link) => (
         <a key={link.href} href={link.href} className={styles.navLink}>
-          {link.label}
+          {words[link.id]}
         </a>
       ))}
     </nav>
@@ -24,7 +21,7 @@ export function LandingNav() {
 export function OpenAppLink() {
   return (
     <Link to="/app" className={`${button.outline} ${button.compact} ${button.medium}`}>
-      Open the app
+      {useText().landing.openApp}
     </Link>
   )
 }

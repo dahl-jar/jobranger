@@ -1,28 +1,31 @@
 import { useId, useState } from 'react'
 import styles from '@/features/landing/LandingPage.module.css'
-import { FAQ_ITEMS } from '@/features/landing/landingContent'
+import { useText } from '@/shared/i18n/languageContext'
+
+const FIRST_OPEN_INDEX = 0
 
 export function Faq() {
   const answerIdPrefix = useId()
-  const [openQuestions, setOpenQuestions] = useState<ReadonlySet<string>>(() => new Set([FAQ_ITEMS[0].question]))
+  const items = useText().landing.faq
+  const [openIndexes, setOpenIndexes] = useState<ReadonlySet<number>>(() => new Set([FIRST_OPEN_INDEX]))
 
-  function toggle(question: string) {
-    setOpenQuestions((previous) => {
+  function toggle(index: number) {
+    setOpenIndexes((previous) => {
       const next = new Set(previous)
-      if (!next.delete(question)) next.add(question)
+      if (!next.delete(index)) next.add(index)
       return next
     })
   }
 
   return (
     <div>
-      {FAQ_ITEMS.map((item, index) => {
-        const isOpen = openQuestions.has(item.question)
+      {items.map((item, index) => {
+        const isOpen = openIndexes.has(index)
         const answerId = `${answerIdPrefix}-${index}`
         return (
-          <div key={item.question} className={styles.faqItem}>
+          <div key={index} className={styles.faqItem}>
             <h3 className={styles.faqHeading}>
-              <button type="button" className={styles.faqButton} aria-expanded={isOpen} aria-controls={answerId} onClick={() => toggle(item.question)}>
+              <button type="button" className={styles.faqButton} aria-expanded={isOpen} aria-controls={answerId} onClick={() => toggle(index)}>
                 {item.question}
                 <span aria-hidden="true" className={styles.faqSign}>
                   {isOpen ? '−' : '+'}

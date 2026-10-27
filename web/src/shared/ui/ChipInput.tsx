@@ -1,5 +1,6 @@
 import { useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react'
 import { flushSync } from 'react-dom'
+import { useText } from '@/shared/i18n/languageContext'
 import { Icon } from '@/shared/ui/Icon'
 import styles from '@/shared/ui/ChipInput.module.css'
 
@@ -37,6 +38,7 @@ interface ChipInputProps {
 
 export function ChipInput({ id, label, items, onChange, placeholder, maxLength, maxItems = Number.POSITIVE_INFINITY, className }: ChipInputProps) {
   const [draft, setDraft] = useState('')
+  const removeLabel = useText().ui.removeItem
   const inputRef = useRef<HTMLInputElement>(null)
   const removeButtons = useRef(new Map<string, HTMLButtonElement | null>())
 
@@ -107,7 +109,7 @@ export function ChipInput({ id, label, items, onChange, placeholder, maxLength, 
               }}
               type="button"
               className={styles.remove}
-              aria-label={`Remove ${item}`}
+              aria-label={removeLabel(item)}
               onClick={(event) => removeAt(index, event.detail > 0)}
             >
               <Icon name="close" size={REMOVE_ICON_SIZE} />

@@ -1,17 +1,13 @@
-const LOCALE = 'en-GB'
+import { en, type Messages } from '@/shared/i18n/en'
+
+const CLOCK_LOCALE = 'en-GB'
 const DAY_MS = 86_400_000
 const DAY_TEXT_LENGTH = 10
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const
 
 interface Due {
   due: string
   note: string
 }
-
-export const TODAY_LABEL = 'Today'
-export const YESTERDAY_LABEL = 'Yesterday'
-
-const NO_DEADLINE: Due = { due: 'No date', note: 'apply early' }
 
 function isRealDay(day: string): boolean {
   const utc = new Date(`${day}T00:00Z`)
@@ -26,8 +22,8 @@ function toLocalDate(iso: string): Date | undefined {
   return Number.isNaN(date.getTime()) ? undefined : date
 }
 
-function formatDayMonth(date: Date): string {
-  return `${date.getDate()} ${MONTHS[date.getMonth()] ?? ''}`
+function formatDayMonth(date: Date, text: Messages): string {
+  return text.dates.dayMonth(date.getDate(), text.dates.months[date.getMonth()] ?? '')
 }
 
 function daysBetween(from: Date, to: Date): number {
@@ -36,29 +32,29 @@ function daysBetween(from: Date, to: Date): number {
   return Math.round((toDay - fromDay) / DAY_MS)
 }
 
-function dueNote(days: number): string {
+function dueNote(days: number, text: Messages): string {
   if (days < 0) {
-    return 'passed'
+    return text.dates.passed
   }
   if (days === 0) {
-    return 'today'
+    return text.dates.dueToday
   }
   if (days === 1) {
-    return 'tomorrow'
+    return text.dates.dueTomorrow
   }
-  return `in ${days} days`
+  return text.dates.dueIn(days)
 }
 
-export function formatDue(deadline: string | null | undefined, today: string): Due {
+export function formatDue(deadline: string | null | undefined, today: string, text: Messages = en): Due {
   const date = deadline === null || deadline === undefined ? undefined : toLocalDate(deadline)
   if (date === undefined) {
-    return NO_DEADLINE
+    return { due: text.dates.noDate, note: text.dates.applyEarly }
   }
   const from = toLocalDate(today)
-  return { due: formatDayMonth(date), note: from === undefined ? '' : dueNote(daysBetween(from, date)) }
+  return { due: formatDayMonth(date, text), note: from === undefined ? '' : dueNote(daysBetween(from, date), text) }
 }
 
-export function formatDay(iso: string, today: string): string {
+export function formatDay(iso: string, today: string, text: Messages = en): string {
   const date = toLocalDate(iso)
   if (date === undefined) {
     return ''
@@ -66,12 +62,17 @@ export function formatDay(iso: string, today: string): string {
   const from = toLocalDate(today)
   const days = from === undefined ? undefined : daysBetween(from, date)
   if (days === 0) {
-    return TODAY_LABEL
+    return text.dates.today
   }
   if (days === -1) {
-    return YESTERDAY_LABEL
+    return text.dates.yesterday
   }
-  return formatDayMonth(date)
+  return formatDayMonth(date, text)
+}
+
+export function formatDayInSentence(iso: string, today: string, text: Messages = en): string {
+  const day = formatDay(iso, today, text)
+  return day === text.dates.today || day === text.dates.yesterday ? day.toLowerCase() : day
 }
 
 export function shiftDay(day: string, offset: number): string {
@@ -80,5 +81,5 @@ export function shiftDay(day: string, offset: number): string {
 
 export function formatClock(iso: string): string {
   const date = toLocalDate(iso)
-  return date === undefined ? '' : date.toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+  return date === undefined ? '' : date.toLocaleTimeString(CLOCK_LOCALE, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
 }

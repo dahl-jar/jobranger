@@ -3,11 +3,12 @@ import type {
   RunFinished,
   RunId,
   RunProgress,
-  SourceId,
   SourceStep,
   Status,
 } from '@/features/relay/contract/payload.gen'
 import { formatClock } from '@/shared/format/dates'
+import { en, type Messages } from '@/shared/i18n/en'
+import { SOURCE_NAMES } from '@/shared/sources'
 
 export type RunMessage = RunProgress | RunFinished | RunCancelled
 
@@ -24,14 +25,6 @@ interface RunStep {
   key: string
   state: StepState
   text: string
-}
-
-export const SOURCE_LABELS: Record<SourceId, string> = {
-  nav: 'NAV',
-  finn: 'FINN',
-  linkedin: 'LinkedIn',
-  teamtailor: 'Teamtailor',
-  ashby: 'Ashby',
 }
 
 const MODEL_STEP_KEY = 'model'
@@ -57,49 +50,53 @@ export function settleRun(view: RunView | undefined, status: Status): RunView | 
   return status.running?.run_id === view.progress.run_id ? view : undefined
 }
 
-function sourceStep(step: SourceStep): RunStep {
-  const label = SOURCE_LABELS[step.source]
+function sourceStep(step: SourceStep, text: Messages): RunStep {
+  const label = SOURCE_NAMES[step.source]
+  const words = text.run.steps
   const texts: Record<SourceStep['state'], string> = {
     pending: label,
-    active: `Reading ${label}`,
-    done: `${label}, ${step.found_new ?? 0} new`,
-    failed: `${label} failed`,
+    active: words.reading(label),
+    done: words.foundNew(label, step.found_new ?? 0),
+    failed: words.failed(label),
   }
   return { key: step.source, state: step.state, text: texts[step.state] }
 }
 
-function modelStep(model: RunProgress['model']): RunStep {
+function modelStep(model: RunProgress['model'], text: Messages): RunStep {
+  const words = text.run.steps
   const texts: Record<RunProgress['model']['state'], string> = {
-    pending: 'Check with your AI provider',
-    active: `Checking ads ${model.checked} of ${model.total}`,
-    done: `Checked ${model.total} ads`,
-    skipped: 'Paused at your monthly limit',
+    pending: words.modelPending,
+    active: words.modelActive(model.checked, model.total),
+    done: words.modelDone(model.total),
+    skipped: words.modelSkipped,
   }
   return { key: MODEL_STEP_KEY, state: model.state, text: texts[model.state] }
 }
 
-export function runSteps(progress: RunProgress): RunStep[] {
-  return [...progress.sources.map(sourceStep), modelStep(progress.model)]
+export function runSteps(progress: RunProgress, text: Messages = en): RunStep[] {
+  return [...progress.sources.map((step) => sourceStep(step, text)), modelStep(progress.model, text)]
 }
 
-function modelTitle(model: RunProgress['model']): string | undefined {
-  if (model.results_by !== null) return `A scheduled run is checking ads, results by ${formatClock(model.results_by)}`
-  if (model.state === 'done' && model.total === 0) return 'No new ads to check'
-  if (model.state === 'active' || model.state === 'done') return `Checking ${model.total} new ads against your CV`
-  if (model.state === 'skipped') return 'AI checks paused at your monthly limit'
+function modelTitle(model: RunProgress['model'], text: Messages): string | undefined {
+  const titles = text.run.titles
+  if (model.results_by !== null) return titles.scheduled(formatClock(model.results_by))
+  if (model.state === 'done' && model.total === 0) return titles.nothingNew
+  if (model.state === 'active' || model.state === 'done') return titles.checking(model.total)
+  if (model.state === 'skipped') return titles.paused
   return undefined
 }
 
-function sourcesTitle(sources: SourceStep[]): string {
+function sourcesTitle(sources: SourceStep[], text: Messages): string {
+  const titles = text.run.titles
   const reading = sources.find((source) => source.state === 'active')
-  if (reading !== undefined) return `Reading ${SOURCE_LABELS[reading.source]}`
+  if (reading !== undefined) return titles.reading(SOURCE_NAMES[reading.source])
   const waiting = sources.filter((source) => source.state === 'pending').length
-  if (waiting === sources.length) return 'Starting the run'
-  if (waiting > 0) return 'Reading job boards'
-  if (sources.every((source) => source.state === 'failed')) return 'Could not read any job board'
-  return 'Sources read, checking ads next'
+  if (waiting === sources.length) return titles.starting
+  if (waiting > 0) return titles.readingBoards
+  if (sources.every((source) => source.state === 'failed')) return titles.allFailed
+  return titles.sourcesRead
 }
 
-export function runTitle(progress: RunProgress): string {
-  return modelTitle(progress.model) ?? sourcesTitle(progress.sources)
+export function runTitle(progress: RunProgress, text: Messages = en): string {
+  return modelTitle(progress.model, text) ?? sourcesTitle(progress.sources, text)
 }

@@ -1,8 +1,9 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
-import { APPLICATION_STATUSES, STATUS_LABELS } from '@/features/applications/applicationStatus'
+import { APPLICATION_STATUSES } from '@/features/applications/applicationStatus'
 import { nextMenuItem } from '@/features/applications/menuKeys'
 import styles from '@/features/applications/StatusMenu.module.css'
 import type { ApplicationStatus } from '@/features/relay/contract/payload.gen'
+import { useText } from '@/shared/i18n/languageContext'
 import { Icon, type IconName } from '@/shared/ui/Icon'
 
 const STATUS_ICONS: Record<ApplicationStatus, IconName> = {
@@ -31,7 +32,8 @@ export function StatusMenu({ status, onChange, disabled }: StatusMenuProps) {
   const buttonRef = useRef<HTMLButtonElement>(null)
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
   const checkedIndex = APPLICATION_STATUSES.indexOf(status)
-  const label = STATUS_LABELS[status]
+  const words = useText().applications
+  const label = words.statuses[status]
 
   useEffect(() => {
     if (!open) return undefined
@@ -80,7 +82,7 @@ export function StatusMenu({ status, onChange, disabled }: StatusMenuProps) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
-        aria-label={`Status: ${label}`}
+        aria-label={words.statusLabel(label)}
         disabled={disabled}
         className={[styles.button, styles[status], open && styles.open].filter(Boolean).join(' ')}
         onClick={() => setOpen(!open)}
@@ -90,7 +92,7 @@ export function StatusMenu({ status, onChange, disabled }: StatusMenuProps) {
         <Icon name="chevron" size={CHEVRON_SIZE} />
       </button>
       {open && (
-        <div id={menuId} role="menu" aria-label="Application status" className={styles.menu} onKeyDown={onKeyDown}>
+        <div id={menuId} role="menu" aria-label={words.statusMenu} className={styles.menu} onKeyDown={onKeyDown}>
           {APPLICATION_STATUSES.map((option, index) => (
             <button
               key={option}
@@ -107,7 +109,7 @@ export function StatusMenu({ status, onChange, disabled }: StatusMenuProps) {
               <span className={styles.itemIcon}>
                 <Icon name={STATUS_ICONS[option]} />
               </span>
-              <span className={styles.itemLabel}>{STATUS_LABELS[option]}</span>
+              <span className={styles.itemLabel}>{words.statuses[option]}</span>
               <span aria-hidden="true" className={styles.radio} />
             </button>
           ))}

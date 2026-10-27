@@ -7,26 +7,29 @@ import { useDraft } from '@/features/settings/useDraft'
 import { SettingsGroup } from '@/features/settings/SettingsGroup'
 import { MIN_GAP_HOURS, nextFreeTime, sortTimes, validateRunTimes, type RunTimesError } from '@/features/settings/runTimes'
 import styles from '@/features/settings/Settings.module.css'
+import type { Messages } from '@/shared/i18n/en'
+import { useText } from '@/shared/i18n/languageContext'
 import { Icon } from '@/shared/ui/Icon'
+import { SOURCE_NAMES } from '@/shared/sources'
 
 const EMAIL_PATTERN = new RegExp(payloadSchema.$defs.Email.pattern)
 const EMAIL_MAX_CHARS = payloadSchema.$defs.Email.maxLength
-const PERSONAL_USE_HINT = 'Off by default. For personal use only.'
-
-const SOURCE_OPTIONS: readonly { key: keyof Sources; label: string; hint?: string }[] = [
-  { key: 'nav', label: 'NAV' },
-  { key: 'employers', label: 'Employer feeds', hint: 'Teamtailor and Ashby' },
-  { key: 'finn', label: 'FINN', hint: PERSONAL_USE_HINT },
-  { key: 'linkedin', label: 'LinkedIn', hint: PERSONAL_USE_HINT },
-]
+const SOURCE_KEYS: readonly (keyof Sources)[] = ['nav', 'employers', 'finn', 'linkedin']
 
 type ChannelNotice = 'keepOne' | 'needAddress' | 'badAddress' | 'addressInUse'
 
-const CHANNEL_NOTICES: Record<ChannelNotice, string> = {
-  keepOne: 'Keep at least one way to get matches.',
-  needAddress: 'Enter an address first.',
-  badAddress: 'Check the address.',
-  addressInUse: 'Turn the email off before clearing the address.',
+function sourceOption(key: keyof Sources, text: Messages): { label: string; hint: string | undefined } {
+  const words = text.settings.delivery
+  switch (key) {
+    case 'nav':
+      return { label: SOURCE_NAMES.nav, hint: undefined }
+    case 'employers':
+      return { label: words.employers, hint: words.employersHint }
+    case 'finn':
+      return { label: SOURCE_NAMES.finn, hint: words.personalUse }
+    case 'linkedin':
+      return { label: SOURCE_NAMES.linkedin, hint: words.personalUse }
+  }
 }
 
 interface SectionProps {
@@ -46,6 +49,7 @@ function MatchChannels({ config, onPatch }: SectionProps) {
   const [isConfirmingOff, setConfirmingOff] = useState(false)
   const [notice, setNotice] = useState<ChannelNotice>()
   const websiteRef = useRef<HTMLInputElement>(null)
+  const words = useText().settings.delivery
 
   function send(patch: ConfigPatch) {
     setNotice(undefined)
@@ -91,24 +95,24 @@ function MatchChannels({ config, onPatch }: SectionProps) {
 
   return (
     <>
-      <SettingsGroup title="Website">
+      <SettingsGroup title={words.website}>
         <div className={styles.stack}>
-          <CheckRow ref={websiteRef} label="Show matches on this website" checked={website} onChange={toggleWebsite} />
+          <CheckRow ref={websiteRef} label={words.showOnWebsite} checked={website} onChange={toggleWebsite} />
           {isConfirmingOff && (
             <InlineConfirm
-              question="This page stops getting updates. Turn off?"
-              confirmLabel="Turn off"
+              question={words.confirmOff}
+              confirmLabel={words.turnOff}
               onConfirm={turnWebsiteOff}
               onCancel={closeWebsiteQuestion}
             />
           )}
         </div>
       </SettingsGroup>
-      <SettingsGroup title="Daily email">
+      <SettingsGroup title={words.email}>
         <div className={styles.stack}>
-          <CheckRow label="Send me the daily list by email" checked={email.on} onChange={toggleEmail} />
+          <CheckRow label={words.sendEmail} checked={email.on} onChange={toggleEmail} />
           <div className={styles.field}>
-            <label htmlFor={addressId}>Address</label>
+            <label htmlFor={addressId}>{words.address}</label>
             <input
               id={addressId}
               type="email"
@@ -123,7 +127,7 @@ function MatchChannels({ config, onPatch }: SectionProps) {
         </div>
         {notice !== undefined && (
           <p role="alert" className={styles.error}>
-            {CHANNEL_NOTICES[notice]}
+            {words.notices[notice]}
           </p>
         )}
       </SettingsGroup>
@@ -133,32 +137,30 @@ function MatchChannels({ config, onPatch }: SectionProps) {
 
 function SourceToggles({ config, onPatch }: SectionProps) {
   const [isLastSource, setLastSource] = useState(false)
+  const text = useText()
   const { sources } = config
 
   function toggle(key: keyof Sources, checked: boolean) {
-    const onCount = SOURCE_OPTIONS.filter((option) => sources[option.key]).length
-    if (!checked && onCount === 1) return setLastSource(true)
+    const enabledCount = SOURCE_KEYS.filter((option) => sources[option]).length
+    if (!checked && enabledCount === 1) return setLastSource(true)
     setLastSource(false)
     const patch: SourcesPatch = { [key]: checked }
     onPatch({ sources: patch })
   }
 
   return (
-    <SettingsGroup title="Sources">
+    <SettingsGroup title={text.settings.delivery.sources}>
       <div className={styles.stack}>
-        {SOURCE_OPTIONS.map((option) => (
-          <CheckRow
-            key={option.key}
-            label={option.label}
-            hint={option.hint}
-            checked={sources[option.key]}
-            onChange={(checked) => toggle(option.key, checked)}
-          />
-        ))}
+        {SOURCE_KEYS.map((key) => {
+          const option = sourceOption(key, text)
+          return (
+            <CheckRow key={key} label={option.label} hint={option.hint} checked={sources[key]} onChange={(checked) => toggle(key, checked)} />
+          )
+        })}
       </div>
       {isLastSource && (
         <p role="alert" className={styles.error}>
-          Keep at least one source on.
+          {text.settings.delivery.lastSource}
         </p>
       )}
     </SettingsGroup>
@@ -169,14 +171,15 @@ function sameTimes(first: readonly string[], second: readonly string[]): boolean
   return first.join() === second.join()
 }
 
-function runTimesMessage(error: RunTimesError): string {
+function runTimesMessage(error: RunTimesError, text: Messages): string {
+  const words = text.settings.delivery
   switch (error.kind) {
     case 'format':
-      return 'Use a time like 03:00.'
+      return words.timeFormat
     case 'duplicate':
-      return `${error.time} is in the list twice.`
+      return words.duplicate(error.time)
     case 'tooClose':
-      return `${error.pair[0]} and ${error.pair[1]} are less than ${MIN_GAP_HOURS} hours apart.`
+      return words.tooClose(error.pair[0], error.pair[1], MIN_GAP_HOURS)
   }
 }
 
@@ -184,6 +187,8 @@ function RunTimes({ times, onPatch }: { times: readonly string[]; onPatch: (patc
   const [drafts, setDrafts] = useDraft<readonly string[]>(times, sameTimes)
   const error = validateRunTimes(drafts)
   const nextTime = error === undefined ? nextFreeTime(drafts) : undefined
+  const text = useText()
+  const words = text.settings.delivery
 
   function send(next: readonly string[]) {
     onPatch({ schedule: { times: sortTimes(next) } })
@@ -201,22 +206,22 @@ function RunTimes({ times, onPatch }: { times: readonly string[]; onPatch: (patc
   }
 
   return (
-    <SettingsGroup title="Run times">
+    <SettingsGroup title={words.runTimes}>
       <ul className={styles.plainList}>
         {drafts.map((time, index) => (
           <li key={index} className={styles.row}>
             <input
               type="time"
-              aria-label={`Run time ${index + 1}`}
+              aria-label={words.runTime(index + 1)}
               className={styles.textInput}
               value={time}
               onChange={(event) => setDrafts(drafts.map((draft, position) => (position === index ? event.target.value : draft)))}
               onBlur={commit}
             />
-            <span className={styles.grow}>every day</span>
-            <button type="button" className={styles.textButton} aria-label={`Remove run time ${index + 1}`} onClick={() => remove(index)}>
+            <span className={styles.grow}>{words.everyDay}</span>
+            <button type="button" className={styles.textButton} aria-label={words.removeRunTime(index + 1)} onClick={() => remove(index)}>
               <Icon name="close" />
-              Remove
+              {text.common.remove}
             </button>
           </li>
         ))}
@@ -230,14 +235,14 @@ function RunTimes({ times, onPatch }: { times: readonly string[]; onPatch: (patc
         }}
       >
         <Icon name="plus" />
-        Add a run time
+        {words.addRunTime}
       </button>
       {error !== undefined && (
         <p role="alert" className={styles.error}>
-          {runTimesMessage(error)}
+          {runTimesMessage(error, text)}
         </p>
       )}
-      <p className={styles.note}>{`At least ${MIN_GAP_HOURS} hours apart.`}</p>
+      <p className={styles.note}>{words.gap(MIN_GAP_HOURS)}</p>
     </SettingsGroup>
   )
 }

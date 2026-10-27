@@ -1,6 +1,7 @@
 import { useId, useState } from 'react'
 import type { ChipLimit } from '@/features/settings/chipLimits'
 import styles from '@/features/settings/Settings.module.css'
+import { useText } from '@/shared/i18n/languageContext'
 import { ChipInput } from '@/shared/ui/ChipInput'
 
 interface LimitedChipsProps {
@@ -14,6 +15,8 @@ interface LimitedChipsProps {
 
 export function LimitedChips({ label, items, limit, placeholder, className, onChange }: LimitedChipsProps) {
   const inputId = useId()
+  const chips = useText().settings.chips
+  const nouns = chips[limit.kind]
   const [isTooLong, setTooLong] = useState(false)
 
   function change(next: string[]) {
@@ -34,10 +37,10 @@ export function LimitedChips({ label, items, limit, placeholder, className, onCh
         className={className ?? ''}
         onChange={change}
       />
-      {items.length >= limit.maxItems && <span className={styles.hint}>{`At most ${limit.maxItems} ${limit.items}.`}</span>}
+      {items.length >= limit.maxItems && <span className={styles.hint}>{nouns.atMost(limit.maxItems)}</span>}
       {isTooLong && (
         <p role="alert" className={styles.error}>
-          {`${limit.item} has at most ${limit.maxLength} characters.`}
+          {chips.tooLong(nouns.item, limit.maxLength)}
         </p>
       )}
     </>

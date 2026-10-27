@@ -2,10 +2,8 @@ import { useEffect, useRef } from 'react'
 import { Link, useHref, useLocation, useRouteError } from 'react-router'
 import styles from '@/app/Notice.module.css'
 import { reloadOnce, RouteImportError } from '@/app/routeImport'
+import { useText } from '@/shared/i18n/languageContext'
 import { usePageTitle } from '@/shared/usePageTitle'
-
-const BROKEN_TITLE = 'Something broke'
-const NOT_LOADED_TITLE = 'Could not load this page'
 
 export function RouteError() {
   const error = useRouteError()
@@ -13,7 +11,9 @@ export function RouteError() {
   const location = useLocation()
   const href = useHref(location)
   const heading = useRef<HTMLHeadingElement>(null)
-  usePageTitle(notLoaded ? NOT_LOADED_TITLE : BROKEN_TITLE)
+  const text = useText()
+  const words = text.app.routeError
+  usePageTitle(notLoaded ? words.notLoadedTitle : words.brokenTitle)
 
   useEffect(() => {
     heading.current?.focus()
@@ -26,15 +26,15 @@ export function RouteError() {
   return (
     <main className={`${styles.notice} ${styles.standalone}`}>
       <h1 ref={heading} tabIndex={-1} className={styles.title}>
-        {notLoaded ? `${NOT_LOADED_TITLE}.` : 'Something broke on this page.'}
+        {notLoaded ? words.notLoadedHeading : words.brokenHeading}
       </h1>
-      {notLoaded && <p className={styles.detail}>Check your connection and reload.</p>}
+      {notLoaded && <p className={styles.detail}>{words.checkConnection}</p>}
       <div className={styles.actions}>
         <button type="button" className={styles.reload} onClick={() => window.location.reload()}>
-          Reload
+          {words.reload}
         </button>
         <Link to="/" className={styles.home}>
-          Home
+          {text.common.home}
         </Link>
       </div>
     </main>

@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import styles from '@/features/applications/Applications.module.css'
 import { COMPANY_MAX_CHARS, NOTE_MAX_CHARS, TITLE_MAX_CHARS } from '@/features/applications/limits'
 import type { ApplicationCreate } from '@/features/relay/contract/payload.gen'
+import { useText } from '@/shared/i18n/languageContext'
 import { Button } from '@/shared/ui/Button'
 import button from '@/shared/ui/button.module.css'
 
@@ -18,9 +19,9 @@ type FormError = { kind: 'company' } | { kind: 'save'; message: string }
 const EMPTY_DRAFT: ApplicationDraft = { company: '', title: '', note: '' }
 
 const FIELDS = [
-  { name: 'company', label: 'Company', max: COMPANY_MAX_CHARS, className: '', placeholder: undefined },
-  { name: 'title', label: 'Role', max: TITLE_MAX_CHARS, className: styles.roleField, placeholder: undefined },
-  { name: 'note', label: 'Note', max: NOTE_MAX_CHARS, className: styles.noteField, placeholder: 'e.g. Applied through a referral' },
+  { name: 'company', label: 'company', max: COMPANY_MAX_CHARS, className: '' },
+  { name: 'title', label: 'role', max: TITLE_MAX_CHARS, className: styles.roleField },
+  { name: 'note', label: 'note', max: NOTE_MAX_CHARS, className: styles.noteField },
 ] as const
 
 function describedBy(ids: (string | false)[]): string | undefined {
@@ -30,6 +31,8 @@ function describedBy(ids: (string | false)[]): string | undefined {
 
 export function AddApplicationForm({ onAdd, onCancel, disabled }: AddApplicationFormProps) {
   const idPrefix = useId()
+  const text = useText()
+  const words = text.applications.form
   const companyRef = useRef<HTMLInputElement>(null)
   const [draft, setDraft] = useState<ApplicationDraft>(EMPTY_DRAFT)
   const [saving, setSaving] = useState(false)
@@ -62,17 +65,18 @@ export function AddApplicationForm({ onAdd, onCancel, disabled }: AddApplication
   }
 
   return (
-    <form aria-label="Add an application" className={styles.addForm} noValidate onSubmit={(event) => void submit(event)}>
+    <form aria-label={words.label} className={styles.addForm} noValidate onSubmit={(event) => void submit(event)}>
       {FIELDS.map((field) => {
         const value = draft[field.name]
         const limitId = `${idPrefix}-${field.name}-limit`
         const atLimit = value.length >= field.max
         const isCompany = field.name === 'company'
         const inputId = `${idPrefix}-${field.name}`
+        const label = words[field.label]
         return (
           <div key={field.name} className={`${styles.field} ${field.className}`}>
             <label htmlFor={inputId} className={styles.fieldLabel}>
-              {field.label}
+              {label}
             </label>
             <input
               id={inputId}
@@ -80,7 +84,7 @@ export function AddApplicationForm({ onAdd, onCancel, disabled }: AddApplication
               type="text"
               value={value}
               maxLength={field.max}
-              placeholder={field.placeholder}
+              placeholder={field.name === 'note' ? words.notePlaceholder : undefined}
               aria-invalid={isCompany ? companyMissing : undefined}
               aria-describedby={describedBy([isCompany && companyMissing && companyErrorId, atLimit && limitId])}
               className={styles.input}
@@ -88,26 +92,26 @@ export function AddApplicationForm({ onAdd, onCancel, disabled }: AddApplication
             />
             {atLimit && (
               <span id={limitId} className={styles.limit}>
-                {field.label} stops at {field.max} characters.
+                {words.stopsAt(label, field.max)}
               </span>
             )}
           </div>
         )
       })}
       <Button type="submit" size={40} className={`${button.compact} ${button.medium}`} disabled={disabled || saving}>
-        {saving ? 'Adding...' : 'Add'}
+        {saving ? words.adding : words.add}
       </Button>
       <button type="button" className={styles.cancelButton} onClick={onCancel}>
-        Cancel
+        {text.common.cancel}
       </button>
       {companyMissing && (
         <p id={companyErrorId} role="alert" className={styles.formError}>
-          Enter a company.
+          {words.enterCompany}
         </p>
       )}
       {error?.kind === 'save' && (
         <p role="alert" className={styles.formError}>
-          Not saved: {error.message}
+          {text.common.notSaved(error.message)}
         </p>
       )}
     </form>

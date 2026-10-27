@@ -1,10 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { ApplicationsSummary } from '@/features/applications/ApplicationsSummary'
-import { foundApplication, handApplication, pinTimeZone, removedApplication } from '@/features/applications/testData'
+import { foundApplication, handApplication, pinTimeZone, removedApplication, TODAY } from '@/features/applications/testData'
 import type { ApplicationStatus } from '@/features/relay/contract/payload.gen'
-
-const TODAY = '2026-10-12'
 
 const withStatus = (status: ApplicationStatus, id: number) => ({ ...foundApplication, id, status })
 

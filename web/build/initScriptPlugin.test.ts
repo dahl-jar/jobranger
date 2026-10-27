@@ -4,10 +4,11 @@ import { join, resolve } from 'node:path'
 import { runInNewContext } from 'node:vm'
 import { createServer, type Rollup } from 'vite'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
-import { bundleThemeInit, themeInitPlugin } from './themeInitPlugin.ts'
+import { bundleInitScript, initScriptPlugin } from './initScriptPlugin.ts'
 
 const ROOT = resolve(import.meta.dirname, '..')
 const ENTRY = resolve(ROOT, 'src/app/theme/themeInit.ts')
+const SCRIPT_FILE = 'theme-init.js'
 
 function paintWithStoredTheme(script: string, stored: string): string | undefined {
   const dataset: { theme?: string } = {}
@@ -20,21 +21,21 @@ function paintWithStoredTheme(script: string, stored: string): string | undefine
 }
 
 async function fetchFromDevServer(path: string): Promise<Response> {
-  const server = await createServer({ configFile: false, root: ROOT, logLevel: 'silent', plugins: [themeInitPlugin(ENTRY)], server: { port: 0, ws: false } })
+  const server = await createServer({ configFile: false, root: ROOT, logLevel: 'silent', plugins: [initScriptPlugin(ENTRY, SCRIPT_FILE)], server: { port: 0, ws: false } })
   onTestFinished(() => server.close())
   await server.listen()
   return fetch(new URL(path, server.resolvedUrls?.local[0]))
 }
 
-describe('bundleThemeInit', () => {
+describe('bundleInitScript', () => {
   it('should build a classic script that applies the stored theme', async () => {
-    const script = await bundleThemeInit(ENTRY)
+    const script = await bundleInitScript(ENTRY, SCRIPT_FILE)
 
     expect(paintWithStoredTheme(script, 'light')).toBe('light')
   })
 
   it('should minify the script', async () => {
-    const script = await bundleThemeInit(ENTRY)
+    const script = await bundleInitScript(ENTRY, SCRIPT_FILE)
 
     expect(script).not.toContain('readStoredTheme')
   })
@@ -47,19 +48,19 @@ describe('bundleThemeInit', () => {
       rmSync(root, { recursive: true })
     })
 
-    await bundleThemeInit(ENTRY)
+    await bundleInitScript(ENTRY, SCRIPT_FILE)
 
     expect(readdirSync(root)).toEqual([])
   })
 })
 
-describe('themeInitPlugin', () => {
+describe('initScriptPlugin', () => {
   it('should name itself jobranger-theme-init', () => {
-    expect(themeInitPlugin(ENTRY).name).toBe('jobranger-theme-init')
+    expect(initScriptPlugin(ENTRY, SCRIPT_FILE).name).toBe('jobranger-theme-init')
   })
 
   it('should emit theme-init.js into the build', async () => {
-    const plugin = themeInitPlugin(ENTRY)
+    const plugin = initScriptPlugin(ENTRY, SCRIPT_FILE)
     const emitFile = vi.fn<(file: Rollup.EmittedFile) => string>(() => '')
 
     await plugin.generateBundle.call({ emitFile })

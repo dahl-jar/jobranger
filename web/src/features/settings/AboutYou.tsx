@@ -2,7 +2,7 @@ import { useId } from 'react'
 import type { ContextSnapshot, ErrorMessage } from '@/features/relay/contract/payload.gen'
 import styles from '@/features/settings/Settings.module.css'
 import { useDraft } from '@/features/settings/useDraft'
-import { CONTEXT_FULL } from '@/features/settings/uploadText'
+import { useText } from '@/shared/i18n/languageContext'
 
 const ABOUT_ROWS = 6
 
@@ -16,6 +16,8 @@ export function AboutYou({ context, errorCode, onSave }: AboutYouProps) {
   const fieldId = useId()
   const [draft, setDraft] = useDraft(context.about)
   const isOver = draft.length > context.about_limit
+  const text = useText()
+  const words = text.settings.about
 
   function commit() {
     const trimmed = draft.trim()
@@ -26,7 +28,7 @@ export function AboutYou({ context, errorCode, onSave }: AboutYouProps) {
   return (
     <section className={styles.group}>
       <label htmlFor={fieldId} className={styles.label}>
-        About you
+        {words.label}
       </label>
       <div className={styles.rule} />
       <textarea
@@ -34,14 +36,14 @@ export function AboutYou({ context, errorCode, onSave }: AboutYouProps) {
         aria-describedby={`${fieldId}-note`}
         className={styles.textarea}
         rows={ABOUT_ROWS}
-        placeholder="e.g. Built a booking API in C# with PostgreSQL and integration tests"
+        placeholder={words.placeholder}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={commit}
       />
       <div className={styles.footer}>
         <p id={`${fieldId}-note`} className={styles.hint}>
-          Projects, what you built, what your CV leaves out. The matcher can cite this.
+          {words.hint}
         </p>
         <span className={isOver ? `${styles.counter} ${styles.over}` : styles.counter}>
           {draft.length} / {context.about_limit}
@@ -49,7 +51,7 @@ export function AboutYou({ context, errorCode, onSave }: AboutYouProps) {
       </div>
       {errorCode === 'context_full' && (
         <p role="alert" className={styles.error}>
-          {CONTEXT_FULL}
+          {text.settings.upload.contextFull}
         </p>
       )}
     </section>

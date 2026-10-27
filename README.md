@@ -17,6 +17,8 @@ Development setup and checks are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 The site uses JetBrainsMono Nerd Font, served from `web/public/fonts` (SIL OFL 1.1, license next to the files). The theme switch offers Light, System and Dark, with Dark as the default. The choice is stored in the browser under `jobranger.theme`, and a script in the page head applies it before the first paint.
 
+The site is in English and Norwegian bokmål. It starts in the browser language (`nb`, `no` and `nn` give bokmål, anything else English) and switches in Settings › Appearance. The choice is stored under `jobranger.language`, and a script in the page head sets `<html lang>` before the first paint.
+
 ## License
 
 [PolyForm Noncommercial 1.0.0](LICENSE). Anyone can run, change and share jobranger for free for personal and other noncommercial use, including using it in their own job search. Selling it, or running it as a paid service, is not allowed.

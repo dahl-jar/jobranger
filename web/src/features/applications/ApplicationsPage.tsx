@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { flushSync } from 'react-dom'
 import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import { AddApplicationForm, type ApplicationDraft } from '@/features/applications/AddApplicationForm'
-import { APPLICATION_STATUSES, countStatuses, listedApplications, parseStatusFilter, STATUS_LABELS } from '@/features/applications/applicationStatus'
+import { APPLICATION_STATUSES, countStatuses, listedApplications, parseStatusFilter } from '@/features/applications/applicationStatus'
 import { applicationPath, FROM_LIST_STATE } from '@/features/applications/applicationsPath'
 import styles from '@/features/applications/Applications.module.css'
 import { ApplicationsTable } from '@/features/applications/ApplicationsTable'
@@ -10,6 +10,7 @@ import { formatSort, nextSort, parseSort, sortApplications, type SortKey } from 
 import { ADD_BUTTON_ATTRIBUTE, rowOrAddButton } from '@/features/applications/rowFocus'
 import type { RemoveWithUndo } from '@/features/applications/useRemoveWithUndo'
 import type { ApplicationsSnapshot, ApplicationStatus } from '@/features/relay/contract/payload.gen'
+import { useText } from '@/shared/i18n/languageContext'
 import { Button } from '@/shared/ui/Button'
 import { Icon } from '@/shared/ui/Icon'
 import { StatusText } from '@/shared/ui/StatusText'
@@ -31,6 +32,8 @@ export function ApplicationsPage({ snapshot, today, editsDisabled, removal, onCr
   const navigate = useNavigate()
   const location = useLocation()
   const [adding, setAdding] = useState(false)
+  const text = useText()
+  const words = text.applications
   const filter = parseStatusFilter(searchParams.get(STATUS_PARAM))
   const sort = parseSort(searchParams.get(SORT_PARAM))
   const pending = removal.pending
@@ -69,7 +72,7 @@ export function ApplicationsPage({ snapshot, today, editsDisabled, removal, onCr
   }
 
   return (
-    <section aria-label="Applications">
+    <section aria-label={words.heading}>
       <div className={styles.toolbar}>
         <div className={styles.pills}>
           {APPLICATION_STATUSES.map((status) => (
@@ -80,13 +83,13 @@ export function ApplicationsPage({ snapshot, today, editsDisabled, removal, onCr
               className={styles.pill}
               onClick={() => updateParam(STATUS_PARAM, filter === status ? undefined : status)}
             >
-              {STATUS_LABELS[status]} {counts[status]}
+              {words.statuses[status]} {counts[status]}
             </button>
           ))}
         </div>
         <Button variant="quiet" size={40} className={styles.openAdd} {...{ [ADD_BUTTON_ATTRIBUTE]: '' }} onClick={() => setAdding(true)}>
           <Icon name="plus" />
-          Add by hand
+          {words.addByHand}
         </Button>
       </div>
       {adding && <AddApplicationForm onAdd={add} onCancel={() => setAdding(false)} disabled={editsDisabled} />}
@@ -99,18 +102,18 @@ export function ApplicationsPage({ snapshot, today, editsDisabled, removal, onCr
         onOpen={(applicationId) => void navigate(applicationPath(applicationId, location.search), { state: FROM_LIST_STATE })}
         onStatusChange={onStatusChange}
       />
-      {rows.length === 0 && <p className={styles.empty}>No applications here.</p>}
+      {rows.length === 0 && <p className={styles.empty}>{words.empty}</p>}
       <p className={styles.footer}>
-        {truncated && `Showing the latest ${listed.length} of ${snapshot.applications_total}. `}
-        Click a row to open it.
+        {truncated && words.showingLatest(listed.length, snapshot.applications_total)}
+        {words.clickRow}
       </p>
       <div className={styles.removal}>
         <StatusText kind={pending ? 'saved' : undefined}>
           {pending && (
             <>
-              Removed {pending.company}.
+              {words.removed(pending.company)}
               <Button variant="link" size={36} onClick={() => undoRemoval(pending.id)}>
-                Undo
+                {text.common.undo}
               </Button>
             </>
           )}

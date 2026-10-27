@@ -3,14 +3,6 @@ import { oneOf } from '@/shared/oneOf'
 
 export const APPLICATION_STATUSES: readonly ApplicationStatus[] = ['waiting', 'interview', 'offer', 'accepted', 'rejected']
 
-export const STATUS_LABELS: Record<ApplicationStatus, string> = {
-  waiting: 'Waiting',
-  interview: 'Interview',
-  offer: 'Offer',
-  accepted: 'Accepted',
-  rejected: 'Rejected',
-}
-
 export function parseStatusFilter(param: string | null): ApplicationStatus | undefined {
   return oneOf(APPLICATION_STATUSES, param)
 }

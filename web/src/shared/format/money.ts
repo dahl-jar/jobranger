@@ -1,14 +1,22 @@
+import { en, type Messages } from '@/shared/i18n/en'
+
 const SMALLEST_SHOWN = 0.01
-const BELOW_SMALLEST = '<$0.01'
+const CENT_DIGITS = 2
+const DOLLAR = '$'
+const MINUS = '-'
+const BELOW = '<'
 
-const USD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
+function formatAmount(value: number, text: Messages): string {
+  const amount = new Intl.NumberFormat(text.numbers.locale, { minimumFractionDigits: CENT_DIGITS, maximumFractionDigits: CENT_DIGITS }).format(Math.abs(value))
+  return `${value < 0 ? MINUS : ''}${DOLLAR}${amount}`
+}
 
-export function formatUsd(value: number): string {
+export function formatUsd(value: number, text: Messages = en): string {
   if (!Number.isFinite(value)) {
-    return USD.format(0)
+    return formatAmount(0, text)
   }
   if (value > 0 && value < SMALLEST_SHOWN) {
-    return BELOW_SMALLEST
+    return `${BELOW}${formatAmount(SMALLEST_SHOWN, text)}`
   }
-  return USD.format(value)
+  return formatAmount(value, text)
 }

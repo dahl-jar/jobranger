@@ -6,51 +6,41 @@ import { LimitedChips } from '@/features/settings/LimitedChips'
 import { timingLabel, type SearchField } from '@/features/settings/searchTiming'
 import { SettingsGroup } from '@/features/settings/SettingsGroup'
 import styles from '@/features/settings/Settings.module.css'
-
-const LEVEL_OPTIONS: readonly { id: Level; label: string }[] = [
-  { id: 'junior', label: 'Junior' },
-  { id: 'mid', label: 'Mid-level' },
-  { id: 'senior', label: 'Senior' },
-  { id: 'lead', label: 'Tech lead' },
-  { id: 'none', label: 'No level stated' },
-]
-
-const YEAR_OPTIONS: readonly { id: YearBand; label: string }[] = [
-  { id: '0-1', label: '0–1 years' },
-  { id: '1-3', label: '1–3 years' },
-  { id: '3-6', label: '3–6 years' },
-  { id: '6+', label: '6+ years' },
-]
+import { LEVELS, YEAR_BANDS } from '@/features/jobs/labels'
+import { useText } from '@/shared/i18n/languageContext'
 
 function toggled<T>(items: readonly T[], item: T, checked: boolean): T[] {
   return checked ? [...items, item] : items.filter((existing) => existing !== item)
 }
 
 function SearchGroup({ title, field, children }: { title: string; field: SearchField; children: ReactNode }) {
+  const text = useText()
   return (
-    <SettingsGroup title={title} aside={<span className={styles.timing}>{timingLabel(field)}</span>}>
+    <SettingsGroup title={title} aside={<span className={styles.timing}>{timingLabel(field, text)}</span>}>
       {children}
     </SettingsGroup>
   )
 }
 
-interface PickListProps<T> {
-  options: readonly { id: T; label: string }[]
+interface PickListProps<T extends string> {
+  options: readonly T[]
+  labels: Record<T, string>
   picked: readonly T[]
   onChange: (picked: T[]) => void
 }
 
-function PickListWithAll<T extends string>({ options, picked, onChange }: PickListProps<T>) {
-  const isAll = options.every((option) => picked.includes(option.id))
+function PickListWithAll<T extends string>({ options, labels, picked, onChange }: PickListProps<T>) {
+  const all = useText().settings.search.all
+  const isAll = options.every((option) => picked.includes(option))
   return (
     <div className={styles.inline}>
-      <CheckRow label="All" checked={isAll} onChange={(checked) => onChange(checked ? options.map((option) => option.id) : [])} />
+      <CheckRow label={all} checked={isAll} onChange={(checked) => onChange(checked ? [...options] : [])} />
       {options.map((option) => (
         <CheckRow
-          key={option.id}
-          label={option.label}
-          checked={picked.includes(option.id)}
-          onChange={(checked) => onChange(toggled(picked, option.id, checked))}
+          key={option}
+          label={labels[option]}
+          checked={picked.includes(option)}
+          onChange={(checked) => onChange(toggled(picked, option, checked))}
         />
       ))}
     </div>
@@ -58,6 +48,8 @@ function PickListWithAll<T extends string>({ options, picked, onChange }: PickLi
 }
 
 export function SearchSettings({ config, onPatch }: { config: ConfigSnapshot; onPatch: (patch: ConfigPatch) => void }) {
+  const text = useText()
+  const words = text.settings.search
   const { targets } = config
   const hasPlaces = targets.places.length > 0
 
@@ -67,7 +59,7 @@ export function SearchSettings({ config, onPatch }: { config: ConfigSnapshot; on
 
   return (
     <>
-      <SearchGroup title="Roles" field="roles">
+      <SearchGroup title={words.roles} field="roles">
         <div className={styles.grid}>
           {config.roles.map((role) => (
             <CheckRow
@@ -79,34 +71,34 @@ export function SearchSettings({ config, onPatch }: { config: ConfigSnapshot; on
           ))}
         </div>
       </SearchGroup>
-      <SearchGroup title="Level" field="levels">
-        <PickListWithAll options={LEVEL_OPTIONS} picked={targets.levels} onChange={(levels) => patchTargets({ levels })} />
+      <SearchGroup title={words.level} field="levels">
+        <PickListWithAll<Level> options={LEVELS} labels={text.targets.levels} picked={targets.levels} onChange={(levels) => patchTargets({ levels })} />
       </SearchGroup>
-      <SearchGroup title="Experience the ad asks for" field="years">
-        <PickListWithAll options={YEAR_OPTIONS} picked={targets.years} onChange={(years) => patchTargets({ years })} />
+      <SearchGroup title={words.years} field="years">
+        <PickListWithAll<YearBand> options={YEAR_BANDS} labels={text.targets.years} picked={targets.years} onChange={(years) => patchTargets({ years })} />
       </SearchGroup>
-      <SearchGroup title="Master's degree" field="hideMasters">
+      <SearchGroup title={words.masters} field="hideMasters">
         <div className={styles.stack}>
           <CheckRow
-            label="Hide ads that require a master's"
+            label={words.hideMasters}
             checked={targets.hide_masters}
             onChange={(checked) => patchTargets({ hide_masters: checked })}
           />
         </div>
       </SearchGroup>
-      <SearchGroup title="Places" field="places">
+      <SearchGroup title={words.places} field="places">
         <div className={styles.stack}>
           <LimitedChips
-            label="Places"
+            label={words.places}
             items={targets.places}
             limit={PLACE_LIMIT}
-            placeholder={hasPlaces ? 'Add a place' : 'Anywhere in Norway'}
+            placeholder={hasPlaces ? words.addPlace : words.anywhere}
             onChange={(places) => patchTargets({ places })}
           />
-          <span className={styles.hint}>Press Enter to add. Empty means anywhere.</span>
+          <span className={styles.hint}>{words.placesHint}</span>
           <CheckRow
-            label="Open to moving"
-            hint={hasPlaces ? 'Other cities show as Partial fit' : 'On, since no places are set'}
+            label={words.moving}
+            hint={hasPlaces ? words.movingWithPlaces : words.movingWithoutPlaces}
             checked={!hasPlaces || targets.relocate}
             disabled={!hasPlaces}
             onChange={(checked) => patchTargets({ relocate: checked })}

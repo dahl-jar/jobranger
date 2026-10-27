@@ -1,5 +1,6 @@
-import { LEVEL_LABELS, LEVELS, YEAR_BAND_LABELS, YEAR_BANDS } from '@/features/jobs/labels'
+import { LEVELS, YEAR_BANDS } from '@/features/jobs/labels'
 import type { Targets } from '@/features/relay/contract/payload.gen'
+import { en, type Messages } from '@/shared/i18n/en'
 
 export interface TargetsSummary {
   level: string
@@ -8,27 +9,26 @@ export interface TargetsSummary {
   places: string
 }
 
-const ALL_PICKED = 'All'
-const NONE_PICKED = 'None picked'
-const OPEN_TO_MOVING = 'open to moving'
+const LIST_SEPARATOR = ', '
 
-function pickedText<K extends string>(order: readonly K[], labels: Record<K, string>, picked: readonly K[]): string {
+function pickedText<K extends string>(order: readonly K[], labels: Record<K, string>, picked: readonly K[], text: Messages): string {
   const keys = order.filter((key) => picked.includes(key))
-  if (keys.length === 0) return NONE_PICKED
-  if (keys.length === order.length) return ALL_PICKED
-  return keys.map((key) => labels[key]).join(', ')
+  if (keys.length === 0) return text.jobs.config.none
+  if (keys.length === order.length) return text.jobs.config.all
+  return keys.map((key) => labels[key]).join(LIST_SEPARATOR)
 }
 
-function placesText(places: readonly string[], relocate: boolean): string {
-  if (places.length === 0) return `Anywhere, ${OPEN_TO_MOVING}`
-  return relocate ? `${places.join(', ')}, ${OPEN_TO_MOVING}` : places.join(', ')
+function placesText(places: readonly string[], relocate: boolean, text: Messages): string {
+  if (places.length === 0) return text.jobs.config.anywhere
+  const listed = places.join(LIST_SEPARATOR)
+  return relocate ? text.jobs.config.openToMoving(listed) : listed
 }
 
-export function summarizeTargets(targets: Targets): TargetsSummary {
+export function summarizeTargets(targets: Targets, text: Messages = en): TargetsSummary {
   return {
-    level: pickedText(LEVELS, LEVEL_LABELS, targets.levels),
-    years: pickedText(YEAR_BANDS, YEAR_BAND_LABELS, targets.years),
-    masters: targets.hide_masters ? 'Not required' : 'Allowed',
-    places: placesText(targets.places, targets.relocate),
+    level: pickedText(LEVELS, text.targets.levels, targets.levels, text),
+    years: pickedText(YEAR_BANDS, text.targets.years, targets.years, text),
+    masters: targets.hide_masters ? text.jobs.config.notRequired : text.jobs.config.allowed,
+    places: placesText(targets.places, targets.relocate, text),
   }
 }
