@@ -3,7 +3,8 @@
     "solution": "../Jobranger.slnx",
     "project": "Jobranger.Relay.Core.csproj",
     "test-projects": [
-      "tests/Jobranger.Relay.Core.Tests/Jobranger.Relay.Core.Tests.csproj"
+      "tests/Jobranger.Relay.Core.Tests/Jobranger.Relay.Core.Tests.csproj",
+      "tests/Jobranger.Relay.Tests/Jobranger.Relay.Tests.csproj"
     ],
     "test-runner": "mtp",
     "reporters": ["html", "progress"]

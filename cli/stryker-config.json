@@ -6,6 +6,7 @@
       "tests/Jobranger.Cli.Tests/Jobranger.Cli.Tests.csproj"
     ],
     "test-runner": "mtp",
+    "coverage-analysis": "perTest",
     "reporters": ["html", "progress"]
   }
 }
