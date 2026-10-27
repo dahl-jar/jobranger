@@ -12,6 +12,7 @@ on:
       - nuget.config
       - .config/dotnet-tools.json
       - .editorconfig
+      - .github/actions/dotnet-setup/**
       - .github/workflows/relay.yml
   pull_request:
     paths:
@@ -23,6 +24,7 @@ on:
       - nuget.config
       - .config/dotnet-tools.json
       - .editorconfig
+      - .github/actions/dotnet-setup/**
       - .github/workflows/relay.yml
   workflow_dispatch:
 
@@ -36,13 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
-        with:
-          global-json-file: global.json
-
-      - run: dotnet restore Jobranger.slnx --locked-mode
-      - run: dotnet format Jobranger.slnx --verify-no-changes --no-restore
-      - run: dotnet build Jobranger.slnx -c Release --no-restore -warnaserror
+      - uses: ./.github/actions/dotnet-setup
       - run: dotnet test --project contracts/tests/Jobranger.Contracts.Tests -c Release --no-build
       - run: dotnet test --project relay/tests/Jobranger.Relay.Core.Tests -c Release --no-build
       - run: dotnet test --project relay/tests/Jobranger.Relay.Tests -c Release --no-build

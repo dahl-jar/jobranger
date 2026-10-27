@@ -1,0 +1,11 @@
+{
+  "stryker-config": {
+    "solution": "../Jobranger.slnx",
+    "project": "Jobranger.Cli.csproj",
+    "test-projects": [
+      "tests/Jobranger.Cli.Tests/Jobranger.Cli.Tests.csproj"
+    ],
+    "test-runner": "mtp",
+    "reporters": ["html", "progress"]
+  }
+}

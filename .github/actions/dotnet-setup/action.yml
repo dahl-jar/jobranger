@@ -1,0 +1,27 @@
+name: Set up .NET
+description: Installs the SDK pinned in global.json, then restores, format-checks and builds the solution.
+
+inputs:
+  build:
+    description: Restore, format-check and build Jobranger.slnx in Release
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+      with:
+        global-json-file: global.json
+
+    - if: inputs.build == 'true'
+      shell: bash
+      run: dotnet restore Jobranger.slnx --locked-mode
+
+    - if: inputs.build == 'true'
+      shell: bash
+      run: dotnet format Jobranger.slnx --verify-no-changes --no-restore
+
+    - if: inputs.build == 'true'
+      shell: bash
+      run: dotnet build Jobranger.slnx -c Release --no-restore -warnaserror

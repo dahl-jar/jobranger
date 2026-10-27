@@ -1,0 +1,76 @@
+name: Test CLI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - cli/**
+      - contracts/**
+      - deploy/cli/**
+      - Jobranger.slnx
+      - Directory.*.props
+      - global.json
+      - nuget.config
+      - .config/dotnet-tools.json
+      - .editorconfig
+      - .github/actions/dotnet-setup/**
+      - .github/workflows/cli.yml
+  pull_request:
+    paths:
+      - cli/**
+      - contracts/**
+      - deploy/cli/**
+      - Jobranger.slnx
+      - Directory.*.props
+      - global.json
+      - nuget.config
+      - .config/dotnet-tools.json
+      - .editorconfig
+      - .github/actions/dotnet-setup/**
+      - .github/workflows/cli.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Format, build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - uses: ./.github/actions/dotnet-setup
+      - run: dotnet test --project cli/tests/Jobranger.Cli.Tests -c Release --no-build --minimum-expected-tests 76
+
+  publish:
+    name: Publish ${{ matrix.rid }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: macos-15
+            rid: osx-arm64
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - uses: ./.github/actions/dotnet-setup
+        with:
+          build: "false"
+
+      - run: dotnet publish cli/src/Jobranger.Cli -c Release -r ${{ matrix.rid }} -o "$RUNNER_TEMP/publish"
+      - run: '"$RUNNER_TEMP/publish/jobranger" --version | grep -Ex "jobranger [0-9]+\.[0-9]+\.[0-9]+"'
+        env:
+          DOTNET_BUNDLE_EXTRACT_BASE_DIR: ${{ runner.temp }}/bundle
+
+  image:
+    name: Build image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - run: docker build -f deploy/cli/Dockerfile -t jobranger-cli:ci .
+      - run: docker run --rm jobranger-cli:ci --version | grep -Ex "jobranger [0-9]+\.[0-9]+\.[0-9]+"

@@ -1,4 +1,11 @@
 <Solution>
+  <Folder Name="/cli/" />
+  <Folder Name="/cli/src/">
+    <Project Path="cli/src/Jobranger.Cli/Jobranger.Cli.csproj" />
+  </Folder>
+  <Folder Name="/cli/tests/">
+    <Project Path="cli/tests/Jobranger.Cli.Tests/Jobranger.Cli.Tests.csproj" />
+  </Folder>
   <Folder Name="/contracts/" />
   <Folder Name="/contracts/src/">
     <Project Path="contracts/src/Jobranger.Contracts/Jobranger.Contracts.csproj" />

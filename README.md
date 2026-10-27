@@ -4,6 +4,7 @@ jobranger fetches job ads from FINN, NAV, LinkedIn and employer job boards, chec
 
 | Folder | Contents |
 |---|---|
+| `cli/` | C# CLI, one self-contained binary for macOS and Linux |
 | `cli-python/` | Python CLI that fetches, matches and reports ads |
 | `relay/` | ASP.NET Core relay between the CLI and the website |
 | `edge/` | Cloudflare Worker that rate limits requests to the relay by address and network |

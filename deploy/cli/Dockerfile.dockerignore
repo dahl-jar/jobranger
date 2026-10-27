@@ -1,0 +1,9 @@
+*
+!global.json
+!nuget.config
+!Directory.Build.props
+!Directory.Packages.props
+!.editorconfig
+!cli/src/
+**/bin/
+**/obj/
