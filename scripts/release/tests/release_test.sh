@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-expected_tests=22
+expected_tests=25
 fixture_version="0.4.1"
 fixture_rids=(osx-arm64 linux-x64)
 linux_archive="jobranger-$fixture_version-linux-x64.tar.gz"
@@ -106,9 +106,9 @@ EOF
 }
 
 stub_older() {
-  mkdir -p older
-  printf '#!/bin/sh\necho older\n' >older/jobranger
-  chmod 0755 older/jobranger
+  mkdir -p "$1"
+  printf '#!/bin/sh\necho older\n' >"$1/jobranger"
+  chmod 0755 "$1/jobranger"
 }
 
 stub_curl() {
@@ -285,20 +285,45 @@ should_install_arm64_build_under_rosetta() {
 
 should_warn_when_other_jobranger_runs_first() {
   build_release
-  stub_older
+  stub_older older
   local output
 
   output="$(PATH="$PWD/older:$PATH" run_local_install Linux x86_64)"
 
-  assert_contains "$output" "$PWD/older/jobranger runs first on PATH, remove it or install again with JOBRANGER_INSTALL_DIR=$PWD/older"
+  assert_contains "$output" "$PWD/older/jobranger runs first on PATH, remove it or install again with JOBRANGER_INSTALL_DIR=\"$PWD/older\""
+}
+
+should_quote_install_dir_in_hint_when_path_has_space() {
+  build_release
+  stub_older "old er"
+  local output
+
+  output="$(PATH="$PWD/old er:$PATH" run_local_install Linux x86_64)"
+
+  assert_contains "$output" "JOBRANGER_INSTALL_DIR=\"$PWD/old er\""
 }
 
 should_not_warn_when_install_dir_runs_first() {
   build_release
-  stub_older
+  stub_older older
   local output
 
   output="$(PATH="$PWD/bin-install:$PWD/older:$PATH" run_local_install Linux x86_64)"
+
+  assert_eq "jobranger $fixture_version installed to $PWD/bin-install/jobranger" "$output"
+}
+
+should_ask_to_add_install_dir_when_not_on_path() {
+  build_release
+
+  assert_contains "$(run_local_install Linux x86_64)" "add $PWD/bin-install to PATH to run jobranger"
+}
+
+should_not_ask_to_add_install_dir_when_path_has_trailing_slash() {
+  build_release
+  local output
+
+  output="$(PATH="$PWD/bin-install/:$PATH" run_local_install Linux x86_64)"
 
   assert_eq "jobranger $fixture_version installed to $PWD/bin-install/jobranger" "$output"
 }

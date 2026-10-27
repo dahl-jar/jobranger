@@ -32,6 +32,16 @@ download() {
   curl -fsSL --proto '=https,file' --proto-redir '=https' -o "$2" "$1"
 }
 
+on_path() {
+  rest="$PATH:"
+  while [ -n "$rest" ]; do
+    entry="${rest%%:*}"
+    rest="${rest#*:}"
+    [ "$entry" -ef "$1" ] && return 0
+  done
+  return 1
+}
+
 sha256() {
   if command -v sha256sum >/dev/null 2>&1; then
     sha256sum "$1"
@@ -62,11 +72,8 @@ chmod 0755 "$install_dir/.jobranger.new"
 mv -f "$install_dir/.jobranger.new" "$install_dir/jobranger"
 
 echo "jobranger $version installed to $install_dir/jobranger"
-case ":$PATH:" in
-  *":$install_dir:"*) ;;
-  *) echo "add $install_dir to PATH to run jobranger" ;;
-esac
+on_path "$install_dir" || echo "add $install_dir to PATH to run jobranger"
 active="$(command -v jobranger || true)"
 if [ -n "$active" ] && [ ! "$active" -ef "$install_dir/jobranger" ]; then
-  echo "$active runs first on PATH, remove it or install again with JOBRANGER_INSTALL_DIR=${active%/*}"
+  echo "$active runs first on PATH, remove it or install again with JOBRANGER_INSTALL_DIR=\"${active%/*}\""
 fi
