@@ -47,9 +47,24 @@ public sealed class SourcesTests {
     }
 
     [Fact]
+    public async Task ShouldNotReportCancel_WhenSourceReturnsFullBatch() {
+        using CancellationTokenSource cancel = new();
+        SourceBatch full = new() { Source = "fake" };
+        ScriptedSource finishing = new("fake", _ => {
+            cancel.Cancel();
+            return Task.FromResult(full);
+        });
+
+        SourceOutcome outcome = await SourcesEntry.FetchAsync(finishing, Context(new FakeSiteHandler(_ => Body(""))),
+            cancel.Token);
+
+        Assert.False(outcome.Cancelled);
+    }
+
+    [Fact]
     public async Task ShouldCarryPartialBatch_WhenSourceFails() {
         SourceBatch partial = new() { Source = "fake" };
-        FakeSource failing = new(_ => throw new SourceException("fake feed failed", partial));
+        ScriptedSource failing = new("fake", _ => throw new SourceException("fake feed failed", partial));
 
         SourceOutcome outcome = await SourcesEntry.FetchAsync(failing, Context(new FakeSiteHandler(_ => Body(""))),
             CancellationToken.None);
@@ -59,7 +74,7 @@ public sealed class SourcesTests {
 
     [Fact]
     public async Task ShouldNameErrorType_WhenSourceCrashes() {
-        FakeSource crashing = new(_ => throw new InvalidOperationException("boom"));
+        ScriptedSource crashing = new("fake", _ => throw new InvalidOperationException("boom"));
 
         SourceOutcome outcome = await SourcesEntry.FetchAsync(crashing, Context(new FakeSiteHandler(_ => Body(""))),
             CancellationToken.None);
@@ -69,7 +84,7 @@ public sealed class SourcesTests {
 
     [Fact]
     public async Task ShouldLogCrash_WhenSourceThrowsUnexpectedError() {
-        FakeSource crashing = new(_ => throw new InvalidOperationException("boom"));
+        ScriptedSource crashing = new("fake", _ => throw new InvalidOperationException("boom"));
         FakeLogger logger = new();
 
         await SourcesEntry.FetchAsync(crashing, Context(new FakeSiteHandler(_ => Body("")), logger: logger),
@@ -86,7 +101,7 @@ public sealed class SourcesTests {
         if (cancelled) {
             cancel.Cancel();
         }
-        FakeSource cancelling = new(_ => throw new OperationCanceledException());
+        ScriptedSource cancelling = new("fake", _ => throw new OperationCanceledException());
 
         SourceOutcome outcome = await SourcesEntry.FetchAsync(cancelling, Context(new FakeSiteHandler(_ => Body(""))),
             cancel.Token);
