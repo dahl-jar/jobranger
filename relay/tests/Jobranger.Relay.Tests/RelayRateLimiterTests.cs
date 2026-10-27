@@ -39,7 +39,7 @@ public sealed class RelayRateLimiterTests {
                 RateLimiting.Limiter(policy, scale, time), () => Interlocked.Increment(ref disposed)));
         limiter.AttemptAcquireForAddress(Client(clientAddress), RateLimiting.Nonce).Dispose();
         limiter.AttemptAcquireForChannel(Client(clientAddress), new ChannelId("channel-one"), RelayRole.Cli).Dispose();
-        limiter.AttemptAcquireForUnpairedChannel(Client(clientAddress), new ChannelId("channel-two")).Dispose();
+        limiter.AttemptAcquireForChannelNonce(Client(clientAddress), new ChannelId("channel-two")).Dispose();
         time.Advance(pastEveryWindow);
 
         limiter.Sweep();
@@ -60,21 +60,33 @@ public sealed class RelayRateLimiterTests {
     }
 
     [Fact]
-    public void ShouldKeepNetworkOverflowInItsOwnShardWhenChannelStoreIsFull() {
+    public void ShouldKeepNetworkOverflowInItsOwnShardWhenChannelNonceStoreIsFull() {
         using RelayRateLimiter limiter = new(
             new FakeTimeProvider(),
             maxPartitions: 1,
-            limiters: (policy, _) => new ConcurrencyLimiter(policy == RateLimiting.UnpairedChannel ? onePermit : manyPermits));
-        using RateLimitLease live = UnpairedChannel(limiter, "100.68.6.1");
-        using RateLimitLease overflow = UnpairedChannel(limiter, "100.68.6.2");
+            limiters: (policy, _) => new ConcurrencyLimiter(policy == RateLimiting.ChannelNonce ? onePermit : manyPermits));
+        using RateLimitLease live = ChannelNonce(limiter, "100.68.6.1");
+        using RateLimitLease overflow = ChannelNonce(limiter, "100.68.6.2");
 
-        using RateLimitLease sameNetwork = UnpairedChannel(limiter, "100.68.6.3");
+        using RateLimitLease sameNetwork = ChannelNonce(limiter, "100.68.6.3");
 
         Assert.Equal((true, false), (overflow.IsAcquired, sameNetwork.IsAcquired));
     }
 
-    private static RateLimitLease UnpairedChannel(RelayRateLimiter limiter, string address) =>
-        limiter.AttemptAcquireForUnpairedChannel(Client(address), RelayClients.NewChannel());
+    [Fact]
+    public void ShouldKeepSessionChannelLimitsWhenChannelNonceStoreIsFull() {
+        using RelayRateLimiter limiter = new(new FakeTimeProvider(), maxPartitions: 1, overflowShards: 1);
+        for (int requester = 0; requester < RelayLimits.MaxChannelPartitions + RelayLimits.SessionsPerChannelWindow; requester++) {
+            ChannelNonce(limiter, $"2001:db8:2:{requester:x}::1").Dispose();
+        }
+
+        using RateLimitLease session = limiter.AttemptAcquireForChannel(Client(clientAddress), RelayClients.NewChannel(), RelayRole.Cli);
+
+        Assert.True(session.IsAcquired);
+    }
+
+    private static RateLimitLease ChannelNonce(RelayRateLimiter limiter, string address) =>
+        limiter.AttemptAcquireForChannelNonce(Client(address), RelayClients.NewChannel());
 
     private static DefaultHttpContext Client(string address) =>
         new() { Connection = { RemoteIpAddress = IPAddress.Parse(address) } };

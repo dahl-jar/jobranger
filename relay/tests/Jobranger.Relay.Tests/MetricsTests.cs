@@ -14,6 +14,7 @@ public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFact
     private const string healthPath = "/healthz";
     private const string unknownCode = "BBBB-BBBB";
     private const int claimBurst = 5;
+    private const int requestsPerChannel = 30;
     private const string kestrelMeter = "Microsoft.AspNetCore.Server.Kestrel";
     private const string kestrelInstrument = "kestrel.test_connections";
     private const string localAddress = "192.0.2.7";
@@ -89,6 +90,23 @@ public sealed class MetricsTests(RelayFactory factory) : IClassFixture<RelayFact
         using HttpResponseMessage response = await api.Claim(unknownCode);
 
         Assert.Equal([("pair-claim", 1L)], ByTag(limited, "policy"));
+    }
+
+    [Fact]
+    public async Task ShouldCountRefusedChannelNonceUnderItsOwnPolicy() {
+        using CliKey key = new();
+        using RelayApi owner = RelayApi.For(factory, Addresses.Next());
+        await owner.Paired(key);
+        using RelayApi api = RelayApi.For(factory, Addresses.Next());
+        for (int request = 0; request < requestsPerChannel; request++) {
+            using HttpResponseMessage admitted = await api.Post("/pair/nonce", RelayApi.NonceBody(key.Channel.Value));
+        }
+
+        using MetricCollector<long> limited = Collector("relay.rate_limited");
+
+        using HttpResponseMessage response = await api.Post("/pair/nonce", RelayApi.NonceBody(key.Channel.Value));
+
+        Assert.Equal([("channel-nonce", 1L)], ByTag(limited, "policy"));
     }
 
     [Fact]

@@ -8,14 +8,14 @@ namespace Jobranger.Relay.Security;
 public sealed class RelayRateLimiter : PartitionedRateLimiter<HttpContext>, ISweepable {
     private const int clientScale = 1;
     private const int sharedTiersPerPolicy = 2;
-    private const int unpairedChannelStores = 1;
+    private const int channelNonceStores = 1;
 
-    private static readonly int storesPerBudget = (sharedTiersPerPolicy * RateLimiting.Policies.Length) + unpairedChannelStores;
+    private static readonly int storesPerBudget = (sharedTiersPerPolicy * RateLimiting.Policies.Length) + channelNonceStores;
 
     private readonly Dictionary<string, PartitionStore> clients;
     private readonly Dictionary<string, PartitionStore> blocks;
     private readonly PartitionStore channels;
-    private readonly PartitionStore unpairedChannels;
+    private readonly PartitionStore channelNonces;
 
     public RelayRateLimiter(
         TimeProvider time,
@@ -35,7 +35,7 @@ public sealed class RelayRateLimiter : PartitionedRateLimiter<HttpContext>, ISwe
             RelayLimits.MaxChannelPartitions,
             time,
             overflowShards);
-        unpairedChannels = new PartitionStore(() => limiterFor(RateLimiting.UnpairedChannel, clientScale), partitions, time, overflowShards);
+        channelNonces = new PartitionStore(() => limiterFor(RateLimiting.ChannelNonce, clientScale), partitions, time, overflowShards);
     }
 
     public static int MaxPartitionsPerStore => RelayLimits.RateLimitStateBudgetBytes / (storesPerBudget * RelayLimits.PartitionBytes);
@@ -52,12 +52,30 @@ public sealed class RelayRateLimiter : PartitionedRateLimiter<HttpContext>, ISwe
         channels.AttemptAcquire(
             $"{RelayRoles.Wire(role)}:{channel.Value}", ClientPartition.Network(resource.Connection.RemoteIpAddress));
 
-    public RateLimitLease AttemptAcquireForUnpairedChannel(HttpContext resource, ChannelId channel) =>
-        AttemptAcquireTiered(resource.Connection.RemoteIpAddress, RateLimiting.Nonce, unpairedChannels, channel.Value);
+    public RateLimitLease AttemptAcquireForChannelNonce(HttpContext resource, ChannelId channel) {
+        IPAddress? address = resource.Connection.RemoteIpAddress;
+        return channelNonces.AttemptAcquire($"{channel.Value}:{ClientPartition.For(address)}", ClientPartition.Network(address));
+    }
+
+    public RateLimitLease AttemptAcquireForClient(HttpContext resource, string policy) {
+        IPAddress? address = resource.Connection.RemoteIpAddress;
+        return clients[policy].AttemptAcquire(ClientPartition.For(address), ClientPartition.Network(address));
+    }
 
     public RateLimitLease AttemptAcquireForAddress(HttpContext resource, string policy) {
         IPAddress? address = resource.Connection.RemoteIpAddress;
-        return AttemptAcquireTiered(address, policy, blocks[policy], BlockOf(address, policy));
+        RateLimitLease clientLease = AttemptAcquireForClient(resource, policy);
+        if (!clientLease.IsAcquired || BlockOf(address, policy) is not { } block) {
+            return clientLease;
+        }
+
+        RateLimitLease blockLease = blocks[policy].AttemptAcquire(block, ClientPartition.Network(address));
+        if (blockLease.IsAcquired) {
+            return new TieredLease(blockLease, clientLease);
+        }
+
+        clientLease.Dispose();
+        return blockLease;
     }
 
     protected override RateLimitLease AttemptAcquireCore(HttpContext resource, int permitCount) =>
@@ -79,26 +97,10 @@ public sealed class RelayRateLimiter : PartitionedRateLimiter<HttpContext>, ISwe
         base.Dispose(disposing);
     }
 
-    private IEnumerable<PartitionStore> Stores() => clients.Values.Concat(blocks.Values).Append(channels).Append(unpairedChannels);
+    private IEnumerable<PartitionStore> Stores() => clients.Values.Concat(blocks.Values).Append(channels).Append(channelNonces);
 
     private static string? BlockOf(IPAddress? address, string policy) =>
         policy == RateLimiting.PairStart ? ClientPartition.Network(address) : ClientPartition.Ipv6Block(address);
-
-    private RateLimitLease AttemptAcquireTiered(IPAddress? address, string policy, PartitionStore shared, string? sharedKey) {
-        string network = ClientPartition.Network(address);
-        RateLimitLease clientLease = clients[policy].AttemptAcquire(ClientPartition.For(address), network);
-        if (!clientLease.IsAcquired || sharedKey is null) {
-            return clientLease;
-        }
-
-        RateLimitLease sharedLease = shared.AttemptAcquire(sharedKey, network);
-        if (sharedLease.IsAcquired) {
-            return new TieredLease(sharedLease, clientLease);
-        }
-
-        clientLease.Dispose();
-        return sharedLease;
-    }
 
     private sealed class TieredLease(RateLimitLease shared, RateLimitLease client) : RateLimitLease {
         public override bool IsAcquired => client.IsAcquired;

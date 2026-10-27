@@ -1,3 +1,4 @@
+using Jobranger.Contracts.Channels;
 using Microsoft.Extensions.Time.Testing;
 
 namespace Jobranger.Relay.Core.Tests;
@@ -9,6 +10,10 @@ public sealed class NonceStoreTests {
     private const int nonceChars = 43;
     private const string networkA = "198.51.100.0/24";
     private const string networkB = "203.0.113.0/24";
+    private const string requesterA = "198.51.100.7";
+    private const string requesterB = "198.51.100.8";
+    private const string requesterC = "198.51.100.9";
+    private const string otherNetworkRequester = "203.0.113.7";
 
     private readonly FakeTimeProvider time = new();
     private readonly NonceStore store;
@@ -224,22 +229,135 @@ public sealed class NonceStoreTests {
 
     [Fact]
     public void ShouldIssueChannelNoncesOutsideNetworkLimit() {
-        NonceStore shared = new(time, maxOutstanding: 10, maxPerNetwork: 1, maxPerChannel: 2);
+        NonceStore shared = new(time, maxOutstanding: 10, maxPerNetwork: 1, maxPerChannelClient: 2, maxChannelNoncesPerNetwork: 2);
         shared.IssueForNetwork(networkA);
 
-        bool[] refused = [.. Enumerable.Range(0, 3).Select(_ => shared.IssueForChannel(Channels.One) is null)];
+        bool[] refused = [.. Enumerable.Range(0, 3).Select(_ => shared.IssueForChannel(Channels.One, requesterA, networkA) is null)];
 
         Assert.Equal([false, false, true], refused);
     }
 
     [Fact]
     public void ShouldKeepChannelSharesSeparate() {
-        NonceStore shared = new(time, maxOutstanding: 10, maxPerChannel: 1);
-        shared.IssueForChannel(Channels.One);
+        NonceStore shared = new(time, maxOutstanding: 10, maxPerChannelClient: 1);
+        shared.IssueForChannel(Channels.One, requesterA, networkA);
 
-        RelayNonce? other = shared.IssueForChannel(Channels.Two);
+        RelayNonce? other = shared.IssueForChannel(Channels.Two, requesterA, networkA);
 
         Assert.NotNull(other);
+    }
+
+    [Fact]
+    public void ShouldKeepChannelShareOfOtherRequesterWhenOneRequesterFillsIt() {
+        NonceStore shared = new(time, maxOutstanding: 10, maxPerChannelClient: 1);
+        shared.IssueForChannel(Channels.One, requesterA, networkA);
+
+        (bool, bool) outcomes = (
+            shared.IssueForChannel(Channels.One, requesterA, networkA) is null,
+            shared.IssueForChannel(Channels.One, requesterB, networkA) is null);
+
+        Assert.Equal((true, false), outcomes);
+    }
+
+    [Fact]
+    public void ShouldRefuseRequesterPastItsChannelNonceLimit() {
+        NonceStore shared = new(time, maxOutstanding: 10, maxChannelNoncesPerClient: 2);
+        shared.IssueForChannel(Channels.One, requesterA, networkA);
+        shared.IssueForChannel(Channels.Two, requesterA, networkA);
+
+        (bool, bool) outcomes = (
+            shared.IssueForChannel(Channels.Three, requesterA, networkA) is null,
+            shared.IssueForChannel(Channels.Three, requesterB, networkA) is null);
+
+        Assert.Equal((true, false), outcomes);
+    }
+
+    [Fact]
+    public void ShouldEvictOldestChannelNonceOfFullNetwork() {
+        NonceStore shared = new(time, maxOutstanding: 10, maxChannelNoncesPerNetwork: 2);
+        RelayNonce otherNetwork = shared.IssueForChannel(Channels.One, otherNetworkRequester, networkB)!;
+        RelayNonce oldest = shared.IssueForChannel(Channels.One, requesterA, networkA)!;
+        RelayNonce newer = shared.IssueForChannel(Channels.Two, requesterB, networkA)!;
+        shared.IssueForChannel(Channels.Three, requesterB, networkA);
+
+        (NonceOutcome, NonceOutcome, NonceOutcome) outcomes = (
+            shared.Consume(oldest.Value), shared.Consume(newer.Value), shared.Consume(otherNetwork.Value));
+
+        Assert.Equal((NonceOutcome.Expired, NonceOutcome.Valid, NonceOutcome.Valid), outcomes);
+    }
+
+    [Fact]
+    public void ShouldEvictOldestOutstandingNonceWhenOlderOneWasConsumed() {
+        NonceStore shared = new(time, maxOutstanding: 10, maxChannelNoncesPerNetwork: 2);
+        RelayNonce consumed = shared.IssueForChannel(Channels.One, requesterA, networkA)!;
+        RelayNonce oldest = shared.IssueForChannel(Channels.Two, requesterA, networkA)!;
+        shared.Consume(consumed.Value);
+        shared.IssueForChannel(Channels.One, requesterB, networkA);
+        shared.IssueForChannel(Channels.One, requesterC, networkA);
+
+        NonceOutcome outcome = shared.Consume(oldest.Value);
+
+        Assert.Equal(NonceOutcome.Expired, outcome);
+    }
+
+    [Fact]
+    public void ShouldEvictWithinFullNetworkWhenRelayIsFull() {
+        NonceStore shared = new(time, maxOutstanding: 2, maxChannelNoncesPerNetwork: 2);
+        shared.IssueForChannel(Channels.One, requesterA, networkA);
+        shared.IssueForChannel(Channels.Two, requesterA, networkA);
+
+        RelayNonce? next = shared.IssueForChannel(Channels.Three, requesterB, networkA);
+
+        Assert.NotNull(next);
+    }
+
+    [Fact]
+    public void ShouldIssueAgainToRequesterWhoseNonceWasEvicted() {
+        NonceStore shared = new(time, maxOutstanding: 10, maxPerChannelClient: 1, maxChannelNoncesPerNetwork: 1);
+        shared.IssueForChannel(Channels.One, requesterA, networkA);
+        shared.IssueForChannel(Channels.Two, requesterB, networkA);
+
+        RelayNonce? again = shared.IssueForChannel(Channels.One, requesterA, networkA);
+
+        Assert.NotNull(again);
+    }
+
+    [Fact]
+    public void ShouldKeepLoneNonceWhenNeighboursRotateThroughFullNetwork() {
+        const int perClient = 16;
+        const int perNetwork = 256;
+        const int flooders = perNetwork / perClient;
+        const int floodIssues = perNetwork * 2;
+        NonceStore shared = new(time, maxChannelNoncesPerNetwork: perNetwork, maxChannelNoncesPerClient: perClient);
+        RelayNonce lone = shared.IssueForChannel(Channels.One, requesterA, networkA)!;
+        for (int issue = 0; issue < floodIssues; issue++) {
+            shared.IssueForChannel(new ChannelId($"flood-{issue}"), $"flooder-{issue % flooders}", networkA);
+        }
+
+        NonceOutcome outcome = shared.Consume(lone.Value);
+
+        Assert.Equal(NonceOutcome.Valid, outcome);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ShouldFreeNetworkChannelShareWhenNonceIsConsumedOrExpires(bool consumed) {
+        NonceStore shared = new(time, maxOutstanding: 10, maxChannelNoncesPerNetwork: 2);
+        RelayNonce first = shared.IssueForChannel(Channels.One, requesterA, networkA)!;
+        time.Advance(justBeforeExpiry);
+        RelayNonce second = shared.IssueForChannel(Channels.Two, requesterB, networkA)!;
+        if (consumed) {
+            shared.Consume(first.Value);
+        } else {
+            time.Advance(nonceLifetime - justBeforeExpiry);
+        }
+
+        shared.IssueForChannel(Channels.Three, requesterA, networkA);
+
+        NonceOutcome outcome = shared.Consume(second.Value);
+
+        Assert.Equal(NonceOutcome.Valid, outcome);
     }
 
     private static RelayNonce Issued(NonceStore nonces) =>

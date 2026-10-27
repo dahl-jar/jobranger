@@ -1,3 +1,4 @@
+using System.Net;
 using System.Security.Cryptography;
 using Jobranger.Contracts.Channels;
 using Jobranger.Contracts.Fields;
@@ -30,16 +31,19 @@ internal static class PairingEndpoints {
         ChannelId? channel = ParseChannel(request.Channel);
         ProblemHttpResult? refused = channel switch {
             null => RateLimiting.Throttle(http, limiter.AttemptAcquireForAddress(http, RateLimiting.Nonce), RateLimiting.Nonce),
-            { } owner when paired.Touch(owner) => RateLimiting.ThrottleChannel(http, limiter, owner, RelayRole.Cli),
-            { } owner => RateLimiting.Throttle(http, limiter.AttemptAcquireForUnpairedChannel(http, owner), RateLimiting.Nonce),
+            { } owner when paired.Touch(owner) =>
+                RateLimiting.Throttle(http, limiter.AttemptAcquireForChannelNonce(http, owner), RateLimiting.ChannelNonce),
+            { } => RateLimiting.Throttle(http, limiter.AttemptAcquireForClient(http, RateLimiting.Nonce), RateLimiting.Nonce),
         };
         if (refused is not null) {
             return refused;
         }
 
+        IPAddress? address = http.Connection.RemoteIpAddress;
+        string network = ClientPartition.Network(address);
         RelayNonce? issued = channel is { } bound
-            ? nonces.IssueForChannel(bound)
-            : nonces.IssueForNetwork(ClientPartition.Network(http.Connection.RemoteIpAddress));
+            ? nonces.IssueForChannel(bound, ClientPartition.For(address), network)
+            : nonces.IssueForNetwork(network);
         if (issued is not { } nonce) {
             return RelayLog.For(loggers).Reject(http, RelayProblems.RelayFull);
         }

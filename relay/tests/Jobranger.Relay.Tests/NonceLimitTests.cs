@@ -15,14 +15,17 @@ public sealed class NonceLimitTests(RelayFactory factory) : IClassFixture<RelayF
     private const int floodClients = 100;
     private const int pairedCliReconnects = 10;
     private const int noncesPerNetwork = 64;
-    private const int noncesPerChannel = 4;
+    private const int noncesPerChannelClient = 4;
     private const int secondOctet = 65;
     private const int failedSessionsPerAddress = 120;
     private const int clientsPerBlockShare = 5;
+    private const int channelNoncesPerNetwork = 256;
+    private const int channelNoncesPerClient = 16;
+    private const int channelFlooders = channelNoncesPerNetwork / noncesPerChannelClient;
+    private const int unknownChannelFlooders = channelNoncesPerNetwork / channelNoncesPerClient;
 
     private static readonly TimeSpan elapsedInWindow = TimeSpan.FromMinutes(4);
     private static readonly TimeSpan leftInWindow = TimeSpan.FromMinutes(6);
-    private static readonly TimeSpan nonceWindow = TimeSpan.FromMinutes(1);
 
     [Fact]
     public async Task ShouldLetPairedCliReconnectDuringAddressFlood() {
@@ -50,7 +53,7 @@ public sealed class NonceLimitTests(RelayFactory factory) : IClassFixture<RelayF
     }
 
     [Fact]
-    public async Task ShouldChargeUnpairedChannelToAddressTier() {
+    public async Task ShouldChargeUnpairedChannelToClientLimit() {
         using CliKey key = new();
         using RelayApi starter = RelayApi.For(factory, Addresses.NextIpv4(secondOctet));
         JsonObject started = await starter.StartPairing(key);
@@ -71,15 +74,16 @@ public sealed class NonceLimitTests(RelayFactory factory) : IClassFixture<RelayF
         using RelayApi owner = RelayApi.For(factory, Addresses.NextIpv4(secondOctet));
         JsonObject paired = await owner.Paired(key);
         string channel = (string)paired["channel"]!;
-        using (await FromNewAddress(RelayApi.NonceBody(channel))) {
+        using RelayApi api = RelayApi.For(factory, Addresses.NextIpv4(secondOctet));
+        using (await api.Post(nonceRoute, RelayApi.NonceBody(channel))) {
             factory.Time.Advance(elapsedInWindow);
         }
 
         for (int request = 1; request < requestsPerChannel; request++) {
-            using HttpResponseMessage admitted = await FromNewAddress(RelayApi.NonceBody(channel));
+            using HttpResponseMessage admitted = await api.Post(nonceRoute, RelayApi.NonceBody(channel));
         }
 
-        using HttpResponseMessage refused = await FromNewAddress(RelayApi.NonceBody(channel));
+        using HttpResponseMessage refused = await api.Post(nonceRoute, RelayApi.NonceBody(channel));
 
         Assert.Equal((HttpStatusCode.TooManyRequests, leftInWindow), (refused.StatusCode, refused.Headers.RetryAfter?.Delta));
     }
@@ -97,13 +101,13 @@ public sealed class NonceLimitTests(RelayFactory factory) : IClassFixture<RelayF
 
         using RelayApi reconnecting = RelayApi.For(factory, "100.66.5.200");
         List<HttpStatusCode> statuses = [];
-        for (int request = 0; request <= noncesPerChannel; request++) {
+        for (int request = 0; request <= noncesPerChannelClient; request++) {
             using HttpResponseMessage response = await reconnecting.Post(nonceRoute, RelayApi.NonceBody(channel));
             statuses.Add(response.StatusCode);
         }
 
         Assert.Equal(
-            [.. Enumerable.Repeat(HttpStatusCode.OK, noncesPerChannel), HttpStatusCode.ServiceUnavailable],
+            [.. Enumerable.Repeat(HttpStatusCode.OK, noncesPerChannelClient), HttpStatusCode.ServiceUnavailable],
             statuses);
     }
 
@@ -141,6 +145,22 @@ public sealed class NonceLimitTests(RelayFactory factory) : IClassFixture<RelayF
     }
 
     [Fact]
+    public async Task ShouldRefuseNetworkNonceWhenIpv6BlockLimitIsUsedUp() {
+        string block = Addresses.NextBlock();
+        for (int prefix = 1; prefix <= clientsPerBlockShare; prefix++) {
+            using RelayApi neighbour = RelayApi.For(factory, $"{block}:{prefix:x}::1");
+            for (int request = 0; request < noncesPerAddress; request++) {
+                using HttpResponseMessage nonce = await neighbour.Post(nonceRoute, RelayApi.NonceBody(null));
+            }
+        }
+
+        using RelayApi api = RelayApi.For(factory, $"{block}:ffff::1");
+        using HttpResponseMessage refused = await api.Post(nonceRoute, RelayApi.NonceBody(null));
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, refused.StatusCode);
+    }
+
+    [Fact]
     public async Task ShouldChargeCliNoncesToChannelAfterSessionProof() {
         using CliKey key = new();
         using RelayApi api = RelayApi.For(factory, Addresses.NextIpv4(secondOctet));
@@ -155,16 +175,78 @@ public sealed class NonceLimitTests(RelayFactory factory) : IClassFixture<RelayF
         Assert.Equal(HttpStatusCode.OK, nonce.StatusCode);
     }
 
-    [Fact]
-    public async Task ShouldRefuseUnknownChannelPastItsNonceLimit() {
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ShouldLetCliReconnectWhenOtherAddressNamesItsChannel(bool paired) {
         using CliKey key = new();
-        for (int request = 0; request < noncesPerAddress; request++) {
-            using HttpResponseMessage admitted = await FromNewAddress(RelayApi.NonceBody(key.Channel.Value));
+        if (paired) {
+            using RelayApi owner = RelayApi.For(factory, Addresses.NextIpv4(secondOctet));
+            await owner.Paired(key);
         }
 
-        using HttpResponseMessage refused = await FromNewAddress(RelayApi.NonceBody(key.Channel.Value));
+        using RelayApi other = RelayApi.For(factory, Addresses.NextIpv4(secondOctet));
+        for (int request = 0; request <= requestsPerChannel; request++) {
+            using HttpResponseMessage response = await other.Post(nonceRoute, RelayApi.NonceBody(key.Channel.Value));
+        }
 
-        Assert.Equal((HttpStatusCode.TooManyRequests, nonceWindow), (refused.StatusCode, refused.Headers.RetryAfter?.Delta));
+        (HttpStatusCode, HttpStatusCode, HubConnectionState) reconnect = await Reconnect(key, Addresses.NextIpv4(secondOctet));
+
+        Assert.Equal((HttpStatusCode.OK, HttpStatusCode.OK, HubConnectionState.Connected), reconnect);
+    }
+
+    [Fact]
+    public async Task ShouldLetPairedCliReconnectWhenItsNetworkFillsChannelShare() {
+        using CliKey key = new();
+        string block = Addresses.NextBlock();
+        using (RelayApi owner = RelayApi.For(factory, $"{block}:ffff::1")) {
+            await owner.Paired(key);
+        }
+
+        for (int prefix = 1; prefix <= channelFlooders; prefix++) {
+            using RelayApi neighbour = RelayApi.For(factory, $"{block}:{prefix:x}::1");
+            for (int request = 0; request < noncesPerChannelClient; request++) {
+                using HttpResponseMessage response = await neighbour.Post(nonceRoute, RelayApi.NonceBody(key.Channel.Value));
+            }
+        }
+
+        (HttpStatusCode, HttpStatusCode, HubConnectionState) reconnect = await Reconnect(key, $"{block}:ffff::1");
+
+        Assert.Equal((HttpStatusCode.OK, HttpStatusCode.OK, HubConnectionState.Connected), reconnect);
+    }
+
+    [Fact]
+    public async Task ShouldLetUnpairedCliReconnectWhenItsNetworkFloodsUnknownChannels() {
+        using CliKey key = new();
+        string block = Addresses.NextBlock();
+        await FloodUnknownChannels(block);
+
+        (HttpStatusCode, HttpStatusCode, HubConnectionState) reconnect = await Reconnect(key, $"{block}:ffff::1");
+
+        Assert.Equal((HttpStatusCode.OK, HttpStatusCode.OK, HubConnectionState.Connected), reconnect);
+    }
+
+    [Fact]
+    public async Task ShouldAcceptCliNonceIssuedBeforeItsNetworkFloodsUnknownChannels() {
+        using CliKey key = new();
+        string block = Addresses.NextBlock();
+        using RelayApi cli = RelayApi.For(factory, $"{block}:ffff::1");
+        using HttpResponseMessage issued = await cli.Post(nonceRoute, RelayApi.NonceBody(key.Channel.Value));
+        string nonce = (string)(await RelayApi.Json(issued))["nonce"]!;
+        await FloodUnknownChannels(block);
+
+        using HttpResponseMessage session = await cli.Post("/session/cli", key.Proof(CliKey.SessionCli, nonce));
+
+        Assert.Equal(HttpStatusCode.OK, session.StatusCode);
+    }
+
+    private async Task FloodUnknownChannels(string block) {
+        for (int prefix = 1; prefix <= unknownChannelFlooders; prefix++) {
+            using RelayApi neighbour = RelayApi.For(factory, $"{block}:{prefix:x}::1");
+            for (int request = 0; request < channelNoncesPerClient; request++) {
+                using HttpResponseMessage response = await neighbour.Post(nonceRoute, RelayApi.NonceBody(RelayClients.NewChannel().Value));
+            }
+        }
     }
 
     private async Task<(HttpStatusCode Nonce, HttpStatusCode Session, HubConnectionState Hub)> Reconnect(CliKey key, string address) {
@@ -181,10 +263,5 @@ public sealed class NonceLimitTests(RelayFactory factory) : IClassFixture<RelayF
 
         await using HubPeer cli = await RelayClients.ConnectAsync(factory, (string)(await RelayApi.Json(session))["handle"]!, null, address);
         return (nonce.StatusCode, session.StatusCode, cli.Connection.State);
-    }
-
-    private async Task<HttpResponseMessage> FromNewAddress(JsonObject body) {
-        using RelayApi api = RelayApi.For(factory, Addresses.NextIpv4(secondOctet));
-        return await api.Post(nonceRoute, body);
     }
 }

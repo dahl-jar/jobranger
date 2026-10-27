@@ -9,9 +9,11 @@ public static class RelayLimits {
     public const int MaxPairingEntries = 20_000;
     public const int MaxCodeDrawAttempts = 32;
     public const int MinHandleKeyBytes = 32;
-    public const int MaxOutstandingNonces = 100_000;
+    public const int MaxOutstandingNonces = 12_000;
     public const int MaxOutstandingNoncesPerNetwork = 64;
-    public const int MaxOutstandingNoncesPerChannel = 4;
+    public const int MaxOutstandingNoncesPerChannelClient = 4;
+    public const int MaxOutstandingChannelNoncesPerNetwork = 256;
+    public const int MaxOutstandingChannelNoncesPerClient = 16;
     public const int NonceRequestsPerWindow = 30;
     public const int PairStartsPerWindow = 10;
     public const int FailedSessionsPerWindow = 120;
@@ -46,6 +48,7 @@ public static class RelayLimits {
     public const long PeakBudgetBytes = PodMemoryLimitBytes * PeakSharePercent / 100;
     public const long RelayBaselineBytes = 40L * 1024 * 1024;
     public const long StoresBudgetBytes = 140L * 1024 * 1024;
+    public const long NonceStoreBudgetBytes = 36L * 1024 * 1024;
     public const long HubSocketBudgetBytes = 896L * 1024;
     public const int MaxHubSockets = (int)((PeakBudgetBytes - RelayBaselineBytes - StoresBudgetBytes) / HubSocketBudgetBytes);
 
