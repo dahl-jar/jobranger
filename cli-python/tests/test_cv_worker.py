@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import json
 import os
 import resource
@@ -22,7 +23,8 @@ from cv_samples import (
     repeated_cv_pdf,
     word_part,
 )
-from pypdf import get_configuration
+from pypdf import PdfWriter, apply_configuration, get_configuration
+from pypdf.generic import ArrayObject, DecodedStreamObject, NameObject
 
 from jobranger import child_process, cv, cv_worker
 
@@ -55,6 +57,20 @@ def _docx_unpacked_to(size: int) -> bytes:
     body = paragraph("x")
     padding = size - len(document(body))
     return docx(document(" " * padding + body))
+
+
+def _pdf_with_contents_array(streams: list[bytes]) -> bytes:
+    writer = PdfWriter(clone_from=io.BytesIO(pdf([_pdf_page("x")])))
+    page = writer.pages[0]
+    contents = ArrayObject()
+    for content in streams:
+        stream = DecodedStreamObject()
+        stream.set_data(content)
+        contents.append(writer._add_object(stream.flate_encode()))
+    page[NameObject("/Contents")] = contents
+    out = io.BytesIO()
+    writer.write(out)
+    return out.getvalue()
 
 
 def _raise_memory_error(data: bytes) -> str:
@@ -165,6 +181,24 @@ def test_should_report_unreadable_when_extraction_runs_out_of_memory(
 def test_should_report_too_large_when_pdf_stream_passes_decompression_limit() -> None:
     limit = get_configuration().zlib_maximum_output_length
     data = pdf([flate_stream(b" " * (limit + 1))])
+
+    reply = cv_worker.extract(".pdf", data)
+
+    assert reply == TOO_LARGE
+
+
+def test_should_report_too_large_when_pdf_stream_passes_decoding_work_limit() -> None:
+    data = pdf([_pdf_page("x")])
+
+    with apply_configuration(stream_decoding_work_maximum_length=0):
+        reply = cv_worker.extract(".pdf", data)
+
+    assert reply == TOO_LARGE
+
+
+def test_should_report_too_large_when_pdf_contents_array_passes_output_limit() -> None:
+    half_limit = get_configuration().array_based_stream_maximum_output_length // 2
+    data = _pdf_with_contents_array([b" " * (half_limit + 1)] * 2)
 
     reply = cv_worker.extract(".pdf", data)
 

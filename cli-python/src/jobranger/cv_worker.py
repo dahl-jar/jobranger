@@ -53,6 +53,8 @@ XML_EVENTS = ("start", "end")
 WORK_LIMIT_MESSAGES = (
     "Reached maximum number of tokens",
     "Limit reached while decompressing",
+    "Stream decoding exceeded the maximum accumulated",
+    "Array-based stream has",
 )
 
 
