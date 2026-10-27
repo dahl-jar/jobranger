@@ -35,7 +35,7 @@ WRITTEN_NUMBERS: dict[str, int] = {
 }
 PYTHON_ONLY_FOLDS = str.maketrans({"İ": "ɪ", "ı": "ɪ", "ſ": "ʃ"})
 YEAR_PHRASE = re.compile(
-    r"\b(?:(minimum(?: of)?|minst|at least) "
+    r"\b(?:(?:minimum(?: of)?|minst|at least) "
     r"((?:[0-9]{1,2}|en|ett|to|tre|fire|fem|seks|sju|syv|åtte|ni|ti|one|two|three"
     r"|four|five|six|seven|eight|nine|ten))"
     r"(?: ?[-–] ?(?:[0-9]{1,2}|en|ett|to|tre|fire|fem|seks|sju|syv|åtte|ni|ti|one"
@@ -119,7 +119,7 @@ def _unfold(text: str) -> str:
 
 
 def _years(found: re.Match[str]) -> int:
-    raw = found.group(2) or found.group(3)
+    raw = found.group(1) or found.group(2)
     if raw[0].isascii() and raw[0].isdigit():
         return int(raw)
     return WRITTEN_NUMBERS[raw.lower()]
