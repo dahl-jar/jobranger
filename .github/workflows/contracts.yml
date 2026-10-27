@@ -1,27 +1,6 @@
 name: Check contracts
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - web/scripts/**
-      - scripts/codegen/**
-      - scripts/unicode/**
-      - contracts/**
-      - cli-python/src/jobranger/contract/**
-      - cli-python/tests/contract/**
-      - web/src/features/relay/contract/**
-      - Jobranger.slnx
-      - Directory.*.props
-      - global.json
-      - nuget.config
-      - .github/workflows/contracts.yml
-      - cli-python/pyproject.toml
-      - cli-python/uv.lock
-      - cli-python/.python-version
-      - web/package.json
-      - web/pnpm-lock.yaml
-      - .gitattributes
   pull_request:
     paths:
       - web/scripts/**
@@ -42,6 +21,7 @@ on:
       - web/package.json
       - web/pnpm-lock.yaml
       - .gitattributes
+  workflow_call:
   workflow_dispatch:
 
 permissions:

@@ -1,16 +1,6 @@
 name: Test Python CLI
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - contracts/**
-      - "!contracts/src/**"
-      - "!contracts/tests/**"
-      - "!contracts/stryker-config.json"
-      - web/src/features/relay/contract/**
-      - cli-python/**
-      - .github/workflows/cli-python.yml
   pull_request:
     paths:
       - contracts/**
@@ -20,6 +10,7 @@ on:
       - web/src/features/relay/contract/**
       - cli-python/**
       - .github/workflows/cli-python.yml
+  workflow_call:
   workflow_dispatch:
 
 permissions:

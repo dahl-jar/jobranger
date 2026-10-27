@@ -130,6 +130,16 @@ pnpm mutate
 
 Under `wrangler dev`, Miniflare drops `CF-Connecting-IP` from the Worker's fetch to the origin, so a local relay sees every request from the dev server's address. On Cloudflare the edge sets the origin's `CF-Connecting-IP` from the `X-Real-IP` the Worker sends. A local test of per-address limits in the relay needs a proxy that copies the address into `CF-Connecting-IP`.
 
+## release
+
+Every push to `main` runs `.github/workflows/release-cli.yml`. It calls every component workflow, and when all of them pass it builds the CLI for osx-arm64 and linux-x64 and publishes a GitHub release tagged `cli-vX.Y.Z` with the archives, `SHA256SUMS` and `install.sh`. The version comes from the tag, passed to `dotnet publish -p:Version=`, and the csproj keeps `0.1.0` for local builds.
+
+The PR title picks the bump: `feat:` raises the minor version, a `!` before the colon raises the minor version before 1.0 and the major version after it, and any other title raises the patch version. A push without a PR uses the commit subject. A commit that is already in a release gets no new one, so a re-run is safe.
+
+```bash
+bash scripts/release/tests/release_test.sh
+```
+
 ## contracts
 
 `contracts/generate.sh` writes the pydantic models, the TypeScript types, the Ajv validators and the schema copies from `contracts/payload.schema.json` and `contracts/envelope.schema.json`. Generated code must match the schemas.

@@ -1,19 +1,6 @@
 name: Test backend
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - contracts/**
-      - relay/**
-      - Jobranger.slnx
-      - Directory.*.props
-      - global.json
-      - nuget.config
-      - .config/dotnet-tools.json
-      - .editorconfig
-      - .github/actions/dotnet-setup/**
-      - .github/workflows/relay.yml
   pull_request:
     paths:
       - contracts/**
@@ -26,6 +13,7 @@ on:
       - .editorconfig
       - .github/actions/dotnet-setup/**
       - .github/workflows/relay.yml
+  workflow_call:
   workflow_dispatch:
 
 permissions:
