@@ -173,8 +173,8 @@ importers:
         specifier: 5.20261016.1
         version: 5.20261016.1
       '@cloudflare/workers-utils':
-        specifier: 0.47.2
-        version: 0.47.2(vitest@4.1.12(@types/node@24.19.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)))
+        specifier: 0.48.0
+        version: 0.48.0(vitest@4.1.12(@types/node@24.19.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)))
       '@stryker-mutator/core':
         specifier: 10.0.0
         version: 10.0.0(@types/node@24.19.2)
@@ -435,10 +435,10 @@ packages:
   '@cloudflare/workers-types@5.20261016.1':
     resolution: {integrity: sha512-I8OJdPl3M6TIl9ksU3wtEyWVhSE8E8txJ/vGOv3SkhjcvN8uMjyFmMvRsNOZgzMe5xYFQ0LctmiGqTwR7DbZ6w==}
 
-  '@cloudflare/workers-utils@0.47.2':
-    resolution: {integrity: sha512-AVZwPqH2RnbO0MyzowvrCwjhrjaQnj6VA0HXJOgk5/hIf693APyYX7F6fW1IFD4YzS/0NAeK7dQ/Z7H7hirJVw==}
+  '@cloudflare/workers-utils@0.48.0':
+    resolution: {integrity: sha512-FiBoW5vcrLp63VNcA8qZdx9c7D45+90DbpzY1xmzv4L+HvLlb2dPu3qlsh7HE4ClYID6h0VrnEhBXRPsj2STgQ==}
     peerDependencies:
-      vitest: ^4.1.0
+      vitest: ^4.1.0 || ^5.0.0
     peerDependenciesMeta:
       vitest:
         optional: true
@@ -2248,7 +2248,7 @@ snapshots:
 
   '@cloudflare/workers-types@5.20261016.1': {}
 
-  '@cloudflare/workers-utils@0.47.2(vitest@4.1.12(@types/node@24.19.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)))':
+  '@cloudflare/workers-utils@0.48.0(vitest@4.1.12(@types/node@24.19.2)(vite@8.3.4(@types/node@24.19.2)(esbuild@0.28.2)))':
     dependencies:
       chalk: 5.3.0
       dotenv: 16.3.1
