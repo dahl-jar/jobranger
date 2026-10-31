@@ -46,7 +46,7 @@ internal sealed class RunCommand : Command {
     public RunCommand(CliServices services, IDictionary environment, TimeProvider time, bool inputRedirected, RunSeams seams)
         : base(CommandName, services.Messages.RunDescription) {
         SetAction((_, cancellationToken) =>
-            RunAsync(new Parts(services, environment, time, !inputRedirected, seams), cancellationToken));
+            RunAsync(new RunContext(services, environment, time, !inputRedirected, seams), cancellationToken));
     }
 
     public static string CountsLine(RunResult result, IMessages messages) =>
@@ -60,11 +60,11 @@ internal sealed class RunCommand : Command {
         _ => null,
     };
 
-    private static async Task<int> RunAsync(Parts parts, CancellationToken cancellationToken) {
-        ILogger logger = parts.Services.Logs.CreateLogger(typeof(RunCommand).FullName!);
+    private static async Task<int> RunAsync(RunContext context, CancellationToken cancellationToken) {
+        ILogger logger = context.Services.Logs.CreateLogger(typeof(RunCommand).FullName!);
         using PosixSignals signals = new(cancellationToken);
-        Task<int> work = Task.Run(() => PassAsync(parts, logger, signals.Token), CancellationToken.None);
-        Task first = await Task.WhenAny(work, ForcedStopAsync(parts.Time, signals.Token)).ConfigureAwait(false);
+        Task<int> work = Task.Run(() => PassAsync(context, logger, signals.Token), CancellationToken.None);
+        Task first = await Task.WhenAny(work, ForcedStopAsync(context.Time, signals.Token)).ConfigureAwait(false);
         if (first == work) {
             return await work.ConfigureAwait(false);
         }
@@ -77,12 +77,12 @@ internal sealed class RunCommand : Command {
         await Task.Delay(cancelLimit, time, CancellationToken.None).ConfigureAwait(false);
     }
 
-    private static async Task<int> PassAsync(Parts parts, ILogger logger, CancellationToken cancellationToken) {
-        TextWriter output = parts.Output;
-        IMessages messages = parts.Messages;
-        Paths paths = new(parts.Environment);
+    private static async Task<int> PassAsync(RunContext context, ILogger logger, CancellationToken cancellationToken) {
+        TextWriter output = context.Output;
+        IMessages messages = context.Messages;
+        Paths paths = new(context.Environment);
         try {
-            return await StagesAsync(parts, paths, logger, cancellationToken).ConfigureAwait(false);
+            return await StagesAsync(context, paths, logger, cancellationToken).ConfigureAwait(false);
         } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
             return CliExitCodes.Cancelled;
         } catch (ConfigMissingException) {
@@ -100,38 +100,38 @@ internal sealed class RunCommand : Command {
         }
     }
 
-    private static async Task<int> StagesAsync(Parts parts, Paths paths, ILogger logger, CancellationToken cancellationToken) {
+    private static async Task<int> StagesAsync(RunContext context, Paths paths, ILogger logger, CancellationToken cancellationToken) {
         AppConfig config = ConfigFile.Load(paths.ConfigPath(), paths.Home());
-        ServiceUrls urls = ServiceUrls.From(parts.Environment);
-        ISecretStore? store = await OpenSecretsAsync(parts, logger, cancellationToken).ConfigureAwait(false);
-        Credentials credentials = new(parts.Environment, store, new FileSecretStore(paths.SecretsPath(), logger));
+        ServiceUrls urls = ServiceUrls.From(context.Environment);
+        ISecretStore? store = await OpenSecretsAsync(context, logger, cancellationToken).ConfigureAwait(false);
+        Credentials credentials = new(context.Environment, store, new FileSecretStore(paths.SecretsPath(), logger));
         using SqliteConnection database = Database.Open(paths.DbPath(), logger);
-        using HttpClient http = parts.Seams.CreateSourceClient(parts.Time);
+        using HttpClient http = context.Seams.CreateSourceClient(context.Time);
         RunsEntry runs = new(
             database,
             paths,
             http,
-            (model, supportsEffort, token) => OpenModelAsync(parts, credentials, logger, model, supportsEffort, token),
-            parts.Seams.EnabledSources,
-            parts.Time,
+            (model, supportsEffort, token) => OpenModelAsync(context, credentials, logger, model, supportsEffort, token),
+            context.Seams.EnabledSources,
+            context.Time,
             logger);
-        string sources = Phrases(parts.Seams.EnabledSources(config.Sources).Select(source => source.Name), parts.Messages);
-        RunRequest request = new(config, new ReadingLine(parts.Output, parts.Messages, sources));
+        string sources = SourceList(context.Seams.EnabledSources(config.Sources).Select(source => source.Name), context.Messages);
+        RunRequest request = new(config, new ReadingLine(context.Output, context.Messages, sources));
         RunResult result = await runs.RunAsync(request, cancellationToken).ConfigureAwait(false);
         if (result.Status == RunStatus.Locked) {
-            await parts.Output.WriteLineAsync(parts.Messages.RunLocked).ConfigureAwait(false);
+            await context.Output.WriteLineAsync(context.Messages.RunLocked).ConfigureAwait(false);
             return CliExitCodes.Ok;
         }
         if (result.Status == RunStatus.Cancelled) {
             return CliExitCodes.Cancelled;
         }
         cancellationToken.ThrowIfCancellationRequested();
-        await WriteSummaryAsync(parts.Output, result, parts.Messages).ConfigureAwait(false);
+        await WriteSummaryAsync(context.Output, result, context.Messages).ConfigureAwait(false);
         using IDisposable scope = RunScope.Bind(result.RunId.GetValueOrDefault().ToString(CultureInfo.InvariantCulture));
-        DeliveryEntry delivery = new(database, credentials, urls, parts.Messages, parts.Seams.Transport, parts.Time, logger);
+        DeliveryEntry delivery = new(database, credentials, urls, context.Messages, context.Seams.Transport, context.Time, logger);
         DeliveryResult delivered = await delivery.DeliverAsync(config, result, cancellationToken).ConfigureAwait(false);
-        if (OutcomeLine(delivered, config.Notify.Website, parts.Messages) is string line) {
-            await parts.Output.WriteLineAsync(line).ConfigureAwait(false);
+        if (OutcomeLine(delivered, config.Notify.Website, context.Messages) is string line) {
+            await context.Output.WriteLineAsync(line).ConfigureAwait(false);
         }
         return delivered.EmailError is not null || AllFailed(result) ? CliExitCodes.Failure : CliExitCodes.Ok;
     }
@@ -142,36 +142,36 @@ internal sealed class RunCommand : Command {
             await output.WriteLineAsync(line).ConfigureAwait(false);
         }
         if (AllFailed(result)) {
-            await output.WriteLineAsync(messages.DigestCouldNotRead(Phrases(result.FailedSources, messages))).ConfigureAwait(false);
+            await output.WriteLineAsync(messages.DigestCouldNotRead(SourceList(result.FailedSources, messages))).ConfigureAwait(false);
         }
     }
 
     private static bool AllFailed(RunResult result) => result.FailedSources.Count > 0 && result.SourcesRead.Count == 0;
 
-    private static string Phrases(IEnumerable<string> sources, IMessages messages) =>
+    private static string SourceList(IEnumerable<string> sources, IMessages messages) =>
         string.Join(sourceSeparator, sources.Select(source => DigestEntry.SourcePhrase(source, messages)));
 
-    private static async Task<ISecretStore?> OpenSecretsAsync(Parts parts, ILogger logger, CancellationToken cancellationToken) {
+    private static async Task<ISecretStore?> OpenSecretsAsync(RunContext context, ILogger logger, CancellationToken cancellationToken) {
         try {
-            return await parts.Seams.OpenSecrets(parts.Environment, parts.CanPrompt, cancellationToken).ConfigureAwait(false);
-        } catch (SecretStoreUnavailableException) {
-            LogEvents.RunSecretStoreFailed(logger);
+            return await context.Seams.OpenSecrets(context.Environment, context.CanPrompt, cancellationToken).ConfigureAwait(false);
+        } catch (SecretStoreUnavailableException error) {
+            LogEvents.RunSecretStoreFailed(logger, error);
             return null;
         }
     }
 
     private static async Task<IModelClient> OpenModelAsync(
-        Parts parts,
+        RunContext context,
         Credentials credentials,
         ILogger logger,
         ModelConfig model,
         bool supportsEffort,
         CancellationToken cancellationToken) {
         try {
-            return await parts.Seams.OpenModel(model, credentials, supportsEffort, parts.Time, cancellationToken)
+            return await context.Seams.OpenModel(model, credentials, supportsEffort, context.Time, cancellationToken)
                 .ConfigureAwait(false);
-        } catch (SecretStoreUnavailableException) {
-            LogEvents.RunSecretStoreFailed(logger);
+        } catch (SecretStoreUnavailableException error) {
+            LogEvents.RunSecretStoreFailed(logger, error);
             throw new ModelSetupException(secretStoreFailed);
         }
     }
@@ -184,7 +184,7 @@ internal sealed class RunCommand : Command {
         return CliExitCodes.Failure;
     }
 
-    private sealed record Parts(CliServices Services, IDictionary Environment, TimeProvider Time, bool CanPrompt, RunSeams Seams) {
+    private sealed record RunContext(CliServices Services, IDictionary Environment, TimeProvider Time, bool CanPrompt, RunSeams Seams) {
         public TextWriter Output => Services.Console.Profile.Out.Writer;
 
         public IMessages Messages => Services.Messages;

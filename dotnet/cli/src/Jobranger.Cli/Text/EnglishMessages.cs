@@ -107,7 +107,8 @@ internal sealed class EnglishMessages : IMessages {
 
     public string RunReading(string sources) => $"Reading {sources}...";
 
-    public string RunCounts(int adsRead, int newAds, int matches) => $"{adsRead} ads read, {newAds} new, {matches} matches.";
+    public string RunCounts(int adsRead, int newAds, int matches) =>
+        $"{adsRead} {(adsRead == 1 ? "ad" : "ads")} read, {newAds} new, {matches} {(matches == 1 ? "match" : "matches")}.";
 
     public string RunSentBoth(string email) => $"\u2713 Sent to the website and to {email}";
 

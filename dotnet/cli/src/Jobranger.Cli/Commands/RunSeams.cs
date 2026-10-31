@@ -19,11 +19,12 @@ internal sealed record RunSeams(
     RunSeams.ModelOpener OpenModel,
     DeliveryTransport Transport) {
     public static readonly RunSeams Production = new(
-        (environment, canPrompt, token) => SecretStores.OpenAsync(environment, canPrompt, token),
+        SecretStores.OpenAsync,
         SourcesEntry.Enabled,
         time => SafeHttp.CreateSourceClient(new HostLimiter(time), time),
         (model, credentials, supportsEffort, time, token) =>
-            new ProvidersEntry(CreateModelHandler, time).CreateAsync(model, credentials.GetSecretAsync, supportsEffort, token),
+            new ProvidersEntry(() => CreateModelHandler(model.Provider), time)
+                .CreateAsync(model, credentials.GetSecretAsync, supportsEffort, token),
         DeliveryTransport.Production);
 
     public delegate Task<IModelClient> ModelOpener(
@@ -33,5 +34,6 @@ internal sealed record RunSeams(
         TimeProvider time,
         CancellationToken cancellationToken);
 
-    private static SocketsHttpHandler CreateModelHandler() => new() { AllowAutoRedirect = false, UseCookies = false };
+    public static SocketsHttpHandler CreateModelHandler(ProviderName? provider) =>
+        new() { AllowAutoRedirect = false, UseCookies = false, UseProxy = provider != ProviderName.Ollama };
 }

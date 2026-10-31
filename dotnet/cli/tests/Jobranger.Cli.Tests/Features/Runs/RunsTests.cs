@@ -20,8 +20,6 @@ namespace Jobranger.Cli.Tests.Features.Runs;
 
 [UnsupportedOSPlatform("windows")]
 public sealed class RunsTests : IDisposable {
-    private const string runsQuery = "SELECT status, finished_at IS NOT NULL FROM runs";
-
     private static readonly string profilePath = MatchingFixtures.TestData("profile_user.yaml");
 
     private readonly TestDatabase db = new();
@@ -81,7 +79,7 @@ public sealed class RunsTests : IDisposable {
         RunResult result = await RunAsync(client, [source], null, null, run.Token);
 
         Assert.Equal(
-            (RunStatus.Cancelled, 0, "cancelled|1", "junior"),
+            (RunStatus.Cancelled, 0, RunCommandFixtures.CancelledRow, "junior"),
             (result.Status, client.Calls, string.Join(',', RunRows()), (string?)db.Scalar("SELECT label FROM ads WHERE id = 'finn:1'")));
     }
 
@@ -114,7 +112,7 @@ public sealed class RunsTests : IDisposable {
 
         RunResult result = await RunAsync(FakeModelClient.Answering(JavaReply), [], null, site, run.Token);
 
-        Assert.Equal((RunStatus.Cancelled, "cancelled|1"), (result.Status, string.Join(',', RunRows())));
+        Assert.Equal((RunStatus.Cancelled, RunCommandFixtures.CancelledRow), (result.Status, string.Join(',', RunRows())));
     }
 
     [Fact]
@@ -227,7 +225,7 @@ public sealed class RunsTests : IDisposable {
         return config with { Model = config.Model with { MonthlyLimitUsd = limit } };
     }
 
-    private List<string> RunRows() => TestDatabase.Rows(db.Connection, runsQuery);
+    private List<string> RunRows() => TestDatabase.Rows(db.Connection, RunFixtures.RunRowsQuery);
 
     private async Task<RunResult> RunAsync(
         IModelClient? client,

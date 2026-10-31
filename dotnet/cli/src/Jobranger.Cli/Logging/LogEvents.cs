@@ -151,5 +151,5 @@ internal static partial class LogEvents {
         EventName = "run.secret_store_failed",
         Level = LogLevel.Warning,
         Message = "secret store failed, the run goes on without it")]
-    public static partial void RunSecretStoreFailed(ILogger logger);
+    public static partial void RunSecretStoreFailed(ILogger logger, Exception error);
 }

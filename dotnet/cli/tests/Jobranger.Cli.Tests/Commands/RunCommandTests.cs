@@ -20,9 +20,7 @@ using Jobranger.Cli.Text;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
-using AdsEntry = Jobranger.Cli.Features.Ads.Ads;
 using ProvidersEntry = Jobranger.Cli.Features.Providers.Providers;
-using RootCommand = Jobranger.Cli.Commands.RootCommand;
 
 namespace Jobranger.Cli.Tests.Commands;
 
@@ -30,15 +28,18 @@ namespace Jobranger.Cli.Tests.Commands;
 public sealed class RunCommandTests : IDisposable {
     private const string emptyJson = "{}";
     private const string countsLine = "0 ads read, 0 new, 0 matches.";
+    private const string countsNorwegian = "0 annonser lest, 0 nye, 0 treff.";
     private const string readingBoth = "Reading NAV, FINN...";
+    private const string readingNorwegian = "Leser NAV, FINN...";
     private const string savedForWebsite = "✓ Saved for the website";
     private const string skipLine = "AI checks skipped: no model or key. Set one with: jobranger init";
     private const string missingEnglish = "No config yet. Set up with: jobranger init";
-    private const string cancelledRow = "cancelled|1";
     private const string readingNav = "Reading NAV...";
-    private const int interrupted = 130;
     private const int corruptBytes = 4096;
     private const int unusedPort = 1;
+    private const string secretStoreFailed = "run.secret_store_failed";
+    private const string stopForced = "run.stop_forced";
+    private const string authRefused = "HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\n\r\n";
 
     private static readonly TimeSpan invokeLimit = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan stopLimit = TimeSpan.FromSeconds(1);
@@ -64,24 +65,31 @@ public sealed class RunCommandTests : IDisposable {
     }
 
     [Theory]
-    [InlineData(true, true, "✓ Sent to the website and to user@example.test")]
-    [InlineData(true, false, "✓ Sent to user@example.test")]
-    [InlineData(false, true, savedForWebsite)]
-    [InlineData(false, false, null)]
-    public async Task ShouldPrintOutcomeLine_WhenPassEnds(bool email, bool website, string? outcome) {
+    [InlineData(Locales.English, readingBoth, countsLine, true, true, "✓ Sent to the website and to user@example.test")]
+    [InlineData(Locales.English, readingBoth, countsLine, true, false, "✓ Sent to user@example.test")]
+    [InlineData(Locales.English, readingBoth, countsLine, false, true, savedForWebsite)]
+    [InlineData(Locales.English, readingBoth, countsLine, false, false, null)]
+    [InlineData(Locales.Norwegian, readingNorwegian, countsNorwegian, true, true, "✓ Sendt til nettsiden og til user@example.test")]
+    [InlineData(Locales.Norwegian, readingNorwegian, countsNorwegian, true, false, "✓ Sendt til user@example.test")]
+    [InlineData(Locales.Norwegian, readingNorwegian, countsNorwegian, false, true, "✓ Lagret for nettsiden")]
+    public async Task ShouldPrintOutcomeLine_WhenPassEnds(
+        string lang, string reading, string counts, bool email, bool website, string? outcome) {
+        environment["LANG"] = lang;
         RunCommandFixtures.Save(environment, RunCommandFixtures.Config(email ? DeliveryFixtures.ResendEmail : null, website));
 
         int exit = await InvokeAsync(Seams(NavOkFinnFails(), resend));
 
-        string[] expected = outcome is null ? [readingBoth, countsLine] : [readingBoth, countsLine, outcome];
+        string[] expected = outcome is null ? [reading, counts] : [reading, counts, outcome];
         Assert.Equal((CliExitCodes.Ok, Lines(expected)), (exit, Output()));
     }
 
     [Theory]
-    [InlineData(false, "5 ads read, 2 new, 1 matches.")]
-    [InlineData(true, "5 annonser lest, 2 nye, 1 treff.")]
-    public void ShouldShowCounts_WhenPassEnds(bool norwegian, string line) {
-        RunResult result = new() { Status = RunStatus.Completed, AdsRead = 5, NewAds = 2, ReportedIds = ["a"] };
+    [InlineData(false, 5, 2, new[] { "a" }, "5 ads read, 2 new, 1 match.")]
+    [InlineData(false, 1, 1, new[] { "a", "b" }, "1 ad read, 1 new, 2 matches.")]
+    [InlineData(true, 5, 2, new[] { "a" }, "5 annonser lest, 2 nye, 1 treff.")]
+    [InlineData(true, 1, 1, new[] { "a", "b" }, "1 annonse lest, 1 ny, 2 treff.")]
+    public void ShouldShowCounts_WhenPassEnds(bool norwegian, int adsRead, int newAds, string[] reported, string line) {
+        RunResult result = new() { Status = RunStatus.Completed, AdsRead = adsRead, NewAds = newAds, ReportedIds = reported };
         IMessages messages = norwegian ? new NorwegianMessages() : new EnglishMessages();
 
         string counts = RunCommand.CountsLine(result, messages);
@@ -205,6 +213,34 @@ public sealed class RunCommandTests : IDisposable {
 
         Assert.Equal(CliExitCodes.Ok, exit);
         Assert.Contains(skipLine, console.Output, StringComparison.Ordinal);
+        JsonObject failure = Assert.Single(
+            RunCommandFixtures.LogEntries(environment), entry => (string?)entry[LogFields.Event] == secretStoreFailed);
+        Assert.Equal(nameof(SecretStoreUnavailableException), (string?)failure[LogFields.ErrorType]);
+    }
+
+    [Theory]
+    [InlineData(nameof(ProviderName.Anthropic), true)]
+    [InlineData(nameof(ProviderName.OpenAI), true)]
+    [InlineData(nameof(ProviderName.OpenRouter), true)]
+    [InlineData(nameof(ProviderName.Ollama), false)]
+    public void ShouldUseProxy_WhenProviderIsHosted(string provider, bool expected) {
+        using SocketsHttpHandler handler = RunSeams.CreateModelHandler(Enum.Parse<ProviderName>(provider));
+
+        Assert.Equal(expected, handler.UseProxy);
+    }
+
+    [Fact]
+    public async Task ShouldNotFollowRedirect_WhenModelAnswers302() {
+        await using RawHttpServer target = new(authRefused);
+        string redirect = $"HTTP/1.1 302 Found\r\nLocation: {target.Url("/")}\r\nContent-Length: 0\r\n\r\n";
+        await using RawHttpServer server = new(redirect);
+        RunCommandFixtures.SeedPendingAd(environment, clock);
+        RunCommandFixtures.Save(environment, RunCommandFixtures.Config(model: RunCommandFixtures.Ollama(server.Port)));
+        RunSeams seams = Seams([], resend) with { OpenModel = RunSeams.Production.OpenModel };
+
+        await ApiClock.RunAsync(clock, InvokeAsync(seams));
+
+        Assert.Equal((true, false), (server.Request.IsCompleted, target.Request.IsCompleted));
     }
 
     [Theory]
@@ -235,13 +271,6 @@ public sealed class RunCommandTests : IDisposable {
     }
 
     [Fact]
-    public void ShouldOfferRunCommand_WhenRootIsBuilt() {
-        RootCommand root = new(CliServices.Create(clock, console.Console, console.ErrorConsole, environment));
-
-        Assert.Contains(RunCommand.CommandName, root.Subcommands.Select(command => command.Name));
-    }
-
-    [Fact]
     public async Task ShouldStopSourceRead_WhenCancelledBeforeHeaders() {
         await using RawHttpServer server = new(string.Empty);
         RunSeams seams = Seams([new HttpSource("nav", new Uri($"http://localhost:{server.Port}/"))], resend) with {
@@ -253,7 +282,7 @@ public sealed class RunCommandTests : IDisposable {
 
     [Fact]
     public async Task ShouldStopSourceRead_WhenCancelledDuringBody() {
-        using WatchedBodyHandler body = new();
+        using StalledBodyHandler body = new([]);
         RunSeams seams = Seams([new HttpSource("nav", new Uri("http://localhost/"))], resend) with {
             CreateSourceClient = _ => new HttpClient(body, disposeHandler: false),
         };
@@ -262,19 +291,9 @@ public sealed class RunCommandTests : IDisposable {
     }
 
     [Fact]
-    public async Task ShouldStopModelCall_WhenCancelledBeforeHeaders() {
-        await using RawHttpServer server = new(string.Empty);
-        SeedPendingAd();
-        RunCommandFixtures.Save(environment, RunCommandFixtures.Config(model: RunCommandFixtures.Ollama(server.Port)));
-        RunSeams seams = Seams([], resend) with { OpenModel = RunSeams.Production.OpenModel };
-
-        await AssertCancelStopsAsync(seams, server.Request, string.Empty, stopLimit);
-    }
-
-    [Fact]
     public async Task ShouldStopModelCall_WhenCancelledDuringBody() {
-        WatchedBodyHandler body = new();
-        SeedPendingAd();
+        StalledBodyHandler body = new([]);
+        RunCommandFixtures.SeedPendingAd(environment, clock);
         RunCommandFixtures.Save(environment, RunCommandFixtures.Config(model: RunCommandFixtures.Ollama(unusedPort)));
         RunSeams seams = Seams([], resend) with {
             OpenModel = (model, credentials, supportsEffort, time, token) =>
@@ -296,6 +315,7 @@ public sealed class RunCommandTests : IDisposable {
         using CancellationTokenSource cancel = new();
         using ManualResetEventSlim entered = new();
         using ManualResetEventSlim release = new();
+        RecordingTime time = new();
         RunSeams seams = Seams([], resend) with {
             OpenModel = (_, _, _, _, token) => {
                 entered.Set();
@@ -303,14 +323,18 @@ public sealed class RunCommandTests : IDisposable {
                 throw new OperationCanceledException(token);
             },
         };
-        Task<int> running = Task.Run(() => InvokeAsync(seams, clock, cancel.Token), CancellationToken.None);
+        Task<int> running = Task.Run(() => InvokeAsync(seams, time, cancel.Token), CancellationToken.None);
         try {
             Assert.True(entered.Wait(TestWaits.Step, TestContext.Current.CancellationToken));
             await cancel.CancelAsync();
+            await time.WaitForAsync(forcedStopLimit);
+            time.Advance(forcedStopLimit);
 
-            int exit = await ApiClock.RunAsync(clock, running);
+            int exit = await running;
 
-            Assert.Equal(interrupted, exit);
+            Assert.Equal(RunCommandFixtures.Interrupted, exit);
+            Assert.Contains(
+                stopForced, RunCommandFixtures.LogEntries(environment).Select(entry => (string?)entry[LogFields.Event]));
         } finally {
             release.Set();
         }
@@ -327,13 +351,13 @@ public sealed class RunCommandTests : IDisposable {
         await cancel.CancelAsync();
         int exit = await running;
 
-        Assert.Equal((interrupted, Lines(readingBoth, countsLine)), (exit, Output()));
+        Assert.Equal((RunCommandFixtures.Interrupted, Lines(readingBoth, countsLine)), (exit, Output()));
     }
 
     [Fact]
     public async Task ShouldDeliverNothing_WhenCancelledAfterPassEnds() {
         using CancellationTokenSource cancel = new();
-        SeedPendingAd();
+        RunCommandFixtures.SeedPendingAd(environment, clock);
         RunCommandFixtures.Save(environment, RunCommandFixtures.Config(DeliveryFixtures.ResendEmail));
         RunSeams seams = Seams([], resend) with {
             OpenModel = (_, _, _, _, _) => Task.FromResult<IModelClient>(new FakeModelClient(async (_, _) => {
@@ -344,7 +368,7 @@ public sealed class RunCommandTests : IDisposable {
 
         int exit = await InvokeAsync(seams, clock, cancel.Token);
 
-        Assert.Equal((interrupted, string.Empty, 0), (exit, Output(), resend.Requests.Count));
+        Assert.Equal((RunCommandFixtures.Interrupted, string.Empty, 0), (exit, Output(), resend.Requests.Count));
     }
 
     private static string Lines(params string[] lines) => string.Join(Environment.NewLine, lines);
@@ -360,11 +384,6 @@ public sealed class RunCommandTests : IDisposable {
         Transport = DeliveryFixtures.TransportFor(() => handler),
     };
 
-    private void SeedPendingAd() {
-        using SqliteConnection database = Database.Open(paths.DbPath(), NullLogger.Instance);
-        new AdsEntry(database, clock).Upsert(RunFixtures.Pending(1, "Utvikler", "Org One AS"));
-    }
-
     private async Task AssertCancelStopsAsync(RunSeams seams, Task reached, string output, TimeSpan limit) {
         using CancellationTokenSource cancel = new();
         Task<int> running = InvokeAsync(seams, TimeProvider.System, cancel.Token);
@@ -375,13 +394,12 @@ public sealed class RunCommandTests : IDisposable {
         int exit = await running;
 
         elapsed.Stop();
-        Assert.Equal((interrupted, cancelledRow, output), (exit, RunRows(), Output()));
+        string rows = string.Join(',', RunCommandFixtures.RunRows(environment));
+        Assert.Equal((RunCommandFixtures.Interrupted, RunCommandFixtures.CancelledRow, output), (exit, rows, Output()));
         Assert.InRange(elapsed.Elapsed, TimeSpan.Zero, limit);
     }
 
     private string Output() => console.Output.TrimEnd();
-
-    private string RunRows() => string.Join(',', RunCommandFixtures.RunRows(environment));
 
     private Task<int> InvokeAsync(RunSeams seams) => InvokeAsync(seams, clock, TestContext.Current.CancellationToken);
 

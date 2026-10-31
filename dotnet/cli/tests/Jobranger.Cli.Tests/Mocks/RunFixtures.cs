@@ -16,6 +16,7 @@ namespace Jobranger.Cli.Tests.Mocks;
 internal static class RunFixtures {
     public const string Description = "Build Java services for a public client.";
     public const string ApplyUrl = "https://apply.example.test/jobs/1";
+    public const string RunRowsQuery = "SELECT status, finished_at IS NOT NULL FROM runs";
 
     public static readonly EmployerFeed Feed =
         new("teamtailor", "example-tech", "Example Tech AS", "https://careers.example.test/jobs.rss");

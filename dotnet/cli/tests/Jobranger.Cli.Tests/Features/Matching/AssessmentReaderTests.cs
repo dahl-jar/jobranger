@@ -77,6 +77,21 @@ public sealed class AssessmentReaderTests {
         Assert.Null(MatchingEntry.ParseAssessment(json));
     }
 
+    [Fact]
+    public void ShouldRejectReply_WhenTopLevelKeyHasLoneSurrogate() {
+        Assert.Null(MatchingEntry.ParseAssessment("""{"\ud800":1}"""));
+    }
+
+    [Theory]
+    [InlineData("\"match\":{")]
+    [InlineData("\"checks\":[{")]
+    public void ShouldRejectReply_WhenNestedKeyHasLoneSurrogate(string opening) {
+        string json = MatchingFixtures.Payload().ToJsonString()
+            .Replace(opening, opening + """ "\ud800":1,""", StringComparison.Ordinal);
+
+        Assert.Null(MatchingEntry.ParseAssessment(json));
+    }
+
     [Theory]
     [MemberData(nameof(ReplyYearsRows))]
     public void ShouldMatchPython_WhenReplyYearsIsText(int row) {

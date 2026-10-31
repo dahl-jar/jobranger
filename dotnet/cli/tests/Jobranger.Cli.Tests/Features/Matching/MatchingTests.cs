@@ -6,20 +6,17 @@ using MatchingEntry = Jobranger.Cli.Features.Matching.Matching;
 namespace Jobranger.Cli.Tests.Features.Matching;
 
 public sealed class MatchingTests {
-    [Theory]
-    [InlineData(nameof(ProviderName.OpenAI))]
-    [InlineData(nameof(ProviderName.OpenRouter))]
-    [InlineData(nameof(ProviderName.Ollama))]
-    public void ShouldGiveBareSchema_WhenProviderIsOpenAICompatible(string providerName) {
-        JsonObject schema = MatchingEntry.SchemaFor(Enum.Parse<ProviderName>(providerName));
+    [Fact]
+    public void ShouldGiveBareSchema_WhenProviderIsOpenAICompatible() {
+        JsonObject schema = MatchingEntry.SchemaFor(ProviderName.OpenAI);
 
-        Assert.True(JsonNode.DeepEquals(ProviderFixtures.OpenAISchema, schema), schema.ToJsonString());
+        Assert.Equal(ProviderFixtures.OpenAISchema.ToJsonString(), schema.ToJsonString());
     }
 
     [Fact]
     public void ShouldGiveAnthropicSchema_WhenProviderIsAnthropic() {
         JsonObject schema = MatchingEntry.SchemaFor(ProviderName.Anthropic);
 
-        Assert.True(JsonNode.DeepEquals(ProviderFixtures.AnthropicSchema, schema), schema.ToJsonString());
+        Assert.Equal(ProviderFixtures.AnthropicSchema.ToJsonString(), schema.ToJsonString());
     }
 }

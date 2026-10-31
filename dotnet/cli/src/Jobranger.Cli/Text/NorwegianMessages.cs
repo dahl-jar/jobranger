@@ -111,7 +111,8 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string RunReading(string sources) => $"Leser {sources}...";
 
-    public string RunCounts(int adsRead, int newAds, int matches) => $"{adsRead} annonser lest, {newAds} nye, {matches} treff.";
+    public string RunCounts(int adsRead, int newAds, int matches) =>
+        $"{adsRead} {(adsRead == 1 ? "annonse" : "annonser")} lest, {newAds} {(newAds == 1 ? "ny" : "nye")}, {matches} treff.";
 
     public string RunSentBoth(string email) => $"\u2713 Sendt til nettsiden og til {email}";
 
