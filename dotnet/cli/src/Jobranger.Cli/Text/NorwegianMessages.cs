@@ -144,6 +144,40 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string PairPaired(string agent) => $"\u2713 Koblet til {agent}.";
 
+    public string DevicesDescription => "Vis eller fjern tilkoblede nettlesere.";
+
+    public string DevicesListDescription => "Vis tilkoblede nettlesere.";
+
+    public string DevicesRevokeDescription => "Fjern \u00e9n tilkoblet nettleser.";
+
+    public string DevicesRevokeIdDescription => "Nettleserens id, eller starten av den.";
+
+    public string UnpairDescription => "Fjern alle tilkoblede nettlesere.";
+
+    public string DevicesNone => "Ingen tilkoblede nettlesere. Koble til en med: jobranger pair";
+
+    public string DeviceLine(string id, string name, string pairedOn, string lastSeenOn) =>
+        $"{id}  {name}  koblet til {pairedOn}  sist sett {lastSeenOn}";
+
+    public string DeviceNeverSeen => "aldri";
+
+    public string DevicesRevoked(string name) => $"\u2713 Fjernet {name}.";
+
+    public string DevicesNoMatch(string id) => $"Ingen nettleser med id {id}.";
+
+    public string DevicesAmbiguous(string id) =>
+        $"Flere nettlesere har en id som starter med {id}. Ingenting ble fjernet. Bruk mer av id-en.";
+
+    public string DevicesSecretStoreFailed => "Hemmelighetslageret svarte ikke. L\u00e5s det opp og pr\u00f8v igjen.";
+
+    public string Unpaired(int count) =>
+        $"\u2713 Koblet fra {count} nettleser(e). Nettsiden kan ikke lenger n\u00e5 denne maskinen.";
+
+    public string UnpairNone => "Ingen tilkoblede nettlesere.";
+
+    public string UnpairKeysFailed =>
+        "Nettleserne er fjernet, men nye koblingsn\u00f8kler kunne ikke lages. Kj\u00f8r jobranger unpair p\u00e5 nytt.";
+
     public string DatabaseTooNew => "Databasen er laget av en nyere jobranger. Oppdater jobranger og prøv igjen.";
 
     public string DatabaseUnreadable(string path) => $"Kan ikke lese jobranger-databasen i {path}.";

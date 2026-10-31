@@ -24,6 +24,8 @@ internal sealed class RootCommand : System.CommandLine.RootCommand {
         Action = help;
         if (!OperatingSystem.IsWindows()) {
             Subcommands.Add(new PairCommand(services));
+            Subcommands.Add(new DevicesCommand(services));
+            Subcommands.Add(new UnpairCommand(services));
         }
     }
 

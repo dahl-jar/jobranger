@@ -123,6 +123,36 @@ internal interface IMessages {
 
     string PairPaired(string agent);
 
+    string DevicesDescription { get; }
+
+    string DevicesListDescription { get; }
+
+    string DevicesRevokeDescription { get; }
+
+    string DevicesRevokeIdDescription { get; }
+
+    string UnpairDescription { get; }
+
+    string DevicesNone { get; }
+
+    string DeviceLine(string id, string name, string pairedOn, string lastSeenOn);
+
+    string DeviceNeverSeen { get; }
+
+    string DevicesRevoked(string name);
+
+    string DevicesNoMatch(string id);
+
+    string DevicesAmbiguous(string id);
+
+    string DevicesSecretStoreFailed { get; }
+
+    string Unpaired(int count);
+
+    string UnpairNone { get; }
+
+    string UnpairKeysFailed { get; }
+
     string DatabaseTooNew { get; }
 
     string DatabaseUnreadable(string path);
