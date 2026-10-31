@@ -144,6 +144,14 @@ public sealed class RelayApiClientTests : IDisposable {
         await Assert.ThrowsAsync<RelayUnavailableException>(() => started);
     }
 
+    [Fact]
+    public async Task ShouldThrowUnavailable_WhenBodyReadFails() {
+        using HttpClient dropped = new(new DroppedBodyHandler());
+        RelayApiClient failing = new(dropped, FakeRelay.Address);
+
+        await Assert.ThrowsAsync<RelayUnavailableException>(() => failing.StartPairingAsync(signing, Token));
+    }
+
     [Theory]
     [InlineData("<html>")]
     [InlineData("[]")]
@@ -159,6 +167,16 @@ public sealed class RelayApiClientTests : IDisposable {
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request, CancellationToken cancellationToken) =>
             throw failure;
+    }
+
+    private sealed class DroppedBodyHandler : HttpMessageHandler {
+        private readonly Pipe pipe = new();
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken) {
+            await pipe.Writer.CompleteAsync(new IOException("connection reset"));
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(pipe.Reader.AsStream()) };
+        }
     }
 
     private sealed class StalledOversizedHandler : HttpMessageHandler {

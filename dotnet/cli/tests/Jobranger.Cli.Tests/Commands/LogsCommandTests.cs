@@ -73,14 +73,23 @@ public sealed class LogsCommandTests : IDisposable {
 
     [Fact]
     public async Task ShouldPrintDatabaseTooNew_WhenSchemaIsNewer() {
-        using (SqliteConnection database = Database.Open(paths.DbPath(), NullLogger.Instance)) {
-            new StateStore(database).Set(StateStore.SchemaVersionKey, "99");
-        }
+        CommandFixtures.MarkSchemaTooNew(paths.DbPath());
 
         int exit = await RunAsync();
 
         Assert.Equal(
             (CliExitCodes.Failure, "The database was made by a newer jobranger. Update jobranger and try again.\n", "logs.failed schema_too_new"),
+            (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
+    }
+
+    [Fact]
+    public async Task ShouldPrintDatabaseUnreadable_WhenMigrationFails() {
+        CommandFixtures.RewindSchema(paths.DbPath());
+
+        int exit = await RunAsync();
+
+        Assert.Equal(
+            (CliExitCodes.Failure, CommandFixtures.WithPath(CommandFixtures.DatabaseUnreadable, paths.DbPath()), "logs.failed migration_failed"),
             (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
     }
 
