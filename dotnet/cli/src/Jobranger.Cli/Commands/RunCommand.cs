@@ -63,8 +63,16 @@ internal sealed class RunCommand : Command {
     private static async Task<int> RunAsync(RunContext context, CancellationToken cancellationToken) {
         ILogger logger = context.Services.Logs.CreateLogger(typeof(RunCommand).FullName!);
         using PosixSignals signals = new(cancellationToken);
-        Task<int> work = Task.Run(() => PassAsync(context, logger, signals.Token), CancellationToken.None);
-        Task first = await Task.WhenAny(work, ForcedStopAsync(context.Time, signals.Token)).ConfigureAwait(false);
+        int exit = await PassOrForcedStopAsync(context, logger, signals.Token).ConfigureAwait(false);
+        if (exit == CliExitCodes.Cancelled && context.Services.Console.Profile.Out.IsTerminal) {
+            await context.Output.WriteLineAsync().ConfigureAwait(false);
+        }
+        return exit;
+    }
+
+    private static async Task<int> PassOrForcedStopAsync(RunContext context, ILogger logger, CancellationToken cancellationToken) {
+        Task<int> work = Task.Run(() => PassAsync(context, logger, cancellationToken), CancellationToken.None);
+        Task first = await Task.WhenAny(work, ForcedStopAsync(context.Time, cancellationToken)).ConfigureAwait(false);
         if (first == work) {
             return await work.ConfigureAwait(false);
         }
@@ -141,7 +149,7 @@ internal sealed class RunCommand : Command {
         foreach (string line in DeliveryEntry.SummaryLines(result, messages)) {
             await output.WriteLineAsync(line).ConfigureAwait(false);
         }
-        if (AllFailed(result)) {
+        if (result.FailedSources.Count > 0) {
             await output.WriteLineAsync(messages.DigestCouldNotRead(SourceList(result.FailedSources, messages))).ConfigureAwait(false);
         }
     }
