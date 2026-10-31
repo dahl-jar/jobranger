@@ -9,15 +9,21 @@ public sealed class IdempotencyKeyTests {
     private const string changed = "changed";
 
     private static readonly RenderedDigest baseDigest = new("Subject", "<p>html</p>", "text", []);
+    private static readonly RenderedDigest vectorDigest = new("Subject Ø", "<p>html</p>", "text\n", []);
+    private static readonly EmailAddresses vectorAddresses = new("jobranger <sender@example.test>", "user@example.test");
 
     [Fact]
-    public void ShouldEqualKnownHash_WhenPartsAreGiven() {
-        RenderedDigest rendered = new("Subject Ø", "<p>html</p>", "text\n", []);
-        EmailAddresses addresses = new("jobranger <sender@example.test>", "user@example.test");
-
-        string key = IdempotencyKey.For(runId, rendered, addresses);
+    public void ShouldMatchHandComputedKey() {
+        string key = IdempotencyKey.For(runId, vectorDigest, vectorAddresses);
 
         Assert.Equal("29faeee0759fc620f6c574308cb065c0f8bd37e30190d5479a57660ffe2086b6", key);
+    }
+
+    [Fact]
+    public void ShouldHashEmptyRun_WhenRunHasNoId() {
+        string key = IdempotencyKey.For(null, vectorDigest, vectorAddresses);
+
+        Assert.Equal("aaca89cb367b6d8141ac688a66b0a90419d5bbbe4267875349113cf134f4338d", key);
     }
 
     [Theory]

@@ -10,7 +10,7 @@ internal sealed record EmailAddresses(string Sender, string To) {
         if (email.Address is null || MailAddresses.AsciiAddress(email.Address) is not string to) {
             return null;
         }
-        return MailAddresses.AsciiMailbox(SenderFor(email, to)) is string sender ? new EmailAddresses(sender, to) : null;
+        return MailAddresses.MailboxWithAsciiDomain(SenderFor(email, to)) is string sender ? new EmailAddresses(sender, to) : null;
     }
 
     private static string SenderFor(EmailConfig email, string to) {

@@ -269,11 +269,11 @@ internal interface IMessages {
 
     string EmailNotSmtp(string host, int port);
 
-    string EmailSmtpLogin(string host, int port);
+    string EmailSmtpLoginFailed(string host, int port);
 
-    string EmailSmtpRecipient(string to);
+    string EmailSmtpRecipientRefused(string to);
 
-    string EmailSmtpSender(string sender);
+    string EmailSmtpSenderRefused(string sender);
 
     string EmailSmtpStatus(int status);
 
@@ -281,7 +281,7 @@ internal interface IMessages {
 
     string EmailTlsCertificate(string host);
 
-    string EmailTls(string host, int port);
+    string EmailTlsFailed(string host, int port);
 
     string EmailSmtpDisconnected(string host, int port);
 
@@ -297,7 +297,7 @@ internal interface IMessages {
 
     string EmailSmtpTooSlow(string host, int port, int seconds);
 
-    string EmailResendKey { get; }
+    string EmailResendKeyRefused { get; }
 
     string EmailUnusableResendKey { get; }
 

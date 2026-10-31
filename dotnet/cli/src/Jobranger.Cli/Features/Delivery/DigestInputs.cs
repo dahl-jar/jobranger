@@ -12,13 +12,12 @@ using RunsEntry = Jobranger.Cli.Features.Runs.Runs;
 namespace Jobranger.Cli.Features.Delivery;
 
 [UnsupportedOSPlatform("windows")]
-internal static class DeliveryCards {
-    public static DigestInput Input(
+internal static class DigestInputs {
+    public static DigestInput From(
         AdsEntry ads, IReadOnlyList<RunRow> recentRuns, RunResult result, AppConfig config, DateTimeOffset ranAt) => new() {
             Cards = result.Version is string version ? Cards(ads, result, config.Targets, version) : [],
             CarriedIds = result.CarriedIds,
-            Hidden = [.. result.HiddenCounts.Select(hidden =>
-                new HiddenCount(Enum.Parse<HiddenGroup>(hidden.Key.ToString()), hidden.Value))],
+            Hidden = [.. result.HiddenCounts.Select(hidden => new HiddenCount(GroupOf(hidden.Key), hidden.Value))],
             NewAds = result.NewAds,
             SourcesRead = result.SourcesRead,
             FailedSources = result.FailedSources,
@@ -55,11 +54,28 @@ internal static class DeliveryCards {
             Url = group.First(ad => ad.Id == view.Id).Url,
             Summary = view.Summary,
             RoleLabel = CatalogueEntry.Load().RoleLabel(view.RoleType),
-            Fit = Enum.Parse<DigestFit>(MatchingEntry.DisplayFit(view, targets).ToString()),
+            Fit = FitOf(MatchingEntry.DisplayFit(view, targets)),
             IsStrongMatch = MatchingEntry.IsStrongMatch(view),
             ApplyExpired = view.ApplyStatus == WireNames.Of(ApplyStatus.Expired),
         };
     }
+
+#pragma warning disable CS8524
+    private static HiddenGroup GroupOf(HiddenKind kind) => kind switch {
+        HiddenKind.Senior => HiddenGroup.Senior,
+        HiddenKind.Years => HiddenGroup.Years,
+        HiddenKind.Masters => HiddenGroup.Masters,
+        HiddenKind.Role => HiddenGroup.Role,
+        HiddenKind.Place => HiddenGroup.Place,
+        HiddenKind.Other => HiddenGroup.Other,
+    };
+
+    private static DigestFit FitOf(DisplayFit fit) => fit switch {
+        DisplayFit.Strong => DigestFit.Strong,
+        DisplayFit.Partial => DigestFit.Partial,
+        DisplayFit.OnRequest => DigestFit.OnRequest,
+    };
+#pragma warning restore CS8524
 
     private static int ClosedSinceLast(AdsEntry ads, IReadOnlyList<RunRow> recentRuns, long? runId) =>
         recentRuns.FirstOrDefault(run => run.Id != runId) is RunRow previous ? (int)ads.ClosedSince(previous.StartedAt) : 0;

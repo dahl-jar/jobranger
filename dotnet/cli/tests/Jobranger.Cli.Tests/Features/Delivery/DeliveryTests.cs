@@ -5,6 +5,7 @@ using Jobranger.Cli.Config;
 using Jobranger.Cli.Features.Ads;
 using Jobranger.Cli.Features.Delivery;
 using Jobranger.Cli.Features.Runs;
+using Jobranger.Cli.Files;
 using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Cli.Text;
 using Microsoft.Extensions.Logging.Testing;
@@ -16,8 +17,6 @@ namespace Jobranger.Cli.Tests.Features.Delivery;
 
 [UnsupportedOSPlatform("windows")]
 public sealed class DeliveryTests : IDisposable {
-    private const string emptyJson = "{}";
-    private const string smtpUrl = "smtp://mail.example.test";
     private const int cutAdCount = 400;
     private const int summaryLength = 280;
 
@@ -35,7 +34,7 @@ public sealed class DeliveryTests : IDisposable {
     public async Task ShouldMarkAdsReported_WhenEmailIsSent() {
         Ad ad = StoredAd(1);
 
-        DeliveryResult result = await DeliverAsync(FakeApiHandler.Json(200, emptyJson), DeliveryFixtures.Result(ad));
+        DeliveryResult result = await DeliverAsync(FakeApiHandler.Json(200, DeliveryFixtures.EmptyJson), DeliveryFixtures.Result(ad));
 
         Assert.Equal(DeliveryFixtures.Address, result.EmailTo);
         Assert.Equal([ad.Id], DeliveryFixtures.ReportedIds(db));
@@ -45,7 +44,7 @@ public sealed class DeliveryTests : IDisposable {
     public async Task ShouldKeepAdsUnreported_WhenSendFails() {
         Ad ad = StoredAd(1);
 
-        DeliveryResult result = await DeliverAsync(FakeApiHandler.Json(500, emptyJson), DeliveryFixtures.Result(ad));
+        DeliveryResult result = await DeliverAsync(FakeApiHandler.Json(500, DeliveryFixtures.EmptyJson), DeliveryFixtures.Result(ad));
 
         Assert.Equal("Resend answered 500.", result.EmailError);
         Assert.Empty(DeliveryFixtures.ReportedIds(db));
@@ -54,7 +53,7 @@ public sealed class DeliveryTests : IDisposable {
     [Fact]
     public async Task ShouldMarkAdsWithoutSending_WhenEmailIsOff() {
         Ad ad = StoredAd(1);
-        FakeApiHandler handler = FakeApiHandler.Json(200, emptyJson);
+        FakeApiHandler handler = FakeApiHandler.Json(200, DeliveryFixtures.EmptyJson);
         AppConfig config = DeliveryFixtures.Config(DeliveryFixtures.ResendEmail with { On = false });
 
         DeliveryResult result = await DeliveryFixtures.Create(db, handler, time)
@@ -67,7 +66,7 @@ public sealed class DeliveryTests : IDisposable {
 
     [Fact]
     public async Task ShouldSendNothing_WhenRunHasNoNews() {
-        FakeApiHandler handler = FakeApiHandler.Json(200, emptyJson);
+        FakeApiHandler handler = FakeApiHandler.Json(200, DeliveryFixtures.EmptyJson);
 
         DeliveryResult result = await DeliverAsync(handler, DeliveryFixtures.Result());
 
@@ -80,7 +79,7 @@ public sealed class DeliveryTests : IDisposable {
     [InlineData("budget")]
     [InlineData("provider down")]
     public async Task ShouldSendNotice_WhenRunHasNoMatches(string notice) {
-        FakeApiHandler handler = FakeApiHandler.Json(200, emptyJson);
+        FakeApiHandler handler = FakeApiHandler.Json(200, DeliveryFixtures.EmptyJson);
         RunResult result = notice switch {
             "failed source" => DeliveryFixtures.Result() with { FailedSources = ["finn"] },
             "budget" => DeliveryFixtures.Result() with { ModelStopped = StopReason.Budget, Pending = 4 },
@@ -92,22 +91,59 @@ public sealed class DeliveryTests : IDisposable {
         Assert.Single(handler.Requests);
     }
 
+    [Fact]
+    public async Task ShouldSendDigest_WhenOnlyAdIsDueSoon() {
+        FakeApiHandler handler = FakeApiHandler.Json(200, DeliveryFixtures.EmptyJson);
+        Ad due = DeliveryFixtures.Stored(ads, RunFixtures.Pending(1, "Developer", "Org AS") with { Deadline = "2026-10-12" });
+
+        await DeliverAsync(handler, DeliveryFixtures.Result(due));
+
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
+    public async Task ShouldSendDigest_WhenOnlyAdIsCarriedOver() {
+        FakeApiHandler handler = FakeApiHandler.Json(200, DeliveryFixtures.EmptyJson);
+        Ad carried = StoredAd(1);
+
+        await DeliverAsync(handler, DeliveryFixtures.Result(carried) with { CarriedIds = [carried.Id] });
+
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
+    public async Task ShouldReportClosedAds_WhenPreviousRunExists() {
+        Ad closed = StoredAd(1);
+        RunStore runs = new(db.Connection);
+        runs.Start(time.GetUtcNow());
+        time.Advance(TimeSpan.FromHours(1));
+        ads.SetActive(closed.Id, false);
+        time.Advance(TimeSpan.FromHours(1));
+        long current = runs.Start(time.GetUtcNow());
+        FakeApiHandler handler = FakeApiHandler.Json(200, DeliveryFixtures.EmptyJson);
+
+        await DeliverAsync(handler, DeliveryFixtures.Result() with { RunId = current, FailedSources = ["finn"] });
+
+        Assert.Contains("One earlier job closed since the last run.", Payload(handler, "text"), StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task ShouldLinkToSite_WhenWebsiteIsOn(bool website) {
-        FakeApiHandler handler = FakeApiHandler.Json(200, emptyJson);
+    public async Task ShouldLinkToSiteOnly_WhenWebsiteIsOn(bool website) {
+        FakeApiHandler handler = FakeApiHandler.Json(200, DeliveryFixtures.EmptyJson);
         AppConfig config = DeliveryFixtures.Config(DeliveryFixtures.ResendEmail, website);
 
         await DeliveryFixtures.Create(db, handler, time)
             .DeliverAsync(config, DeliveryFixtures.Result(StoredAd(1)), TestContext.Current.CancellationToken);
 
-        Assert.Equal(website, Payload(handler, "html").Contains(DeliveryFixtures.Site + "/app", StringComparison.Ordinal));
+        string html = Payload(handler, "html");
+        Assert.Equal(website, html.Contains(DeliveryFixtures.Site + "/app", StringComparison.Ordinal));
     }
 
     [Fact]
     public async Task ShouldDateDigestByLocalDay_WhenUtcDayDiffers() {
-        FakeApiHandler handler = FakeApiHandler.Json(200, emptyJson);
+        FakeApiHandler handler = FakeApiHandler.Json(200, DeliveryFixtures.EmptyJson);
         FakeTimeProvider plusTwo = PlusTwoAt(new DateTimeOffset(2026, 10, 8, 23, 30, 0, TimeSpan.Zero));
 
         await DeliverStoredAdAsync(DeliveryFixtures.Create(db, handler, plusTwo));
@@ -117,7 +153,7 @@ public sealed class DeliveryTests : IDisposable {
 
     [Fact]
     public async Task ShouldUseLocalHourInLead_WhenUtcHourDiffers() {
-        FakeApiHandler handler = FakeApiHandler.Json(200, emptyJson);
+        FakeApiHandler handler = FakeApiHandler.Json(200, DeliveryFixtures.EmptyJson);
         FakeTimeProvider plusTwo = PlusTwoAt(new DateTimeOffset(2026, 10, 8, 16, 30, 0, TimeSpan.Zero));
 
         await DeliverStoredAdAsync(DeliveryFixtures.Create(db, handler, plusTwo));
@@ -131,7 +167,7 @@ public sealed class DeliveryTests : IDisposable {
     public async Task ShouldNotDeliver_WhenPassDidNotFinish(string status) {
         Ad silent = StoredAd(1);
         Ad reported = StoredAd(2);
-        FakeApiHandler handler = FakeApiHandler.Json(200, emptyJson);
+        FakeApiHandler handler = FakeApiHandler.Json(200, DeliveryFixtures.EmptyJson);
         RunResult run = DeliveryFixtures.Result(reported) with {
             Status = Enum.Parse<RunStatus>(status),
             SilentIds = [silent.Id],
@@ -146,7 +182,7 @@ public sealed class DeliveryTests : IDisposable {
 
     [Fact]
     public async Task ShouldDeliver_WhenPassFailed() {
-        FakeApiHandler handler = FakeApiHandler.Json(200, emptyJson);
+        FakeApiHandler handler = FakeApiHandler.Json(200, DeliveryFixtures.EmptyJson);
         RunResult run = DeliveryFixtures.Result() with { Status = RunStatus.Failed, FailedSources = ["finn"] };
 
         await DeliverAsync(handler, run);
@@ -160,7 +196,7 @@ public sealed class DeliveryTests : IDisposable {
             ads,
             RunFixtures.Pending(index, $"Developer {index}", $"Org {index} AS"),
             DeliveryFixtures.Classification with { Summary = new string('x', summaryLength) }))];
-        FakeApiHandler handler = FakeApiHandler.Json(200, emptyJson);
+        FakeApiHandler handler = FakeApiHandler.Json(200, DeliveryFixtures.EmptyJson);
 
         await DeliverAsync(handler, DeliveryFixtures.Result(stored));
 
@@ -179,7 +215,7 @@ public sealed class DeliveryTests : IDisposable {
         Ad reported = StoredAd(2);
         RunResult run = DeliveryFixtures.Result(reported) with { SilentIds = [silent.Id] };
 
-        await DeliverAsync(FakeApiHandler.Json(500, emptyJson), run);
+        await DeliverAsync(FakeApiHandler.Json(500, DeliveryFixtures.EmptyJson), run);
 
         Assert.Equal([silent.Id], DeliveryFixtures.ReportedIds(db));
     }
@@ -187,20 +223,27 @@ public sealed class DeliveryTests : IDisposable {
     [Fact]
     public async Task ShouldReuseKey_WhenSameRunIsDeliveredAgain() {
         List<FakeApiHandler> handlers = [];
-        DeliveryTransport transport = DeliveryFixtures.TransportFor(() => {
-            FakeApiHandler created = FakeApiHandler.Json(500, emptyJson);
-            handlers.Add(created);
-            return created;
-        });
-        DeliveryEntry delivery = DeliveryFixtures.Create(db, transport, time, DeliveryFixtures.WithResendKey(db));
+        DeliveryEntry delivery = RefusedDelivery(handlers);
         RunResult run = DeliveryFixtures.Result(StoredAd(1)) with { RunId = 7 };
-        AppConfig config = DeliveryFixtures.Config(DeliveryFixtures.ResendEmail);
 
-        await delivery.DeliverAsync(config, run, TestContext.Current.CancellationToken);
+        await DeliverRunAsync(delivery, run);
         time.Advance(TimeSpan.FromMinutes(1));
-        await delivery.DeliverAsync(config, run, TestContext.Current.CancellationToken);
+        await DeliverRunAsync(delivery, run);
 
-        Assert.Equal(handlers[0].Last.Header("Idempotency-Key"), handlers[1].Last.Header("Idempotency-Key"));
+        Assert.NotNull(SentKey(handlers[0]));
+        Assert.Equal(SentKey(handlers[0]), SentKey(handlers[1]));
+    }
+
+    [Fact]
+    public async Task ShouldChangeKey_WhenRunDiffers() {
+        List<FakeApiHandler> handlers = [];
+        DeliveryEntry delivery = RefusedDelivery(handlers);
+        RunResult run = DeliveryFixtures.Result(StoredAd(1)) with { RunId = 7 };
+
+        await DeliverRunAsync(delivery, run);
+        await DeliverRunAsync(delivery, run with { RunId = 8 });
+
+        Assert.NotEqual(SentKey(handlers[0]), SentKey(handlers[1]));
     }
 
     [Theory]
@@ -210,13 +253,13 @@ public sealed class DeliveryTests : IDisposable {
     [InlineData("no resend key", "No Resend API key is stored. Add one with: jobranger init")]
     [InlineData("no smtp password", "No SMTP password is stored. Add one with: jobranger init")]
     public async Task ShouldRefuseSend_WhenSettingIsMissing(string setting, string reason) {
-        FakeApiHandler handler = FakeApiHandler.Json(200, emptyJson);
+        FakeApiHandler handler = FakeApiHandler.Json(200, DeliveryFixtures.EmptyJson);
         EmailConfig smtp = new() { On = true, Address = DeliveryFixtures.Address };
         EmailConfig email = setting switch {
             "no address" => DeliveryFixtures.ResendEmail with { Address = null },
             "unusable address" => DeliveryFixtures.ResendEmail with { Address = "not an address" },
             "no smtp url" => smtp,
-            "no smtp password" => smtp with { SmtpUrl = smtpUrl, SmtpUser = "user" },
+            "no smtp password" => smtp with { SmtpUrl = DeliveryFixtures.SmtpUrl, SmtpUser = "user" },
             _ => DeliveryFixtures.ResendEmail,
         };
         DeliveryEntry delivery = DeliveryFixtures.Create(
@@ -231,7 +274,7 @@ public sealed class DeliveryTests : IDisposable {
 
     [Fact]
     public async Task ShouldReturnFailure_WhenSecretStoreBreaks() {
-        FakeApiHandler handler = FakeApiHandler.Json(200, emptyJson);
+        FakeApiHandler handler = FakeApiHandler.Json(200, DeliveryFixtures.EmptyJson);
         DeliveryEntry delivery = DeliveryFixtures.Create(
             db,
             DeliveryFixtures.TransportFor(() => handler),
@@ -244,10 +287,24 @@ public sealed class DeliveryTests : IDisposable {
     }
 
     [Fact]
+    public async Task ShouldReturnFailure_WhenSecretsFileIsCorrupt() {
+        File.WriteAllText(DeliveryFixtures.SecretsPath(db), "not json");
+        FakeLogger logger = new();
+        DeliveryEntry delivery = DeliveryFixtures.Create(
+            db, DeliveryTransport.Production, time, DeliveryFixtures.Credentials(db, new Hashtable()), logger: logger);
+
+        DeliveryResult result = await DeliverStoredAdAsync(delivery);
+
+        FakeLogRecord record = logger.Collector.GetSnapshot().Single(entry => entry.Id.Name == "email.failed");
+        Assert.Equal(new EnglishMessages().EmailSecretStore, result.EmailError);
+        Assert.Equal(nameof(PrivateFileException), record.GetStructuredStateValue("ErrorType"));
+    }
+
+    [Fact]
     public async Task ShouldLogCardCount_WhenEmailIsSent() {
         FakeLogger logger = new();
 
-        await DeliverStoredAdAsync(DeliveryFixtures.Create(db, FakeApiHandler.Json(200, emptyJson), time, logger: logger));
+        await DeliverStoredAdAsync(DeliveryFixtures.Create(db, FakeApiHandler.Json(200, DeliveryFixtures.EmptyJson), time, logger: logger));
 
         FakeLogRecord record = logger.Collector.GetSnapshot().Single(entry => entry.Id.Name == "email.sent");
         Assert.Equal("1", record.GetStructuredStateValue("Count"));
@@ -257,7 +314,7 @@ public sealed class DeliveryTests : IDisposable {
     public async Task ShouldLogFailureWithoutAddress_WhenSendFails() {
         FakeLogger logger = new();
 
-        await DeliverStoredAdAsync(DeliveryFixtures.Create(db, FakeApiHandler.Json(500, emptyJson), time, logger: logger));
+        await DeliverStoredAdAsync(DeliveryFixtures.Create(db, FakeApiHandler.Json(500, DeliveryFixtures.EmptyJson), time, logger: logger));
 
         FakeLogRecord record = logger.Collector.GetSnapshot().Single(entry => entry.Id.Name == "email.failed");
         Assert.Equal("resend_status", record.GetStructuredStateValue("Failure"));
@@ -266,7 +323,7 @@ public sealed class DeliveryTests : IDisposable {
     }
 
     [Fact]
-    public async Task ShouldSendThroughSmtp_WhenViaIsSmtp() {
+    public async Task ShouldSendThroughSmtp_WhenConfigChoosesSmtp() {
         await using FakeSmtpServer server = FakeSmtpServer.Accepting();
         Ad ad = StoredAd(1);
         DeliveryEntry delivery = DeliveryFixtures.Create(
@@ -283,15 +340,40 @@ public sealed class DeliveryTests : IDisposable {
     }
 
     [Fact]
+    public async Task ShouldLogInWithStoredPassword_WhenConfigChoosesSmtp() {
+        await using FakeSmtpServer server = FakeSmtpServer.Accepting("STARTTLS", "AUTH PLAIN");
+        DeliveryEntry delivery = DeliveryFixtures.Create(
+            db,
+            SmtpCertificates.Trusting,
+            time,
+            DeliveryFixtures.Credentials(db, new Hashtable { ["SMTP_PASSWORD"] = "pass-1234" }));
+        EmailConfig email = new() {
+            On = true,
+            Address = DeliveryFixtures.Address,
+            SmtpUrl = server.Url("smtp"),
+            SmtpUser = "user",
+        };
+
+        await delivery.DeliverAsync(
+            DeliveryFixtures.Config(email), DeliveryFixtures.Result(StoredAd(1)), TestContext.Current.CancellationToken)
+            .WaitAsync(TestWaits.Step, TestContext.Current.CancellationToken);
+
+        string decoded = server.DecodedLogin();
+        Assert.Equal("\0user\0pass-1234", decoded);
+    }
+
+    [Fact]
     public async Task ShouldExplainFailureInNorwegian_WhenMessagesAreNorwegian() {
-        DeliveryResult result = await DeliverStoredAdAsync(DeliveryFixtures.Create(db, FakeApiHandler.Json(500, emptyJson), time, new NorwegianMessages()));
+        DeliveryEntry delivery = DeliveryFixtures.Create(db, FakeApiHandler.Json(500, DeliveryFixtures.EmptyJson), time, new NorwegianMessages());
+
+        DeliveryResult result = await DeliverStoredAdAsync(delivery);
 
         Assert.Equal("Resend svarte 500.", result.EmailError);
     }
 
     [Fact]
     public async Task ShouldWriteDigestInEnglish_WhenMessagesAreNorwegian() {
-        FakeApiHandler handler = FakeApiHandler.Json(200, emptyJson);
+        FakeApiHandler handler = FakeApiHandler.Json(200, DeliveryFixtures.EmptyJson);
 
         await DeliverStoredAdAsync(DeliveryFixtures.Create(db, handler, time, new NorwegianMessages()));
 
@@ -308,16 +390,27 @@ public sealed class DeliveryTests : IDisposable {
         return clock;
     }
 
+    private static string? SentKey(FakeApiHandler handler) => handler.Last.Header("Idempotency-Key");
+
+    private static Task<DeliveryResult> DeliverRunAsync(DeliveryEntry delivery, RunResult run) =>
+        delivery.DeliverAsync(
+            DeliveryFixtures.Config(DeliveryFixtures.ResendEmail), run, TestContext.Current.CancellationToken);
+
+    private DeliveryEntry RefusedDelivery(List<FakeApiHandler> handlers) {
+        DeliveryTransport transport = DeliveryFixtures.TransportFor(() => {
+            FakeApiHandler created = FakeApiHandler.Json(500, DeliveryFixtures.EmptyJson);
+            handlers.Add(created);
+            return created;
+        });
+        return DeliveryFixtures.Create(db, transport, time, DeliveryFixtures.WithResendKey(db));
+    }
+
     private Ad StoredAd(int index) =>
         DeliveryFixtures.Stored(ads, RunFixtures.Pending(index, $"Developer {index}", $"Org {index} AS"));
 
     private Task<DeliveryResult> DeliverStoredAdAsync(DeliveryEntry delivery) =>
-        delivery.DeliverAsync(
-            DeliveryFixtures.Config(DeliveryFixtures.ResendEmail),
-            DeliveryFixtures.Result(StoredAd(1)),
-            TestContext.Current.CancellationToken);
+        DeliverRunAsync(delivery, DeliveryFixtures.Result(StoredAd(1)));
 
     private Task<DeliveryResult> DeliverAsync(FakeApiHandler handler, RunResult result) =>
-        DeliveryFixtures.Create(db, handler, time)
-            .DeliverAsync(DeliveryFixtures.Config(DeliveryFixtures.ResendEmail), result, TestContext.Current.CancellationToken);
+        DeliverRunAsync(DeliveryFixtures.Create(db, handler, time), result);
 }

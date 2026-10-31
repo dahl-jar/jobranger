@@ -34,13 +34,13 @@ internal static class SmtpFailures {
             (_, { TimedOut: true }) => (SendFailureKind.Stalled, messages.EmailStalled(host, port), null),
             (SmtpProtocolException, { NonReply: true }) => (SendFailureKind.NotSmtp, messages.EmailNotSmtp(host, port), null),
             (SmtpProtocolException, _) => (SendFailureKind.SmtpDisconnected, messages.EmailSmtpDisconnected(host, port), null),
-            (AuthenticationException login, _) => (SendFailureKind.SmtpLogin, messages.EmailSmtpLogin(host, port), LoginStatus(login)),
-            (SmtpCommandException command, _) => Command(command, state, messages),
+            (AuthenticationException login, _) => (SendFailureKind.SmtpLogin, messages.EmailSmtpLoginFailed(host, port), LoginStatus(login)),
+            (SmtpCommandException command, _) => CommandFailure(command, state, messages),
             (ServiceNotAuthenticatedException, _) =>
-                (SendFailureKind.SmtpSender, messages.EmailSmtpSender(state.Addresses.Sender), null),
+                (SendFailureKind.SmtpSender, messages.EmailSmtpSenderRefused(state.Addresses.Sender), null),
             (SslHandshakeException, { CertificateRefused: true }) =>
                 (SendFailureKind.TlsCertificate, messages.EmailTlsCertificate(host), null),
-            (SslHandshakeException, _) => (SendFailureKind.Tls, messages.EmailTls(host, port), null),
+            (SslHandshakeException, _) => (SendFailureKind.Tls, messages.EmailTlsFailed(host, port), null),
             (NotSupportedException, { Connected: true }) =>
                 (SendFailureKind.SmtpUnsupported, messages.EmailSmtpUnsupported(host, port), null),
             (NotSupportedException, _) => (SendFailureKind.NoStarttls, messages.EmailNoStarttls(host, port), null),
@@ -54,14 +54,14 @@ internal static class SmtpFailures {
     private static int? LoginStatus(AuthenticationException error) =>
         error.InnerException is SmtpCommandException command ? (int)command.StatusCode : null;
 
-    private static (SendFailureKind Kind, string Reason, int? Status) Command(
+    private static (SendFailureKind Kind, string Reason, int? Status) CommandFailure(
         SmtpCommandException error, SmtpSendState state, IMessages messages) {
         int status = (int)error.StatusCode;
         return error.ErrorCode switch {
             SmtpErrorCode.RecipientNotAccepted =>
-                (SendFailureKind.SmtpRecipient, messages.EmailSmtpRecipient(state.Addresses.To), status),
+                (SendFailureKind.SmtpRecipient, messages.EmailSmtpRecipientRefused(state.Addresses.To), status),
             SmtpErrorCode.SenderNotAccepted =>
-                (SendFailureKind.SmtpSender, messages.EmailSmtpSender(state.Addresses.Sender), status),
+                (SendFailureKind.SmtpSender, messages.EmailSmtpSenderRefused(state.Addresses.Sender), status),
             _ => (SendFailureKind.SmtpStatus, messages.EmailSmtpStatus(status), status),
         };
     }

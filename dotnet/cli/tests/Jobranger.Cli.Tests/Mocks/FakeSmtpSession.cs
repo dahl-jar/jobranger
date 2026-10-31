@@ -20,9 +20,7 @@ internal sealed class FakeSmtpSession(Stream network, FakeSmtpServer server, Can
 
     public async Task<string> ReadLineAsync() {
         string line = await ReadRawLineAsync();
-        lock (server.Commands) {
-            server.Commands.Add(line);
-        }
+        server.Commands.Add(line);
         return line;
     }
 

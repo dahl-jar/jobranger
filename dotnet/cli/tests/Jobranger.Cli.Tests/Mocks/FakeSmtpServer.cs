@@ -1,11 +1,13 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Authentication;
+using System.Text;
 
 namespace Jobranger.Cli.Tests.Mocks;
 
 internal sealed class FakeSmtpServer : IAsyncDisposable {
     private const string startTls = "STARTTLS";
+    private const string authPlain = "AUTH PLAIN";
     private const string greeting = "220 fake ready\r\n";
     private const string startTlsReady = "220 go\r\n";
     private const string okLine = "250 ok\r\n";
@@ -34,7 +36,7 @@ internal sealed class FakeSmtpServer : IAsyncDisposable {
 
     public static FakeSmtpServer Accepting(params string[] extensions) => new(async session => {
         await session.SendAsync(greeting);
-        await PlayAsync(session, Offered(extensions));
+        await PlayAsync(session, extensions.Length == 0 ? [startTls] : extensions);
     });
 
     public static FakeSmtpServer AcceptingTls() => new(async session => {
@@ -59,14 +61,20 @@ internal sealed class FakeSmtpServer : IAsyncDisposable {
         await session.SendAsync(HelloReply(extensions));
     }
 
-    public static async Task ReachStartTlsAsync(FakeSmtpSession session, params string[] extensions) {
+    public static async Task ReachStartTlsAsync(FakeSmtpSession session) {
         await session.SendAsync(greeting);
-        await HelloAsync(session, [startTls, .. extensions]);
+        await HelloAsync(session, startTls);
         await session.ReadLineAsync();
         await session.SendAsync(startTlsReady);
     }
 
     public string Url(string scheme) => $"{scheme}://127.0.0.1:{Port}";
+
+    public string DecodedLogin() {
+        string login = Commands.Single(command => command.StartsWith(authPlain, StringComparison.Ordinal));
+        byte[] credentials = Convert.FromBase64String(login[(authPlain.Length + 1)..]);
+        return Encoding.ASCII.GetString(credentials);
+    }
 
     public void MarkWaiting() => waiting.TrySetResult();
 
@@ -77,13 +85,12 @@ internal sealed class FakeSmtpServer : IAsyncDisposable {
             await serving.WaitAsync(TestWaits.Step);
         } catch (Exception error) when (error
             is OperationCanceledException or IOException or SocketException or ObjectDisposedException or AuthenticationException) {
-            waiting.TrySetException(error);
+            return;
+        } finally {
+            listener.Dispose();
+            stop.Dispose();
         }
-        listener.Dispose();
-        stop.Dispose();
     }
-
-    private static string[] Offered(string[] extensions) => extensions.Length == 0 ? [startTls] : extensions;
 
     private static string HelloReply(IEnumerable<string> extensions) =>
         string.Concat(extensions.Select(extension => $"250-{extension}\r\n")) + okLine;

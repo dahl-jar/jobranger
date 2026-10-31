@@ -1,5 +1,4 @@
 using System.Net;
-using System.Text;
 using Jobranger.Cli.Features.Delivery;
 using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Cli.Text;
@@ -42,15 +41,15 @@ public sealed class SmtpSenderTests {
 
         await SendAsync(server.Url("smtp"), user, password);
 
-        string login = server.Commands.Single(command => command.StartsWith(authPlain, StringComparison.Ordinal));
-        Assert.Equal($"\0{user}\0{password}", Encoding.ASCII.GetString(Convert.FromBase64String(login[(authPlain.Length + 1)..])));
+        string decoded = server.DecodedLogin();
+        Assert.Equal($"\0{user}\0{password}", decoded);
     }
 
     [Fact]
     public async Task ShouldSkipLogin_WhenUserIsMissing() {
         await using FakeSmtpServer server = FakeSmtpServer.Accepting(startTls, authPlain);
 
-        await SendAsync(server.Url("smtp"));
+        await SendAsync(server.Url("smtp"), null, password);
 
         Assert.Single(server.Messages);
         Assert.DoesNotContain(server.Commands, command => command.StartsWith("AUTH", StringComparison.Ordinal));
@@ -180,7 +179,7 @@ public sealed class SmtpSenderTests {
         };
         DateTimeOffset started = time.GetUtcNow();
 
-        SendFailure? failure = await ApiClock.RunAsync(time, SendAsync("smtp://mail.example.test:587", transport: transport));
+        SendFailure? failure = await ApiClock.RunAsync(time, SendAsync(DeliveryFixtures.SmtpUrl + ":587", transport: transport));
 
         Assert.Equal(SendFailureKind.SmtpUnreachable, failure?.Kind);
         DeliveryFixtures.AssertOneOperationPassed(time, started);
@@ -193,7 +192,7 @@ public sealed class SmtpSenderTests {
             Resolve = (_, _) => Task.FromResult<IPAddress[]>([IPAddress.IPv6Loopback, IPAddress.Loopback]),
         };
 
-        SendFailure? failure = await SendAsync($"smtp://mail.example.test:{server.Port}", transport: transport);
+        SendFailure? failure = await SendAsync($"{DeliveryFixtures.SmtpUrl}:{server.Port}", transport: transport);
 
         Assert.Null(failure);
         Assert.Single(server.Messages);
@@ -242,18 +241,35 @@ public sealed class SmtpSenderTests {
             await session.StallAsync();
         });
 
-        SmtpSender sender = new(SmtpCertificates.Trusting, new EnglishMessages(), time);
+        await Assert.ThrowsAsync<OperationCanceledException>(() => SendWithAsync(server.Url("smtp"), SmtpCertificates.Trusting, caller.Token));
+    }
 
-        await Assert.ThrowsAsync<OperationCanceledException>(() => sender.SendAsync(
-            server.Url("smtp"), null, null, DeliveryFixtures.Rendered, DeliveryFixtures.Addresses, caller.Token)
-            .WaitAsync(TestWaits.Step, TestContext.Current.CancellationToken));
+    [Fact]
+    public async Task ShouldThrowCanceled_WhenCallerCancelsDuringLookup() {
+        using CancellationTokenSource caller = new();
+        DeliveryTransport transport = SmtpCertificates.Trusting with {
+            Resolve = (_, _) => {
+                caller.Cancel();
+                return new TaskCompletionSource<IPAddress[]>().Task;
+            },
+        };
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => SendWithAsync(DeliveryFixtures.SmtpUrl + ":587", transport, caller.Token));
+    }
+
+    [Fact]
+    public async Task ShouldThrowCanceled_WhenCallerCancelsBeforeConnect() {
+        using CancellationTokenSource caller = new();
+        await caller.CancelAsync();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => SendWithAsync("smtp://127.0.0.1:587", SmtpCertificates.Trusting, caller.Token));
     }
 
     [Theory]
     [InlineData("smtp://", null, null, nameof(SendFailureKind.InvalidSmtpUrl))]
-    [InlineData("smtp://mail.example.test", user, null, nameof(SendFailureKind.MissingSmtpPassword))]
-    [InlineData("smtp://mail.example.test", user, "pæss", nameof(SendFailureKind.NonAsciiLogin))]
-    [InlineData("smtp://mail.example.test", "usér", password, nameof(SendFailureKind.NonAsciiLogin))]
+    [InlineData(DeliveryFixtures.SmtpUrl, user, null, nameof(SendFailureKind.MissingSmtpPassword))]
+    [InlineData(DeliveryFixtures.SmtpUrl, user, "pæss", nameof(SendFailureKind.NonAsciiLogin))]
+    [InlineData(DeliveryFixtures.SmtpUrl, "usér", password, nameof(SendFailureKind.NonAsciiLogin))]
     public async Task ShouldRefuseBeforeConnecting_WhenSettingIsUnusable(
         string url, string? login, string? secret, string kind) {
         DeliveryTransport transport = SmtpCertificates.Trusting with {
@@ -268,10 +284,11 @@ public sealed class SmtpSenderTests {
     [Fact]
     public async Task ShouldRefuseAddress_WhenSenderDoesNotParse() {
         EmailAddresses addresses = DeliveryFixtures.Addresses with { Sender = "not a mailbox" };
-        SmtpSender sender = new(SmtpCertificates.Trusting, new EnglishMessages(), time);
+        SmtpSender sender = new(
+            DeliveryFixtures.SmtpUrl, null, null, SmtpCertificates.Trusting, new EnglishMessages(), time);
 
         SendFailure? failure = await sender.SendAsync(
-            "smtp://mail.example.test", null, null, DeliveryFixtures.Rendered, addresses, TestContext.Current.CancellationToken);
+            DeliveryFixtures.Rendered, addresses, TestContext.Current.CancellationToken);
 
         Assert.Equal(SendFailureKind.UnusableAddress, failure?.Kind);
     }
@@ -284,7 +301,12 @@ public sealed class SmtpSenderTests {
         string? login = null,
         string? secret = null,
         DeliveryTransport? transport = null) =>
-        new SmtpSender(transport ?? SmtpCertificates.Trusting, new EnglishMessages(), time).SendAsync(
-            url, login, secret, DeliveryFixtures.Rendered, DeliveryFixtures.Addresses, TestContext.Current.CancellationToken)
+        new SmtpSender(url, login, secret, transport ?? SmtpCertificates.Trusting, new EnglishMessages(), time).SendAsync(
+            DeliveryFixtures.Rendered, DeliveryFixtures.Addresses, TestContext.Current.CancellationToken)
+            .WaitAsync(TestWaits.Step, TestContext.Current.CancellationToken);
+
+    private Task<SendFailure?> SendWithAsync(string url, DeliveryTransport transport, CancellationToken cancellationToken) =>
+        new SmtpSender(url, null, null, transport, new EnglishMessages(), time).SendAsync(
+            DeliveryFixtures.Rendered, DeliveryFixtures.Addresses, cancellationToken)
             .WaitAsync(TestWaits.Step, TestContext.Current.CancellationToken);
 }

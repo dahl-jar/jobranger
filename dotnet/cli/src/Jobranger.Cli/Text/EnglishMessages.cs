@@ -305,11 +305,11 @@ internal sealed class EnglishMessages : IMessages {
 
     public string EmailNotSmtp(string host, int port) => $"The server at {host}:{port} is not an SMTP server.";
 
-    public string EmailSmtpLogin(string host, int port) => $"SMTP login to {host}:{port} failed.";
+    public string EmailSmtpLoginFailed(string host, int port) => $"SMTP login to {host}:{port} failed.";
 
-    public string EmailSmtpRecipient(string to) => $"The server refused {to}.";
+    public string EmailSmtpRecipientRefused(string to) => $"The server refused {to}.";
 
-    public string EmailSmtpSender(string sender) => $"The server refused the sender {sender}.";
+    public string EmailSmtpSenderRefused(string sender) => $"The server refused the sender {sender}.";
 
     public string EmailSmtpStatus(int status) => $"The SMTP server answered {status}.";
 
@@ -317,7 +317,7 @@ internal sealed class EnglishMessages : IMessages {
 
     public string EmailTlsCertificate(string host) => $"Could not verify the TLS certificate of {host}.";
 
-    public string EmailTls(string host, int port) => $"TLS with {host}:{port} failed.";
+    public string EmailTlsFailed(string host, int port) => $"TLS with {host}:{port} failed.";
 
     public string EmailSmtpDisconnected(string host, int port) => $"The SMTP server at {host}:{port} closed the connection.";
 
@@ -333,7 +333,7 @@ internal sealed class EnglishMessages : IMessages {
 
     public string EmailSmtpTooSlow(string host, int port, int seconds) => $"The SMTP server at {host}:{port} took longer than {seconds} s, so the send was stopped.";
 
-    public string EmailResendKey => "Resend refused the key.";
+    public string EmailResendKeyRefused => "Resend refused the key.";
 
     public string EmailUnusableResendKey => "The stored Resend API key has characters an API key cannot have. Add one with: jobranger init";
 

@@ -1,6 +1,7 @@
 using System.Net.Sockets;
 using Jobranger.Cli.Config;
 using Jobranger.Cli.Features.Delivery;
+using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Cli.Text;
 using MailKit;
 using MailKit.Net.Smtp;
@@ -13,14 +14,12 @@ public sealed class SmtpFailuresTests {
     private const string detail = "server detail";
     private const string host = "mail.example.test";
     private const int port = 587;
-    private const string to = "user@example.test";
-    private const string sender = "jobranger <sender@example.test>";
 
     private static readonly IMessages messages = new EnglishMessages();
 
     private static readonly SmtpSendState quiet = new(
         new SmtpServer(host, port, ImplicitTls: false),
-        new EmailAddresses(sender, to),
+        DeliveryFixtures.Addresses,
         DeadlinePassed: false,
         ReplyTooLong: false,
         NonReply: false,
@@ -52,10 +51,10 @@ public sealed class SmtpFailuresTests {
     [InlineData("disconnected", nameof(SendFailureKind.SmtpDisconnected), null, "The SMTP server at mail.example.test:587 closed the connection.")]
     [InlineData("login status", nameof(SendFailureKind.SmtpLogin), 550, "SMTP login to mail.example.test:587 failed.")]
     [InlineData("login", nameof(SendFailureKind.SmtpLogin), null, "SMTP login to mail.example.test:587 failed.")]
-    [InlineData("recipient", nameof(SendFailureKind.SmtpRecipient), 550, "The server refused user@example.test.")]
-    [InlineData("sender", nameof(SendFailureKind.SmtpSender), 550, "The server refused the sender jobranger <sender@example.test>.")]
+    [InlineData("recipient", nameof(SendFailureKind.SmtpRecipient), 550, "The server refused " + DeliveryFixtures.Address + ".")]
+    [InlineData("sender", nameof(SendFailureKind.SmtpSender), 550, "The server refused the sender " + DeliveryFixtures.SenderMailbox + ".")]
     [InlineData("status", nameof(SendFailureKind.SmtpStatus), 550, "The SMTP server answered 550.")]
-    [InlineData("not authenticated", nameof(SendFailureKind.SmtpSender), null, "The server refused the sender jobranger <sender@example.test>.")]
+    [InlineData("not authenticated", nameof(SendFailureKind.SmtpSender), null, "The server refused the sender " + DeliveryFixtures.SenderMailbox + ".")]
     [InlineData("certificate", nameof(SendFailureKind.TlsCertificate), null, "Could not verify the TLS certificate of mail.example.test.")]
     [InlineData("tls", nameof(SendFailureKind.Tls), null, "TLS with mail.example.test:587 failed.")]
     [InlineData("unsupported", nameof(SendFailureKind.SmtpUnsupported), null, "The SMTP server at mail.example.test:587 does not support login or this address.")]
@@ -64,7 +63,7 @@ public sealed class SmtpFailuresTests {
     [InlineData("io", nameof(SendFailureKind.SmtpUnreachable), null, "Could not reach mail.example.test:587.")]
     [InlineData("socket", nameof(SendFailureKind.SmtpUnreachable), null, "Could not reach mail.example.test:587.")]
     [InlineData("other", nameof(SendFailureKind.SmtpFailed), null, "The email could not be sent through mail.example.test:587.")]
-    public void ShouldClassifyFailure_WhenErrorIsGiven(string row, string kind, int? status, string reason) {
+    public void ShouldExplainFailure_WhenSendThrows(string row, string kind, int? status, string reason) {
         (Exception error, SmtpSendState state) = rows[row];
 
         SendFailure failure = SmtpFailures.Of(error, state, messages);
@@ -100,15 +99,15 @@ public sealed class SmtpFailuresTests {
     }
 
     [Fact]
-    public void ShouldCountClassifiedErrors_WhenCheckingForSendErrors() {
+    public void ShouldTreatKnownErrorAsSendFailure_WhenItIsClassified() {
         Assert.All(rows.Values, row => Assert.True(SmtpFailures.IsSendError(row.Error)));
     }
 
     [Fact]
-    public void ShouldLeaveBugsUncaught_WhenCheckingForSendErrors() {
+    public void ShouldNotTreatErrorAsSendFailure_WhenItIsAKeyLookupBug() {
         Assert.False(SmtpFailures.IsSendError(new KeyNotFoundException()));
     }
 
     private static SmtpCommandException Command(SmtpErrorCode code) => new(
-        code, SmtpStatusCode.MailboxUnavailable, MailboxAddress.Parse(to), detail);
+        code, SmtpStatusCode.MailboxUnavailable, MailboxAddress.Parse(DeliveryFixtures.Address), detail);
 }

@@ -19,6 +19,9 @@ namespace Jobranger.Cli.Tests.Mocks;
 internal static class DeliveryFixtures {
     public const string Address = "user@example.test";
     public const string Sender = "sender@example.test";
+    public const string SenderMailbox = "jobranger <" + Sender + ">";
+    public const string EmptyJson = "{}";
+    public const string SmtpUrl = "smtp://mail.example.test";
     public const string ResendKey = "re_test_key";
     public const string Site = "https://site.example.test";
 
@@ -28,7 +31,7 @@ internal static class DeliveryFixtures {
 
     public static readonly TimeSpan SlowAnswer = TimeSpan.FromSeconds(29);
 
-    public static readonly EmailAddresses Addresses = new("jobranger <" + Sender + ">", Address);
+    public static readonly EmailAddresses Addresses = new(SenderMailbox, Address);
 
     public static readonly RenderedDigest Rendered = new("Subject Ø", "<p>html</p>", "text", ["finn:1"]);
 
@@ -62,11 +65,14 @@ internal static class DeliveryFixtures {
     }
 
     [UnsupportedOSPlatform("windows")]
+    public static string SecretsPath(TestDatabase db) => db.Path + secretsSuffix;
+
+    [UnsupportedOSPlatform("windows")]
     public static Credentials WithResendKey(TestDatabase db) => Credentials(db, new Hashtable { [resendVariable] = ResendKey });
 
     [UnsupportedOSPlatform("windows")]
     public static Credentials Credentials(TestDatabase db, IDictionary environment, ISecretStore? store = null) =>
-        new(environment, store, new FileSecretStore(db.Path + secretsSuffix, NullLogger.Instance));
+        new(environment, store, new FileSecretStore(SecretsPath(db), NullLogger.Instance));
 
     [UnsupportedOSPlatform("windows")]
     public static DeliveryEntry Create(

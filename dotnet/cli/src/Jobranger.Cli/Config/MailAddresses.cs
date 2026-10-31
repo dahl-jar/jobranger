@@ -55,7 +55,7 @@ internal static class MailAddresses {
         return $"{address[..(separator + 1)]}{AsciiDomain(address[(separator + 1)..])}";
     }
 
-    public static string? AsciiMailbox(string value) {
+    public static string? MailboxWithAsciiDomain(string value) {
         if (!IsMailbox(value)) {
             return null;
         }
