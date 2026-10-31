@@ -1,5 +1,6 @@
 using System.Runtime.Versioning;
 using Jobranger.Cli.Features.Runs;
+using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Cli.Text;
 using DeliveryEntry = Jobranger.Cli.Features.Delivery.Delivery;
 
@@ -39,7 +40,7 @@ public sealed class SummaryLinesTests {
     }
 
     [Theory]
-    [InlineData(false, "AI checks skipped: no model or key. Set one with: jobranger init")]
+    [InlineData(false, RunCommandFixtures.SkipLine)]
     [InlineData(true, "AI-sjekkene ble hoppet over: ingen modell eller nøkkel. Sett en med: jobranger init")]
     public void ShouldPrintSkipLine_WhenModelWasSkipped(bool norwegian, string line) {
         IReadOnlyList<string> lines = DeliveryEntry.SummaryLines(completed with { ModelSkipped = true }, Messages(norwegian));
@@ -59,6 +60,26 @@ public sealed class SummaryLinesTests {
     [Fact]
     public void ShouldPrintNoLine_WhenRunHasNoNotice() {
         IReadOnlyList<string> lines = DeliveryEntry.SummaryLines(completed with { UnknownEvidenceDropped = 0 }, new EnglishMessages());
+
+        Assert.Empty(lines);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ShouldPrintNoStopNote_WhenNoAdsWait(bool keyRefused) {
+        RunResult result = completed with { ModelStopped = keyRefused ? StopReason.Auth : StopReason.ProviderDown, Pending = 0 };
+
+        IReadOnlyList<string> lines = DeliveryEntry.SummaryLines(result, new EnglishMessages());
+
+        Assert.Empty(lines);
+    }
+
+    [Fact]
+    public void ShouldPrintNoStopNote_WhenBudgetPausedChecks() {
+        RunResult result = completed with { ModelStopped = StopReason.Budget, Pending = 1 };
+
+        IReadOnlyList<string> lines = DeliveryEntry.SummaryLines(result, new EnglishMessages());
 
         Assert.Empty(lines);
     }
