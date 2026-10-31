@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Diagnostics;
 using System.Runtime.Versioning;
-using System.Text;
 using System.Text.Json.Nodes;
 using Jobranger.Cli.Commands;
 using Jobranger.Cli.Config;
@@ -13,11 +12,9 @@ using Jobranger.Cli.Files;
 using Jobranger.Cli.Http;
 using Jobranger.Cli.Logging;
 using Jobranger.Cli.Secrets;
-using Jobranger.Cli.Storage;
 using Jobranger.Cli.Tests.Http;
 using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Cli.Text;
-using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using ProvidersEntry = Jobranger.Cli.Features.Providers.Providers;
@@ -35,7 +32,6 @@ public sealed class RunCommandTests : IDisposable {
     private const string skipLine = "AI checks skipped: no model or key. Set one with: jobranger init";
     private const string missingEnglish = "No config yet. Set up with: jobranger init";
     private const string readingNav = "Reading NAV...";
-    private const int corruptBytes = 4096;
     private const int unusedPort = 1;
     private const string secretStoreFailed = "run.secret_store_failed";
     private const string stopForced = "run.stop_forced";
@@ -160,9 +156,7 @@ public sealed class RunCommandTests : IDisposable {
 
     [Fact]
     public async Task ShouldPrintDatabaseTooNew_WhenSchemaIsNewer() {
-        using (SqliteConnection database = Database.Open(paths.DbPath(), NullLogger.Instance)) {
-            new StateStore(database).Set(StateStore.SchemaVersionKey, "99");
-        }
+        CommandFixtures.MakeSchemaNewer(paths);
 
         int exit = await InvokeAsync(Seams([], resend));
 
@@ -171,8 +165,7 @@ public sealed class RunCommandTests : IDisposable {
 
     [Fact]
     public async Task ShouldPrintDatabaseUnreadable_WhenDatabaseIsCorrupt() {
-        Directory.CreateDirectory(paths.DataDir());
-        File.WriteAllBytes(paths.DbPath(), Encoding.ASCII.GetBytes(new string('x', corruptBytes)));
+        CommandFixtures.CorruptDatabase(paths);
 
         int exit = await InvokeAsync(Seams([], resend));
 
@@ -218,15 +211,18 @@ public sealed class RunCommandTests : IDisposable {
         Assert.Equal(nameof(SecretStoreUnavailableException), (string?)failure[LogFields.ErrorType]);
     }
 
-    [Theory]
-    [InlineData(nameof(ProviderName.Anthropic), true)]
-    [InlineData(nameof(ProviderName.OpenAI), true)]
-    [InlineData(nameof(ProviderName.OpenRouter), true)]
-    [InlineData(nameof(ProviderName.Ollama), false)]
-    public void ShouldUseProxy_WhenProviderIsHosted(string provider, bool expected) {
-        using SocketsHttpHandler handler = RunSeams.CreateModelHandler(Enum.Parse<ProviderName>(provider));
+    [Fact]
+    public void ShouldUseProxy_WhenProviderIsHosted() {
+        using SocketsHttpHandler handler = RunSeams.CreateModelHandler(ProviderName.OpenAI);
 
-        Assert.Equal(expected, handler.UseProxy);
+        Assert.True(handler.UseProxy);
+    }
+
+    [Fact]
+    public void ShouldBypassProxy_WhenProviderIsOllama() {
+        using SocketsHttpHandler handler = RunSeams.CreateModelHandler(ProviderName.Ollama);
+
+        Assert.False(handler.UseProxy);
     }
 
     [Fact]

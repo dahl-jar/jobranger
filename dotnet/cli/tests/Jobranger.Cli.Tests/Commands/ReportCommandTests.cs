@@ -1,7 +1,6 @@
 using System.Collections;
 using System.CommandLine;
 using System.Runtime.Versioning;
-using System.Text;
 using Jobranger.Cli.Commands;
 using Jobranger.Cli.Config;
 using Jobranger.Cli.Features.Ads;
@@ -48,7 +47,6 @@ public sealed class ReportCommandTests : IDisposable {
         + "\n"
         + "1 skjult: 1 senior\n";
     private const string dataDirVariable = "JOBRANGER_DATA_DIR";
-    private const int corruptBytes = 4096;
     private const double requiredYears = 5;
 
     private static readonly Ad strongAd = AdFixtures.Numbered(1) with {
@@ -329,9 +327,7 @@ public sealed class ReportCommandTests : IDisposable {
 
     [Fact]
     public async Task ShouldPrintDatabaseTooNew_WhenSchemaIsNewer() {
-        using (SqliteConnection database = Database.Open(paths.DbPath(), NullLogger.Instance)) {
-            new StateStore(database).Set(StateStore.SchemaVersionKey, "99");
-        }
+        CommandFixtures.MakeSchemaNewer(paths);
 
         int exit = await RunAsync();
 
@@ -342,8 +338,7 @@ public sealed class ReportCommandTests : IDisposable {
 
     [Fact]
     public async Task ShouldPrintDatabaseUnreadable_WhenDatabaseIsCorrupt() {
-        Directory.CreateDirectory(paths.DataDir());
-        File.WriteAllBytes(paths.DbPath(), Encoding.ASCII.GetBytes(new string('x', corruptBytes)));
+        CommandFixtures.CorruptDatabase(paths);
 
         int exit = await RunAsync();
 

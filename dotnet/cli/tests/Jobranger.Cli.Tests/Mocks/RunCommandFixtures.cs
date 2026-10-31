@@ -20,15 +20,11 @@ internal static class RunCommandFixtures {
     private const string profileFile = "profile_user.yaml";
     private const string resendVariable = "RESEND_API_KEY";
 
-    public static Hashtable Environment(TempDir temp, string lang) => new() {
-        ["HOME"] = temp.Path,
-        ["LANG"] = lang,
-        ["JOBRANGER_CONFIG_DIR"] = Path.Combine(temp.Path, "config"),
-        ["JOBRANGER_DATA_DIR"] = Path.Combine(temp.Path, "data"),
-        ["JOBRANGER_STATE_DIR"] = Path.Combine(temp.Path, "state"),
-        ["JOBRANGER_SECRET_STORE"] = "file",
-        [resendVariable] = DeliveryFixtures.ResendKey,
-    };
+    public static Hashtable Environment(TempDir temp, string language) {
+        Hashtable environment = CommandFixtures.Environment(temp, language);
+        environment[resendVariable] = DeliveryFixtures.ResendKey;
+        return environment;
+    }
 
     public static void Save(Hashtable environment, AppConfig config) {
         Paths paths = new(environment);
@@ -61,7 +57,6 @@ internal static class RunCommandFixtures {
 
     public static List<JsonObject> LogEntries(Hashtable environment) => [
         .. Directory.CreateDirectory(new Paths(environment).LogDir()).EnumerateFiles("*" + JsonLogWriter.FileSuffix)
-            .SelectMany(file => File.ReadLines(file.FullName))
-            .Select(line => JsonNode.Parse(line)!.AsObject()),
+            .SelectMany(file => LogLines.Read(file.FullName)),
     ];
 }
