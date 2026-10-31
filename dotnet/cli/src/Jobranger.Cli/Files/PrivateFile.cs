@@ -41,10 +41,14 @@ internal static partial class PrivateFile {
 
     public static string CreateParentDir(string filePath, ILogger logger) {
         string dir = DirOf(filePath);
-        if (Directory.Exists(dir)) {
-            TightenDir(dir, logger);
-        } else {
-            CreatePrivateDir(dir);
+        try {
+            if (Directory.Exists(dir)) {
+                TightenDir(dir, logger);
+            } else {
+                CreatePrivateDir(dir);
+            }
+        } catch (Exception error) when (error is IOException or UnauthorizedAccessException) {
+            throw new PrivateDirException(dir, error);
         }
         return dir;
     }
