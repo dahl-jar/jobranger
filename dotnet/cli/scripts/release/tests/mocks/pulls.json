@@ -3,12 +3,14 @@
     "number": 7,
     "state": "closed",
     "title": "feat: open draft",
-    "merged_at": null
+    "merged_at": null,
+    "body": "## What does this PR do?\n\n- Open draft bullet."
   },
   {
     "number": 8,
     "state": "closed",
     "title": "fix: merged change",
-    "merged_at": "2026-10-27T10:00:00Z"
+    "merged_at": "2026-10-27T10:00:00Z",
+    "body": "Closes #1\n\n## What does this PR do?\n\n- Adds run fetch.\n- Prints a digest.\n\n## Why are you suggesting this change?\n\nUsers asked.\n\n## Known risks\n\nNone."
   }
 ]
