@@ -9,7 +9,8 @@ using Jobranger.Cli.Text;
 namespace Jobranger.Cli.Features.Sources;
 
 internal sealed partial class NavSource : ISource {
-    private const string sourceName = "nav";
+    public const string SourceName = "nav";
+
     private const string positionKey = "nav_position";
     private const int maxPages = 200;
     private const int matchTimeoutMs = 1000;
@@ -51,7 +52,7 @@ internal sealed partial class NavSource : ISource {
     private static readonly Uri tokenUrl = new(apiBase, "/api/publicToken");
     private static readonly Uri lastPageUrl = new(apiBase, "/api/v1/feed?last=true");
 
-    public string Name => sourceName;
+    public string Name => SourceName;
 
     public async Task<SourceBatch> FetchAsync(FetchContext context, CancellationToken cancellationToken) {
         Progress progress = new(context);
@@ -59,7 +60,7 @@ internal sealed partial class NavSource : ISource {
         try {
             options = await AuthorizeAsync(context.Http, cancellationToken).ConfigureAwait(false);
         } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-            return progress.Batch();
+            return progress.Batch() with { Partial = true };
         } catch (Exception error) when (SourceHttp.IsFailure(error, cancellationToken)) {
             LogEvents.NavTokenFailed(context.Logger, error);
             throw new SourceException("nav token failed", null, error);
@@ -67,7 +68,7 @@ internal sealed partial class NavSource : ISource {
         try {
             await ReadFeedAsync(context, options, progress, cancellationToken).ConfigureAwait(false);
         } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-            return progress.Batch();
+            return progress.Batch() with { Partial = true };
         } catch (Exception error) when (SourceHttp.IsFailure(error, cancellationToken)) {
             LogEvents.NavFeedFailed(context.Logger, error);
             throw new SourceException("nav feed failed", progress.Batch(), error);
@@ -199,7 +200,7 @@ internal sealed partial class NavSource : ISource {
 
     private static SourceListing ToListing(string uuid, JsonElement content) => new() {
         Id = idPrefix + uuid,
-        Source = sourceName,
+        Source = SourceName,
         SourceId = uuid,
         Title = JsonFields.Text(content, titleKey) ?? string.Empty,
         Company = JsonFields.Object(content, employerKey) is JsonElement employer
@@ -243,7 +244,7 @@ internal sealed partial class NavSource : ISource {
         public string? Cursor { get; set; } = context.Cursors.GetValueOrDefault(positionKey);
 
         public SourceBatch Batch() => new() {
-            Source = sourceName,
+            Source = SourceName,
             Listings = [.. Listings],
             SeenIds = new HashSet<string>(Seen, StringComparer.Ordinal),
             Cursors = Cursor is null ? new Dictionary<string, string>() : new Dictionary<string, string> { [positionKey] = Cursor },

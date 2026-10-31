@@ -37,6 +37,11 @@ public sealed class HtmlTextTests {
     }
 
     [Fact]
+    public void ShouldEscapeQuote_WhenTextHasDoubleQuote() {
+        Assert.Equal("a&quot;b", HtmlText.Escape("a\"b"));
+    }
+
+    [Fact]
     public void ShouldStripWithinOneSecond_WhenTextHasManyOpenBrackets() {
         string html = new('<', bracketCount);
         Stopwatch watch = Stopwatch.StartNew();

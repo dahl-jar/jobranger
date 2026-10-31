@@ -120,7 +120,7 @@ internal sealed class AdProfile {
     private static string[] Words(string normalized) =>
         normalized.Split(space, StringSplitOptions.RemoveEmptyEntries);
 
-    private static string Normalize(string value) {
+    public static string Normalize(string value) {
         StringBuilder normalized = new(value.Length);
         bool gap = false;
         foreach (int code in CodePoints.Of(PythonUnicode.CaseFold(value))) {

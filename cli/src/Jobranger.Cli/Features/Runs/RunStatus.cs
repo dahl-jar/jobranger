@@ -5,4 +5,5 @@ internal enum RunStatus {
     Completed,
     Cancelled,
     Failed,
+    Locked,
 }

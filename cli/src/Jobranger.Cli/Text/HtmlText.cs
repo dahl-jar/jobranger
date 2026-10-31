@@ -7,7 +7,18 @@ internal static class HtmlText {
     private const char tagClose = '>';
     private const char space = ' ';
 
-    public static string Strip(string html) => CollapseSpace(HtmlEntities.Decode(ReplaceTags(html)));
+    private static readonly (string Character, string Entity)[] escapes = [
+        ("&", "&amp;"),
+        ("<", "&lt;"),
+        (">", "&gt;"),
+        ("\"", "&quot;"),
+        ("'", "&#x27;"),
+    ];
+
+    public static string Strip(string html) => PythonUnicode.CollapseSpace(HtmlEntities.Decode(ReplaceTags(html)));
+
+    public static string Escape(string text) =>
+        escapes.Aggregate(text, (escaped, pair) => escaped.Replace(pair.Character, pair.Entity, StringComparison.Ordinal));
 
     private static string ReplaceTags(string html) {
         StringBuilder text = new(html.Length);
@@ -28,22 +39,5 @@ internal static class HtmlText {
             index = close + 1;
         }
         return text.ToString();
-    }
-
-    private static string CollapseSpace(string text) {
-        StringBuilder collapsed = new(text.Length);
-        bool inSpace = false;
-        foreach (char character in text) {
-            if (PythonUnicode.IsSpace(character)) {
-                inSpace = true;
-                continue;
-            }
-            if (inSpace) {
-                collapsed.Append(space);
-                inSpace = false;
-            }
-            collapsed.Append(character);
-        }
-        return collapsed.ToString().TrimStart(space);
     }
 }

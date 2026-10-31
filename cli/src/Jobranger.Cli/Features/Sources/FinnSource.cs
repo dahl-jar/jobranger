@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text;
 using Jobranger.Cli.Http;
@@ -29,7 +30,7 @@ internal sealed class FinnSource : ISource {
         try {
             return await ScanAsync(context, scan, cancellationToken).ConfigureAwait(false);
         } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-            return Batch(context, scan);
+            return Batch(context, scan) with { Partial = true };
         }
     }
 
@@ -72,9 +73,7 @@ internal sealed class FinnSource : ISource {
             FinnSearchPage result = await SearchAsync(context.Http, $"sort={recentSort}&page={page}", cancellationToken)
                 .ConfigureAwait(false);
             listings.AddRange(result.Listings);
-            foreach ((string id, string jobTitle) in result.JobTitles) {
-                jobTitles[id] = jobTitle;
-            }
+            AddTitles(jobTitles, result.JobTitles);
             string? oldest = Oldest(listings);
             if ((oldest is not null && DateTimeOffset.Parse(oldest, CultureInfo.InvariantCulture) < since)
                 || page >= result.LastPage) {
@@ -89,7 +88,7 @@ internal sealed class FinnSource : ISource {
         List<SourceListing> wanted = [.. unseen.Values.Where(listing =>
             context.Plan.TitleMatches(jobTitles.GetValueOrDefault(listing.Id, string.Empty))
             && !IsSkippedLevel(context, TitleLevels.Of(listing.Title)))];
-        return new RecentScan(FlagRepublished(wanted, seen), seen, Oldest(listings));
+        return new RecentScan(FlagRepublished(wanted, seen), seen, Oldest(listings), jobTitles);
     }
 
     private static async Task<CategoryScan> CategoryAsync(
@@ -98,10 +97,12 @@ internal sealed class FinnSource : ISource {
             context.Plan.FinnOccupations.Select(code => occupationParameter + Uri.EscapeDataString(code)));
         Dictionary<string, SourceListing> fresh = new(StringComparer.Ordinal);
         HashSet<string> active = new(StringComparer.Ordinal);
+        Dictionary<string, string> jobTitles = new(StringComparer.Ordinal);
         bool complete = false;
         for (int page = 1; page <= maxCategoryPages; page++) {
             FinnSearchPage result = await SearchAsync(context.Http, $"{occupations}&page={page}", cancellationToken)
                 .ConfigureAwait(false);
+            AddTitles(jobTitles, result.JobTitles);
             foreach (SourceListing listing in result.Listings) {
                 active.Add(listing.Id);
                 if (!known.Contains(listing.Id)) {
@@ -113,7 +114,7 @@ internal sealed class FinnSource : ISource {
                 break;
             }
         }
-        return new CategoryScan(FlagRepublished([.. fresh.Values], active), active, complete);
+        return new CategoryScan(FlagRepublished([.. fresh.Values], active), active, complete, jobTitles);
     }
 
     private static async Task<FinnSearchPage> SearchAsync(HttpClient client, string query, CancellationToken cancellationToken) {
@@ -190,12 +191,34 @@ internal sealed class FinnSource : ISource {
                 [.. (scan.Recent?.NewListings ?? []).Select(listing => listing.Id)],
                 scan.Category?.Complete ?? false),
             Pages = [.. scan.Pages],
+            JobTitles = JobTitles(scan),
         };
     }
 
-    private sealed record RecentScan(IReadOnlyList<SourceListing> NewListings, IReadOnlySet<string> SeenIds, string? WindowStart);
+    private static Dictionary<string, string> JobTitles(Scan scan) {
+        Dictionary<string, string> jobTitles = new(StringComparer.Ordinal);
+        AddTitles(jobTitles, scan.Recent?.JobTitles);
+        AddTitles(jobTitles, scan.Category?.JobTitles);
+        return jobTitles;
+    }
 
-    private sealed record CategoryScan(IReadOnlyList<SourceListing> NewListings, IReadOnlySet<string> ActiveIds, bool Complete);
+    private static void AddTitles(Dictionary<string, string> target, IReadOnlyDictionary<string, string>? titles) {
+        foreach ((string id, string jobTitle) in titles ?? ReadOnlyDictionary<string, string>.Empty) {
+            target[id] = jobTitle;
+        }
+    }
+
+    private sealed record RecentScan(
+        IReadOnlyList<SourceListing> NewListings,
+        IReadOnlySet<string> SeenIds,
+        string? WindowStart,
+        IReadOnlyDictionary<string, string> JobTitles);
+
+    private sealed record CategoryScan(
+        IReadOnlyList<SourceListing> NewListings,
+        IReadOnlySet<string> ActiveIds,
+        bool Complete,
+        IReadOnlyDictionary<string, string> JobTitles);
 
     private sealed class Scan {
         public RecentScan? Recent { get; set; }

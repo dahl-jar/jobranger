@@ -24,7 +24,8 @@ internal static partial class Classifier {
         Limits limits,
         string version) {
         Match? parsed = MatchRules.Parse(assessment.Match, version);
-        Match? match = parsed is null ? null : MatchRules.Validate(parsed, evidenceIds, educationIds, limits);
+        Match? validated = parsed is null ? null : MatchRules.Validate(parsed, evidenceIds, educationIds, limits);
+        Match? match = validated is null ? null : YearsGuard.Apply(validated, ad.Title, ad.Description, limits);
         if (match is null || RoleFields(assessment) is not { } roleFields) {
             return null;
         }
@@ -55,7 +56,7 @@ internal static partial class Classifier {
         if (!assessment.IsProgrammingJob) {
             return (null, null);
         }
-        string title = MatchText.Strip(assessment.DisplayTitle ?? string.Empty);
+        string title = PythonUnicode.Strip(assessment.DisplayTitle ?? string.Empty);
         if (title.Length == 0 || assessment.RoleType is null) {
             return null;
         }
@@ -64,12 +65,12 @@ internal static partial class Classifier {
 
     private static List<Check> Checks(IReadOnlyList<Check> checks) => [
         .. checks.Take(checksLimit)
-            .Where(check => MatchText.Strip(check.Text).Length > 0)
-            .Select(check => check with { Text = WordTruncation.Cut(MatchText.Strip(check.Text), checkTextLimit) }),
+            .Where(check => PythonUnicode.Strip(check.Text).Length > 0)
+            .Select(check => check with { Text = WordTruncation.Cut(PythonUnicode.Strip(check.Text), checkTextLimit) }),
     ];
 
     private static List<string> Items(IReadOnlyList<string> values, int itemLimit, int textLimit) => [
-        .. values.Select(MatchText.Strip).Where(value => value.Length > 0)
+        .. values.Select(PythonUnicode.Strip).Where(value => value.Length > 0)
             .Select(value => WordTruncation.Cut(value, textLimit)).Take(itemLimit),
     ];
 

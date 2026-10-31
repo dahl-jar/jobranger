@@ -17,11 +17,15 @@ from cv_samples import (
     document,
     docx,
     flate_stream,
+    page_stream,
     paragraph,
     pdf,
+    pdf_with_contents_array,
+    pdf_with_text,
     repeated_cv_pdf,
     word_part,
 )
+from pypdf import apply_configuration, get_configuration
 
 from jobranger import child_process, cv, cv_worker
 
@@ -44,10 +48,6 @@ TEXT_BOX = (
     + "</w:txbxContent></v:textbox></v:shape></w:pict></mc:Fallback>"
     "</mc:AlternateContent></w:r></w:p>"
 )
-
-
-def _pdf_page(text: str) -> bytes:
-    return flate_stream(f"BT /F1 12 Tf 72 720 Td ({text}) Tj ET".encode())
 
 
 def _docx_unpacked_to(size: int) -> bytes:
@@ -161,6 +161,33 @@ def test_should_report_unreadable_when_extraction_runs_out_of_memory(
     assert reply == UNREADABLE
 
 
+def test_should_report_too_large_when_pdf_stream_passes_decompression_limit() -> None:
+    limit = get_configuration().zlib_maximum_output_length
+    data = pdf([flate_stream(b" " * (limit + 1))])
+
+    reply = cv_worker.extract(".pdf", data)
+
+    assert reply == TOO_LARGE
+
+
+def test_should_report_too_large_when_pdf_stream_passes_decoding_work_limit() -> None:
+    data = pdf_with_text("x")
+
+    with apply_configuration(stream_decoding_work_maximum_length=0):
+        reply = cv_worker.extract(".pdf", data)
+
+    assert reply == TOO_LARGE
+
+
+def test_should_report_too_large_when_pdf_contents_array_passes_output_limit() -> None:
+    half_limit = get_configuration().array_based_stream_maximum_output_length // 2
+    data = pdf_with_contents_array([b" " * (half_limit + 1)] * 2)
+
+    reply = cv_worker.extract(".pdf", data)
+
+    assert reply == TOO_LARGE
+
+
 @pytest.mark.parametrize(
     ("body", "expected"),
     [
@@ -234,7 +261,7 @@ def test_should_read_notes_after_body_and_hyphens_inline() -> None:
 
 
 def test_should_join_pdf_pages_with_line_breaks() -> None:
-    data = pdf([_pdf_page("ONE"), _pdf_page("TWO")])
+    data = pdf([page_stream("ONE"), page_stream("TWO")])
 
     reply = cv_worker.extract(".pdf", data)
 
