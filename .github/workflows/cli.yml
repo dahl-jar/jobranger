@@ -1,20 +1,6 @@
 name: Test CLI
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - cli/**
-      - contracts/**
-      - deploy/cli/**
-      - Jobranger.slnx
-      - Directory.*.props
-      - global.json
-      - nuget.config
-      - .config/dotnet-tools.json
-      - .editorconfig
-      - .github/actions/dotnet-setup/**
-      - .github/workflows/cli.yml
   pull_request:
     paths:
       - cli/**
@@ -28,6 +14,7 @@ on:
       - .editorconfig
       - .github/actions/dotnet-setup/**
       - .github/workflows/cli.yml
+  workflow_call:
   workflow_dispatch:
 
 permissions:
@@ -111,11 +98,10 @@ jobs:
         with:
           build: "false"
 
-      - run: dotnet restore cli/src/Jobranger.Cli/Jobranger.Cli.csproj --locked-mode
-      - run: dotnet publish cli/src/Jobranger.Cli/Jobranger.Cli.csproj -c Release -r ${{ matrix.rid }} --no-restore -o "$RUNNER_TEMP/publish"
-      - run: '"$RUNNER_TEMP/publish/jobranger" --version | grep -Ex "jobranger [0-9]+\.[0-9]+\.[0-9]+"'
-        env:
-          DOTNET_BUNDLE_EXTRACT_BASE_DIR: ${{ runner.temp }}/bundle
+      - uses: ./.github/actions/cli-publish
+        with:
+          rid: ${{ matrix.rid }}
+          output: ${{ runner.temp }}/publish
 
   image:
     name: Build image

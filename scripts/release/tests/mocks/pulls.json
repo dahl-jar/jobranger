@@ -1,0 +1,14 @@
+[
+  {
+    "number": 7,
+    "state": "closed",
+    "title": "feat: open draft",
+    "merged_at": null
+  },
+  {
+    "number": 8,
+    "state": "closed",
+    "title": "fix: merged change",
+    "merged_at": "2026-10-27T10:00:00Z"
+  }
+]
