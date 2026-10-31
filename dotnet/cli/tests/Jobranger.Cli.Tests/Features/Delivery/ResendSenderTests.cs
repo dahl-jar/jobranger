@@ -130,6 +130,7 @@ public sealed class ResendSenderTests {
     [InlineData("{\"message\":5}")]
     [InlineData("{\"message\":\"\\ud83d\"}")]
     [InlineData("{\"message\":\"\u00FF\"}")]
+    [InlineData("{\"message\":\"a\",\"message\":\"b\"}")]
     public void ShouldReturnEmptyMessage_WhenReplyHasNoText(string body) {
         string message = ResendReply.Message(Encoding.Latin1.GetBytes(body));
 
