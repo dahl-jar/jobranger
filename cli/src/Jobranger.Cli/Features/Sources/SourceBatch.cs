@@ -18,4 +18,6 @@ internal sealed record SourceBatch {
     public FinnSync? FinnSync { get; init; }
 
     public IReadOnlyList<PageResult> Pages { get; init; } = [];
+
+    public bool Partial { get; init; }
 }

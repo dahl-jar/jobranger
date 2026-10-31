@@ -12,6 +12,12 @@ internal static partial class LogEvents {
     [LoggerMessage(EventName = "source.crashed", Level = LogLevel.Error, Message = "source crashed source={Source}")]
     public static partial void SourceCrashed(ILogger logger, string source, Exception error);
 
+    [LoggerMessage(
+        EventName = "source.deadline_passed",
+        Level = LogLevel.Warning,
+        Message = "source passed its deadline, kept ads source={Source} count={Count}")]
+    public static partial void SourceDeadlinePassed(ILogger logger, string source, int count);
+
     [LoggerMessage(EventName = "nav.token.failed", Level = LogLevel.Error, Message = "public token request failed")]
     public static partial void NavTokenFailed(ILogger logger, Exception error);
 

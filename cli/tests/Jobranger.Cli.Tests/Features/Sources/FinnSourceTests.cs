@@ -326,8 +326,8 @@ public sealed class FinnSourceTests {
         SourceBatch batch = await source.FetchAsync(Context(handler), cancel.Token);
 
         Assert.Equal(
-            ("finn:2", 2),
-            (Ids(batch.Pages), batch.Listings.Count));
+            ("finn:2", 2, true),
+            (Ids(batch.Pages), batch.Listings.Count, batch.Partial));
     }
 
     private static FetchContext Cursor(FakeSiteHandler handler) =>
