@@ -26,7 +26,7 @@ internal sealed class EditorRunner(IDictionary environment, string stateDir, IEd
         try {
             WriteFile(file, text, editor.Program);
             await OpenAsync(editor, file, cancellationToken).ConfigureAwait(false);
-            return ReadFile(file, editor.Program);
+            return ReadFile(file) ?? throw new EditorException(EditorProblem.TempFile, editor.Program);
         } finally {
             RemoveFolder(folder);
         }
@@ -57,15 +57,15 @@ internal sealed class EditorRunner(IDictionary environment, string stateDir, IEd
             throw new EditorException(EditorProblem.FailedExit, editor.Program);
         }
         if (exit != 0) {
-            throw new EditorException(EditorProblem.FailedExit, editor.Program);
+            throw new EditorException(EditorProblem.FailedExit, editor.Program, ReadFile(file));
         }
     }
 
-    private static string ReadFile(string file, string program) {
+    private static string? ReadFile(string file) {
         try {
             return ConfigFile.ReadText(file);
         } catch (Exception error) when (error is ConfigMissingException or ConfigInvalidException) {
-            throw new EditorException(EditorProblem.TempFile, program);
+            return null;
         }
     }
 

@@ -241,6 +241,12 @@ internal sealed class NorwegianMessages : IMessages {
 
     public IReadOnlyList<string> EditNoAnswers { get; } = ["n", "nei", "no"];
 
+    public IReadOnlyList<string> EditYesAnswers => PairYesAnswers;
+
+    public string NoChanges => "Ingen endringer.";
+
+    public string EditorFailedSave => "Redigeringsprogrammet avsluttet med en feil. Lagre endringene? (j/N) ";
+
     public string EditorFailedExit => "✕ Redigeringsprogrammet avsluttet med en feil. Ingenting ble lagret.";
 
     public string EditorNotStarted(string program) =>

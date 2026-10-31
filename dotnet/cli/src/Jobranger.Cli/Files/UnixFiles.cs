@@ -41,6 +41,9 @@ internal static partial class UnixFiles {
     private const int runtimeExclusive = 0x40;
     private const int runtimeNoFollow = 0x200;
     private const int runtimeExecuteAccess = 0x1;
+    private const int terminateSignal = 15;
+    private const int terminalSettingsSize = 256;
+    private const int applyNow = 0;
     private const int createNewFlags =
         runtimeWriteOnly | runtimeCreate | runtimeExclusive | runtimeNoFollow | runtimeCloseOnExec;
 
@@ -98,6 +101,20 @@ internal static partial class UnixFiles {
             && (MemoryMarshal.Read<int>(status[modeOffset..]) & fileTypeMask) == directoryFile
             && MemoryMarshal.Read<uint>(status[ownerOffset..]) == userId;
     }
+
+    public static void Terminate(int processId) =>
+        _ = OperatingSystem.IsMacOS() ? MacKill(processId, terminateSignal) : LinuxKill(processId, terminateSignal);
+
+    public static byte[]? ReadTerminalSettings(int descriptor) {
+        byte[] settings = new byte[terminalSettingsSize];
+        int result = OperatingSystem.IsMacOS() ? MacGetTerminal(descriptor, settings) : LinuxGetTerminal(descriptor, settings);
+        return result == failed ? null : settings;
+    }
+
+    public static void WriteTerminalSettings(int descriptor, byte[] settings) =>
+        _ = OperatingSystem.IsMacOS()
+            ? MacSetTerminal(descriptor, applyNow, settings)
+            : LinuxSetTerminal(descriptor, applyNow, settings);
 
     public static bool TryLockExclusive(SafeFileHandle handle, out int error) {
         int operation = lockExclusive | lockNonBlocking;
@@ -167,4 +184,22 @@ internal static partial class UnixFiles {
 
     [LibraryImport(linuxLibc, EntryPoint = "flock", SetLastError = true)]
     private static partial int LinuxLock(SafeFileHandle handle, int operation);
+
+    [LibraryImport(macLibc, EntryPoint = "kill")]
+    private static partial int MacKill(int processId, int signal);
+
+    [LibraryImport(linuxLibc, EntryPoint = "kill")]
+    private static partial int LinuxKill(int processId, int signal);
+
+    [LibraryImport(macLibc, EntryPoint = "tcgetattr")]
+    private static partial int MacGetTerminal(int descriptor, [Out] byte[] settings);
+
+    [LibraryImport(linuxLibc, EntryPoint = "tcgetattr")]
+    private static partial int LinuxGetTerminal(int descriptor, [Out] byte[] settings);
+
+    [LibraryImport(macLibc, EntryPoint = "tcsetattr")]
+    private static partial int MacSetTerminal(int descriptor, int action, [In] byte[] settings);
+
+    [LibraryImport(linuxLibc, EntryPoint = "tcsetattr")]
+    private static partial int LinuxSetTerminal(int descriptor, int action, [In] byte[] settings);
 }

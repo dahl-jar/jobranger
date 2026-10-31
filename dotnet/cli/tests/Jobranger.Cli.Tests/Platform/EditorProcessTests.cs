@@ -51,13 +51,58 @@ public sealed class EditorProcessTests : IDisposable {
         string processFile = temp.File("pid");
         using CancellationTokenSource cancelled = new();
         Task<int> running = process.RunAsync(shell, [runScript, $"echo $$ > {processFile}; exec sleep 30"], cancelled.Token);
-        await TestWaits.UntilAsync(() => File.Exists(processFile) && File.ReadAllText(processFile).EndsWith('\n'));
-        int processId = int.Parse(File.ReadAllText(processFile), CultureInfo.InvariantCulture);
+        int processId = await WaitForProcessIdAsync(processFile);
 
         await cancelled.CancelAsync();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => running);
         await TestWaits.UntilAsync(() => IsGone(processId));
+    }
+
+    [Fact]
+    public async Task ShouldLetEditorFinish_WhenCancelled() {
+        string processFile = temp.File("pid");
+        string marker = temp.File("marker");
+        string script = $"trap 'sleep 0.2; echo done > {marker}; exit 0' TERM; echo $$ > {processFile}; "
+            + "while :; do sleep 0.1; done";
+        using CancellationTokenSource cancelled = new();
+        Task<int> running = process.RunAsync(shell, [runScript, script], cancelled.Token);
+        await WaitForProcessIdAsync(processFile);
+
+        await cancelled.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => running);
+        Assert.True(File.Exists(marker));
+    }
+
+    [Fact]
+    public async Task ShouldKillEditor_WhenEditorIgnoresTerminate() {
+        string processFile = temp.File("pid");
+        using CancellationTokenSource cancelled = new();
+        Task<int> running = process.RunAsync(
+            shell, [runScript, $"trap '' TERM; echo $$ > {processFile}; sleep 30"], cancelled.Token);
+        int processId = await WaitForProcessIdAsync(processFile);
+
+        await cancelled.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => running);
+        await TestWaits.UntilAsync(() => IsGone(processId));
+    }
+
+    [Fact]
+    public async Task ShouldRestoreTerminal_WhenCancelled() {
+        using Pseudoterminal pseudoterminal = new();
+        string processFile = temp.File("pid");
+        EditorProcess editor = new(new Hashtable(), pseudoterminal.Descriptor);
+        string script = $"stty -echo < {pseudoterminal.Path}; echo $$ > {processFile}; exec sleep 30";
+        using CancellationTokenSource cancelled = new();
+        Task<int> running = editor.RunAsync(shell, [runScript, script], cancelled.Token);
+        await WaitForProcessIdAsync(processFile);
+
+        await cancelled.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => running);
+        Assert.True(pseudoterminal.IsEchoOn());
     }
 
     [Theory]
@@ -119,6 +164,11 @@ public sealed class EditorProcessTests : IDisposable {
         string edited = await runner.EditAsync("old", ".md", TestContext.Current.CancellationToken);
 
         Assert.Equal(pathText, edited);
+    }
+
+    private static async Task<int> WaitForProcessIdAsync(string processFile) {
+        await TestWaits.UntilAsync(() => File.Exists(processFile) && File.ReadAllText(processFile).EndsWith('\n'));
+        return int.Parse(File.ReadAllText(processFile), CultureInfo.InvariantCulture);
     }
 
     private static string WriteScript(string folder, string text) {

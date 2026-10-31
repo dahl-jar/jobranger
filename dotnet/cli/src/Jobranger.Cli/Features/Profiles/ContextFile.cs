@@ -44,7 +44,7 @@ internal static class ContextFile {
         if (errors.Count > 0) {
             throw new ConfigInvalidException(path, errors);
         }
-        PrivateFile.Write(path, strictUtf8.GetBytes(YamlEmitter.Emit(ToTree(context), previous: null)), logger);
+        PrivateFile.WriteThroughLink(path, strictUtf8.GetBytes(YamlEmitter.Emit(ToTree(context), previous: null)), logger);
     }
 
     private static UserContext? Read(JsonNode? root, string fileName, List<ConfigError> errors) {

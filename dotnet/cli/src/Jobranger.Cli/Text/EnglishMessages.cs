@@ -237,6 +237,12 @@ internal sealed class EnglishMessages : IMessages {
 
     public IReadOnlyList<string> EditNoAnswers { get; } = ["n", "no"];
 
+    public IReadOnlyList<string> EditYesAnswers => PairYesAnswers;
+
+    public string NoChanges => "No changes.";
+
+    public string EditorFailedSave => "The editor exited with an error. Save your changes? (y/N) ";
+
     public string EditorFailedExit => "✕ The editor exited with an error. Nothing was saved.";
 
     public string EditorNotStarted(string program) => $"✕ Could not start the editor {program}. Set $VISUAL or $EDITOR.";

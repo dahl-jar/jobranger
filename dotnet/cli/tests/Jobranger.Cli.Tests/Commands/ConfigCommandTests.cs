@@ -125,6 +125,23 @@ public sealed class ConfigCommandTests : IDisposable {
     }
 
     [Fact]
+    public async Task ShouldPrintNoChanges_WhenRejectedTextIsUnchanged() {
+        EditFixtures.WriteConfig(paths, validConfig);
+        FakeEditorProcess editor = new(file => {
+            File.WriteAllText(file, validConfig + EditFixtures.UnknownSetting);
+            return 0;
+        });
+
+        int exit = await RunAsync(editor, [string.Empty], edit);
+
+        Assert.Equal(
+            (CliExitCodes.Ok, unknownSettingLine + EditFixtures.EditAgain + "No changes.\n"),
+            (exit, console.Output));
+        Assert.Equal(2, editor.Starts.Count);
+        Assert.Equal(validConfig, File.ReadAllText(paths.ConfigPath()));
+    }
+
+    [Fact]
     public async Task ShouldStopAsking_WhenInputEnds() {
         EditFixtures.WriteConfig(paths, validConfig);
         int starts = 0;

@@ -17,6 +17,7 @@ internal sealed class EditSession(CliServices services, EditServices editService
     private const string notStartedFailure = "editor_not_started";
     private const string failedExitFailure = "editor_failed_exit";
     private const string tempFileFailure = "edit_file_failed";
+    private const char finalLineEnd = '\n';
 
     private readonly IMessages messages = services.Messages;
     private readonly TextWriter output = services.Console.Profile.Out.Writer;
@@ -74,7 +75,16 @@ internal sealed class EditSession(CliServices services, EditServices editService
             try {
                 edited = await editor.EditAsync(current, request.Suffix, cancellationToken).ConfigureAwait(false);
             } catch (EditorException failed) {
-                return await FailAsync(failed).ConfigureAwait(false);
+                if (failed.EditedText is not string changed
+                    || IsUnchanged(changed, current)
+                    || !await WantsSaveAfterFailureAsync().ConfigureAwait(false)) {
+                    return await FailAsync(failed).ConfigureAwait(false);
+                }
+                edited = changed;
+            }
+            if (IsUnchanged(edited, current)) {
+                await output.WriteLineAsync(messages.NoChanges).ConfigureAwait(false);
+                return CliExitCodes.Ok;
             }
             SaveResult saved;
             try {
@@ -98,11 +108,22 @@ internal sealed class EditSession(CliServices services, EditServices editService
         foreach (ConfigError error in invalid.Errors) {
             await output.WriteLineAsync(error.Describe(messages)).ConfigureAwait(false);
         }
-        await output.WriteAsync(messages.EditAgain).ConfigureAwait(false);
-        await output.FlushAsync().ConfigureAwait(false);
-        return editServices.ReadLine() is string answer
+        return await AskAsync(messages.EditAgain).ConfigureAwait(false) is string answer
             && !messages.EditNoAnswers.Contains(answer.Trim(), StringComparer.OrdinalIgnoreCase);
     }
+
+    private async Task<bool> WantsSaveAfterFailureAsync() =>
+        await AskAsync(messages.EditorFailedSave).ConfigureAwait(false) is string answer
+            && messages.EditYesAnswers.Contains(answer.Trim(), StringComparer.OrdinalIgnoreCase);
+
+    private async Task<string?> AskAsync(string question) {
+        await output.WriteAsync(question).ConfigureAwait(false);
+        await output.FlushAsync().ConfigureAwait(false);
+        return editServices.ReadLine();
+    }
+
+    private static bool IsUnchanged(string edited, string opened) =>
+        edited == opened || edited == opened + finalLineEnd;
 
     private async Task<int> FailAsync(EditorException failed) {
         (string failure, string line) = failed.Problem switch {

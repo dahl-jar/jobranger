@@ -20,22 +20,16 @@ internal static partial class PrivateFile {
         UnixFileMode.GroupRead | UnixFileMode.GroupWrite | UnixFileMode.GroupExecute
         | UnixFileMode.OtherRead | UnixFileMode.OtherWrite | UnixFileMode.OtherExecute;
 
-    public static void Write(string path, ReadOnlySpan<byte> content, ILogger logger) {
-        string dir = CreateParentDir(path, logger);
-        string temp = Path.Combine(dir, TempPrefix(path) + Path.GetRandomFileName() + tempSuffix);
-        try {
-            using (FileStream stream = new(temp, new FileStreamOptions {
-                Mode = FileMode.CreateNew,
-                Access = FileAccess.Write,
-                UnixCreateMode = OwnerOnlyFileMode,
-            })) {
-                stream.Write(content);
-                stream.Flush(flushToDisk: true);
-            }
-            File.Move(temp, path, overwrite: true);
-        } catch {
-            File.Delete(temp);
-            throw;
+    public static void Write(string path, ReadOnlySpan<byte> content, ILogger logger) =>
+        Replace(path, CreateParentDir(path, logger), content);
+
+    public static void WriteThroughLink(string path, ReadOnlySpan<byte> content, ILogger logger) {
+        FileInfo file = new(path);
+        if (file.LinkTarget is null) {
+            Write(path, content, logger);
+        } else {
+            string target = file.ResolveLinkTarget(returnFinalTarget: true)?.FullName ?? path;
+            Replace(target, DirOf(target), content);
         }
     }
 
@@ -86,6 +80,24 @@ internal static partial class PrivateFile {
 
     public static PrivateFileException OpenError(string path, int error) =>
         new(path, UnixFiles.IsLink(error) ? symlinkReason : openFailedReason + error);
+
+    private static void Replace(string path, string dir, ReadOnlySpan<byte> content) {
+        string temp = Path.Combine(dir, TempPrefix(path) + Path.GetRandomFileName() + tempSuffix);
+        try {
+            using (FileStream stream = new(temp, new FileStreamOptions {
+                Mode = FileMode.CreateNew,
+                Access = FileAccess.Write,
+                UnixCreateMode = OwnerOnlyFileMode,
+            })) {
+                stream.Write(content);
+                stream.Flush(flushToDisk: true);
+            }
+            File.Move(temp, path, overwrite: true);
+        } catch {
+            File.Delete(temp);
+            throw;
+        }
+    }
 
     private static void CreatePrivateDir(string dir) {
         Stack<string> missing = [];

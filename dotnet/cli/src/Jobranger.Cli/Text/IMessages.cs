@@ -211,6 +211,12 @@ internal interface IMessages {
 
     IReadOnlyList<string> EditNoAnswers { get; }
 
+    IReadOnlyList<string> EditYesAnswers { get; }
+
+    string NoChanges { get; }
+
+    string EditorFailedSave { get; }
+
     string EditorFailedExit { get; }
 
     string EditorNotStarted(string program);

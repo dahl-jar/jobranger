@@ -32,7 +32,17 @@ public sealed class GuidanceCommandTests : IDisposable {
     private const string tooLongNorwegian = "guidance.md: er lengre enn 12000 tegn\n";
     private const string oneAdLine = "  Rechecks 1 ad on the next run.\n";
     private const string pricedLine = @"\n  Rechecks 3 ads on the next run, up to about \$\d+\.\d{2}\.\n$";
+    private const string editorFailed = "✕ The editor exited with an error. Nothing was saved.\n";
+    private const string editorFailedNorwegian = "✕ Redigeringsprogrammet avsluttet med en feil. Ingenting ble lagret.\n";
+    private const string savePrompt = "The editor exited with an error. Save your changes? (y/N) ";
+    private const string savePromptNorwegian = "Redigeringsprogrammet avsluttet med en feil. Lagre endringene? (j/N) ";
+    private const string noChanges = "No changes.\n";
+    private const string noChangesNorwegian = "Ingen endringer.\n";
+    private const string finalLineEnd = "\n";
+    private const int failedExit = 1;
     private const int staleAds = 3;
+
+    private static readonly DateTime pinnedTime = new(2020, 1, 2, 3, 4, 5, DateTimeKind.Utc);
 
     private readonly TempDir temp = new();
     private readonly RecordingConsole console = new();
@@ -227,6 +237,100 @@ public sealed class GuidanceCommandTests : IDisposable {
             (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
         Assert.Empty(editor.Starts);
     }
+
+    [Theory]
+    [InlineData(Locales.English, "y", savePrompt, saved)]
+    [InlineData(Locales.English, " YES ", savePrompt, saved)]
+    [InlineData(Locales.Norwegian, "j", savePromptNorwegian, savedNorwegian)]
+    public async Task ShouldSaveChanges_WhenFailedEditIsAccepted(string lang, string answer, string prompt, string line) {
+        environment["LANG"] = lang;
+        WriteGuidance(oldText);
+
+        int exit = await RunAsync(WritesThenFails(newText), [answer], edit);
+
+        Assert.Equal((CliExitCodes.Ok, prompt + string.Format(line, paths.GuidancePath())), (exit, console.Output));
+        Assert.Equal(newText, File.ReadAllText(paths.GuidancePath()));
+    }
+
+    [Theory]
+    [InlineData(Locales.English, "n", savePrompt, editorFailed)]
+    [InlineData(Locales.English, "", savePrompt, editorFailed)]
+    [InlineData(Locales.English, null, savePrompt, editorFailed)]
+    [InlineData(Locales.Norwegian, "nei", savePromptNorwegian, editorFailedNorwegian)]
+    public async Task ShouldKeepGuidance_WhenFailedEditIsDeclined(string lang, string? answer, string prompt, string line) {
+        environment["LANG"] = lang;
+        WriteGuidance(oldText);
+
+        int exit = await RunAsync(WritesThenFails(newText), [answer], edit);
+
+        Assert.Equal(
+            (CliExitCodes.Failure, prompt + line, "edit.failed editor_failed_exit"),
+            (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
+        Assert.Equal(oldText, File.ReadAllText(paths.GuidancePath()));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(finalLineEnd)]
+    public async Task ShouldAskNothing_WhenFailedEditLeavesTextUnchanged(string added) {
+        WriteGuidance(oldText);
+        FakeEditorProcess editor = new(file => {
+            File.AppendAllText(file, added);
+            return failedExit;
+        });
+
+        int exit = await RunAsync(editor, ["y"], edit);
+
+        Assert.Equal((CliExitCodes.Failure, editorFailed), (exit, console.Output));
+        Assert.Equal(oldText, File.ReadAllText(paths.GuidancePath()));
+    }
+
+    [Fact]
+    public async Task ShouldAskNothing_WhenEditIsCancelled() {
+        WriteGuidance(oldText);
+        using CancellationTokenSource cancelled = new();
+        FakeEditorProcess editor = new(file => {
+            File.WriteAllText(file, newText);
+            cancelled.Cancel();
+            cancelled.Token.ThrowIfCancellationRequested();
+            return 0;
+        });
+        GuidanceCommand command = new(
+            EditFixtures.Services(environment, console), EditFixtures.EditServices(environment, editor, "y"));
+
+        int exit = await EditFixtures.InvokeAsync(command, console, cancelled.Token, GuidanceCommand.CommandName, edit);
+
+        Assert.Equal((CliExitCodes.Failure, editorFailed), (exit, console.Output));
+        Assert.Equal(oldText, File.ReadAllText(paths.GuidancePath()));
+    }
+
+    [Theory]
+    [InlineData(Locales.English, noChanges, "")]
+    [InlineData(Locales.Norwegian, noChangesNorwegian, "")]
+    [InlineData(Locales.English, noChanges, finalLineEnd)]
+    public async Task ShouldPrintNoChanges_WhenEditLeavesTextUnchanged(string lang, string line, string added) {
+        environment["LANG"] = lang;
+        EditFixtures.WriteSetup(temp, paths, EditFixtures.NoModel);
+        WriteGuidance(oldText);
+        EditFixtures.AddAds(paths, 1, AdFixtures.OutdatedVersion);
+        File.SetLastWriteTimeUtc(paths.GuidancePath(), pinnedTime);
+        FakeEditorProcess editor = new(file => {
+            File.AppendAllText(file, added);
+            return 0;
+        });
+
+        int exit = await RunAsync(editor, edit);
+
+        Assert.Equal((CliExitCodes.Ok, line), (exit, console.Output));
+        Assert.Equal(
+            (oldText, pinnedTime),
+            (File.ReadAllText(paths.GuidancePath()), File.GetLastWriteTimeUtc(paths.GuidancePath())));
+    }
+
+    private static FakeEditorProcess WritesThenFails(string text) => new(file => {
+        File.WriteAllText(file, text);
+        return failedExit;
+    });
 
     private void WriteGuidance(string text) {
         Directory.CreateDirectory(paths.ConfigDir());

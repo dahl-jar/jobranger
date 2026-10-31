@@ -94,6 +94,38 @@ public sealed class EditorRunnerTests : IDisposable {
     }
 
     [Fact]
+    public async Task ShouldKeepEditedText_WhenEditorExitsNonZero() {
+        FakeEditorProcess process = new(file => {
+            File.WriteAllText(file, "new");
+            return failedExit;
+        });
+
+        EditorException error = await Assert.ThrowsAsync<EditorException>(
+            () => Runner(process).EditAsync(input, suffix, TestContext.Current.CancellationToken));
+
+        Assert.Equal((EditorProblem.FailedExit, "new"), (error.Problem, error.EditedText));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ShouldThrowFailedExit_WhenFailedEditorLeavesFileUnreadable(bool deleted) {
+        FakeEditorProcess process = new(file => {
+            if (deleted) {
+                File.Delete(file);
+            } else {
+                File.WriteAllBytes(file, Utf8Fixtures.WithInvalidByte("a", "b"));
+            }
+            return failedExit;
+        });
+
+        EditorException error = await Assert.ThrowsAsync<EditorException>(
+            () => Runner(process).EditAsync(input, suffix, TestContext.Current.CancellationToken));
+
+        Assert.Equal((EditorProblem.FailedExit, null), (error.Problem, error.EditedText));
+    }
+
+    [Fact]
     public async Task ShouldThrowFailedExit_WhenEditIsCancelled() {
         using CancellationTokenSource cancelled = new();
         FakeEditorProcess process = new(_ => {

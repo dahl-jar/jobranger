@@ -8,11 +8,16 @@ using Jobranger.Cli.Files;
 namespace Jobranger.Cli.Platform;
 
 [UnsupportedOSPlatform("windows")]
-internal sealed class EditorProcess(IDictionary environment) : IEditorProcess {
+internal sealed class EditorProcess(IDictionary environment, int terminal) : IEditorProcess {
     private const string pathVariable = "PATH";
+    private const int standardInput = 0;
 
     private static readonly PosixSignal[] heldSignals =
         [PosixSignal.SIGINT, PosixSignal.SIGQUIT, PosixSignal.SIGTERM, PosixSignal.SIGHUP];
+    private static readonly TimeSpan stopGrace = TimeSpan.FromSeconds(1);
+
+    public EditorProcess(IDictionary environment) : this(environment, standardInput) {
+    }
 
     public static string Resolve(string program, string? searchPath) {
         if (program.Contains(Path.DirectorySeparatorChar)) {
@@ -27,6 +32,7 @@ internal sealed class EditorProcess(IDictionary environment) : IEditorProcess {
 
     public async Task<int> RunAsync(string program, IReadOnlyList<string> arguments, CancellationToken cancellationToken) {
         string resolved = Resolve(program, EnvironmentVariables.Read(environment, pathVariable));
+        byte[]? settings = UnixFiles.ReadTerminalSettings(terminal);
         List<PosixSignalRegistration> held = [
             .. heldSignals.Select(signal => PosixSignalRegistration.Create(signal, context => context.Cancel = true)),
         ];
@@ -36,12 +42,21 @@ internal sealed class EditorProcess(IDictionary environment) : IEditorProcess {
             try {
                 await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
             } catch (OperationCanceledException) {
-                ChildProcessRunner.KillTree(process);
+                Stop(process, settings);
                 throw;
             }
             return process.ExitCode;
         } finally {
             held.ForEach(registration => registration.Dispose());
+        }
+    }
+
+    private void Stop(Process process, byte[]? settings) {
+        UnixFiles.Terminate(process.Id);
+        process.WaitForExit(stopGrace);
+        ChildProcessRunner.KillTree(process);
+        if (settings is not null) {
+            UnixFiles.WriteTerminalSettings(terminal, settings);
         }
     }
 

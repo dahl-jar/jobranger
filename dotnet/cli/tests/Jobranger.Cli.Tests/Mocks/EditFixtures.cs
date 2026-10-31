@@ -76,9 +76,13 @@ internal static class EditFixtures {
     public static CliServices Services(IDictionary environment, RecordingConsole console) =>
         CliServices.Create(AdFixtures.Clock(), console.Console, console.ErrorConsole, environment);
 
-    public static Task<int> InvokeAsync(Command group, RecordingConsole console, params string[] args) {
+    public static Task<int> InvokeAsync(Command group, RecordingConsole console, params string[] args) =>
+        InvokeAsync(group, console, TestContext.Current.CancellationToken, args);
+
+    public static Task<int> InvokeAsync(
+        Command group, RecordingConsole console, CancellationToken cancellationToken, params string[] args) {
         System.CommandLine.RootCommand root = [group];
         InvocationConfiguration configuration = new() { Error = console.ErrorConsole.Profile.Out.Writer };
-        return root.Parse(args).InvokeAsync(configuration, TestContext.Current.CancellationToken);
+        return root.Parse(args).InvokeAsync(configuration, cancellationToken);
     }
 }

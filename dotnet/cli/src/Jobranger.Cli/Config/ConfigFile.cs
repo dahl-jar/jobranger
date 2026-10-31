@@ -54,7 +54,7 @@ internal static class ConfigFile {
     [UnsupportedOSPlatform("windows")]
     public static void SaveText(string path, string text, string home, ILogger logger) {
         Parse(text, path, home);
-        PrivateFile.Write(path, strictUtf8.GetBytes(text), logger);
+        PrivateFile.WriteThroughLink(path, strictUtf8.GetBytes(text), logger);
     }
 
     public static Language? ReadLanguage(string path) {
