@@ -40,13 +40,16 @@ internal sealed partial class Pseudoterminal : IDisposable {
 
     public int Descriptor => (int)terminal.DangerousGetHandle();
 
+    public static bool HasEcho(string settings) =>
+        settings.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Contains(echoFlag);
+
     public bool IsEchoOn() {
         ProcessStartInfo start = new(shell, [runScript, $"stty -a < {Path}"]) { RedirectStandardOutput = true };
         using Process process = Process.Start(start)
             ?? throw new InvalidOperationException("stty did not start");
-        string[] flags = process.StandardOutput.ReadToEnd().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        string settings = process.StandardOutput.ReadToEnd();
         process.WaitForExit();
-        return flags.Contains(echoFlag);
+        return HasEcho(settings);
     }
 
     public void Dispose() {

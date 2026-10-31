@@ -55,7 +55,7 @@ internal sealed class EditorProcess(IDictionary environment, int terminal) : IEd
         UnixFiles.Terminate(process.Id);
         process.WaitForExit(stopGrace);
         ChildProcessRunner.KillTree(process);
-        if (settings is not null) {
+        if (settings is not null && !UnixFiles.IsBackground(terminal)) {
             UnixFiles.WriteTerminalSettings(terminal, settings);
         }
     }

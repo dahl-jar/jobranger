@@ -116,6 +116,11 @@ internal static partial class UnixFiles {
             ? MacSetTerminal(descriptor, applyNow, settings)
             : LinuxSetTerminal(descriptor, applyNow, settings);
 
+    public static bool IsBackground(int descriptor) {
+        int foreground = OperatingSystem.IsMacOS() ? MacForegroundGroup(descriptor) : LinuxForegroundGroup(descriptor);
+        return foreground != failed && foreground != (OperatingSystem.IsMacOS() ? MacProcessGroup() : LinuxProcessGroup());
+    }
+
     public static bool TryLockExclusive(SafeFileHandle handle, out int error) {
         int operation = lockExclusive | lockNonBlocking;
         int result = OperatingSystem.IsMacOS() ? MacLock(handle, operation) : LinuxLock(handle, operation);
@@ -190,6 +195,18 @@ internal static partial class UnixFiles {
 
     [LibraryImport(linuxLibc, EntryPoint = "kill")]
     private static partial int LinuxKill(int processId, int signal);
+
+    [LibraryImport(macLibc, EntryPoint = "tcgetpgrp")]
+    private static partial int MacForegroundGroup(int descriptor);
+
+    [LibraryImport(linuxLibc, EntryPoint = "tcgetpgrp")]
+    private static partial int LinuxForegroundGroup(int descriptor);
+
+    [LibraryImport(macLibc, EntryPoint = "getpgrp")]
+    private static partial int MacProcessGroup();
+
+    [LibraryImport(linuxLibc, EntryPoint = "getpgrp")]
+    private static partial int LinuxProcessGroup();
 
     [LibraryImport(macLibc, EntryPoint = "tcgetattr")]
     private static partial int MacGetTerminal(int descriptor, [Out] byte[] settings);

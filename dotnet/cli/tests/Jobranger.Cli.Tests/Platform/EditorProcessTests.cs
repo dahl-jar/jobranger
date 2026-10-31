@@ -51,7 +51,7 @@ public sealed class EditorProcessTests : IDisposable {
         string processFile = temp.File("pid");
         string marker = temp.File("marker");
         string script = $"trap 'sleep 0.2; echo done > {marker}; exit 0' TERM; echo $$ > {processFile}; "
-            + "while :; do sleep 0.1; done";
+            + "i=0; while [ $i -lt 300 ]; do sleep 0.1; i=$((i + 1)); done";
         using CancellationTokenSource cancelled = new();
         Task<int> running = process.RunAsync(shell, [runScript, script], cancelled.Token);
         await WaitForProcessIdAsync(processFile);
@@ -90,6 +90,26 @@ public sealed class EditorProcessTests : IDisposable {
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => running);
         Assert.True(pseudoterminal.IsEchoOn());
+    }
+
+    [Fact]
+    public async Task ShouldExitWithFailure_WhenBackgroundEditIsTerminated() {
+        using TerminalEdit edit = new(temp.Path);
+
+        int exit = await edit.RunInBackgroundAsync();
+
+        Assert.Equal(CliExitCodes.Failure, exit);
+        Assert.Empty(edit.EditFolders());
+    }
+
+    [Fact]
+    public async Task ShouldRestoreTerminal_WhenForegroundEditIsTerminated() {
+        using TerminalEdit edit = new(temp.Path);
+
+        int exit = await edit.RunInForegroundAsync();
+
+        Assert.Equal(CliExitCodes.Failure, exit);
+        Assert.True(edit.IsEchoOn());
     }
 
     [Theory]
