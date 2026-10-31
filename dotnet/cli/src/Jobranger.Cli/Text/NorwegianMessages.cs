@@ -261,5 +261,67 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string HiddenYearsUnknown(int count) => $"{count} krever flere år";
 
+    public string EmailMissingAddress => "Ingen e-postadresse er satt. Legg til en med: jobranger init";
+
+    public string EmailMissingSmtpUrl => "Ingen SMTP-server er satt. Legg til en med: jobranger init";
+
+    public string EmailMissingSmtpPassword => "Ikke noe SMTP-passord er lagret. Legg til et med: jobranger init";
+
+    public string EmailMissingResendKey => "Ingen Resend API-nøkkel er lagret. Legg til en med: jobranger init";
+
+    public string EmailUnusableAddress => "E-postadressen eller avsenderen i konfigurasjonen kan ikke brukes.";
+
+    public string EmailInvalidSmtpUrl => "SMTP-serveren må se ut som smtps://host:465 eller smtp://host:587.";
+
+    public string EmailNonAsciiLogin => "SMTP-brukernavnet og -passordet må være vanlig ASCII.";
+
+    public string EmailNoStarttls(string host, int port) => $"SMTP-serveren på {host}:{port} tilbyr ikke STARTTLS.";
+
+    public string EmailNotSmtp(string host, int port) => $"Serveren på {host}:{port} er ikke en SMTP-server.";
+
+    public string EmailSmtpLogin(string host, int port) => $"SMTP-innlogging på {host}:{port} mislyktes.";
+
+    public string EmailSmtpRecipient(string to) => $"Serveren avviste {to}.";
+
+    public string EmailSmtpSender(string sender) => $"Serveren avviste avsenderen {sender}.";
+
+    public string EmailSmtpStatus(int status) => $"SMTP-serveren svarte {status}.";
+
+    public string EmailSmtpUnsupported(string host, int port) => $"SMTP-serveren på {host}:{port} støtter ikke innlogging eller denne adressen.";
+
+    public string EmailTlsCertificate(string host) => $"Kunne ikke bekrefte TLS-sertifikatet til {host}.";
+
+    public string EmailTls(string host, int port) => $"TLS med {host}:{port} mislyktes.";
+
+    public string EmailSmtpDisconnected(string host, int port) => $"SMTP-serveren på {host}:{port} lukket tilkoblingen.";
+
+    public string EmailSmtpReplyTooLong(string host, int port) => $"SMTP-serveren på {host}:{port} sendte et svar som er for langt.";
+
+    public string EmailInvalidHost(string host) => $"SMTP-servernavnet {host} er ikke et gyldig vertsnavn.";
+
+    public string EmailSmtpUnreachable(string host, int port) => $"Kunne ikke nå {host}:{port}.";
+
+    public string EmailSmtpFailed(string host, int port) => $"E-posten kunne ikke sendes gjennom {host}:{port}.";
+
+    public string EmailStalled(string host, int port) => $"SMTP-serveren på {host}:{port} sluttet å svare.";
+
+    public string EmailSmtpTooSlow(string host, int port, int seconds) => $"SMTP-serveren på {host}:{port} brukte mer enn {seconds} s, så sendingen ble stoppet.";
+
+    public string EmailResendKey => "Resend avviste nøkkelen.";
+
+    public string EmailUnusableResendKey => "Den lagrede Resend API-nøkkelen har tegn en API-nøkkel ikke kan ha. Legg til en med: jobranger init";
+
+    public string EmailResendRedirect(int status) => $"Resend svarte med en omdirigering ({status}), så e-posten ble ikke sendt.";
+
+    public string EmailResendStatus(int status) => $"Resend svarte {status}.";
+
+    public string EmailResendTimeout => "Resend svarte ikke i tide.";
+
+    public string EmailResendUnreachable => "Kunne ikke nå Resend.";
+
+    public string EmailResendTooSlow(int seconds) => $"Resend brukte mer enn {seconds} s, så sendingen ble stoppet.";
+
+    public string EmailSecretStore => "E-postpassordet eller -nøkkelen kunne ikke leses fra hemmelighetslageret.";
+
     private static string AdsWait(int pending) => pending == 1 ? "annonse venter" : "annonser venter";
 }

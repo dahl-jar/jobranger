@@ -224,4 +224,66 @@ internal interface IMessages {
     string HiddenYearsAbove(int count, int cap);
 
     string HiddenYearsUnknown(int count);
+
+    string EmailMissingAddress { get; }
+
+    string EmailMissingSmtpUrl { get; }
+
+    string EmailMissingSmtpPassword { get; }
+
+    string EmailMissingResendKey { get; }
+
+    string EmailUnusableAddress { get; }
+
+    string EmailInvalidSmtpUrl { get; }
+
+    string EmailNonAsciiLogin { get; }
+
+    string EmailNoStarttls(string host, int port);
+
+    string EmailNotSmtp(string host, int port);
+
+    string EmailSmtpLogin(string host, int port);
+
+    string EmailSmtpRecipient(string to);
+
+    string EmailSmtpSender(string sender);
+
+    string EmailSmtpStatus(int status);
+
+    string EmailSmtpUnsupported(string host, int port);
+
+    string EmailTlsCertificate(string host);
+
+    string EmailTls(string host, int port);
+
+    string EmailSmtpDisconnected(string host, int port);
+
+    string EmailSmtpReplyTooLong(string host, int port);
+
+    string EmailInvalidHost(string host);
+
+    string EmailSmtpUnreachable(string host, int port);
+
+    string EmailSmtpFailed(string host, int port);
+
+    string EmailStalled(string host, int port);
+
+    string EmailSmtpTooSlow(string host, int port, int seconds);
+
+    string EmailResendKey { get; }
+
+    string EmailUnusableResendKey { get; }
+
+    string EmailResendRedirect(int status);
+
+    string EmailResendStatus(int status);
+
+    string EmailResendTimeout { get; }
+
+    string EmailResendUnreachable { get; }
+
+    string EmailResendTooSlow(int seconds);
+
+    string EmailSecretStore { get; }
 }

@@ -55,4 +55,18 @@ public sealed class MailAddressesTests {
 
         Assert.False(valid);
     }
+
+    [Fact]
+    public void ShouldConvertDomainToAscii_WhenAddressIsInternational() {
+        string? ascii = MailAddresses.AsciiAddress("user@bücher.example");
+
+        Assert.Equal("user@xn--bcher-kva.example", ascii);
+    }
+
+    [Fact]
+    public void ShouldKeepDisplayName_WhenMailboxDomainIsConverted() {
+        string? ascii = MailAddresses.AsciiMailbox("Job Ranger <user@bücher.example>");
+
+        Assert.Equal("Job Ranger <user@xn--bcher-kva.example>", ascii);
+    }
 }

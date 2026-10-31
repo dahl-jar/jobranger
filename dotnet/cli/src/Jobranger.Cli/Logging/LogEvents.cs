@@ -131,4 +131,13 @@ internal static partial class LogEvents {
         Level = LogLevel.Information,
         Message = "expired an ad missing from its employer feed ad_id={AdId} source={Source}")]
     public static partial void ApplyVetoed(ILogger logger, string adId, string source);
+
+    [LoggerMessage(EventName = "email.sent", Level = LogLevel.Information, Message = "sent the digest email count={Count}")]
+    public static partial void EmailSent(ILogger logger, int count);
+
+    [LoggerMessage(
+        EventName = "email.failed",
+        Level = LogLevel.Warning,
+        Message = "digest email failed error_type={ErrorType} failure={Failure} status={Status}")]
+    public static partial void EmailFailed(ILogger logger, string errorType, string failure, int? status);
 }

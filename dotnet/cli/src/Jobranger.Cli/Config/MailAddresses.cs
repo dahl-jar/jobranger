@@ -47,6 +47,24 @@ internal static class MailAddresses {
         }
     }
 
+    public static string? AsciiAddress(string address) {
+        if (!IsAddress(address)) {
+            return null;
+        }
+        int separator = address.IndexOf(at, StringComparison.Ordinal);
+        return $"{address[..(separator + 1)]}{AsciiDomain(address[(separator + 1)..])}";
+    }
+
+    public static string? AsciiMailbox(string value) {
+        if (!IsMailbox(value)) {
+            return null;
+        }
+        int open = value.IndexOf(openAngle, StringComparison.Ordinal);
+        return open < 0
+            ? AsciiAddress(value)
+            : $"{value[..(open + 1)]}{AsciiAddress(value[(open + 1)..^1])}{closeAngle}";
+    }
+
     private static bool IsDotAtom(string text) =>
         text.Split(dot).All(atom => atom.Length > 0 && atom.All(IsAtomCharacter));
 

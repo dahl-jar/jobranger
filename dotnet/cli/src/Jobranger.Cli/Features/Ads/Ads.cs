@@ -73,6 +73,10 @@ internal sealed class Ads(SqliteConnection connection, TimeProvider time) {
 
     public IReadOnlyList<Ad> Active() => store.Active();
 
+    public IReadOnlyList<Ad> ById(IEnumerable<string> adIds) => store.ById(adIds);
+
+    public long ClosedSince(string since) => store.ClosedSince(since);
+
     public int ClosePastDeadline(DateOnly today) => store.ClosePastDeadline(today);
 
     public IReadOnlyList<Ad> Reportable(DateOnly today, Func<Ad, bool> isReportable) =>

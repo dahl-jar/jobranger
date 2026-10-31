@@ -1,5 +1,7 @@
 using System.Runtime.Versioning;
 using Jobranger.Cli.Config;
+using Jobranger.Cli.Features.Ads;
+using Jobranger.Cli.Features.Matching;
 using Jobranger.Cli.Features.Models;
 using Jobranger.Cli.Features.Providers;
 using Jobranger.Cli.Features.Sources;
@@ -23,6 +25,10 @@ internal sealed class Runs(
     Func<SourcesConfig, IReadOnlyList<ISource>> enabledSources,
     TimeProvider time,
     ILogger logger) {
+    public static AdView ToAdView(Ad ad) => RunConversions.ToAdView(ad);
+
+    public static IReadOnlyList<RunRow> Recent(SqliteConnection connection, int limit) => new RunStore(connection).List(limit);
+
     public async Task<RunResult> RunAsync(RunRequest request, CancellationToken cancellationToken) {
         RunModel? model = await CreateModelAsync(request.Config.Model, cancellationToken).ConfigureAwait(false);
         try {
