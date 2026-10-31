@@ -44,7 +44,9 @@ internal static class SmtpFailures {
             (NotSupportedException, { Connected: true }) =>
                 (SendFailureKind.SmtpUnsupported, messages.EmailSmtpUnsupported(host, port), null),
             (NotSupportedException, _) => (SendFailureKind.NoStarttls, messages.EmailNoStarttls(host, port), null),
-            (ArgumentException, _) => (SendFailureKind.InvalidHost, messages.EmailInvalidHost(host), null),
+            (ArgumentException, { Connected: false }) => (SendFailureKind.InvalidHost, messages.EmailInvalidHost(host), null),
+            (IOException or SocketException, { Connected: true }) =>
+                (SendFailureKind.SmtpDisconnected, messages.EmailSmtpDisconnected(host, port), null),
             (IOException or SocketException, _) => (SendFailureKind.SmtpUnreachable, messages.EmailSmtpUnreachable(host, port), null),
             _ => (SendFailureKind.SmtpFailed, messages.EmailSmtpFailed(host, port), (int?)null),
         };

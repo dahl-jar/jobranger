@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text;
 using Jobranger.Cli.Features.Delivery;
 using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Cli.Text;
@@ -230,6 +231,23 @@ public sealed class SmtpSenderTests {
 
         Assert.Null(failure);
         Assert.Single(server.Messages);
+    }
+
+    [Fact]
+    public async Task ShouldReportLoginFailure_WhenLoginChallengeIsUnreadable() {
+        await using FakeSmtpServer server = new(async session => {
+            await FakeSmtpServer.ReachStartTlsAsync(session);
+            await session.UpgradeAsync();
+            await FakeSmtpServer.HelloAsync(session, "AUTH NTLM");
+            await session.ReadLineAsync();
+            await session.SendAsync($"334 {Convert.ToBase64String(Encoding.ASCII.GetBytes("NTLMSSP\0short"))}\r\n");
+            await session.StallAsync();
+        });
+
+        SendFailure? failure = await SendAsync(server.Url("smtp"), user, password);
+
+        Assert.Equal(SendFailureKind.SmtpLogin, failure?.Kind);
+        Assert.Equal("SMTP login to 127.0.0.1:" + server.Port + " failed.", failure?.Reason);
     }
 
     [Fact]
