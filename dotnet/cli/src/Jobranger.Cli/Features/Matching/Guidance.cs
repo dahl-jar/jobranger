@@ -44,13 +44,13 @@ internal static class Guidance {
         if (normalized.Length == 0) {
             return Reset(path, logger);
         }
-        PrivateFile.Write(path, strictUtf8.GetBytes(normalized + newLine), logger);
+        PrivateFile.WriteThroughLink(path, strictUtf8.GetBytes(normalized + newLine), logger);
         return new GuidanceText(normalized);
     }
 
     [UnsupportedOSPlatform("windows")]
     public static GuidanceText Reset(string path, ILogger logger) {
-        PrivateFile.Write(path, [], logger);
+        PrivateFile.WriteThroughLink(path, [], logger);
         return defaultText;
     }
 

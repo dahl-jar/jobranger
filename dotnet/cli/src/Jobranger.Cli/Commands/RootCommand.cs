@@ -28,6 +28,10 @@ internal sealed class RootCommand : System.CommandLine.RootCommand {
             Subcommands.Add(new UnpairCommand(services));
             Subcommands.Add(new ReportCommand(services));
             Subcommands.Add(new LogsCommand(services));
+            Subcommands.Add(new ConfigCommand(services));
+            Subcommands.Add(new GuidanceCommand(services));
+            Subcommands.Add(new AboutCommand(services));
+            Subcommands.Add(new ContextCommand(services));
         }
     }
 

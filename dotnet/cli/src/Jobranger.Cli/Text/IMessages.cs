@@ -181,6 +181,68 @@ internal interface IMessages {
 
     string FileAccessFailed { get; }
 
+    string ConfigDescription { get; }
+
+    string ConfigShowDescription { get; }
+
+    string ConfigEditDescription { get; }
+
+    string GuidanceDescription { get; }
+
+    string GuidanceShowDescription { get; }
+
+    string GuidanceEditDescription { get; }
+
+    string GuidanceResetDescription { get; }
+
+    string AboutDescription { get; }
+
+    string AboutEditDescription { get; }
+
+    string ContextDescription { get; }
+
+    string ContextListDescription { get; }
+
+    string Saved(string path);
+
+    string SaveFailed(string path);
+
+    string EditAgain { get; }
+
+    IReadOnlyList<string> EditNoAnswers { get; }
+
+    IReadOnlyList<string> EditYesAnswers { get; }
+
+    string NoChanges { get; }
+
+    string SaveAfterFailure { get; }
+
+    string EditorFailedExit { get; }
+
+    string EditorNotStarted(string program);
+
+    string EditorTempFile { get; }
+
+    string RecheckAds(int ads);
+
+    string RecheckAdsCost(int ads, decimal costUsd);
+
+    string ConfigKept { get; }
+
+    string GuidanceShowDefault { get; }
+
+    string GuidanceShowEdited(string path);
+
+    string GuidanceBackToDefault { get; }
+
+    string GuidanceKept { get; }
+
+    string AboutKept { get; }
+
+    string ContextListLine(string id, string name, int chars, string addedAt);
+
+    string ContextListEmpty { get; }
+
     Language Language { get; }
 
     string DigestSubject(int matches, string date);

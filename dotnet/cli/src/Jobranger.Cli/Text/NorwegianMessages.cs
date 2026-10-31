@@ -211,6 +211,72 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string FileAccessFailed => "Kan ikke lese en jobranger-fil. Sjekk tilgangene til mappen.";
 
+    public string ConfigDescription => "Vis eller endre oppsettsfilen.";
+
+    public string ConfigShowDescription => "Skriv ut oppsettsfilen.";
+
+    public string ConfigEditDescription => "Åpne oppsettsfilen i redigeringsprogrammet.";
+
+    public string GuidanceDescription => "Vis, endre eller tilbakestill instruksene for vurderingen.";
+
+    public string GuidanceShowDescription => "Skriv ut instruksene for vurderingen.";
+
+    public string GuidanceEditDescription => "Åpne instruksene for vurderingen i redigeringsprogrammet.";
+
+    public string GuidanceResetDescription => "Gå tilbake til standardinstruksene.";
+
+    public string AboutDescription => "Endre teksten om deg.";
+
+    public string AboutEditDescription => "Åpne teksten om deg i redigeringsprogrammet.";
+
+    public string ContextDescription => "Vis kontekstdokumentene dine.";
+
+    public string ContextListDescription => "List opp kontekstdokumentene dine.";
+
+    public string Saved(string path) => $"✓ Lagret {path}";
+
+    public string SaveFailed(string path) => $"✕ Kunne ikke skrive {path}.";
+
+    public string EditAgain => "Endre igjen? (J/n) ";
+
+    public IReadOnlyList<string> EditNoAnswers { get; } = ["n", "nei", "no"];
+
+    public IReadOnlyList<string> EditYesAnswers => PairYesAnswers;
+
+    public string NoChanges => "Ingen endringer.";
+
+    public string SaveAfterFailure => "Redigeringsprogrammet avsluttet med en feil. Lagre endringene? (j/N) ";
+
+    public string EditorFailedExit => "✕ Redigeringsprogrammet avsluttet med en feil. Ingenting ble lagret.";
+
+    public string EditorNotStarted(string program) =>
+        $"✕ Kunne ikke starte redigeringsprogrammet {program}. Sett $VISUAL eller $EDITOR.";
+
+    public string EditorTempFile => "✕ Kunne ikke lese eller skrive den midlertidige filen. Ingenting ble lagret.";
+
+    public string RecheckAds(int ads) => $"  Sjekker {ads} {(ads == 1 ? "annonse" : "annonser")} på nytt ved neste kjøring.";
+
+    public string RecheckAdsCost(int ads, decimal costUsd) => string.Create(
+        CultureInfo.InvariantCulture,
+        $"  Sjekker {ads} {(ads == 1 ? "annonse" : "annonser")} på nytt ved neste kjøring, opptil omtrent ${costUsd:F2}.");
+
+    public string ConfigKept => "Beholdt det forrige oppsettet.";
+
+    public string GuidanceShowDefault => "# Instrukser for vurderingen: standard";
+
+    public string GuidanceShowEdited(string path) => $"# Instrukser for vurderingen: endret ({path})";
+
+    public string GuidanceBackToDefault => "✓ Tilbake til standardinstruksene.";
+
+    public string GuidanceKept => "Beholdt de forrige instruksene.";
+
+    public string AboutKept => "Beholdt den forrige teksten.";
+
+    public string ContextListLine(string id, string name, int chars, string addedAt) =>
+        $"{id}  {name}  {chars} tegn  lagt til {addedAt}";
+
+    public string ContextListEmpty => "Ingen kontekstdokumenter. Legg til et med: jobranger context add <fil>";
+
     public Language Language => Language.Nb;
 
     public string DigestSubject(int matches, string date) => $"jobranger: {matches} treff, {date}";

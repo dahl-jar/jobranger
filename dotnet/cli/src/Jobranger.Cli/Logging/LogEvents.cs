@@ -97,6 +97,27 @@ internal static partial class LogEvents {
     public static partial void LogsFailed(ILogger logger, string failure);
 
     [LoggerMessage(
+        EventName = "settings.read_failed",
+        Level = LogLevel.Warning,
+        Message = "settings read failed failure={Failure}")]
+    public static partial void SettingsReadFailed(ILogger logger, string failure);
+
+    [LoggerMessage(EventName = "edit.failed", Level = LogLevel.Warning, Message = "edit failed failure={Failure}")]
+    public static partial void EditFailed(ILogger logger, string failure);
+
+    [LoggerMessage(
+        EventName = "edit.cleanup_failed",
+        Level = LogLevel.Warning,
+        Message = "edit folder not removed dir={Dir} error_type={ErrorType}")]
+    public static partial void EditCleanupFailed(ILogger logger, string dir, string errorType);
+
+    [LoggerMessage(
+        EventName = "recheck.skipped",
+        Level = LogLevel.Warning,
+        Message = "recheck estimate skipped error_type={ErrorType}")]
+    public static partial void RecheckSkipped(ILogger logger, string errorType);
+
+    [LoggerMessage(
         EventName = "ashby.job.skipped",
         Level = LogLevel.Warning,
         Message = "skipped job without id, title, url or listing state source={Source}")]
