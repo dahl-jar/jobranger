@@ -21,6 +21,7 @@ internal sealed class Budget(SqliteConnection connection) {
     private const long outputTokensHigh = 1_600;
     private const int charsPerToken = 2;
     private const string reservedName = "reserved_usd";
+    private const string callName = "call_usd";
     private const string perAdName = "per_ad_usd";
 
     private static readonly ModelPrices free = new(0m, 0m, 0m, 0m, 0m);
@@ -35,6 +36,9 @@ internal sealed class Budget(SqliteConnection connection) {
             + tokens.Output * prices.Output) / tokensPerMtok;
         return batch ? total * batchMultiplier : total;
     }
+
+    public static bool UnpricedLimit(AppConfig config, ModelPrices? prices) =>
+        config.Model.MonthlyLimitUsd is not null && prices is null;
 
     public static decimal? EstimateDailyCost(ModelPrices? prices, decimal dailyAds, bool batch) =>
         prices is null ? null : ConstantAdCost(prices, batch) * dailyAds;
@@ -72,8 +76,9 @@ internal sealed class Budget(SqliteConnection connection) {
 
     public void RecordRead(DateOnly day, int adsRead) => store.Add(day, new UsageCounts(AdsRead: adsRead));
 
-    public bool Allowed(AppConfig config, ModelPrices? prices, DateOnly today, decimal reservedUsd) {
+    public bool Allowed(AppConfig config, ModelPrices? prices, DateOnly today, decimal reservedUsd, decimal callUsd) {
         RequireAmount(reservedName, reservedUsd);
+        RequireAmount(callName, callUsd);
         if (config.Model.MonthlyLimitUsd is not decimal limit) {
             return true;
         }
@@ -83,13 +88,18 @@ internal sealed class Budget(SqliteConnection connection) {
         if (IsFree(prices)) {
             return true;
         }
-        long cacheWrite = reservedUsd == 0 ? Micros(CacheWriteCost(prices)) : 0;
-        long needed = Micros(MonthSpend(today))
-            + Micros(reservedUsd)
-            + Micros(EstimateAdCost(prices, false, today))
-            + cacheWrite;
-        return needed < Micros(limit);
+        return Fits(limit, prices, MonthSpend(today), reservedUsd, callUsd);
     }
+
+    public static bool ExceedsLimit(AppConfig config, ModelPrices? prices, decimal typicalUsd, decimal callUsd) {
+        RequireAmount(callName, callUsd);
+        return config.Model.MonthlyLimitUsd is decimal limit
+            && prices is not null
+            && Fits(limit, prices, 0m, 0m, typicalUsd)
+            && !Fits(limit, prices, 0m, 0m, callUsd);
+    }
+
+    public static long TypicalPromptChars(long systemChars) => systemChars + (adTokensMean * charsPerToken);
 
     public int? AffordableCount(AppConfig config, ModelPrices? prices, DateOnly today, decimal perAdUsd) {
         RequireAmount(perAdName, perAdUsd);
@@ -110,6 +120,11 @@ internal sealed class Budget(SqliteConnection connection) {
 
     public decimal EstimateAdCost(ModelPrices prices, bool batch, DateOnly today) =>
         Math.Max(ConstantAdCost(prices, batch), HistoryAdCost(today));
+
+    public decimal EstimateCallCost(ModelPrices prices, long promptChars, long outputTokens, DateOnly today) {
+        TokenCounts tokens = new(promptChars / charsPerToken, 0, 0, 0, outputTokens);
+        return Math.Max(EstimateAdCost(prices, false, today), Cost(prices, tokens, batch: false));
+    }
 
     public decimal AdsPerDay(DateOnly today) {
         List<UsageDay> days = CheckedDays(RecentDays(today));
@@ -150,6 +165,12 @@ internal sealed class Budget(SqliteConnection connection) {
         Cost(prices, new TokenCounts(0, 0, prefixTokensMean, 0, 0), batch: false);
 
     private static bool IsFree(ModelPrices prices) => prices == free;
+
+    private static bool Fits(decimal limit, ModelPrices prices, decimal spentUsd, decimal reservedUsd, decimal callUsd) {
+        long cacheWrite = reservedUsd == 0 ? Micros(CacheWriteCost(prices)) : 0;
+        long needed = Micros(spentUsd) + Micros(reservedUsd) + Micros(callUsd) + cacheWrite;
+        return needed < Micros(limit);
+    }
 
     private static void RequireAmount(string name, decimal usd) {
         if (usd < 0 || usd > AppConfigValidator.MaxAmountUsd) {

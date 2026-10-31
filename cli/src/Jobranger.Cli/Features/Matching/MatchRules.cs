@@ -78,9 +78,12 @@ internal static class MatchRules {
             version);
     }
 
+    public static bool HasUnknownEvidence(Match match, IReadOnlySet<string> evidenceIds) =>
+        match.Evidence.Any(item => !evidenceIds.Contains(item));
+
     public static Match? Validate(
         Match match, IReadOnlySet<string> evidenceIds, IReadOnlySet<string> educationIds, Limits limits) {
-        if (match.Evidence.Any(item => !evidenceIds.Contains(item))) {
+        if (HasUnknownEvidence(match, evidenceIds)) {
             return null;
         }
         if (match.Blockers.Count > 0 || match.IsLowCode || ExceedsYears(match, limits)) {

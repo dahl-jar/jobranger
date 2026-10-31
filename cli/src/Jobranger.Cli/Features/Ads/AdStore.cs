@@ -7,6 +7,7 @@ namespace Jobranger.Cli.Features.Ads;
 
 internal sealed partial class AdStore(SqliteConnection connection, TimeProvider time) : IAdStore {
     public const int DescriptionMaxAttempts = 3;
+    public const string ErrorLabel = "error";
 
     private const string sharedColumns =
         "id, source, source_id, title, company, location, "
@@ -52,13 +53,16 @@ internal sealed partial class AdStore(SqliteConnection connection, TimeProvider 
     private const string pendingClassificationWhere =
         "description IS NOT NULL AND active = 1 AND label IS NULL AND label_attempts < $attempts";
     private const string exhaustedClassificationWhere =
-        "description IS NOT NULL AND active = 1 AND label IS NULL AND label_attempts >= $attempts";
+        "description IS NOT NULL AND active = 1 AND (label IS NULL OR assessment_version IS NOT $version) "
+        + "AND label_attempts >= $attempts";
+    private const string outdatedClassificationWhere =
+        "description IS NOT NULL AND " + outdatedWhere + " AND label IS NOT NULL";
     private const string bumpLabelSql = "UPDATE ads SET label_attempts = label_attempts + 1 WHERE id = $id";
     private const string setClassificationSql =
         "UPDATE ads SET label = $label, summary = $summary, requires_master = $requires_master, "
         + "is_programming_job = $is_programming_job, display_title = $display_title, role_type = $role_type, "
         + "technologies = $technologies, requirements = $requirements, assessment = $assessment, "
-        + "assessment_version = $version, classified_at = $at, "
+        + "label_attempts = 0, assessment_version = $version, classified_at = $at, "
         + "first_classified_at = COALESCE(first_classified_at, $at) WHERE id = $id";
     private const string setLabelSql =
         "UPDATE ads SET label = $label, is_programming_job = 0, assessment = NULL, classified_at = NULL, "
@@ -73,8 +77,9 @@ internal sealed partial class AdStore(SqliteConnection connection, TimeProvider 
     private const string markReportedSql = "UPDATE ads SET reported_at = $at WHERE id = $id";
     private const string activeWhere = "active = 1";
     private const string byIdWhere = "id IN (SELECT value FROM json_each($ids))";
-    private const string refreshSql =
-        "UPDATE ads SET " + ClassificationReset.Columns + ", assessment_version = $version WHERE " + outdatedWhere;
+    private const string resetUnassessedSql =
+        "UPDATE ads SET " + ClassificationReset.Columns + ", assessment_version = $version WHERE " + outdatedWhere
+        + " AND (label IS NULL OR label = $error_label)";
     private const string countOutdatedSql = "SELECT COUNT(*) FROM ads WHERE " + outdatedWhere;
     private const string idOrdering = "id";
     private const string newestFirst = "first_seen DESC";
@@ -139,8 +144,11 @@ internal sealed partial class AdStore(SqliteConnection connection, TimeProvider 
     public IReadOnlyList<Ad> PendingClassification(int maxAttempts) =>
         Select(pendingClassificationWhere, ("$attempts", maxAttempts));
 
-    public IReadOnlyList<Ad> ExhaustedClassification(int maxAttempts) =>
-        Select(exhaustedClassificationWhere, ("$attempts", maxAttempts));
+    public IReadOnlyList<Ad> ExhaustedClassification(int maxAttempts, string version) =>
+        Select(exhaustedClassificationWhere, ("$attempts", maxAttempts), ("$version", version));
+
+    public IReadOnlyList<Ad> OutdatedClassification(string version) =>
+        Select(outdatedClassificationWhere, ("$version", version));
 
     public void BumpLabelAttempts(IReadOnlyList<string> adIds) => ForEachId(bumpLabelSql, adIds);
 
@@ -181,8 +189,8 @@ internal sealed partial class AdStore(SqliteConnection connection, TimeProvider 
 
     public IReadOnlyList<Ad> ById(IEnumerable<string> adIds) => Select(byIdWhere, ("$ids", JsonLists.Write(adIds)));
 
-    public bool RefreshAssessments(string version) =>
-        SqlCommands.Execute(connection, null, refreshSql, ("$version", version)) > 0;
+    public void ResetUnassessed(string version) =>
+        SqlCommands.Execute(connection, null, resetUnassessedSql, ("$version", version), ("$error_label", ErrorLabel));
 
     public long CountOutdated(string version) => SqlCommands.Scalar(connection, null, countOutdatedSql, ("$version", version));
 

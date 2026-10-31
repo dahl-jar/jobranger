@@ -172,6 +172,46 @@ public sealed class RunsTests : IDisposable {
         Assert.Equal("expired", db.Scalar("SELECT apply_status FROM ads WHERE id = 'nav:1'"));
     }
 
+    [Fact]
+    public async Task ShouldPauseRun_WhenMonthlyLimitIsReached() {
+        ads.Upsert(Pending(1, "Utvikler", "Org One AS"));
+        FakeModelClient client = FakeModelClient.Answering(JavaReply);
+
+        RunResult result = await RunAsync(client, [], Limited(0m), null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            (true, 1, false, 0),
+            (result.BudgetPaused, result.Pending, result.UnpricedLimit, client.Calls));
+    }
+
+    [Fact]
+    public async Task ShouldFlagUnpricedLimit_WhenModelHasNoPrice() {
+        ads.Upsert(Pending(1, "Utvikler", "Org One AS"));
+        FakeModelClient client = FakeModelClient.Answering(JavaReply);
+        AppConfig config = Limited(1m);
+        config = config with { Model = config.Model with { Model = "claude-unlisted" } };
+
+        RunResult result = await RunAsync(client, [], config, null, TestContext.Current.CancellationToken);
+
+        Assert.Equal((true, true, 0), (result.UnpricedLimit, result.BudgetPaused, client.Calls));
+    }
+
+    [Fact]
+    public async Task ShouldReportDroppedAd_WhenReplyCitesUnknownEvidence() {
+        ads.Upsert(Pending(1, "Utvikler", "Org One AS"));
+        string reply = JavaReply.Replace("\"java_project\", \"education\"", "\"made_up\"", StringComparison.Ordinal);
+
+        RunResult result = await RunAsync(
+            FakeModelClient.Answering(reply), [], null, null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, result.UnknownEvidenceDropped);
+    }
+
+    private static AppConfig Limited(decimal limit) {
+        AppConfig config = RunFixtures.Config(profilePath);
+        return config with { Model = config.Model with { MonthlyLimitUsd = limit } };
+    }
+
     private List<string> RunRows() => TestDatabase.Rows(db.Connection, runsQuery);
 
     private async Task<RunResult> RunAsync(

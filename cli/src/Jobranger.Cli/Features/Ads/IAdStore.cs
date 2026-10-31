@@ -19,7 +19,9 @@ internal interface IAdStore {
 
     IReadOnlyList<Ad> PendingClassification(int maxAttempts);
 
-    IReadOnlyList<Ad> ExhaustedClassification(int maxAttempts);
+    IReadOnlyList<Ad> ExhaustedClassification(int maxAttempts, string version);
+
+    IReadOnlyList<Ad> OutdatedClassification(string version);
 
     void BumpLabelAttempts(IReadOnlyList<string> adIds);
 
@@ -41,7 +43,7 @@ internal interface IAdStore {
 
     IReadOnlyList<Ad> ById(IEnumerable<string> adIds);
 
-    bool RefreshAssessments(string version);
+    void ResetUnassessed(string version);
 
     long CountOutdated(string version);
 

@@ -167,7 +167,12 @@ internal static class Migrations {
         """,
     ]);
 
-    public static readonly IReadOnlyList<Migration> All = [baseline, firstClassification, decisions, devices];
+    private static readonly Migration resetLabelAttempts = new(5, [
+        "UPDATE ads SET label_attempts = 0 WHERE label IS NOT NULL AND label <> 'error'",
+    ]);
+
+    public static readonly IReadOnlyList<Migration> All =
+        [baseline, firstClassification, decisions, devices, resetLabelAttempts];
 
     public static int CurrentVersion(SqliteConnection connection) => CurrentVersion(connection, null);
 
