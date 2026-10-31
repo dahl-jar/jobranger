@@ -24,6 +24,8 @@ PROVIDER_PROMPT = TESTS / "TestData/Providers/prompt.json"
 PROVIDER_REQUESTS = GOLDEN / "Requests"
 BUDGET_ESTIMATES = GOLDEN / "Budget/estimates.json"
 MATCHING_INPUTS = TESTS / "TestData/Matching"
+RUN_PASS_INPUTS = TESTS / "TestData/RunPass"
+RUN_PASS_GOLDEN = GOLDEN / "RunPass/rows.json"
 SOURCE = GOLDEN / "SOURCE"
 DRIVERS: tuple[tuple[str, tuple[object, ...], str | None], ...] = (
     ("store_rows.py", ("--db", STORE_DB, "--out", STORE_ROWS), STORE_V2_COMMIT),
@@ -36,6 +38,7 @@ DRIVERS: tuple[tuple[str, tuple[object, ...], str | None], ...] = (
     ("budget_estimates.py", ("--out", BUDGET_ESTIMATES), None),
     ("matching.py", ("--inputs", MATCHING_INPUTS, "--out", GOLDEN), None),
     ("lax_typing.py", ("--inputs", MATCHING_INPUTS, "--out", GOLDEN), None),
+    ("run_pass.py", ("--inputs", RUN_PASS_INPUTS, "--out", RUN_PASS_GOLDEN), None),
 )
 
 log = logging.getLogger("export_goldens")

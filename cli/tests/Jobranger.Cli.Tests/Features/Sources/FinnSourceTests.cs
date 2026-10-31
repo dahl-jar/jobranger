@@ -102,6 +102,26 @@ public sealed class FinnSourceTests {
     }
 
     [Fact]
+    public async Task ShouldListJobTitles_WhenCategoryScanReadsDocs() {
+        FakeSiteHandler handler = Site([], [SearchDoc(2, ("job_title", "Utvikler")), SearchDoc(3, ("job_title", "Tester"))]);
+
+        SourceBatch batch = await source.FetchAsync(Context(handler), CancellationToken.None);
+
+        Assert.Equal(
+            ["finn:2=Utvikler", "finn:3=Tester"],
+            batch.JobTitles.Select(entry => $"{entry.Key}={entry.Value}").Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task ShouldListJobTitles_WhenRecentScanReadsDocs() {
+        FakeSiteHandler handler = Site([RecentDeveloperDoc(7, ("job_title", "Utvikler"))], [SearchDoc(2)]);
+
+        SourceBatch batch = await source.FetchAsync(Context(handler), CancellationToken.None);
+
+        Assert.Equal("Utvikler", batch.JobTitles.GetValueOrDefault("finn:7"));
+    }
+
+    [Fact]
     public async Task ShouldDropSeniorTitle_WhenScanningRecentAds() {
         JsonObject[] docs = [RecentDeveloperDoc(1, ("heading", "Senior backend-utvikler")), RecentDeveloperDoc(2)];
         FakeSiteHandler handler = Site(docs, [SearchDoc(9)]);

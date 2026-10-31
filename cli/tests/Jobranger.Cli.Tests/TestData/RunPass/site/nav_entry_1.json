@@ -1,0 +1,37 @@
+{
+  "uuid": "00000000-0000-4000-8000-0000000000a1",
+  "status": "ACTIVE",
+  "ad_content": {
+    "uuid": "00000000-0000-4000-8000-0000000000a1",
+    "published": "2026-10-05T08:00:00+00:00",
+    "expires": "2026-11-01T00:00:00+00:00",
+    "workLocations": [
+      {
+        "country": "NORGE",
+        "city": "Bergen",
+        "municipal": "Bergen"
+      }
+    ],
+    "title": "Java-utvikler",
+    "description": "<p>Java-utvikler hos Org One AS i Bergen. Du bygger tjenester i et lite team.</p>",
+    "sourceurl": "",
+    "applicationUrl": "https://apply.example.test/nav/1",
+    "occupationCategories": [
+      {
+        "level1": "IT",
+        "level2": "Utvikling"
+      }
+    ],
+    "categoryList": [
+      {
+        "categoryType": "STYRK08",
+        "code": "2512"
+      }
+    ],
+    "jobtitle": "Java-utvikler",
+    "link": "https://arbeidsplassen.nav.no/stillinger/stilling/00000000-0000-4000-8000-0000000000a1",
+    "employer": {
+      "name": "Org One AS"
+    }
+  }
+}

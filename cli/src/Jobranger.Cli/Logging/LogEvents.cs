@@ -80,4 +80,31 @@ internal static partial class LogEvents {
         Level = LogLevel.Warning,
         Message = "skipped feed item without guid, title or link source={Source}")]
     public static partial void TeamtailorItemSkipped(ILogger logger, string source);
+
+    [LoggerMessage(EventName = "run.locked", Level = LogLevel.Information, Message = "another run holds the run lock")]
+    public static partial void RunLocked(ILogger logger);
+
+    [LoggerMessage(
+        EventName = "classify.refreshed",
+        Level = LogLevel.Information,
+        Message = "cleared assessments made with an older prompt")]
+    public static partial void AssessmentsRefreshed(ILogger logger);
+
+    [LoggerMessage(
+        EventName = "classify.provider.failed",
+        Level = LogLevel.Warning,
+        Message = "model call failed, classification stopped failure={Failure}")]
+    public static partial void ClassifyProviderFailed(ILogger logger, string failure);
+
+    [LoggerMessage(
+        EventName = "apply.check.done",
+        Level = LogLevel.Information,
+        Message = "checked apply links checked={Checked} expired={Expired} unknown={Unknown} skipped={Skipped} blocked={Blocked}")]
+    public static partial void ApplyChecksDone(ILogger logger, int @checked, int expired, int unknown, int skipped, int blocked);
+
+    [LoggerMessage(
+        EventName = "apply.veto",
+        Level = LogLevel.Information,
+        Message = "expired an ad missing from its employer feed ad_id={AdId} source={Source}")]
+    public static partial void ApplyVetoed(ILogger logger, string adId, string source);
 }

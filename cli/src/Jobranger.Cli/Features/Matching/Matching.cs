@@ -1,4 +1,5 @@
 using System.Runtime.Versioning;
+using System.Text.Json.Nodes;
 using Jobranger.Cli.Config;
 using Microsoft.Extensions.Logging;
 
@@ -13,6 +14,9 @@ internal static class Matching {
         SystemPrompt.Build(guidance, limits, profileText, contextText);
 
     public static string AssessmentVersion(string system) => SystemPrompt.Version(system);
+
+    public static JsonObject SchemaFor(ProviderName provider) =>
+        JsonNode.Parse(provider == ProviderName.Anthropic ? AssessmentSchema.Anthropic : AssessmentSchema.OpenAI)!.AsObject();
 
     public static PromptText BuildPrompt(AdView ad, string system, DateOnly date, IReadOnlyList<PromptExample> examples) =>
         ClassifyPrompts.Build(ad, system, date, examples);

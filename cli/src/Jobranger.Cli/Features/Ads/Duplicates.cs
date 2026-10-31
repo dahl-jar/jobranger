@@ -57,6 +57,8 @@ internal static class Duplicates {
     public static bool CompaniesMatch(string left, string right) =>
         CompaniesMatch(AdProfile.CompanyTokens(left), AdProfile.CompanyTokens(right));
 
+    public static bool SameTitle(string left, string right) => AdProfile.Normalize(left) == AdProfile.Normalize(right);
+
     private static IEnumerable<int> Candidates(
         AdProfile profile,
         List<AdProfile> heads,
