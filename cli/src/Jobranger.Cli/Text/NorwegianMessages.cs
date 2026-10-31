@@ -3,6 +3,16 @@ using System.Globalization;
 namespace Jobranger.Cli.Text;
 
 internal sealed class NorwegianMessages : IMessages {
+    private static readonly string[] weekdays = ["søndag", "mandag", "tirsdag", "onsdag", "torsdag", "fredag", "lørdag"];
+
+    private static readonly string[] months = [
+        "januar", "februar", "mars", "april", "mai", "juni", "juli", "august", "september", "oktober", "november",
+        "desember",
+    ];
+
+    private static readonly string[] shortMonths =
+        ["jan", "feb", "mar", "apr", "mai", "jun", "jul", "aug", "sep", "okt", "nov", "des"];
+
     public string RootDescription =>
         "Finner stillingsannonser på FINN, NAV, LinkedIn og arbeidsgiveres jobbsider som passer profilen din.";
 
@@ -137,4 +147,119 @@ internal sealed class NorwegianMessages : IMessages {
     public string DatabaseTooNew => "Databasen er laget av en nyere jobranger. Oppdater jobranger og prøv igjen.";
 
     public string DatabaseUnreadable(string path) => $"Kan ikke lese jobranger-databasen i {path}.";
+
+    public Language Language => Language.Nb;
+
+    public string DigestSubject(int matches, string date) => $"jobranger: {matches} treff, {date}";
+
+    public string DigestLongDate(DateOnly day) =>
+        $"{weekdays[(int)day.DayOfWeek]} {day.Day}. {months[day.Month - 1]}";
+
+    public string DigestShortDate(DateOnly day) => $"{day.Day}.\u00A0{shortMonths[day.Month - 1]}";
+
+    public string DigestNoDate => "Ingen dato";
+
+    public string DigestDueNote(int? daysLeft) => daysLeft switch {
+        null => "søk tidlig",
+        0 => "i dag",
+        1 => "i morgen",
+        _ => $"om {daysLeft} dager",
+    };
+
+    public string DigestStrongLabel => "Passer godt";
+
+    public string DigestPartialLabel => "Passer delvis";
+
+    public string DigestOnRequestLabel => "Vist likevel";
+
+    public string DigestApplySoonTitle => "Søk denne uken";
+
+    public string DigestNewTodayTitle => "Nye i dag";
+
+    public string DigestCarriedTitle => "Venter fortsatt fra før";
+
+    public string DigestStrongFits(int count) => $"{count} {(count == 1 ? "godt treff" : "gode treff")}";
+
+    public string DigestPartialFits(int count) => $"{count} delvis treff";
+
+    public string DigestShownOnRequest(int count) =>
+        $"{count} {(count == 1 ? "annonse" : "annonser")} vist likevel";
+
+    public string DigestThisMorning => "i morges";
+
+    public string DigestThisAfternoon => "i ettermiddag";
+
+    public string DigestThisEvening => "i kveld";
+
+    public string DigestLead(string fits, string when, int newAds) =>
+        $"{fits} {when}, valgt ut blant {newAds} {(newAds == 1 ? "ny annonse" : "nye annonser")}.";
+
+    public string DigestNoNewMatches(string when, int newAds) =>
+        $"Ingen nye treff {when}, blant {newAds} {(newAds == 1 ? "ny annonse" : "nye annonser")}.";
+
+    public string DigestJoin(string items, string last) => $"{items} og {last}";
+
+    public string DigestMoreSources(int count) => $"{count} til";
+
+    public string DigestCareerPage => "Karriereside";
+
+    public string DigestCareerPageOf(string key) => $"karrieresiden til {key}";
+
+    public string DigestCareerPages(int count) => $"{count} {(count == 1 ? "karriereside" : "karrieresider")}";
+
+    public string DigestReadNote(string sources, bool overnight) =>
+        $"Leste {sources} {(overnight ? "i natt" : "i dag")}.";
+
+    public string DigestClosedNote(int count) =>
+        $"{count} {(count == 1 ? "tidligere stilling" : "tidligere stillinger")} er avsluttet siden forrige kjøring.";
+
+    public string DigestCouldNotRead(string sources) => $"Kunne ikke lese {sources}.";
+
+    public string DigestPausedNote(int pending) =>
+        $"AI-sjekkene er satt på pause til neste måned: {pending} {AdsWait(pending)}.";
+
+    public string DigestKeyRefusedNote(int pending) =>
+        $"AI-sjekkene stoppet: leverandøren avviste nøkkelen. {pending} {AdsWait(pending)}. "
+        + "Sett en ny nøkkel med: jobranger init";
+
+    public string DigestProviderDownNote(int pending) =>
+        $"AI-sjekkene stoppet: leverandøren svarte ikke. {pending} {AdsWait(pending)} på neste kjøring.";
+
+    public string DigestMoreOnWebsite => "til på nettsiden";
+
+    public string DigestMoreInReport => "til i jobranger report";
+
+    public string DigestOpenAd => "Åpne annonsen";
+
+    public string DigestMarkApplied => "Marker som søkt";
+
+    public string DigestNotForMe => "Ikke for meg";
+
+    public string DigestOpenApp => "Åpne jobranger";
+
+    public string DigestSettings => "Innstillinger";
+
+    public string DigestUnsubscribe => "Meld av";
+
+    public string DigestViewHidden => "vis";
+
+    public string DigestStopEmails => "Stopp disse e-postene: jobranger config edit";
+
+    public string HiddenLine(int total, string parts) => $"{total} {(total == 1 ? "skjult" : "skjulte")}: {parts}";
+
+    public string HiddenSenior(int count) => $"{count} senior";
+
+    public string HiddenMasters(int count) => $"{count} master";
+
+    public string HiddenRole(int count) => $"{count} {(count == 1 ? "annen rolle" : "andre roller")}";
+
+    public string HiddenPlace(int count) => $"{count} {(count == 1 ? "annet sted" : "andre steder")}";
+
+    public string HiddenOther(int count) => $"{count} {(count == 1 ? "annen grunn" : "andre grunner")}";
+
+    public string HiddenYearsAbove(int count, int cap) => $"{count} krever {cap}+ år";
+
+    public string HiddenYearsUnknown(int count) => $"{count} krever flere år";
+
+    private static string AdsWait(int pending) => pending == 1 ? "annonse venter" : "annonser venter";
 }

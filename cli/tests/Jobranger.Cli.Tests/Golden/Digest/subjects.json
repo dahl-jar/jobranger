@@ -1,0 +1,83 @@
+{
+  "empty": {
+    "subject": "jobranger: 0 matches, Thursday 8 October",
+    "ad_ids": []
+  },
+  "cut-for-size": {
+    "subject": "jobranger: 53 matches, Thursday 8 October",
+    "ad_ids": [
+      "finn:1",
+      "finn:new-1",
+      "finn:new-2",
+      "finn:new-3",
+      "finn:new-4",
+      "finn:new-5",
+      "finn:new-6",
+      "finn:new-7",
+      "finn:new-8",
+      "finn:new-9",
+      "finn:new-10",
+      "finn:new-11",
+      "finn:new-12",
+      "finn:new-13",
+      "finn:new-14",
+      "finn:new-15",
+      "finn:new-16",
+      "finn:new-17",
+      "finn:new-18",
+      "finn:new-19",
+      "finn:new-20",
+      "finn:new-21",
+      "finn:new-22",
+      "finn:new-23",
+      "finn:new-24",
+      "finn:new-25",
+      "finn:new-26",
+      "finn:new-27",
+      "finn:new-28",
+      "finn:new-29",
+      "finn:new-30"
+    ]
+  },
+  "email-only": {
+    "subject": "jobranger: 3 matches, Thursday 8 October",
+    "ad_ids": [
+      "finn:1",
+      "finn:2",
+      "finn:3"
+    ]
+  },
+  "website-on": {
+    "subject": "jobranger: 4 matches, Thursday 8 October",
+    "ad_ids": [
+      "finn:3",
+      "finn:2",
+      "finn:1",
+      "teamtailor:acme:4"
+    ]
+  },
+  "carried": {
+    "subject": "jobranger: 3 matches, Thursday 8 October",
+    "ad_ids": [
+      "finn:1",
+      "finn:2",
+      "finn:3"
+    ]
+  },
+  "budget-paused": {
+    "subject": "jobranger: 1 match, Thursday 8 October",
+    "ad_ids": [
+      "finn:1"
+    ]
+  },
+  "model-stopped": {
+    "subject": "jobranger: 1 match, Thursday 8 October",
+    "ad_ids": [
+      "finn:1"
+    ]
+  },
+  "failed-sources": {
+    "subject": "jobranger: 0 matches, Thursday 8 October",
+    "ad_ids": []
+  }
+}

@@ -58,7 +58,7 @@ internal static class Guidance {
         new(path, [new ConfigError(Path.GetFileName(path), problem)]);
 
     private static string Validated(string path, string text) {
-        string normalized = MatchText.Strip(text
+        string normalized = PythonUnicode.Strip(text
             .Replace(byteOrderMark, string.Empty, StringComparison.Ordinal)
             .Replace(windowsNewLine, newLine, StringComparison.Ordinal)
             .Replace(carriageReturn, newLine, StringComparison.Ordinal));

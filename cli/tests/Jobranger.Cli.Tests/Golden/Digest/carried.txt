@@ -1,0 +1,32 @@
+jobranger · Thursday 8 October
+
+One strong fit this morning, picked from 5 new ads.
+
+NEW TODAY
+
+20 Oct, in 12 days · ✓ Strong fit
+Company One
+Developer One
+Oslo · Backend · FINN
+Build backend services.
+Open the ad ↗: https://ads.example.test/job/1
+
+STILL WAITING FROM EARLIER
+
+15 Oct, in 7 days · ✓ Strong fit
+Company One
+Developer One
+Oslo · Backend · FINN
+Build backend services.
+Open the ad ↗: https://ads.example.test/job/1
+
+No date, apply early · ✓ Strong fit
+Company One
+Developer One
+Oslo · Backend · FINN
+Build backend services.
+Open the ad ↗: https://ads.example.test/job/1
+
+Read FINN and NAV overnight.
+One earlier job closed since the last run.
+Stop these emails: jobranger config edit
