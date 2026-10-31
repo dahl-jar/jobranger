@@ -16,6 +16,10 @@ on:
       - .github/actions/dotnet-setup/**
       - .github/workflows/relay.yml
       - .github/workflows/release-relay.yml
+      - "!dotnet/relay/**/*.md"
+      - "!dotnet/relay/tests/**"
+      - "!dotnet/relay/scripts/**"
+      - "!dotnet/relay/stryker-config.json"
   workflow_dispatch:
 
 permissions: {}

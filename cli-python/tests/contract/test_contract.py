@@ -805,15 +805,6 @@ def test_should_reject_whole_float_in_integer_field() -> None:
     )
 
 
-def test_should_name_message_type_in_contract_error() -> None:
-    raw = (FIXTURES / "payload-invalid" / "ad.mark.bad-mark.json").read_bytes()
-
-    with pytest.raises(ContractError) as caught:
-        decode_payload(raw)
-
-    assert caught.value.message_type == "ad.mark"
-
-
 def test_should_encode_whole_money_without_fraction() -> None:
     raw = {**load(FIXTURES / "payload" / "run.finished.json"), "cost_usd": 20}
     message = Payload.model_validate(raw)

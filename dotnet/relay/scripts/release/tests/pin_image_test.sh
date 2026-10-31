@@ -102,7 +102,7 @@ should_pin_tag_and_digest_in_versions_folder() {
   assert_contains "$(cat calls.log)" "$PWD/$pin_dir edit set image ghcr.io/${repository%%/*}/jobranger-relay=ghcr.io/$repository:sha-$commit@$digest"
 }
 
-should_commit_deploy_subject() {
+should_commit_with_deploy_subject() {
   run_stubbed "$commit" "$digest" >/dev/null
 
   assert_contains "$(cat calls.log)" "git commit -m Deploy jobranger-relay sha-$commit -- $pin_file"

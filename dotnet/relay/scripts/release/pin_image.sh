@@ -33,7 +33,6 @@ fi
 
 git config user.name jobranger-ci
 git config user.email jobranger-ci@users.noreply.github.com
-git add "$pin_file"
 git commit -m "Deploy jobranger-relay sha-$commit" -- "$pin_file"
 
 attempt=1
