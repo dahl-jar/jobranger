@@ -9,8 +9,8 @@ namespace Jobranger.Cli.Tests.Features.Link;
 
 public sealed class RelayLinkTests : IAsyncLifetime {
     private const double jitter = 0.1;
-    private const string connectedEvent = "link.relay.connected";
     private const string replacedMethod = "Replaced";
+    private const string notConnected = "relay link is not connected";
 
     private static readonly TimeSpan wait = TimeSpan.FromSeconds(15);
 
@@ -47,18 +47,15 @@ public sealed class RelayLinkTests : IAsyncLifetime {
 
     [Fact]
     public async Task ShouldUseFreshHandle_WhenReconnecting() {
-        running = link.RunAsync(stop.Token);
-        string browserHandle = await BrowserHandleAsync();
-        await using (BrowserHub before = await BrowserHub.ConnectAsync(relay.Address, browserHandle)) {
-            await before.WaitForCliAsync();
-        }
+        await ReconnectAsync();
 
-        await relay.RestartAsync();
-
-        await NextAsync<RelayEvent.Disconnected>();
-        await using BrowserHub after = await BrowserHub.ConnectAsync(relay.Address, browserHandle);
-        await after.WaitForCliAsync();
         Assert.True(handles.Count > 1);
+    }
+
+    [Fact]
+    public async Task ShouldLeaveHandlesOutOfLogs_WhenReconnecting() {
+        await ReconnectAsync();
+
         Assert.DoesNotContain(
             logger.Collector.GetSnapshot(),
             record => handles.Any(handle => record.Message.Contains(handle, StringComparison.Ordinal)));
@@ -94,13 +91,17 @@ public sealed class RelayLinkTests : IAsyncLifetime {
 
     [Fact]
     public async Task ShouldStopReconnecting_WhenCloseOvertakesReplaced() {
+        TaskCompletionSource entered = new();
         TaskCompletionSource heldForever = new();
         RelayLink held = new(
             new HubConnector(
                 relay.Address,
                 TimeProvider.System,
                 wait,
-                connection => connection.On(replacedMethod, () => heldForever.Task)),
+                connection => connection.On(replacedMethod, () => {
+                    entered.TrySetResult();
+                    return heldForever.Task;
+                })),
             NextHandleAsync,
             TimeProvider.System,
             () => jitter,
@@ -114,6 +115,7 @@ public sealed class RelayLinkTests : IAsyncLifetime {
             await other.ConnectAsync(await api.CliHandleAsync(keys.Signing, Token), Token);
 
         await running.WaitAsync(wait, Token);
+        await entered.Task.WaitAsync(wait, Token);
         Assert.Single(handles);
     }
 
@@ -133,7 +135,7 @@ public sealed class RelayLinkTests : IAsyncLifetime {
         running = link.RunAsync(stop.Token);
         await using BrowserHub browser = await BrowserHub.ConnectAsync(relay.Address, await BrowserHandleAsync());
         await browser.WaitForCliAsync();
-        await ConnectedAsync();
+        await RelayLinkLogs.ConnectedAsync(logger);
 
         await link.SendAsync(EnvelopeFixtures.Hello(keys.Channel.Value, EnvelopeFixtures.Sid), Token);
 
@@ -144,12 +146,14 @@ public sealed class RelayLinkTests : IAsyncLifetime {
     [Fact]
     public async Task ShouldRefuseSend_WhenRelayStopped() {
         running = link.RunAsync(stop.Token);
-        await ConnectedAsync();
+        await RelayLinkLogs.ConnectedAsync(logger);
         await relay.StopAsync();
         await NextAsync<RelayEvent.Disconnected>();
 
-        await Assert.ThrowsAsync<RelayUnavailableException>(
+        RelayUnavailableException refused = await Assert.ThrowsAsync<RelayUnavailableException>(
             () => link.SendAsync(EnvelopeFixtures.Hello(keys.Channel.Value, EnvelopeFixtures.Sid), Token));
+
+        Assert.Equal(notConnected, refused.Message);
     }
 
     [Fact]
@@ -170,8 +174,17 @@ public sealed class RelayLinkTests : IAsyncLifetime {
         return await BrowserHub.ClaimAsync(relay.Address, start.Code);
     }
 
-    private Task ConnectedAsync() =>
-        TestWaits.UntilAsync(() => logger.Collector.GetSnapshot().Any(record => record.Id.Name == connectedEvent));
+    private async Task ReconnectAsync() {
+        running = link.RunAsync(stop.Token);
+        string browserHandle = await BrowserHandleAsync();
+        await using (BrowserHub before = await BrowserHub.ConnectAsync(relay.Address, browserHandle)) {
+            await before.WaitForCliAsync();
+        }
+        await relay.RestartAsync();
+        await NextAsync<RelayEvent.Disconnected>();
+        await using BrowserHub after = await BrowserHub.ConnectAsync(relay.Address, browserHandle);
+        await after.WaitForCliAsync();
+    }
 
     private async Task<T> NextAsync<T>() where T : RelayEvent {
         while (true) {
