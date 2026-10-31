@@ -82,10 +82,12 @@ internal sealed class Delivery(
 
     private async Task<SendFailure?> SendAsync(
         EmailConfig email, RenderedDigest rendered, long? runId, CancellationToken cancellationToken) {
-        (string secretName, Func<string?, EmailAddresses, IEmailSender> createSender) = SenderFor(email, rendered, runId);
+        (string? secretName, Func<string?, EmailAddresses, IEmailSender> createSender) = SenderFor(email, rendered, runId);
         string? secret;
         try {
-            secret = await credentials.GetSecretAsync(secretName, cancellationToken).ConfigureAwait(false);
+            secret = secretName is null
+                ? null
+                : await credentials.GetSecretAsync(secretName, cancellationToken).ConfigureAwait(false);
         } catch (Exception error) when (error is SecretStoreUnavailableException or PrivateFileException) {
             return new SendFailure(SendFailureKind.SecretStore, messages.EmailSecretStore, error.GetType().Name);
         }
@@ -99,9 +101,10 @@ internal sealed class Delivery(
         return await sender.SendAsync(rendered, addresses, cancellationToken).ConfigureAwait(false);
     }
 
-    private (string SecretName, Func<string?, EmailAddresses, IEmailSender> CreateSender) SenderFor(
+    private (string? SecretName, Func<string?, EmailAddresses, IEmailSender> CreateSender) SenderFor(
         EmailConfig email, RenderedDigest rendered, long? runId) => email.Via == EmailVia.Resend
             ? (resendSecret, (apiKey, addresses) =>
                 new ResendSender(apiKey, IdempotencyKey.For(runId, rendered, addresses), transport, messages, time))
-            : (smtpSecret, (password, _) => new SmtpSender(email.SmtpUrl, email.SmtpUser, password, transport, messages, time));
+            : (string.IsNullOrEmpty(email.SmtpUser) ? null : smtpSecret,
+                (password, _) => new SmtpSender(email.SmtpUrl, email.SmtpUser, password, transport, messages, time));
 }

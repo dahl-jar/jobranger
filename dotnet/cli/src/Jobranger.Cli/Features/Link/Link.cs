@@ -58,6 +58,11 @@ internal sealed partial class Link : IAsyncDisposable {
 
     public IReadOnlyList<Device> Devices() => parts.Devices.List();
 
+    public IReadOnlyList<Device> DevicesWithIdPrefix(string idPrefix) =>
+        idPrefix.Length == 0
+            ? []
+            : [.. parts.Devices.List().Where(device => device.Id.StartsWith(idPrefix, StringComparison.Ordinal))];
+
     public string AddDevice(byte[] publicKey, string name, DateTimeOffset pairedAt) =>
         parts.Devices.Add(publicKey, name, pairedAt);
 

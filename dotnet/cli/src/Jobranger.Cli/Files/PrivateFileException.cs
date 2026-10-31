@@ -5,4 +5,6 @@ internal sealed class PrivateFileException(string path, string reason)
     public string Path { get; } = path;
 
     public string Reason { get; } = reason;
+
+    public bool IsUnreadable { get; init; }
 }

@@ -69,6 +69,33 @@ internal static partial class LogEvents {
         Message = "relay hub refused a pairing frame error_type={ErrorType}")]
     public static partial void PairingHubRefused(ILogger logger, string errorType);
 
+    [LoggerMessage(EventName = "devices.revoked", Level = LogLevel.Information, Message = "revoked a browser")]
+    public static partial void DevicesRevoked(ILogger logger);
+
+    [LoggerMessage(
+        EventName = "devices.unpaired",
+        Level = LogLevel.Information,
+        Message = "unpaired browsers removed={Removed}")]
+    public static partial void DevicesUnpaired(ILogger logger, int removed);
+
+    [LoggerMessage(
+        EventName = "devices.failed",
+        Level = LogLevel.Warning,
+        Message = "device command failed failure={Failure}")]
+    public static partial void DevicesFailed(ILogger logger, string failure);
+
+    [LoggerMessage(
+        EventName = "report.failed",
+        Level = LogLevel.Warning,
+        Message = "report failed failure={Failure}")]
+    public static partial void ReportFailed(ILogger logger, string failure);
+
+    [LoggerMessage(
+        EventName = "logs.failed",
+        Level = LogLevel.Warning,
+        Message = "logs failed failure={Failure}")]
+    public static partial void LogsFailed(ILogger logger, string failure);
+
     [LoggerMessage(
         EventName = "ashby.job.skipped",
         Level = LogLevel.Warning,

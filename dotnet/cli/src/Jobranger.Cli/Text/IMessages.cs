@@ -109,10 +109,6 @@ internal interface IMessages {
 
     string UnknownEvidenceDropped(int count);
 
-    string ConfigMissing { get; }
-
-    string FileUnreadable(string path);
-
     string PairDescription { get; }
 
     string PairAlreadyRunning { get; }
@@ -149,9 +145,63 @@ internal interface IMessages {
 
     string PairPaired(string agent);
 
+    string DevicesDescription { get; }
+
+    string DevicesListDescription { get; }
+
+    string DevicesRevokeDescription { get; }
+
+    string UnpairDescription { get; }
+
+    string DevicesNone { get; }
+
+    string DeviceLine(string id, string name, string pairedOn, string lastSeenOn);
+
+    string DeviceNeverSeen { get; }
+
+    string DevicesRevoked(string name);
+
+    string DevicesNoMatch(string id);
+
+    string DevicesAmbiguous(string id);
+
+    string SecretStoreFailed { get; }
+
+    string Unpaired(int count);
+
+    string UnpairNone { get; }
+
+    string UnpairKeysFailed { get; }
+
+    string UnpairKeysFileFailed(string path, string reason);
+
+    string UnpairKeysWriteFailed(string path, string reason);
+
     string DatabaseTooNew { get; }
 
     string DatabaseUnreadable(string path);
+
+    string DirNotWritable(string path);
+
+    string FileUnreadable(string path);
+
+    string ReportDescription { get; }
+
+    string ReportNoMatches { get; }
+
+    string ReportNoDate { get; }
+
+    string LogsDescription { get; }
+
+    string LogsNoRuns { get; }
+
+    string LogsMissing(int keepDays);
+
+    string ConfigMissing { get; }
+
+    string ProfileMissing(string path);
+
+    string FileAccessFailed { get; }
 
     Language Language { get; }
 

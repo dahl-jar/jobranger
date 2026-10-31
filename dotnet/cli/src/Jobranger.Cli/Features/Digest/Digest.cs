@@ -12,4 +12,6 @@ internal static class Digest {
         TerminalLines.HiddenLine(hidden, maxYears, messages);
 
     public static string SourcePhrase(string source, IMessages messages) => DigestSources.Phrase(source, messages);
+
+    public static string MatchLine(DigestCard card, IMessages messages) => TerminalLines.MatchLine(card, messages);
 }

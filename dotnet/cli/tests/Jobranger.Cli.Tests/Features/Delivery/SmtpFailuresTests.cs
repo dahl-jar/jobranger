@@ -72,6 +72,28 @@ public sealed class SmtpFailuresTests {
     }
 
     [Fact]
+    public void ShouldReportDisconnected_WhenConnectionBreaksAfterConnect() {
+        SendFailure failure = SmtpFailures.Of(new IOException(detail), quiet with { Connected = true }, messages);
+
+        Assert.Equal(SendFailureKind.SmtpDisconnected, failure.Kind);
+        Assert.Equal("The SMTP server at mail.example.test:587 closed the connection.", failure.Reason);
+    }
+
+    [Fact]
+    public void ShouldReportDisconnected_WhenSocketBreaksAfterConnect() {
+        SendFailure failure = SmtpFailures.Of(new SocketException(), quiet with { Connected = true }, messages);
+
+        Assert.Equal(SendFailureKind.SmtpDisconnected, failure.Kind);
+    }
+
+    [Fact]
+    public void ShouldNotBlameHostName_WhenArgumentErrorComesAfterConnect() {
+        SendFailure failure = SmtpFailures.Of(new ArgumentException(detail), quiet with { Connected = true }, messages);
+
+        Assert.Equal(SendFailureKind.SmtpFailed, failure.Kind);
+    }
+
+    [Fact]
     public void ShouldPreferDeadline_WhenSeveralFlagsAreSet() {
         SmtpSendState state = new(
             quiet.Server, quiet.Addresses, true, true, true, true, true, true);

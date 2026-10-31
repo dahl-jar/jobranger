@@ -19,6 +19,7 @@ internal sealed class SmtpSender(
     TimeProvider time) : IEmailSender {
     private const string localHello = "127.0.0.1";
     private const string canceledMessage = "the caller canceled the email send";
+    private const string unreadableChallengeMessage = "the SMTP server sent a login challenge that could not be read";
 
     public async Task<SendFailure?> SendAsync(
         RenderedDigest rendered,
@@ -73,10 +74,19 @@ internal sealed class SmtpSender(
             : new SendFailure(SendFailureKind.NonAsciiLogin, messages.EmailNonAsciiLogin);
     }
 
-    private async Task TransmitAsync(SmtpClient client, MimeMessage message, CancellationToken token) {
-        if (!string.IsNullOrEmpty(user) && !string.IsNullOrEmpty(password)) {
-            await client.AuthenticateAsync(user, password, token).ConfigureAwait(false);
+    private async Task LogInAsync(SmtpClient client, CancellationToken token) {
+        if (string.IsNullOrEmpty(user) || string.IsNullOrEmpty(password)) {
+            return;
         }
+        try {
+            await client.AuthenticateAsync(user, password, token).ConfigureAwait(false);
+        } catch (ArgumentException error) {
+            throw new AuthenticationException(unreadableChallengeMessage, error);
+        }
+    }
+
+    private async Task TransmitAsync(SmtpClient client, MimeMessage message, CancellationToken token) {
+        await LogInAsync(client, token).ConfigureAwait(false);
         await client.SendAsync(message, token).ConfigureAwait(false);
         await QuitAsync(client, token).ConfigureAwait(false);
     }

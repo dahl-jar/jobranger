@@ -5,7 +5,6 @@ using Jobranger.Cli.Features.Digest;
 using Jobranger.Cli.Features.Matching;
 using Jobranger.Cli.Features.Runs;
 using AdsEntry = Jobranger.Cli.Features.Ads.Ads;
-using CatalogueEntry = Jobranger.Cli.Catalogue.Catalogue;
 using MatchingEntry = Jobranger.Cli.Features.Matching.Matching;
 using RunsEntry = Jobranger.Cli.Features.Runs.Runs;
 
@@ -17,7 +16,7 @@ internal static class DigestInputs {
         AdsEntry ads, IReadOnlyList<RunRow> recentRuns, RunResult result, AppConfig config, DateTimeOffset ranAt) => new() {
             Cards = result.Version is string version ? Cards(ads, result, config.Targets, version) : [],
             CarriedIds = result.CarriedIds,
-            Hidden = [.. result.HiddenCounts.Select(hidden => new HiddenCount(GroupOf(hidden.Key), hidden.Value))],
+            Hidden = RunsEntry.ToHiddenCounts(result.HiddenCounts),
             NewAds = result.NewAds,
             SourcesRead = result.SourcesRead,
             FailedSources = result.FailedSources,
@@ -42,40 +41,8 @@ internal static class DigestInputs {
 
     private static DigestCard Card(IReadOnlyList<Ad> group, Targets targets, string version) {
         AdView view = MatchingEntry.PreferredAd([.. group.Select(RunsEntry.ToAdView)], version);
-        return new DigestCard {
-            Id = view.Id,
-            Source = view.Source,
-            Title = view.Title,
-            DisplayTitle = view.DisplayTitle,
-            Company = view.Company,
-            Location = view.Location,
-            Deadline = view.Deadline,
-            DeadlineDate = MatchingEntry.ParseDate(view.Deadline),
-            Url = group.First(ad => ad.Id == view.Id).Url,
-            Summary = view.Summary,
-            RoleLabel = CatalogueEntry.Load().RoleLabel(view.RoleType),
-            Fit = FitOf(MatchingEntry.DisplayFit(view, targets)),
-            IsStrongMatch = MatchingEntry.IsStrongMatch(view),
-            ApplyExpired = view.ApplyStatus == WireNames.Of(ApplyStatus.Expired),
-        };
+        return RunsEntry.ToDigestCard(view, group.First(ad => ad.Id == view.Id).Url, targets);
     }
-
-#pragma warning disable CS8524
-    private static HiddenGroup GroupOf(HiddenKind kind) => kind switch {
-        HiddenKind.Senior => HiddenGroup.Senior,
-        HiddenKind.Years => HiddenGroup.Years,
-        HiddenKind.Masters => HiddenGroup.Masters,
-        HiddenKind.Role => HiddenGroup.Role,
-        HiddenKind.Place => HiddenGroup.Place,
-        HiddenKind.Other => HiddenGroup.Other,
-    };
-
-    private static DigestFit FitOf(DisplayFit fit) => fit switch {
-        DisplayFit.Strong => DigestFit.Strong,
-        DisplayFit.Partial => DigestFit.Partial,
-        DisplayFit.OnRequest => DigestFit.OnRequest,
-    };
-#pragma warning restore CS8524
 
     private static int ClosedSinceLast(AdsEntry ads, IReadOnlyList<RunRow> recentRuns, long? runId) =>
         recentRuns.FirstOrDefault(run => run.Id != runId) is RunRow previous ? (int)ads.ClosedSince(previous.StartedAt) : 0;

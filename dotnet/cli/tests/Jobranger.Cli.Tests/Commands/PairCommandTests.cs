@@ -5,6 +5,8 @@ using System.Runtime.Versioning;
 using System.Text;
 using Jobranger.Cli.Commands;
 using Jobranger.Cli.Features.Link;
+using Jobranger.Cli.Files;
+using Jobranger.Cli.Secrets;
 using Jobranger.Cli.Storage;
 using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Cli.Text;
@@ -18,21 +20,15 @@ namespace Jobranger.Cli.Tests.Commands;
 public sealed class PairCommandTests : IDisposable {
     private const string unreachable = "Cannot reach the jobranger relay. Check your connection and try again.";
     private const int corruptBytes = 4096;
+    private const UnixFileMode readOnlyDir = UnixFileMode.UserRead | UnixFileMode.UserExecute;
 
     private readonly TempDir temp = new();
     private readonly RecordingConsole console = new();
     private readonly Hashtable environment;
 
     public PairCommandTests() {
-        environment = new Hashtable {
-            ["HOME"] = temp.Path,
-            ["LANG"] = Locales.English,
-            ["JOBRANGER_CONFIG_DIR"] = Path.Combine(temp.Path, "config"),
-            ["JOBRANGER_DATA_DIR"] = Path.Combine(temp.Path, "data"),
-            ["JOBRANGER_STATE_DIR"] = Path.Combine(temp.Path, "state"),
-            ["JOBRANGER_SECRET_STORE"] = "file",
-            ["JOBRANGER_RELAY_URL"] = $"http://127.0.0.1:{ClosedPort()}",
-        };
+        environment = CommandFixtures.Environment(temp, Locales.English);
+        environment["JOBRANGER_RELAY_URL"] = $"http://127.0.0.1:{ClosedPort()}";
     }
 
     public void Dispose() {
@@ -83,6 +79,65 @@ public sealed class PairCommandTests : IDisposable {
         Assert.Equal((CliExitCodes.Failure, string.Format(line, DatabasePath())), (exit, console.Output.TrimEnd()));
     }
 
+    [Fact]
+    public async Task ShouldPrintDatabaseUnreadable_WhenDatabaseIsSymlink() {
+        string target = temp.File("target.db");
+        File.WriteAllBytes(target, []);
+        File.CreateSymbolicLink(DatabasePath(), target);
+
+        int exit = await RunAsync();
+
+        Assert.Equal(
+            (CliExitCodes.Failure, $"Cannot read the jobranger database at {DatabasePath()}."),
+            (exit, console.Output.TrimEnd()));
+    }
+
+    [Fact]
+    public async Task ShouldPrintFileUnreadable_WhenPairLockHasNoPermissions() {
+        string lockPath = new Paths(environment).PairLockPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(lockPath)!);
+        File.WriteAllBytes(lockPath, []);
+        File.SetUnixFileMode(lockPath, UnixFileMode.None);
+
+        int exit = await RunAsync();
+
+        Assert.Equal((CliExitCodes.Failure, $"Cannot read {lockPath}."), (exit, console.Output.TrimEnd()));
+        string log = LogText();
+        Assert.Contains("pairing.failed", log, StringComparison.Ordinal);
+        Assert.Contains("file_unreadable", log, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldPrintDirNotWritable_WhenDataFolderCannotBeMade() {
+        string parent = temp.File("read-only");
+        Directory.CreateDirectory(parent);
+        File.SetUnixFileMode(parent, readOnlyDir);
+        string data = Path.Combine(parent, "data");
+        environment["JOBRANGER_DATA_DIR"] = data;
+
+        int exit = await RunAsync();
+
+        Assert.Equal(
+            (CliExitCodes.Failure,
+                $"Cannot create or use the folder {data}. Make it and the folders above it writable, then try again."),
+            (exit, console.Output.TrimEnd()));
+        string log = LogText();
+        Assert.Contains("pairing.failed", log, StringComparison.Ordinal);
+        Assert.Contains("dir_not_writable", log, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldPrintSecretStoreFailed_WhenStoreDoesNotAnswer() {
+        int exit = await RunAsync(
+            inputRedirected: true,
+            (_, _, _, _, _, _) => Task.FromException<Link>(new SecretStoreUnavailableException("link-keys", "timeout")));
+
+        Assert.Equal(
+            (CliExitCodes.Failure, "The secret store did not answer. Unlock it and try again."),
+            (exit, console.Output.TrimEnd()));
+        Assert.Contains("pairing.failed", LogText(), StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(false, true)]
     [InlineData(true, false)]
@@ -106,12 +161,15 @@ public sealed class PairCommandTests : IDisposable {
 
     private Task<int> RunAsync() => RunAsync(inputRedirected: true, Link.OpenAsync);
 
-    private Task<int> RunAsync(bool inputRedirected, PairCommand.LinkOpener openLink) {
+    private Task<int> RunAsync(bool inputRedirected, LinkCommandRun.LinkOpener openLink) {
         CliServices services = CliServices.Create(TimeProvider.System, console.Console, console.ErrorConsole, environment);
         System.CommandLine.RootCommand root =
             [new PairCommand(services, environment, TimeProvider.System, inputRedirected, openLink)];
         return root.Parse([PairCommand.CommandName]).InvokeAsync(null, TestContext.Current.CancellationToken);
     }
+
+    private string LogText() =>
+        File.ReadAllText(Assert.Single(Directory.GetFiles(Path.Combine(temp.Path, "state", "logs"))));
 
     private string DatabasePath() {
         string dataDir = Path.Combine(temp.Path, "data");

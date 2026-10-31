@@ -2,8 +2,6 @@ using System.Globalization;
 using Jobranger.Cli.Catalogue;
 using Jobranger.Cli.Config;
 using Jobranger.Cli.Features.Ads;
-using Jobranger.Cli.Features.Matching;
-using Jobranger.Cli.Features.Profiles;
 using Jobranger.Cli.Features.Sources;
 using Jobranger.Cli.Files;
 using Jobranger.Cli.Logging;
@@ -11,8 +9,6 @@ using Microsoft.Extensions.Logging;
 using AdsEntry = Jobranger.Cli.Features.Ads.Ads;
 using BudgetEntry = Jobranger.Cli.Features.Budget.Budget;
 using CatalogueEntry = Jobranger.Cli.Catalogue.Catalogue;
-using MatchingEntry = Jobranger.Cli.Features.Matching.Matching;
-using ProfilesEntry = Jobranger.Cli.Features.Profiles.Profiles;
 using SourcesEntry = Jobranger.Cli.Features.Sources.Sources;
 
 namespace Jobranger.Cli.Features.Runs;
@@ -38,7 +34,7 @@ internal sealed class RunPass(
         Progress progress = new();
         RunStatus status = RunStatus.Failed;
         try {
-            PromptSetup prompt = Setup(request.Config);
+            PromptSetup prompt = PromptSetup.Load(request.Config, paths);
             progress.Version = prompt.Version;
             try {
                 status = await StagesAsync(request, model, prompt, started, today, progress, cancellationToken)
@@ -74,20 +70,6 @@ internal sealed class RunPass(
             UnpricedLimit = model is RunModel used && BudgetEntry.UnpricedLimit(request.Config, used.Prices),
             Version = progress.Version,
         };
-    }
-
-    private PromptSetup Setup(AppConfig config) {
-        Profile profile = ProfilesEntry.Load(config.Profile.Path);
-        UserContext context = ProfilesEntry.LoadContext(paths.ContextPath());
-        IReadOnlySet<string> evidence = ProfilesEntry.CandidateEvidence(profile, context, paths.ContextPath());
-        GuidanceText guidance = MatchingEntry.LoadGuidance(paths.GuidancePath());
-        string system = MatchingEntry.BuildSystem(
-            guidance.Text,
-            MatchingEntry.LimitRules(config.Targets.Limits),
-            ProfilesEntry.Text(profile),
-            ProfilesEntry.ContextText(context));
-        return new PromptSetup(
-            system, MatchingEntry.AssessmentVersion(system), evidence, ProfilesEntry.EducationIds(profile));
     }
 
     private async Task<RunStatus> StagesAsync(

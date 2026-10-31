@@ -16,7 +16,7 @@ internal sealed class HelpAction(IAnsiConsole console, IMessages messages) : Syn
         (string Names, string Description)[] options = [.. command.Options
             .Where(option => !option.Hidden)
             .Select(option => (Names(option), option.Description ?? string.Empty))];
-        int width = options.Max(option => option.Names.Length);
+        int width = options.Select(option => option.Names.Length).DefaultIfEmpty().Max();
         TextWriter output = console.Profile.Out.Writer;
 
         output.WriteLine(messages.DescriptionHeading);

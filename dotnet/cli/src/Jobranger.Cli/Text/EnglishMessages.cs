@@ -130,10 +130,6 @@ internal sealed class EnglishMessages : IMessages {
         $"{count} {(count == 1 ? "ad was" : "ads were")} dropped because the AI cited something that is not in your profile. "
         + "Check your guidance.";
 
-    public string ConfigMissing => "No config yet. Set up with: jobranger init";
-
-    public string FileUnreadable(string path) => $"Cannot read {path}.";
-
     public string PairDescription => "Connect the website to this machine.";
 
     public string PairAlreadyRunning => "Pairing is already running in another terminal.";
@@ -171,9 +167,72 @@ internal sealed class EnglishMessages : IMessages {
 
     public string PairPaired(string agent) => $"\u2713 Paired with {agent}.";
 
+    public string DevicesDescription => "Show or remove paired browsers.";
+
+    public string DevicesListDescription => "List paired browsers.";
+
+    public string DevicesRevokeDescription => "Remove one paired browser.";
+
+    public string UnpairDescription => "Remove every paired browser.";
+
+    public string DevicesNone => "No paired browsers. Pair one with: jobranger pair";
+
+    public string DeviceLine(string id, string name, string pairedOn, string lastSeenOn) =>
+        $"{id}  {name}  paired {pairedOn}  last seen {lastSeenOn}";
+
+    public string DeviceNeverSeen => "never";
+
+    public string DevicesRevoked(string name) => $"\u2713 Revoked {name}.";
+
+    public string DevicesNoMatch(string id) => $"No browser with id {id}.";
+
+    public string DevicesAmbiguous(string id) =>
+        $"More than one browser has an id that starts with {id}. Nothing was revoked. Use more of the id.";
+
+    public string SecretStoreFailed => "The secret store did not answer. Unlock it and try again.";
+
+    public string Unpaired(int count) =>
+        $"\u2713 Unpaired {count} {(count == 1 ? "browser" : "browsers")}. "
+        + "The website can no longer reach this machine.";
+
+    public string UnpairNone => "No paired browsers.";
+
+    public string UnpairKeysFailed => "New link keys could not be made. Run jobranger unpair again.";
+
+    public string UnpairKeysFileFailed(string path, string reason) =>
+        $"New link keys could not be made because jobranger cannot use {path} ({reason}). "
+        + "Fix or remove that file, then run jobranger unpair again.";
+
+    public string UnpairKeysWriteFailed(string path, string reason) =>
+        $"New link keys could not be made because jobranger cannot change {path} ({reason}). "
+        + "Make that file and its folder readable and writable, then run jobranger unpair again.";
+
     public string DatabaseTooNew => "The database was made by a newer jobranger. Update jobranger and try again.";
 
     public string DatabaseUnreadable(string path) => $"Cannot read the jobranger database at {path}.";
+
+    public string DirNotWritable(string path) =>
+        $"Cannot create or use the folder {path}. Make it and the folders above it writable, then try again.";
+
+    public string FileUnreadable(string path) => $"Cannot read {path}.";
+
+    public string ReportDescription => "Show your open matches.";
+
+    public string ReportNoMatches => "No matches yet. Run one with: jobranger run";
+
+    public string ReportNoDate => "no date";
+
+    public string LogsDescription => "Show the log lines from the last run.";
+
+    public string LogsNoRuns => "No runs yet. Run one with: jobranger run";
+
+    public string LogsMissing(int keepDays) => $"No log lines for the last run. Logs are kept for {keepDays} days.";
+
+    public string ConfigMissing => "No config yet. Set up with: jobranger init";
+
+    public string ProfileMissing(string path) => $"No profile file at {path}. Set up with: jobranger init";
+
+    public string FileAccessFailed => "Cannot read a jobranger file. Check the folder permissions.";
 
     public Language Language => Language.En;
 

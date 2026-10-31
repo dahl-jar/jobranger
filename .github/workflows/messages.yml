@@ -74,5 +74,5 @@ jobs:
       - name: Check payload records cover the schema
         working-directory: dotnet
         run: dotnet test --project messages/tests/Jobranger.Messaging.Tests -c Release --no-restore --filter-method "*.ShouldCoverEverySchemaProperty_WhenPayloadRecordsAreChecked" --minimum-expected-tests 1
-      - run: dotnet test --project messages/tests/Jobranger.Messaging.Tests -c Release --no-restore --minimum-expected-tests 568
+      - run: dotnet test --project messages/tests/Jobranger.Messaging.Tests -c Release --no-restore --minimum-expected-tests 569
         working-directory: dotnet

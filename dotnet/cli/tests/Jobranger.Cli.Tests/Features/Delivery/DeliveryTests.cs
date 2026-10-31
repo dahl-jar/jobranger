@@ -17,6 +17,7 @@ namespace Jobranger.Cli.Tests.Features.Delivery;
 
 [UnsupportedOSPlatform("windows")]
 public sealed class DeliveryTests : IDisposable {
+    private const string corruptSecrets = "not json";
     private const int cutAdCount = 400;
     private const int summaryLength = 280;
 
@@ -288,7 +289,7 @@ public sealed class DeliveryTests : IDisposable {
 
     [Fact]
     public async Task ShouldReturnFailure_WhenSecretsFileIsCorrupt() {
-        File.WriteAllText(DeliveryFixtures.SecretsPath(db), "not json");
+        File.WriteAllText(DeliveryFixtures.SecretsPath(db), corruptSecrets);
         FakeLogger logger = new();
         DeliveryEntry delivery = DeliveryFixtures.Create(
             db, DeliveryTransport.Production, time, DeliveryFixtures.Credentials(db, new Hashtable()), logger: logger);
@@ -298,6 +299,28 @@ public sealed class DeliveryTests : IDisposable {
         FakeLogRecord record = logger.Collector.GetSnapshot().Single(entry => entry.Id.Name == "email.failed");
         Assert.Equal(new EnglishMessages().EmailSecretStore, result.EmailError);
         Assert.Equal(nameof(PrivateFileException), record.GetStructuredStateValue("ErrorType"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public async Task ShouldSendMail_WhenSecretsFileIsCorruptAndNoLoginIsSet(string? login) {
+        await using FakeSmtpServer server = FakeSmtpServer.Accepting();
+
+        DeliveryResult result = await DeliverWithCorruptSecretsAsync(server, login);
+
+        Assert.Equal(DeliveryFixtures.Address, result.EmailTo);
+    }
+
+    [Fact]
+    public async Task ShouldReturnFailure_WhenSecretsFileIsCorruptAndLoginIsSet() {
+        await using FakeSmtpServer server = FakeSmtpServer.Accepting();
+
+        DeliveryResult result = await DeliverWithCorruptSecretsAsync(server, "user");
+
+        Assert.Equal(new EnglishMessages().EmailSecretStore, result.EmailError);
+        Assert.Empty(server.Commands);
+        Assert.Empty(DeliveryFixtures.ReportedIds(db));
     }
 
     [Fact]
@@ -403,6 +426,21 @@ public sealed class DeliveryTests : IDisposable {
             return created;
         });
         return DeliveryFixtures.Create(db, transport, time, DeliveryFixtures.WithResendKey(db));
+    }
+
+    private Task<DeliveryResult> DeliverWithCorruptSecretsAsync(FakeSmtpServer server, string? login) {
+        File.WriteAllText(DeliveryFixtures.SecretsPath(db), corruptSecrets);
+        DeliveryEntry delivery = DeliveryFixtures.Create(
+            db, SmtpCertificates.Trusting, time, DeliveryFixtures.Credentials(db, new Hashtable()));
+        EmailConfig email = new() {
+            On = true,
+            Address = DeliveryFixtures.Address,
+            SmtpUrl = server.Url("smtp"),
+            SmtpUser = login,
+        };
+        return delivery.DeliverAsync(
+            DeliveryFixtures.Config(email), DeliveryFixtures.Result(StoredAd(1)), TestContext.Current.CancellationToken)
+            .WaitAsync(TestWaits.Step, TestContext.Current.CancellationToken);
     }
 
     private Ad StoredAd(int index) =>

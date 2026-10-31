@@ -43,7 +43,7 @@ commit() {
 }
 
 tagged_repo() {
-  git init -q
+  git init -q -b trunk
   commit 1
   local tag
   for tag in "$@"; do
@@ -173,7 +173,7 @@ should_use_merged_pr_title_when_pr_title_empty() {
 }
 
 should_use_commit_subject_when_no_merged_pr() {
-  git init -q
+  git init -q -b trunk
   commit 'feat: commit subject'
   echo '[]' >none.json
   stub_gh "$PWD/none.json"
@@ -182,7 +182,7 @@ should_use_commit_subject_when_no_merged_pr() {
 }
 
 should_release_initial_version_when_no_cli_tag_exists() {
-  git init -q
+  git init -q -b trunk
   commit 1
 
   assert_eq "$(printf 'version=0.1.0\nprevious=')" "$(next_of 'fix: x')"
@@ -217,8 +217,8 @@ should_bump_major_for_breaking_title_from_1_0() {
 
 should_skip_commit_already_in_a_release() {
   mkdir rerun older
-  (cd rerun && git init -q && commit 1 && git tag cli-v0.2.0)
-  (cd older && git init -q && commit 1 && commit 2 && git tag cli-v0.3.0)
+  (cd rerun && git init -q -b trunk && commit 1 && git tag cli-v0.2.0)
+  (cd older && git init -q -b trunk && commit 1 && commit 2 && git tag cli-v0.3.0)
 
   (cd rerun && assert_skipped HEAD)
   (cd older && assert_skipped HEAD~1)
