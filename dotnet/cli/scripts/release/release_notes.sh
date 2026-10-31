@@ -12,10 +12,10 @@ section_of() {
       if (line ~ /^[ \t]*(```|~~~)/) {
         fenced = !fenced
       } else if (!fenced && line ~ /^## /) {
-        if (in_section) { exit }
+        if (in_section) { done = 1 }
         if (line == heading) { in_section = 1; next }
       }
-      if (!in_section) { next }
+      if (!in_section || done) { next }
       if (line == "" && !fenced) {
         if (started) { blanks++ }
         next
