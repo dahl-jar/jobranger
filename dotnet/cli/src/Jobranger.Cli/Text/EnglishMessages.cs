@@ -320,6 +320,68 @@ internal sealed class EnglishMessages : IMessages {
 
     public string HiddenYearsUnknown(int count) => $"{count} need more yrs";
 
+    public string EmailMissingAddress => "No email address is set. Add one with: jobranger init";
+
+    public string EmailMissingSmtpUrl => "No SMTP server is set. Add one with: jobranger init";
+
+    public string EmailMissingSmtpPassword => "No SMTP password is stored. Add one with: jobranger init";
+
+    public string EmailMissingResendKey => "No Resend API key is stored. Add one with: jobranger init";
+
+    public string EmailUnusableAddress => "The email address or sender in the config cannot be used.";
+
+    public string EmailInvalidSmtpUrl => "The SMTP server must look like smtps://host:465 or smtp://host:587.";
+
+    public string EmailNonAsciiLogin => "The SMTP username and password must be plain ASCII.";
+
+    public string EmailNoStarttls(string host, int port) => $"The SMTP server at {host}:{port} does not offer STARTTLS.";
+
+    public string EmailNotSmtp(string host, int port) => $"The server at {host}:{port} is not an SMTP server.";
+
+    public string EmailSmtpLoginFailed(string host, int port) => $"SMTP login to {host}:{port} failed.";
+
+    public string EmailSmtpRecipientRefused(string to) => $"The server refused {to}.";
+
+    public string EmailSmtpSenderRefused(string sender) => $"The server refused the sender {sender}.";
+
+    public string EmailSmtpStatus(int status) => $"The SMTP server answered {status}.";
+
+    public string EmailSmtpUnsupported(string host, int port) => $"The SMTP server at {host}:{port} does not support login or this address.";
+
+    public string EmailTlsCertificate(string host) => $"Could not verify the TLS certificate of {host}.";
+
+    public string EmailTlsFailed(string host, int port) => $"TLS with {host}:{port} failed.";
+
+    public string EmailSmtpDisconnected(string host, int port) => $"The SMTP server at {host}:{port} closed the connection.";
+
+    public string EmailSmtpReplyTooLong(string host, int port) => $"The SMTP server at {host}:{port} sent a reply that is too long.";
+
+    public string EmailInvalidHost(string host) => $"The SMTP server name {host} is not a valid host name.";
+
+    public string EmailSmtpUnreachable(string host, int port) => $"Could not reach {host}:{port}.";
+
+    public string EmailSmtpFailed(string host, int port) => $"The email could not be sent through {host}:{port}.";
+
+    public string EmailStalled(string host, int port) => $"The SMTP server at {host}:{port} stopped answering.";
+
+    public string EmailSmtpTooSlow(string host, int port, int seconds) => $"The SMTP server at {host}:{port} took longer than {seconds} s, so the send was stopped.";
+
+    public string EmailResendKeyRefused => "Resend refused the key.";
+
+    public string EmailUnusableResendKey => "The stored Resend API key has characters an API key cannot have. Add one with: jobranger init";
+
+    public string EmailResendRedirect(int status) => $"Resend answered with a redirect ({status}), so the email was not sent.";
+
+    public string EmailResendStatus(int status) => $"Resend answered {status}.";
+
+    public string EmailResendTimeout => "Resend did not answer in time.";
+
+    public string EmailResendUnreachable => "Could not reach Resend.";
+
+    public string EmailResendTooSlow(int seconds) => $"Resend took longer than {seconds} s, so the send was stopped.";
+
+    public string EmailSecretStore => "The email password or key could not be read from the secret store.";
+
     private static string Number(int count) => count < numberWords.Length ? numberWords[count] : $"{count}";
 
     private static string Capitalized(string text) =>
