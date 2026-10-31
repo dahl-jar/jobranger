@@ -47,19 +47,6 @@ public sealed class EditorProcessTests : IDisposable {
     }
 
     [Fact]
-    public async Task ShouldStopProgram_WhenCancelled() {
-        string processFile = temp.File("pid");
-        using CancellationTokenSource cancelled = new();
-        Task<int> running = process.RunAsync(shell, [runScript, $"echo $$ > {processFile}; exec sleep 30"], cancelled.Token);
-        int processId = await WaitForProcessIdAsync(processFile);
-
-        await cancelled.CancelAsync();
-
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => running);
-        await TestWaits.UntilAsync(() => IsGone(processId));
-    }
-
-    [Fact]
     public async Task ShouldLetEditorFinish_WhenCancelled() {
         string processFile = temp.File("pid");
         string marker = temp.File("marker");

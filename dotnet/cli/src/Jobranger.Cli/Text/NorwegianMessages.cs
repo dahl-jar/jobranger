@@ -245,7 +245,7 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string NoChanges => "Ingen endringer.";
 
-    public string EditorFailedSave => "Redigeringsprogrammet avsluttet med en feil. Lagre endringene? (j/N) ";
+    public string SaveAfterFailure => "Redigeringsprogrammet avsluttet med en feil. Lagre endringene? (j/N) ";
 
     public string EditorFailedExit => "✕ Redigeringsprogrammet avsluttet med en feil. Ingenting ble lagret.";
 

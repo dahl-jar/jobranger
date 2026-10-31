@@ -215,7 +215,7 @@ internal interface IMessages {
 
     string NoChanges { get; }
 
-    string EditorFailedSave { get; }
+    string SaveAfterFailure { get; }
 
     string EditorFailedExit { get; }
 

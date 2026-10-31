@@ -113,7 +113,7 @@ internal sealed class EditSession(CliServices services, EditServices editService
     }
 
     private async Task<bool> WantsSaveAfterFailureAsync() =>
-        await AskAsync(messages.EditorFailedSave).ConfigureAwait(false) is string answer
+        await AskAsync(messages.SaveAfterFailure).ConfigureAwait(false) is string answer
             && messages.EditYesAnswers.Contains(answer.Trim(), StringComparer.OrdinalIgnoreCase);
 
     private async Task<string?> AskAsync(string question) {

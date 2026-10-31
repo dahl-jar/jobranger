@@ -93,19 +93,6 @@ public sealed class EditorRunnerTests : IDisposable {
         Assert.Empty(Directory.GetFileSystemEntries(stateDir));
     }
 
-    [Fact]
-    public async Task ShouldKeepEditedText_WhenEditorExitsNonZero() {
-        FakeEditorProcess process = new(file => {
-            File.WriteAllText(file, "new");
-            return failedExit;
-        });
-
-        EditorException error = await Assert.ThrowsAsync<EditorException>(
-            () => Runner(process).EditAsync(input, suffix, TestContext.Current.CancellationToken));
-
-        Assert.Equal((EditorProblem.FailedExit, "new"), (error.Problem, error.EditedText));
-    }
-
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

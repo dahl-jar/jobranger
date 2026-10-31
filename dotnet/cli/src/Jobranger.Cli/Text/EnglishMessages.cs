@@ -241,7 +241,7 @@ internal sealed class EnglishMessages : IMessages {
 
     public string NoChanges => "No changes.";
 
-    public string EditorFailedSave => "The editor exited with an error. Save your changes? (y/N) ";
+    public string SaveAfterFailure => "The editor exited with an error. Save your changes? (y/N) ";
 
     public string EditorFailedExit => "✕ The editor exited with an error. Nothing was saved.";
 
