@@ -22,6 +22,10 @@ fit. Distinguish mandatory wording (must, required, krav, må) from preferences
 (preferred, desirable, ønskelig, en fordel). Do not turn preferences into blockers.
 Honor explicit alternatives such as bachelor's OR master's, equivalent experience,
 or training provided; do not invent an alternative when none is offered.
+Items listed under headings such as "Vi ser etter deg som har", "Kvalifikasjoner",
+"Krav", "Må ha", "Requirements", "You have" or "Who are you" are mandatory unless
+the item itself uses preference wording (gjerne, helst, fordel, ønskelig,
+preferred, a plus, nice to have).
 
 Set required_experience_years to the lowest explicitly accepted number of
 mandatory professional years, not a preferred number, study year, graduation
@@ -30,6 +34,11 @@ including "ingen krav til antall år" and explicit acceptance of new graduates.
 Use null only when the ad gives no experience policy at all. For a 2-4 year
 range use 2; for more than 2 years use a value above 2 (e.g. 2.5). If graduates
 are explicitly accepted as an alternative, use 0.
+Stated years count even under a heading with a preference word: "Vi ser gjerne
+at du har minimum 3 års erfaring", or "minimum 5 års relevant arbeidserfaring"
+under "Vi søker deg som har", sets required_experience_years to that number.
+Only a preference word on the years item itself, as in "3 års erfaring er en
+fordel", makes the years a gap.
 Higher preferred years are gaps, not required_experience_years or senior labels.
 Generic titles such as Utvikler, Developer and Software Engineer are eligible
 when the actual requirements fit the search limits. A level in the title is not
@@ -45,20 +54,28 @@ These are unsuitable even when they mention code or scripting:
   systems (archive, ERP, CRM, case handling) rather than developing software;
 - roles where customer meetings, demos, sales, pricing or business development
   are a primary part of the job.
+Roles whose core work is building reports, dashboards or semantic models in a BI
+tool are non-coding analysis and unsuitable, even when SQL or Python appear.
+Roles paid only in equity or fees, such as an eierandel through an aksjeavtale
+or honorar etter avtale with no salary, are unsuitable. Name the missing salary
+as the blocker.
 
 - strong: core work is supported, mandatory technical/education/experience
   qualifications are met, and there are no gaps, blockers or unverified personal
   requirements. Cite specific evidence for the actual work.
 Gaps list only preferred or stated qualifications the profile does not show,
-including personal requirements the ad states. Never list something the ad does
-not ask for, such as a duty of the role that names no qualification.
+including personal requirements the ad states that the profile and candidate
+notes do not answer. Never list something the ad does not ask for, such as a
+duty of the role that names no qualification.
 - stretch: core work is supported, no mandatory technical/education/experience
   qualification is missing, but a preference or personal requirement needs
-  checking. Name the gap. Unverified language, clearance, citizenship, travel
-  or licence requirements must be explicit gaps, never silently assumed met.
-- unsuitable: a mandatory degree, years of professional experience, specialist
-  platform, certification or technical skill is not documented; the core work
-  has no evidence; or the role is primarily low-code. Name the blocker.
+  checking. Name the gap. Language, clearance, citizenship, travel or licence
+  requirements the profile and candidate notes do not answer are explicit gaps,
+  never silently assumed met.
+- unsuitable: the candidate does not have a mandatory degree, years of
+  professional experience, specialist platform, certification or technical
+  skill; the core work has no evidence; or the role is primarily low-code. Name
+  the blocker.
 - unknown: the ad lacks enough role/qualification information to assess.
   Missing technical qualifications in a complete ad are unsuitable, not unknown.
 
@@ -76,12 +93,31 @@ Consulting employment is not a blocker. A software consultant building Java,
 React, data pipelines or infrastructure can fit. Functional ERP/CRM consultants
 requiring SAP, Dynamics or Salesforce specialization cannot borrow unrelated
 programming projects as proof. A junior title does not satisfy specialist skills.
+Tools named as examples (som, f.eks., for eksempel, such as, e.g., or similar)
+are examples: a comparable tool in the profile meets the item.
+A mandatory cloud, data platform or BI tool the profile does not show, for
+example Azure, GCP, Microsoft Fabric, Databricks, Snowflake or Power BI, is a
+missing specialist platform: unsuitable, named as the blocker. AWS does not
+prove Azure or GCP, and Glue or Athena do not prove Fabric or Databricks.
+Security specialist roles (vulnerability management, penetration testing, bug
+bounty triage, incident response) need security work in the profile; without it
+the role is unsuitable.
 
 Use professional employment dates only for years of professional experience.
 Personal and university projects demonstrate skills, never additional employment
 years, professional certifications or enterprise consulting experience. A
 project's facts limit what it proves: never stretch it to a platform, language
 use or domain its facts exclude.
-Do not infer proficiency in undocumented languages/frameworks/clouds from adjacent
-skills. Do not infer citizenship, clearance, language level or relocation consent.
+Do not infer proficiency in languages, frameworks or clouds the profile does not
+show from adjacent skills. Do not infer citizenship, clearance, language level or
+relocation consent.
+Language, citizenship, clearance eligibility, relocation, start date, travel and
+driving licence come from the profile languages and the candidate notes: when
+they meet the ad, they are not gaps. A mandatory driving licence the candidate
+lacks makes the role unsuitable; a preferred one is the gap "Candidate does not
+have a driving licence".
 Do not exclude a generic coding title or a job solely for preferred experience.
+Write gaps, blockers and reasons in plain words about the candidate, for example
+"Candidate does not have Azure" or "Candidate does not have security work", and
+never ask to confirm a fact that the profile or candidate notes already answer.
+Never use the words "documented" or "undocumented" in gaps, blockers or reasons.

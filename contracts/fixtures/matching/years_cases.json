@@ -1,0 +1,692 @@
+[
+  {
+    "id": "forte_soft_heading",
+    "title": "Utvikler",
+    "description": "Vi Ser Gjerne At Du Har Minimum 3 års erfaring med Java",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 3,
+    "phrase": "Minimum 3 års erfaring",
+    "status": "unsuitable",
+    "years": 3
+  },
+  {
+    "id": "forte_range",
+    "title": "Utvikler",
+    "description": "Minimum 3-5 års erfaring som utvikler",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 3,
+    "phrase": "Minimum 3-5 års erfaring",
+    "status": "unsuitable",
+    "years": 3
+  },
+  {
+    "id": "accelerate_written",
+    "title": "Utvikler",
+    "description": "Vi ser gjerne at du har:\nMinimum fem års erfaring fra systemutvikling",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 5,
+    "phrase": "Minimum fem års erfaring",
+    "status": "unsuitable",
+    "years": 5
+  },
+  {
+    "id": "dfo_minimum_years",
+    "title": "Developer",
+    "description": "Minimum 5 years of experience as a developer",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 5,
+    "phrase": "Minimum 5 years of experience",
+    "status": "unsuitable",
+    "years": 5
+  },
+  {
+    "id": "eldurai_plus",
+    "title": "Developer",
+    "description": "Typically 5+ years of software engineering experience",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 5,
+    "phrase": "5+ years of software engineering experience",
+    "status": "unsuitable",
+    "years": 5
+  },
+  {
+    "id": "at_least",
+    "title": "Developer",
+    "description": "At least 3 years of professional experience with C#",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 3,
+    "phrase": "At least 3 years of professional experience",
+    "status": "unsuitable",
+    "years": 3
+  },
+  {
+    "id": "minst_written",
+    "title": "Utvikler",
+    "description": "Krav: minst to års profesjonell utviklererfaring",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 2,
+    "phrase": "minst to års profesjonell utviklererfaring",
+    "status": "unsuitable",
+    "years": 2
+  },
+  {
+    "id": "bare_range",
+    "title": "Utvikler",
+    "description": "3-5 års erfaring med .NET",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 3,
+    "phrase": "3-5 års erfaring",
+    "status": "unsuitable",
+    "years": 3
+  },
+  {
+    "id": "minimum_of",
+    "title": "Developer",
+    "description": "A minimum of 4 years of relevant work experience",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 4,
+    "phrase": "minimum of 4 years of relevant work experience",
+    "status": "unsuitable",
+    "years": 4
+  },
+  {
+    "id": "title_phrase",
+    "title": "Utvikler med minimum 4 års erfaring",
+    "description": "Bygg API-er.",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 4,
+    "phrase": "minimum 4 års erfaring",
+    "status": "unsuitable",
+    "years": 4
+  },
+  {
+    "id": "lowest_mandatory",
+    "title": "Utvikler",
+    "description": "Minimum 5 års erfaring med Java.\nMinst 3 års erfaring med Kotlin",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 3,
+    "phrase": "Minst 3 års erfaring",
+    "status": "unsuitable",
+    "years": 3
+  },
+  {
+    "id": "preferred_item_skipped",
+    "title": "Utvikler",
+    "description": "Minimum 5 års erfaring med Java.\nMinst 3 års erfaring med Kotlin er ønskelig",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 5,
+    "phrase": "Minimum 5 års erfaring",
+    "status": "unsuitable",
+    "years": 5
+  },
+  {
+    "id": "preference_fordel",
+    "title": "Utvikler",
+    "description": "Minimum 3 års erfaring er en fordel",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "preference_plus",
+    "title": "Utvikler",
+    "description": "Det er ønskelig med 3+ års erfaring",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "education_duration",
+    "title": "Utvikler",
+    "description": "Høyere utdanning på minimum 3 år innen IT",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "duration_then_experience",
+    "title": "Utvikler",
+    "description": "Høyere utdanning (minimum 3 år) og minst 2 års erfaring med Python",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 2,
+    "phrase": "minst 2 års erfaring",
+    "status": "unsuitable",
+    "years": 2
+  },
+  {
+    "id": "number_less",
+    "title": "Utvikler",
+    "description": "Flere års erfaring med Java",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "bare_number",
+    "title": "Developer",
+    "description": "Five years of professional Java employment",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "graduate_route",
+    "title": "Utvikler",
+    "description": "Minimum 3 års erfaring med Java.\nNyutdannede oppfordres også til å søke.",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "equivalent_route",
+    "title": "Utvikler",
+    "description": "Minimum 3 års erfaring eller tilsvarende utdanning",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "no_description",
+    "title": "Utvikler",
+    "description": null,
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "within_cap",
+    "title": "Utvikler",
+    "description": "Minimum 2 års erfaring med React",
+    "bands": [
+      "1-3"
+    ],
+    "model_years": null,
+    "stated_years": 2,
+    "phrase": "Minimum 2 års erfaring",
+    "status": "strong",
+    "years": 2
+  },
+  {
+    "id": "equal_cap",
+    "title": "Utvikler",
+    "description": "Minimum 3 års erfaring",
+    "bands": [
+      "1-3"
+    ],
+    "model_years": null,
+    "stated_years": 3,
+    "phrase": "Minimum 3 års erfaring",
+    "status": "strong",
+    "years": 3
+  },
+  {
+    "id": "model_lower",
+    "title": "Utvikler",
+    "description": "Minimum 3 års erfaring",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": 1,
+    "stated_years": 3,
+    "phrase": "Minimum 3 års erfaring",
+    "status": "unsuitable",
+    "years": 3
+  },
+  {
+    "id": "model_higher",
+    "title": "Utvikler",
+    "description": "Minimum 3 års erfaring",
+    "bands": [
+      "3-6"
+    ],
+    "model_years": 5,
+    "stated_years": 3,
+    "phrase": "Minimum 3 års erfaring",
+    "status": "strong",
+    "years": 5
+  },
+  {
+    "id": "no_cap",
+    "title": "Utvikler",
+    "description": "Minimum 8 års erfaring",
+    "bands": [
+      "0-1",
+      "6+"
+    ],
+    "model_years": null,
+    "stated_years": 8,
+    "phrase": "Minimum 8 års erfaring",
+    "status": "strong",
+    "years": 8
+  },
+  {
+    "id": "dotless_i_number",
+    "title": "Utvikler",
+    "description": "Minimum nı års erfaring",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "long_s_number",
+    "title": "Utvikler",
+    "description": "Minimum ſeks års erfaring",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "dotless_i_marker",
+    "title": "Utvikler",
+    "description": "Mınımum 3 års erfaring",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "long_s_marker",
+    "title": "Developer",
+    "description": "At leaſt 4 years of experience",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "dotless_i_range_end",
+    "title": "Utvikler",
+    "description": "Minimum tre-fıre års erfaring",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "long_s_unit",
+    "title": "Developer",
+    "description": "Minimum 3 yearſ of experience",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "dotless_i_tail_word",
+    "title": "Developer",
+    "description": "Minimum 3 years of experıence",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "dotless_i_erfaring",
+    "title": "Utvikler",
+    "description": "Minimum 3 års erfarıng",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "long_s_plus_unit",
+    "title": "Developer",
+    "description": "3+ yearſ experience",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "dotless_i_preference",
+    "title": "Utvikler",
+    "description": "Minimum 5 års erfaring, ønskelıg",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 5,
+    "phrase": "Minimum 5 års erfaring",
+    "status": "unsuitable",
+    "years": 5
+  },
+  {
+    "id": "long_s_equivalent",
+    "title": "Utvikler",
+    "description": "Minimum 5 års erfaring eller tilſvarende",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 5,
+    "phrase": "Minimum 5 års erfaring",
+    "status": "unsuitable",
+    "years": 5
+  },
+  {
+    "id": "dotted_i_tail_word",
+    "title": "Developer",
+    "description": "Minimum 3 years of experİence",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "dotless_i_phrase",
+    "title": "Utvikler",
+    "description": "Minimum 3 års ıt-erfaring",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 3,
+    "phrase": "Minimum 3 års ıt-erfaring",
+    "status": "unsuitable",
+    "years": 3
+  },
+  {
+    "id": "long_s_graduate",
+    "title": "Developer",
+    "description": "Minimum 3 years of experience. New graduateſ welcome",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 3,
+    "phrase": "Minimum 3 years of experience",
+    "status": "unsuitable",
+    "years": 3
+  },
+  {
+    "id": "flat_list_preference_elsewhere",
+    "title": "Utvikler",
+    "description": "Kvalifikasjoner Minimum 5 års erfaring som utvikler Erfaring med Azure er en fordel",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 5,
+    "phrase": "Minimum 5 års erfaring",
+    "status": "unsuitable",
+    "years": 5
+  },
+  {
+    "id": "flat_list_equivalent_elsewhere",
+    "title": "Utvikler",
+    "description": "Kvalifikasjoner Bachelor i informatikk eller tilsvarende Minimum 5 års erfaring som utvikler",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 5,
+    "phrase": "Minimum 5 års erfaring",
+    "status": "unsuitable",
+    "years": 5
+  },
+  {
+    "id": "apostrophe_years",
+    "title": "Developer",
+    "description": "Minimum 5 years' experience in backend development",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 5,
+    "phrase": "Minimum 5 years' experience",
+    "status": "unsuitable",
+    "years": 5
+  },
+  {
+    "id": "apostrophe_curly_years",
+    "title": "Developer",
+    "description": "Minimum 5 years’ experience in backend development",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 5,
+    "phrase": "Minimum 5 years’ experience",
+    "status": "unsuitable",
+    "years": 5
+  },
+  {
+    "id": "flat_slash_experience",
+    "title": "Utvikler",
+    "description": "Bachelor eller tilsvarende Annen utdanning kan kompensere for manglende formell utdanning Må ha minimum 3 års relevant arbeidserfaring/tjenesteerfaring Førerkort klasse B",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 3,
+    "phrase": "minimum 3 års relevant arbeidserfaring/tjenesteerfaring",
+    "status": "unsuitable",
+    "years": 3
+  },
+  {
+    "id": "adverb_after",
+    "title": "Developer",
+    "description": "Minimum 5 years working experience with network design and/or cyber security preferably in oil and gas projects",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 5,
+    "phrase": "Minimum 5 years working experience",
+    "status": "unsuitable",
+    "years": 5
+  },
+  {
+    "id": "preference_er_en_fordel_long",
+    "title": "Utvikler",
+    "description": "Minimum 3 års erfaring med Java og Kotlin er en fordel",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "preference_before_long",
+    "title": "Utvikler",
+    "description": "Vi ser det som en fordel dersom du også kan vise til minimum 3 års erfaring som utvikler",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "preferred_long_tail_en",
+    "title": "Developer",
+    "description": "At least 3 years of professional experience building distributed systems in Go or Rust is preferred",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "compensation_route",
+    "title": "Utvikler",
+    "description": "Bachelor i informatikk. Minimum 2 års relevant erfaring kan etter vurdering kompensere for manglende utdanning",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  },
+  {
+    "id": "clause_after_comma",
+    "title": "Utvikler",
+    "description": "Videre har du minst 8 års erfaring som utvikler med Java eller .NET, og det er også ønskelig med skyteknologi",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 8,
+    "phrase": "minst 8 års erfaring",
+    "status": "unsuitable",
+    "years": 8
+  },
+  {
+    "id": "flat_list_preference_before_noun",
+    "title": "Utvikler",
+    "description": "Det er en fordel med kunnskap om Kafka Minimum 4 års erfaring som utvikler",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": 4,
+    "phrase": "Minimum 4 års erfaring",
+    "status": "unsuitable",
+    "years": 4
+  },
+  {
+    "id": "adverb_before",
+    "title": "Utvikler",
+    "description": "Du har helst minimum 3 års erfaring som utvikler",
+    "bands": [
+      "0-1"
+    ],
+    "model_years": null,
+    "stated_years": null,
+    "phrase": null,
+    "status": "strong",
+    "years": null
+  }
+]

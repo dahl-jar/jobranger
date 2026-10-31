@@ -6,8 +6,9 @@ using RoleCatalogue = Jobranger.Cli.Catalogue.Catalogue;
 namespace Jobranger.Cli.Features.Matching;
 
 internal static class MatchRules {
+    public const int ItemLimit = 5;
+
     private const int textLimit = 300;
-    private const int itemLimit = 5;
     private const string noYearCapRule = "The search accepts roles requiring any number of years.";
     private const string seniorUnsuitableRule =
         "Senior and lead roles are unsuitable, even with skill fit; name the level as a blocker.";
@@ -18,6 +19,7 @@ internal static class MatchRules {
     private const char upperExponent = 'E';
     private const char lowerExponent = 'e';
     private const double noYears = 0;
+    private const double oneYear = 1;
 
     private static readonly Dictionary<string, string> levelNames =
         new(StringComparer.Ordinal) {
@@ -45,7 +47,7 @@ internal static class MatchRules {
 
     public static string LimitRules(Limits limits) {
         double? cap = MaxYears(limits);
-        List<string> lines = [cap is double years ? YearCapRule(YearsText(years)) : noYearCapRule];
+        List<string> lines = [cap is double years ? YearCapRule(YearCount(years)) : noYearCapRule];
         if (!limits.Levels.Any(RoleCatalogue.SeniorLevels.Contains)) {
             lines.Add(seniorUnsuitableRule);
         } else {
@@ -96,20 +98,23 @@ internal static class MatchRules {
         return match;
     }
 
+    public static string YearCount(double years) =>
+        $"{YearsText(years)} {(years == oneYear ? "year" : "years")}";
+
+    public static string Clean(string text) => WordTruncation.Cut(MatchText.CollapseSpace(text), textLimit);
+
     private static string YearsText(double value) =>
         value.ToString(shortFormat, CultureInfo.InvariantCulture).Replace(upperExponent, lowerExponent);
 
     private static string YearCapRule(string years) =>
-        $"The search accepts roles requiring at most {years} years. A mandatory minimum above {years} years is unsuitable, "
+        $"The search accepts roles requiring at most {years}. A mandatory minimum above {years} is unsuitable, "
         + "even with skill fit; name the shortfall as a blocker. A master's, or a bachelor's with relevant work "
-        + $"experience, is unsuitable when that experience route needs more than {years} years or does not state the "
+        + $"experience, is unsuitable when that experience route needs more than {years} or does not state the "
         + "years; name it as a blocker.";
 
     private static bool ExceedsYears(Match match, Limits limits) =>
         match.RequiredExperienceYears is double years && MaxYears(limits) is double cap && years > cap;
 
     private static List<string> Items(IReadOnlyList<string> items) =>
-        [.. items.Where(item => MatchText.Strip(item).Length > 0).Select(Clean).Take(itemLimit)];
-
-    private static string Clean(string text) => WordTruncation.Cut(MatchText.CollapseSpace(text), textLimit);
+        [.. items.Where(item => MatchText.Strip(item).Length > 0).Select(Clean).Take(ItemLimit)];
 }
