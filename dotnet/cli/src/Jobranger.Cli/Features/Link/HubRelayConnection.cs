@@ -13,7 +13,6 @@ internal sealed class HubRelayConnection : IRelayConnection {
     private const string sendMethod = "Send";
     private const string receiveMethod = "Receive";
     private const string sessionsClosedMethod = "SessionsClosed";
-    private const string replacedMethod = "Replaced";
     private const string reasonMarker = "HubException: ";
     private const string sidsField = "sids";
     private const int sidBytes = 16;
@@ -23,15 +22,15 @@ internal sealed class HubRelayConnection : IRelayConnection {
     private readonly HubConnection connection;
     private readonly SendPacer pacer;
     private readonly TimeProvider time;
-    private readonly Channel<RelayEvent> events = Channel.CreateUnbounded<RelayEvent>();
+    private readonly Channel<RelayEvent> events;
 
-    public HubRelayConnection(HubConnection connection, SendPacer pacer, TimeProvider time) {
+    public HubRelayConnection(HubConnection connection, Channel<RelayEvent> events, SendPacer pacer, TimeProvider time) {
         this.connection = connection;
+        this.events = events;
         this.pacer = pacer;
         this.time = time;
         connection.On<JsonElement>(receiveMethod, OnReceive);
         connection.On<JsonElement>(sessionsClosedMethod, OnSessionsClosed);
-        connection.On(replacedMethod, () => events.Writer.TryWrite(new RelayEvent.Replaced()));
         connection.Closed += _ => {
             events.Writer.TryWrite(new RelayEvent.Disconnected());
             return Task.CompletedTask;

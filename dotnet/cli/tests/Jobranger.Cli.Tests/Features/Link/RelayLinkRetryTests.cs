@@ -45,6 +45,17 @@ public sealed class RelayLinkRetryTests : IAsyncDisposable {
     }
 
     [Fact]
+    public async Task ShouldStopReconnecting_WhenReplacedArrivesWithoutClose() {
+        relay.ConnectFailure = null;
+        relay.Replace();
+
+        Run(relay);
+
+        await running.WaitAsync(TestWaits.Step, Token);
+        Assert.Single(relay.Handles);
+    }
+
+    [Fact]
     public async Task ShouldResetBackoff_WhenLinkWasConnectedForSixtySeconds() {
         Run(relay);
         time.Advance(await time.NextWaitAsync());

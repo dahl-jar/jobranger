@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using Jobranger.Cli.Features.Link;
 using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Messaging.Envelopes;
+using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging.Testing;
 
 namespace Jobranger.Cli.Tests.Features.Link;
@@ -9,6 +10,7 @@ namespace Jobranger.Cli.Tests.Features.Link;
 public sealed class RelayLinkTests : IAsyncLifetime {
     private const double jitter = 0.1;
     private const string connectedEvent = "link.relay.connected";
+    private const string replacedMethod = "Replaced";
 
     private static readonly TimeSpan wait = TimeSpan.FromSeconds(15);
 
@@ -79,6 +81,31 @@ public sealed class RelayLinkTests : IAsyncLifetime {
     [Fact]
     public async Task ShouldStopReconnecting_WhenAnotherCliReplacesIt() {
         running = link.RunAsync(stop.Token);
+        await using BrowserHub browser = await BrowserHub.ConnectAsync(relay.Address, await BrowserHandleAsync());
+        await browser.WaitForCliAsync();
+        HubConnector other = new(relay.Address, TimeProvider.System);
+
+        await using IRelayConnection replacing =
+            await other.ConnectAsync(await api.CliHandleAsync(keys.Signing, Token), Token);
+
+        await running.WaitAsync(wait, Token);
+        Assert.Single(handles);
+    }
+
+    [Fact]
+    public async Task ShouldStopReconnecting_WhenCloseOvertakesReplaced() {
+        TaskCompletionSource heldForever = new();
+        RelayLink held = new(
+            new HubConnector(
+                relay.Address,
+                TimeProvider.System,
+                wait,
+                connection => connection.On(replacedMethod, () => heldForever.Task)),
+            NextHandleAsync,
+            TimeProvider.System,
+            () => jitter,
+            logger);
+        running = held.RunAsync(stop.Token);
         await using BrowserHub browser = await BrowserHub.ConnectAsync(relay.Address, await BrowserHandleAsync());
         await browser.WaitForCliAsync();
         HubConnector other = new(relay.Address, TimeProvider.System);
