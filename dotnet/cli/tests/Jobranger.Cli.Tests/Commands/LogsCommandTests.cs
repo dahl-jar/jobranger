@@ -1,4 +1,5 @@
 using System.Collections;
+using System.CommandLine;
 using System.Globalization;
 using System.Runtime.Versioning;
 using System.Text.Json.Nodes;
@@ -10,6 +11,7 @@ using Jobranger.Cli.Tests.Mocks;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
+using Spectre.Console;
 using RootCommand = Jobranger.Cli.Commands.RootCommand;
 
 namespace Jobranger.Cli.Tests.Commands;
@@ -108,6 +110,42 @@ public sealed class LogsCommandTests : IDisposable {
     }
 
     [Fact]
+    public async Task ShouldPrintFileAccessFailed_WhenStateFolderIsLocked() {
+        StartRun();
+        Directory.CreateDirectory(paths.LogDir());
+        File.SetUnixFileMode(paths.StateDir(), UnixFileMode.None);
+
+        int exit = await RunAsync();
+
+        File.SetUnixFileMode(paths.StateDir(), FileModes.OwnerOnlyDir);
+        Assert.Equal(
+            (CliExitCodes.Failure, CommandFixtures.FileAccessFailed),
+            (exit, console.Output));
+    }
+
+    [Fact]
+    public async Task ShouldPrintFileAccessFailed_WhenLogFolderIsFile() {
+        StartRun();
+        Directory.CreateDirectory(paths.StateDir());
+        File.WriteAllText(paths.LogDir(), string.Empty);
+
+        int exit = await RunAsync();
+
+        Assert.Equal(
+            (CliExitCodes.Failure, CommandFixtures.FileAccessFailed),
+            (exit, console.Output));
+    }
+
+    [Fact]
+    public async Task ShouldExitWithoutTrace_WhenOutputCannotBeWritten() {
+        int exit = await RunAsync(CommandFixtures.BrokenConsole(typeof(IOException)));
+
+        Assert.Equal(
+            (CliExitCodes.Failure, string.Empty, "logs.failed output_failed"),
+            (exit, console.Errors, CommandFixtures.LoggedFailure(paths)));
+    }
+
+    [Fact]
     public void ShouldOfferLogsCommand_WhenRootIsBuilt() {
         RootCommand root = new(CliServices.Create(clock, console.Console, console.ErrorConsole, environment));
 
@@ -128,9 +166,10 @@ public sealed class LogsCommandTests : IDisposable {
         return new RunStore(connection).Start(AdFixtures.Now);
     }
 
-    private Task<int> RunAsync() {
-        CliServices services = CliServices.Create(clock, console.Console, console.ErrorConsole, environment);
+    private Task<int> RunAsync(IAnsiConsole? output = null) {
+        CliServices services = CliServices.Create(clock, output ?? console.Console, console.ErrorConsole, environment);
         System.CommandLine.RootCommand root = [new LogsCommand(services, environment)];
-        return root.Parse([LogsCommand.CommandName]).InvokeAsync(null, TestContext.Current.CancellationToken);
+        InvocationConfiguration configuration = new() { Error = console.ErrorConsole.Profile.Out.Writer };
+        return root.Parse([LogsCommand.CommandName]).InvokeAsync(configuration, TestContext.Current.CancellationToken);
     }
 }

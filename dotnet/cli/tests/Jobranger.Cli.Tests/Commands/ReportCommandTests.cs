@@ -1,4 +1,5 @@
 using System.Collections;
+using System.CommandLine;
 using System.Runtime.Versioning;
 using System.Text;
 using Jobranger.Cli.Commands;
@@ -12,6 +13,7 @@ using Jobranger.Cli.Tests.Mocks;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
+using Spectre.Console;
 using AdsEntry = Jobranger.Cli.Features.Ads.Ads;
 using MatchingEntry = Jobranger.Cli.Features.Matching.Matching;
 using RootCommand = Jobranger.Cli.Commands.RootCommand;
@@ -297,6 +299,22 @@ public sealed class ReportCommandTests : IDisposable {
             (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
     }
 
+    [Theory]
+    [InlineData(Locales.English, "No profile file at {0}. Set up with: jobranger init\n")]
+    [InlineData(Locales.Norwegian, "Ingen profilfil på {0}. Sett opp med: jobranger init\n")]
+    public async Task ShouldNameProfileFile_WhenProfileIsMissing(string lang, string line) {
+        environment["LANG"] = lang;
+        string profile = temp.File("moved.yaml");
+        ConfigFile.Save(paths.ConfigPath(), RunFixtures.Config(profile), temp.Path, NullLogger.Instance);
+        StartRun();
+
+        int exit = await RunAsync();
+
+        Assert.Equal(
+            (CliExitCodes.Failure, string.Format(line, profile), "report.failed profile_missing"),
+            (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
+    }
+
     [Fact]
     public async Task ShouldPrintConfigErrors_WhenConfigIsInvalid() {
         StartRun();
@@ -379,6 +397,28 @@ public sealed class ReportCommandTests : IDisposable {
             (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
     }
 
+    [Theory]
+    [InlineData(typeof(IOException))]
+    [InlineData(typeof(UnauthorizedAccessException))]
+    public async Task ShouldExitWithoutTrace_WhenOutputCannotBeWritten(Type failure) {
+        int exit = await RunAsync(CommandFixtures.BrokenConsole(failure));
+
+        Assert.Equal(
+            (CliExitCodes.Failure, string.Empty, "report.failed output_failed"),
+            (exit, console.Errors, CommandFixtures.LoggedFailure(paths)));
+    }
+
+    [Fact]
+    public async Task ShouldExitWithoutTrace_WhenFailureLineCannotBeWritten() {
+        StartRun();
+
+        int exit = await RunAsync(CommandFixtures.BrokenConsole(typeof(IOException)));
+
+        Assert.Equal(
+            (CliExitCodes.Failure, string.Empty, "report.failed output_failed"),
+            (exit, console.Errors, CommandFixtures.LoggedFailure(paths)));
+    }
+
     [Fact]
     public void ShouldOfferReportCommand_WhenRootIsBuilt() {
         RootCommand root = new(CliServices.Create(clock, console.Console, console.ErrorConsole, environment));
@@ -414,9 +454,10 @@ public sealed class ReportCommandTests : IDisposable {
         new RunStore(connection).Start(AdFixtures.Now);
     }
 
-    private Task<int> RunAsync() {
-        CliServices services = CliServices.Create(clock, console.Console, console.ErrorConsole, environment);
+    private Task<int> RunAsync(IAnsiConsole? output = null) {
+        CliServices services = CliServices.Create(clock, output ?? console.Console, console.ErrorConsole, environment);
         System.CommandLine.RootCommand root = [new ReportCommand(services, environment, clock)];
-        return root.Parse([ReportCommand.CommandName]).InvokeAsync(null, TestContext.Current.CancellationToken);
+        InvocationConfiguration configuration = new() { Error = console.ErrorConsole.Profile.Out.Writer };
+        return root.Parse([ReportCommand.CommandName]).InvokeAsync(configuration, TestContext.Current.CancellationToken);
     }
 }

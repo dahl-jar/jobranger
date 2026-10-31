@@ -43,10 +43,7 @@ internal static class LogFiles {
 
     public static IReadOnlyList<JsonObject> ReadRun(string logDir, string runId) {
         List<JsonObject> entries = [];
-        IEnumerable<string> files = Directory.Exists(logDir)
-            ? Directory.EnumerateFiles(logDir, anyLogFile).Where(path => FileDay(path) is not null).Order(StringComparer.Ordinal)
-            : [];
-        foreach (string path in files) {
+        foreach (string path in DayFiles(logDir)) {
             using FileStream? stream = PrivateFile.OpenRead(path, NullLogger.Instance);
             if (stream is null) {
                 continue;
@@ -70,6 +67,18 @@ internal static class LogFiles {
                 .Select(field => field.Key + valueSeparator + Text(field.Value)),
         ];
         return Printable(string.Join(fieldSeparator, parts));
+    }
+
+    private static IReadOnlyList<string> DayFiles(string logDir) {
+        try {
+            return [
+                .. Directory.EnumerateFiles(logDir, anyLogFile)
+                    .Where(path => FileDay(path) is not null)
+                    .Order(StringComparer.Ordinal),
+            ];
+        } catch (DirectoryNotFoundException) when (!File.Exists(logDir)) {
+            return [];
+        }
     }
 
     private static DateOnly? FileDay(string path) =>

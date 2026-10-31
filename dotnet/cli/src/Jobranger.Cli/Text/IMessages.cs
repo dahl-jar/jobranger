@@ -141,6 +141,8 @@ internal interface IMessages {
 
     string ConfigMissing { get; }
 
+    string ProfileMissing(string path);
+
     string FileUnreadable(string path);
 
     string FileAccessFailed { get; }

@@ -28,31 +28,25 @@ internal sealed class LogsCommand : Command {
 
     private static int Run(CliServices services, IDictionary environment) {
         ILogger logger = services.Logs.CreateLogger(typeof(LogsCommand).FullName!);
-        TextWriter output = services.Console.Profile.Out.Writer;
         IMessages messages = services.Messages;
         Paths paths = new(environment);
-        try {
-            using SqliteConnection connection = Database.Open(paths.DbPath(), logger);
-            if (Runs.LastRun(connection) is not RunRow last) {
-                output.WriteLine(messages.LogsNoRuns);
-                return CliExitCodes.Ok;
-            }
-            IReadOnlyList<JsonObject> entries =
-                LogFiles.ReadRun(paths.LogDir(), last.Id.ToString(CultureInfo.InvariantCulture));
-            if (entries.Count == 0) {
-                output.WriteLine(messages.LogsMissing(LogFiles.DefaultKeepDays));
-                return CliExitCodes.Ok;
-            }
-            foreach (JsonObject entry in entries) {
-                output.WriteLine(LogFiles.FormatLine(entry));
-            }
-            return CliExitCodes.Ok;
-        } catch (Exception error) when (ReadFailures.Of(error, paths, messages) is ReadFailure failure) {
-            LogEvents.LogsFailed(logger, failure.Code);
-            foreach (string line in failure.Lines) {
-                output.WriteLine(line);
-            }
-            return CliExitCodes.Failure;
+        return ReadFailures.PrintLines(
+            () => Lines(paths, messages, logger),
+            failure => LogEvents.LogsFailed(logger, failure),
+            paths,
+            messages,
+            services.Console.Profile.Out.Writer);
+    }
+
+    private static IReadOnlyList<string> Lines(Paths paths, IMessages messages, ILogger logger) {
+        using SqliteConnection connection = Database.Open(paths.DbPath(), logger);
+        if (Runs.LastRun(connection) is not RunRow last) {
+            return [messages.LogsNoRuns];
         }
+        IReadOnlyList<JsonObject> entries =
+            LogFiles.ReadRun(paths.LogDir(), last.Id.ToString(CultureInfo.InvariantCulture));
+        return entries.Count > 0
+            ? [.. entries.Select(LogFiles.FormatLine)]
+            : [messages.LogsMissing(LogFiles.DefaultKeepDays)];
     }
 }

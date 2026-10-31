@@ -162,6 +162,8 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string ConfigMissing => "Ingen oppsettsfil ennå. Sett opp med: jobranger init";
 
+    public string ProfileMissing(string path) => $"Ingen profilfil på {path}. Sett opp med: jobranger init";
+
     public string FileUnreadable(string path) => $"Kan ikke lese {path}.";
 
     public string FileAccessFailed => "Kan ikke lese en jobranger-fil. Sjekk tilgangene til mappen.";

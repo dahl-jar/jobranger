@@ -27,27 +27,23 @@ internal sealed class ReportCommand : Command {
 
     private static int Run(CliServices services, IDictionary environment, TimeProvider time) {
         ILogger logger = services.Logs.CreateLogger(typeof(ReportCommand).FullName!);
-        TextWriter output = services.Console.Profile.Out.Writer;
         IMessages messages = services.Messages;
         Paths paths = new(environment);
-        try {
-            using SqliteConnection connection = Database.Open(paths.DbPath(), logger);
-            if (Runs.LastRun(connection) is not RunRow last) {
-                output.WriteLine(messages.ReportNoMatches);
-                return CliExitCodes.Ok;
-            }
-            AppConfig config = ConfigFile.Load(paths.ConfigPath(), paths.Home());
-            IReadOnlyList<string> lines = Runs.Report(connection, config, paths, last, time, messages);
-            foreach (string line in lines.Count > 0 ? lines : [messages.ReportNoMatches]) {
-                output.WriteLine(line);
-            }
-            return CliExitCodes.Ok;
-        } catch (Exception error) when (ReadFailures.Of(error, paths, messages) is ReadFailure failure) {
-            LogEvents.ReportFailed(logger, failure.Code);
-            foreach (string line in failure.Lines) {
-                output.WriteLine(line);
-            }
-            return CliExitCodes.Failure;
+        return ReadFailures.PrintLines(
+            () => Lines(paths, time, messages, logger),
+            failure => LogEvents.ReportFailed(logger, failure),
+            paths,
+            messages,
+            services.Console.Profile.Out.Writer);
+    }
+
+    private static IReadOnlyList<string> Lines(Paths paths, TimeProvider time, IMessages messages, ILogger logger) {
+        using SqliteConnection connection = Database.Open(paths.DbPath(), logger);
+        if (Runs.LastRun(connection) is not RunRow last) {
+            return [messages.ReportNoMatches];
         }
+        AppConfig config = ConfigFile.Load(paths.ConfigPath(), paths.Home());
+        IReadOnlyList<string> lines = Runs.Report(connection, config, paths, last, time, messages);
+        return lines.Count > 0 ? lines : [messages.ReportNoMatches];
     }
 }

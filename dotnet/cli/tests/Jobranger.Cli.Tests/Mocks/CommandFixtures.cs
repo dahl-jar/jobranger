@@ -1,7 +1,9 @@
 using System.Collections;
+using System.Text;
 using System.Text.Json.Nodes;
 using Jobranger.Cli.Files;
 using Jobranger.Cli.Logging;
+using Spectre.Console;
 
 namespace Jobranger.Cli.Tests.Mocks;
 
@@ -24,5 +26,20 @@ internal static class CommandFixtures {
     public static string LoggedFailure(Paths paths) {
         JsonObject entry = LogLines.Read(LogPath(paths))[^1];
         return $"{entry[LogFields.Event]} {entry["failure"]}";
+    }
+
+    public static IAnsiConsole BrokenConsole(Type failure) =>
+        AnsiConsole.Create(new AnsiConsoleSettings {
+            Ansi = AnsiSupport.No,
+            ColorSystem = ColorSystemSupport.NoColors,
+            Interactive = InteractionSupport.No,
+            Out = new AnsiConsoleOutput(new BrokenWriter((Exception)Activator.CreateInstance(failure)!)),
+            EnvironmentVariables = [],
+        });
+
+    private sealed class BrokenWriter(Exception failure) : TextWriter {
+        public override Encoding Encoding => Encoding.UTF8;
+
+        public override void Write(char value) => throw failure;
     }
 }

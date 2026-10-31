@@ -158,6 +158,8 @@ internal sealed class EnglishMessages : IMessages {
 
     public string ConfigMissing => "No config yet. Set up with: jobranger init";
 
+    public string ProfileMissing(string path) => $"No profile file at {path}. Set up with: jobranger init";
+
     public string FileUnreadable(string path) => $"Cannot read {path}.";
 
     public string FileAccessFailed => "Cannot read a jobranger file. Check the folder permissions.";
