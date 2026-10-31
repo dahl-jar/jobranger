@@ -31,6 +31,8 @@ Every push to `main` runs `.github/workflows/release-cli.yml`. It calls every co
 
 The PR title picks the bump: `feat:` raises the minor version, a `!` before the colon raises the minor version before 1.0 and the major version after it, and any other title raises the patch version. A push without a PR uses the commit subject. A commit that is already in a release gets no new one, so a re-run is safe.
 
+The release notes list the `## What does this PR do?` section of every PR since the previous `cli-v*` tag, then a compare link. A PR without text in that section adds its title, and a commit without a merged PR adds its subject.
+
 ```bash
 bash cli/scripts/release/tests/release_test.sh
 ```
