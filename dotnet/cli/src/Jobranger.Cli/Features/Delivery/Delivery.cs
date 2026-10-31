@@ -34,6 +34,9 @@ internal sealed class Delivery(
         if (result.ModelSkipped) {
             lines.Add(messages.AiChecksSkipped);
         }
+        if (StopNote(result, messages) is string note) {
+            lines.Add(note);
+        }
         if (result.UnpricedLimit) {
             lines.Add(messages.UnpricedLimitWarning);
         }
@@ -71,6 +74,12 @@ internal sealed class Delivery(
         LogEvents.EmailSent(logger, rendered.AdIds.Count);
         return new DeliveryResult(EmailTo: email.Address);
     }
+
+    private static string? StopNote(RunResult result, IMessages messages) => result switch {
+        { ModelSkipped: false, Pending: > 0, ModelStopped: StopReason.Auth } => messages.DigestKeyRefusedNote(result.Pending),
+        { Pending: > 0, ModelStopped: StopReason.ProviderDown } => messages.DigestProviderDownNote(result.Pending),
+        _ => null,
+    };
 
     private static bool HasNews(DigestData data) =>
         data.ApplySoon.Count > 0

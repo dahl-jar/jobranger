@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Diagnostics;
 using System.Runtime.Versioning;
+using System.Text;
 using System.Text.Json.Nodes;
 using Jobranger.Cli.Commands;
 using Jobranger.Cli.Config;
@@ -17,6 +18,7 @@ using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Cli.Text;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
+using Spectre.Console;
 using ProvidersEntry = Jobranger.Cli.Features.Providers.Providers;
 
 namespace Jobranger.Cli.Tests.Commands;
@@ -32,6 +34,8 @@ public sealed class RunCommandTests : IDisposable {
     private const string skipLine = "AI checks skipped: no model or key. Set one with: jobranger init";
     private const string missingEnglish = "No config yet. Set up with: jobranger init";
     private const string readingNav = "Reading NAV...";
+    private const string couldNotReadFinn = "Could not read FINN.";
+    private const string couldNotReadNorwegian = "Kunne ikke lese FINN.";
     private const int unusedPort = 1;
     private const string secretStoreFailed = "run.secret_store_failed";
     private const string stopForced = "run.stop_forced";
@@ -61,21 +65,21 @@ public sealed class RunCommandTests : IDisposable {
     }
 
     [Theory]
-    [InlineData(Locales.English, readingBoth, countsLine, true, true, "✓ Sent to the website and to user@example.test")]
-    [InlineData(Locales.English, readingBoth, countsLine, true, false, "✓ Sent to user@example.test")]
-    [InlineData(Locales.English, readingBoth, countsLine, false, true, savedForWebsite)]
-    [InlineData(Locales.English, readingBoth, countsLine, false, false, null)]
-    [InlineData(Locales.Norwegian, readingNorwegian, countsNorwegian, true, true, "✓ Sendt til nettsiden og til user@example.test")]
-    [InlineData(Locales.Norwegian, readingNorwegian, countsNorwegian, true, false, "✓ Sendt til user@example.test")]
-    [InlineData(Locales.Norwegian, readingNorwegian, countsNorwegian, false, true, "✓ Lagret for nettsiden")]
+    [InlineData(Locales.English, readingBoth, countsLine, couldNotReadFinn, true, true, "✓ Sent to the website and to user@example.test")]
+    [InlineData(Locales.English, readingBoth, countsLine, couldNotReadFinn, true, false, "✓ Sent to user@example.test")]
+    [InlineData(Locales.English, readingBoth, countsLine, couldNotReadFinn, false, true, savedForWebsite)]
+    [InlineData(Locales.English, readingBoth, countsLine, couldNotReadFinn, false, false, null)]
+    [InlineData(Locales.Norwegian, readingNorwegian, countsNorwegian, couldNotReadNorwegian, true, true, "✓ Sendt til nettsiden og til user@example.test")]
+    [InlineData(Locales.Norwegian, readingNorwegian, countsNorwegian, couldNotReadNorwegian, true, false, "✓ Sendt til user@example.test")]
+    [InlineData(Locales.Norwegian, readingNorwegian, countsNorwegian, couldNotReadNorwegian, false, true, "✓ Lagret for nettsiden")]
     public async Task ShouldPrintOutcomeLine_WhenPassEnds(
-        string lang, string reading, string counts, bool email, bool website, string? outcome) {
+        string lang, string reading, string counts, string failed, bool email, bool website, string? outcome) {
         environment["LANG"] = lang;
         RunCommandFixtures.Save(environment, RunCommandFixtures.Config(email ? DeliveryFixtures.ResendEmail : null, website));
 
         int exit = await InvokeAsync(Seams(NavOkFinnFails(), resend));
 
-        string[] expected = outcome is null ? [reading, counts] : [reading, counts, outcome];
+        string[] expected = outcome is null ? [reading, counts, failed] : [reading, counts, failed, outcome];
         Assert.Equal((CliExitCodes.Ok, Lines(expected)), (exit, Output()));
     }
 
@@ -123,7 +127,7 @@ public sealed class RunCommandTests : IDisposable {
         int exit = await InvokeAsync(Seams([FailingFinn()], resend));
 
         Assert.Equal(
-            (CliExitCodes.Failure, Lines("Reading FINN...", countsLine, "Could not read FINN.", savedForWebsite)),
+            (CliExitCodes.Failure, Lines("Reading FINN...", countsLine, couldNotReadFinn, savedForWebsite)),
             (exit, Output()));
     }
 
@@ -308,32 +312,11 @@ public sealed class RunCommandTests : IDisposable {
 
     [Fact]
     public async Task ShouldExit130_WhenWorkBlocksThread() {
-        using CancellationTokenSource cancel = new();
-        using ManualResetEventSlim entered = new();
-        using ManualResetEventSlim release = new();
-        RecordingTime time = new();
-        RunSeams seams = Seams([], resend) with {
-            OpenModel = (_, _, _, _, token) => {
-                entered.Set();
-                release.Wait(invokeLimit, CancellationToken.None);
-                throw new OperationCanceledException(token);
-            },
-        };
-        Task<int> running = Task.Run(() => InvokeAsync(seams, time, cancel.Token), CancellationToken.None);
-        try {
-            Assert.True(entered.Wait(TestWaits.Step, TestContext.Current.CancellationToken));
-            await cancel.CancelAsync();
-            await time.WaitForAsync(forcedStopLimit);
-            time.Advance(forcedStopLimit);
+        int exit = await ForceStopAsync();
 
-            int exit = await running;
-
-            Assert.Equal(RunCommandFixtures.Interrupted, exit);
-            Assert.Contains(
-                stopForced, RunCommandFixtures.LogEntries(environment).Select(entry => (string?)entry[LogFields.Event]));
-        } finally {
-            release.Set();
-        }
+        Assert.Equal(RunCommandFixtures.Interrupted, exit);
+        Assert.Contains(
+            stopForced, RunCommandFixtures.LogEntries(environment).Select(entry => (string?)entry[LogFields.Event]));
     }
 
     [Fact]
@@ -347,7 +330,7 @@ public sealed class RunCommandTests : IDisposable {
         await cancel.CancelAsync();
         int exit = await running;
 
-        Assert.Equal((RunCommandFixtures.Interrupted, Lines(readingBoth, countsLine)), (exit, Output()));
+        Assert.Equal((RunCommandFixtures.Interrupted, Lines(readingBoth, countsLine, couldNotReadFinn)), (exit, Output()));
     }
 
     [Fact]
@@ -366,6 +349,46 @@ public sealed class RunCommandTests : IDisposable {
 
         Assert.Equal((RunCommandFixtures.Interrupted, string.Empty, 0), (exit, Output(), resend.Requests.Count));
     }
+
+    [Theory]
+    [InlineData(false, new[] { readingNav, "", "" })]
+    [InlineData(true, new[] { "", "" })]
+    public async Task ShouldEndOnLineBreak_WhenTerminalRunIsCancelled(bool forced, string[] lines) {
+        using StringWriter written = new();
+        IAnsiConsole terminal = Terminal(written);
+
+        int exit = await (forced ? ForceStopAsync(terminal) : CancelOnceReadingAsync(terminal));
+
+        Assert.Equal((RunCommandFixtures.Interrupted, Lines(lines)), (exit, written.ToString()));
+    }
+
+    [Theory]
+    [InlineData(false, new[] { readingNav, "" })]
+    [InlineData(true, new[] { "" })]
+    public async Task ShouldWriteNoExtraBytes_WhenRedirectedRunIsCancelled(bool forced, string[] lines) {
+        int exit = await (forced ? ForceStopAsync(console.Console) : CancelOnceReadingAsync(console.Console));
+
+        Assert.Equal((RunCommandFixtures.Interrupted, Lines(lines)), (exit, console.Output));
+    }
+
+    [Fact]
+    public async Task ShouldWriteNoExtraLine_WhenTerminalRunFinishes() {
+        using StringWriter written = new();
+
+        int exit = await InvokeAsync(
+            Seams([], resend), clock, TestContext.Current.CancellationToken, output: Terminal(written));
+
+        Assert.Equal((CliExitCodes.Ok, Lines(countsLine, savedForWebsite, string.Empty)), (exit, written.ToString()));
+    }
+
+    private static IAnsiConsole Terminal(StringWriter written) =>
+        AnsiConsole.Create(new AnsiConsoleSettings {
+            Ansi = AnsiSupport.No,
+            ColorSystem = ColorSystemSupport.NoColors,
+            Interactive = InteractionSupport.No,
+            Out = new TerminalOutput(written),
+            EnvironmentVariables = [],
+        });
 
     private static string Lines(params string[] lines) => string.Join(Environment.NewLine, lines);
 
@@ -395,14 +418,67 @@ public sealed class RunCommandTests : IDisposable {
         Assert.InRange(elapsed.Elapsed, TimeSpan.Zero, limit);
     }
 
+    private async Task<int> CancelOnceReadingAsync(IAnsiConsole output) {
+        using CancellationTokenSource cancel = new();
+        ScriptedSource source = ScriptedSource.Stalled("nav", RunFixtures.Batch("nav"));
+        Task<int> running = InvokeAsync(Seams([source], resend), TimeProvider.System, cancel.Token, output: output);
+        await source.Started.Task.WaitAsync(TestWaits.Step, TestContext.Current.CancellationToken);
+
+        await cancel.CancelAsync();
+
+        return await running;
+    }
+
+    private async Task<int> ForceStopAsync(IAnsiConsole? output = null) {
+        using CancellationTokenSource cancel = new();
+        using ManualResetEventSlim entered = new();
+        using ManualResetEventSlim release = new();
+        RecordingTime time = new();
+        RunSeams seams = Seams([], resend) with {
+            OpenModel = (_, _, _, _, token) => {
+                entered.Set();
+                release.Wait(invokeLimit, CancellationToken.None);
+                throw new OperationCanceledException(token);
+            },
+        };
+        Task<int> running = Task.Run(() => InvokeAsync(seams, time, cancel.Token, output: output), CancellationToken.None);
+        try {
+            Assert.True(entered.Wait(TestWaits.Step, TestContext.Current.CancellationToken));
+            await cancel.CancelAsync();
+            await time.WaitForAsync(forcedStopLimit);
+            time.Advance(forcedStopLimit);
+
+            return await running;
+        } finally {
+            release.Set();
+        }
+    }
+
     private string Output() => console.Output.TrimEnd();
 
     private Task<int> InvokeAsync(RunSeams seams) => InvokeAsync(seams, clock, TestContext.Current.CancellationToken);
 
-    private Task<int> InvokeAsync(RunSeams seams, TimeProvider time, CancellationToken cancellationToken, bool inputRedirected = true) {
-        CliServices services = CliServices.Create(time, console.Console, console.ErrorConsole, environment);
+    private Task<int> InvokeAsync(
+        RunSeams seams, TimeProvider time, CancellationToken cancellationToken, bool inputRedirected = true, IAnsiConsole? output = null) {
+        CliServices services = CliServices.Create(time, output ?? console.Console, console.ErrorConsole, environment);
         System.CommandLine.RootCommand root = [new RunCommand(services, environment, time, inputRedirected, seams)];
         return root.Parse([RunCommand.CommandName]).InvokeAsync(null, cancellationToken)
             .WaitAsync(invokeLimit, TestContext.Current.CancellationToken);
+    }
+
+    private sealed class TerminalOutput(TextWriter writer) : IAnsiConsoleOutput {
+        private const int terminalWidth = 80;
+        private const int terminalHeight = 24;
+
+        public TextWriter Writer => writer;
+
+        public bool IsTerminal => true;
+
+        public int Width => terminalWidth;
+
+        public int Height => terminalHeight;
+
+        public void SetEncoding(Encoding encoding) {
+        }
     }
 }
