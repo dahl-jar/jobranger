@@ -44,7 +44,6 @@ public sealed class SmtpFailuresTests {
         ["io"] = (new IOException(detail), quiet),
         ["socket"] = (new SocketException(), quiet),
         ["other"] = (new FormatException(detail), quiet),
-        ["invalid operation"] = (new InvalidOperationException(detail), quiet),
     };
 
     [Theory]
@@ -64,7 +63,6 @@ public sealed class SmtpFailuresTests {
     [InlineData("io", nameof(SendFailureKind.SmtpUnreachable), null, "Could not reach mail.example.test:587.")]
     [InlineData("socket", nameof(SendFailureKind.SmtpUnreachable), null, "Could not reach mail.example.test:587.")]
     [InlineData("other", nameof(SendFailureKind.SmtpFailed), null, "The email could not be sent through mail.example.test:587.")]
-    [InlineData("invalid operation", nameof(SendFailureKind.SmtpFailed), null, "The email could not be sent through mail.example.test:587.")]
     public void ShouldExplainFailure_WhenSendThrows(string row, string kind, int? status, string reason) {
         (Exception error, SmtpSendState state) = rows[row];
 

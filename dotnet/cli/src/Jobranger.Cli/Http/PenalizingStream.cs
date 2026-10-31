@@ -14,6 +14,11 @@ internal sealed class PenalizingStream(Stream inner, Action penalize) : Forwardi
 
     public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
 
+    public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException();
+
     public override void Flush() {
     }
+
+    public override Task FlushAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }

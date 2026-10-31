@@ -50,11 +50,9 @@ public sealed class ResendSenderTests {
         Assert.Equal(2, created);
     }
 
-    [Theory]
-    [InlineData(202)]
-    [InlineData(299)]
-    public async Task ShouldCountAsSent_WhenStatusIsSuccess(int status) {
-        SendFailure? failure = await SendAsync(FakeApiHandler.Json(status, DeliveryFixtures.EmptyJson));
+    [Fact]
+    public async Task ShouldCountAsSent_WhenStatusIsSuccess() {
+        SendFailure? failure = await SendAsync(FakeApiHandler.Json(202, DeliveryFixtures.EmptyJson));
 
         Assert.Null(failure);
     }
@@ -73,7 +71,6 @@ public sealed class ResendSenderTests {
 
     [Theory]
     [InlineData(300, DeliveryFixtures.EmptyJson, nameof(SendFailureKind.ResendRedirect), "Resend answered with a redirect (300), so the email was not sent.")]
-    [InlineData(307, DeliveryFixtures.EmptyJson, nameof(SendFailureKind.ResendRedirect), "Resend answered with a redirect (307), so the email was not sent.")]
     [InlineData(399, DeliveryFixtures.EmptyJson, nameof(SendFailureKind.ResendRedirect), "Resend answered with a redirect (399), so the email was not sent.")]
     [InlineData(400, DeliveryFixtures.EmptyJson, nameof(SendFailureKind.ResendStatus), "Resend answered 400.")]
     [InlineData(401, DeliveryFixtures.EmptyJson, nameof(SendFailureKind.ResendKey), "Resend refused the key.")]

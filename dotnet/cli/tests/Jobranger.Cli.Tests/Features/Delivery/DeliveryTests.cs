@@ -223,24 +223,27 @@ public sealed class DeliveryTests : IDisposable {
     [Fact]
     public async Task ShouldReuseKey_WhenSameRunIsDeliveredAgain() {
         List<FakeApiHandler> handlers = [];
-        DeliveryTransport transport = DeliveryFixtures.TransportFor(() => {
-            FakeApiHandler created = FakeApiHandler.Json(500, DeliveryFixtures.EmptyJson);
-            handlers.Add(created);
-            return created;
-        });
-        DeliveryEntry delivery = DeliveryFixtures.Create(db, transport, time, DeliveryFixtures.WithResendKey(db));
+        DeliveryEntry delivery = RefusedDelivery(handlers);
         RunResult run = DeliveryFixtures.Result(StoredAd(1)) with { RunId = 7 };
-        AppConfig config = DeliveryFixtures.Config(DeliveryFixtures.ResendEmail);
 
-        await delivery.DeliverAsync(config, run, TestContext.Current.CancellationToken);
+        await DeliverRunAsync(delivery, run);
         time.Advance(TimeSpan.FromMinutes(1));
-        await delivery.DeliverAsync(config, run, TestContext.Current.CancellationToken);
-        await delivery.DeliverAsync(config, run with { RunId = 8 }, TestContext.Current.CancellationToken);
+        await DeliverRunAsync(delivery, run);
 
-        string? first = handlers[0].Last.Header("Idempotency-Key");
-        Assert.NotNull(first);
-        Assert.Equal(first, handlers[1].Last.Header("Idempotency-Key"));
-        Assert.NotEqual(first, handlers[2].Last.Header("Idempotency-Key"));
+        Assert.NotNull(SentKey(handlers[0]));
+        Assert.Equal(SentKey(handlers[0]), SentKey(handlers[1]));
+    }
+
+    [Fact]
+    public async Task ShouldChangeKey_WhenRunDiffers() {
+        List<FakeApiHandler> handlers = [];
+        DeliveryEntry delivery = RefusedDelivery(handlers);
+        RunResult run = DeliveryFixtures.Result(StoredAd(1)) with { RunId = 7 };
+
+        await DeliverRunAsync(delivery, run);
+        await DeliverRunAsync(delivery, run with { RunId = 8 });
+
+        Assert.NotEqual(SentKey(handlers[0]), SentKey(handlers[1]));
     }
 
     [Theory]
@@ -387,16 +390,27 @@ public sealed class DeliveryTests : IDisposable {
         return clock;
     }
 
+    private static string? SentKey(FakeApiHandler handler) => handler.Last.Header("Idempotency-Key");
+
+    private static Task<DeliveryResult> DeliverRunAsync(DeliveryEntry delivery, RunResult run) =>
+        delivery.DeliverAsync(
+            DeliveryFixtures.Config(DeliveryFixtures.ResendEmail), run, TestContext.Current.CancellationToken);
+
+    private DeliveryEntry RefusedDelivery(List<FakeApiHandler> handlers) {
+        DeliveryTransport transport = DeliveryFixtures.TransportFor(() => {
+            FakeApiHandler created = FakeApiHandler.Json(500, DeliveryFixtures.EmptyJson);
+            handlers.Add(created);
+            return created;
+        });
+        return DeliveryFixtures.Create(db, transport, time, DeliveryFixtures.WithResendKey(db));
+    }
+
     private Ad StoredAd(int index) =>
         DeliveryFixtures.Stored(ads, RunFixtures.Pending(index, $"Developer {index}", $"Org {index} AS"));
 
     private Task<DeliveryResult> DeliverStoredAdAsync(DeliveryEntry delivery) =>
-        delivery.DeliverAsync(
-            DeliveryFixtures.Config(DeliveryFixtures.ResendEmail),
-            DeliveryFixtures.Result(StoredAd(1)),
-            TestContext.Current.CancellationToken);
+        DeliverRunAsync(delivery, DeliveryFixtures.Result(StoredAd(1)));
 
     private Task<DeliveryResult> DeliverAsync(FakeApiHandler handler, RunResult result) =>
-        DeliveryFixtures.Create(db, handler, time)
-            .DeliverAsync(DeliveryFixtures.Config(DeliveryFixtures.ResendEmail), result, TestContext.Current.CancellationToken);
+        DeliverRunAsync(DeliveryFixtures.Create(db, handler, time), result);
 }

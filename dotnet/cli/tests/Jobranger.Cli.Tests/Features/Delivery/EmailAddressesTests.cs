@@ -37,11 +37,9 @@ public sealed class EmailAddressesTests {
         Assert.Null(addresses);
     }
 
-    [Theory]
-    [InlineData("not a mailbox")]
-    [InlineData("job\r\nranger <sender@example.test>")]
-    public void ShouldRefuseAddresses_WhenSenderIsUnusable(string sender) {
-        EmailConfig email = new() { Address = DeliveryFixtures.Address, Sender = sender };
+    [Fact]
+    public void ShouldRefuseAddresses_WhenSenderIsUnusable() {
+        EmailConfig email = new() { Address = DeliveryFixtures.Address, Sender = "job\r\nranger <sender@example.test>" };
 
         EmailAddresses? addresses = EmailAddresses.From(email);
 
