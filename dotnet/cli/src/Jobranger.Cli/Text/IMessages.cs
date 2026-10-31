@@ -127,6 +127,26 @@ internal interface IMessages {
 
     string DatabaseUnreadable(string path);
 
+    string ReportDescription { get; }
+
+    string ReportNoMatches { get; }
+
+    string ReportNoDate { get; }
+
+    string LogsDescription { get; }
+
+    string LogsNoRuns { get; }
+
+    string LogsMissing(int keepDays);
+
+    string ConfigMissing { get; }
+
+    string ProfileMissing(string path);
+
+    string FileUnreadable(string path);
+
+    string FileAccessFailed { get; }
+
     Language Language { get; }
 
     string DigestSubject(int matches, string date);

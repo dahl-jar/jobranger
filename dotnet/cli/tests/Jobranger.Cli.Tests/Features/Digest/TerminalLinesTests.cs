@@ -1,10 +1,24 @@
+using System.Collections;
 using Jobranger.Cli.Features.Digest;
 using Jobranger.Cli.Tests.Mocks;
+using Jobranger.Cli.Text;
 using DigestEntry = Jobranger.Cli.Features.Digest.Digest;
 
 namespace Jobranger.Cli.Tests.Features.Digest;
 
 public sealed class TerminalLinesTests {
+    private const int longTitleLength = 30;
+    private const int cutTitleLength = 21;
+
+    private static readonly DigestCard matchCard = DigestFixtures.Card with {
+        Title = "Data Engineer",
+        DisplayTitle = null,
+        Company = "Havbris Data AS",
+        Location = "Trondheim",
+        DeadlineDate = new DateOnly(2026, 10, 10),
+        Fit = DigestFit.Strong,
+    };
+
     [Fact]
     public void ShouldOrderHiddenPartsByCount_WhenCountsDiffer() {
         HiddenCount[] hidden = [new(HiddenGroup.Senior, 1), new(HiddenGroup.Masters, 3), new(HiddenGroup.Place, 2)];
@@ -49,5 +63,68 @@ public sealed class TerminalLinesTests {
         string line = DigestEntry.HiddenLine([new(HiddenGroup.Place, 1)], null, DigestFixtures.Norwegian);
 
         Assert.Equal("1 skjult: 1 annet sted", line);
+    }
+
+    [Theory]
+    [InlineData("Strong", "  Strong fit    Data Engineer          Havbris Data AS   Trondheim   10 Oct")]
+    [InlineData("Partial", "  Partial fit   Data Engineer          Havbris Data AS   Trondheim   10 Oct")]
+    [InlineData("OnRequest", "  Shown on request Data Engineer          Havbris Data AS   Trondheim   10 Oct")]
+    public void ShouldLineUpColumns_WhenMatchLineIsBuilt(string fit, string line) {
+        DigestCard card = matchCard with { Fit = Enum.Parse<DigestFit>(fit) };
+
+        Assert.Equal(line, DigestEntry.MatchLine(card, DigestFixtures.English));
+    }
+
+    [Fact]
+    public void ShouldCutTitle_WhenTextPassesColumn() {
+        DigestCard card = matchCard with { Title = new string('x', longTitleLength) };
+
+        Assert.Equal(
+            $"  Strong fit    {new string('x', cutTitleLength)}… Havbris Data AS   Trondheim   10 Oct",
+            DigestEntry.MatchLine(card, DigestFixtures.English));
+    }
+
+    [Fact]
+    public void ShouldCutCompany_WhenTextPassesColumn() {
+        DigestCard card = matchCard with { Company = "Havbris Data og Energi AS" };
+
+        Assert.Equal(
+            "  Strong fit    Data Engineer          Havbris Data og … Trondheim   10 Oct",
+            DigestEntry.MatchLine(card, DigestFixtures.English));
+    }
+
+    [Fact]
+    public void ShouldCutLocation_WhenTextPassesColumn() {
+        DigestCard card = matchCard with { Location = "Trondheim og Bergen" };
+
+        Assert.Equal(
+            "  Strong fit    Data Engineer          Havbris Data AS   Trondheim … 10 Oct",
+            DigestEntry.MatchLine(card, DigestFixtures.English));
+    }
+
+    [Fact]
+    public void ShouldPreferDisplayTitle_WhenCardHasOne() {
+        DigestCard card = matchCard with { Title = "Utvikler", DisplayTitle = "Data Engineer" };
+
+        Assert.Contains("Data Engineer", DigestEntry.MatchLine(card, DigestFixtures.English), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldDropEscapeCharacters_WhenTitleHasThem() {
+        DigestCard card = matchCard with { Title = "\u001b[2JData" };
+
+        Assert.Equal(
+            "  Strong fit    [2JData                Havbris Data AS   Trondheim   10 Oct",
+            DigestEntry.MatchLine(card, DigestFixtures.English));
+    }
+
+    [Theory]
+    [InlineData(Locales.English, "no date")]
+    [InlineData(Locales.Norwegian, "ingen dato")]
+    public void ShouldPrintNoDate_WhenCardHasNoDeadline(string lang, string date) {
+        IMessages messages = Messages.For(null, new Hashtable { [Locales.LangVariable] = lang });
+        DigestCard card = matchCard with { DeadlineDate = null };
+
+        Assert.EndsWith(date, DigestEntry.MatchLine(card, messages), StringComparison.Ordinal);
     }
 }

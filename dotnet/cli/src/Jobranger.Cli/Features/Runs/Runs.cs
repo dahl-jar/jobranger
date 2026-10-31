@@ -5,6 +5,7 @@ using Jobranger.Cli.Features.Providers;
 using Jobranger.Cli.Features.Sources;
 using Jobranger.Cli.Files;
 using Jobranger.Cli.Logging;
+using Jobranger.Cli.Text;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using AdsEntry = Jobranger.Cli.Features.Ads.Ads;
@@ -23,6 +24,12 @@ internal sealed class Runs(
     Func<SourcesConfig, IReadOnlyList<ISource>> enabledSources,
     TimeProvider time,
     ILogger logger) {
+    public static RunRow? LastRun(SqliteConnection connection) => new RunStore(connection).Last();
+
+    public static IReadOnlyList<string> Report(
+        SqliteConnection connection, AppConfig config, Paths paths, RunRow lastRun, TimeProvider time, IMessages messages) =>
+        TerminalReport.Lines(connection, config, paths, lastRun, time, messages);
+
     public async Task<RunResult> RunAsync(RunRequest request, CancellationToken cancellationToken) {
         RunModel? model = await CreateModelAsync(request.Config.Model, cancellationToken).ConfigureAwait(false);
         try {

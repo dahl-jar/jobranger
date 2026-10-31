@@ -144,6 +144,26 @@ internal sealed class EnglishMessages : IMessages {
 
     public string DatabaseUnreadable(string path) => $"Cannot read the jobranger database at {path}.";
 
+    public string ReportDescription => "Show your open matches.";
+
+    public string ReportNoMatches => "No matches yet. Run one with: jobranger run";
+
+    public string ReportNoDate => "no date";
+
+    public string LogsDescription => "Show the log lines from the last run.";
+
+    public string LogsNoRuns => "No runs yet. Run one with: jobranger run";
+
+    public string LogsMissing(int keepDays) => $"No log lines for the last run. Logs are kept for {keepDays} days.";
+
+    public string ConfigMissing => "No config yet. Set up with: jobranger init";
+
+    public string ProfileMissing(string path) => $"No profile file at {path}. Set up with: jobranger init";
+
+    public string FileUnreadable(string path) => $"Cannot read {path}.";
+
+    public string FileAccessFailed => "Cannot read a jobranger file. Check the folder permissions.";
+
     public Language Language => Language.En;
 
     public string DigestSubject(int matches, string date) =>

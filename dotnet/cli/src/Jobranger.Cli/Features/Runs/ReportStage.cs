@@ -17,6 +17,21 @@ internal sealed class ReportStage(AdsEntry ads, HttpClient http, TimeProvider ti
     private static readonly string expiredStatus = WireNames.Of(ApplyStatus.Expired);
     private static readonly string activeStatus = WireNames.Of(ApplyStatus.Active);
 
+    public static Dictionary<HiddenKind, int> HiddenCounts(
+        AdsEntry ads, DateTimeOffset since, string version, Targets targets, IReadOnlyList<string> listed) {
+        HashSet<string> listedIds = [.. listed];
+        Dictionary<HiddenKind, int> kinds = [];
+        foreach (Ad ad in ads.NewSince(since)) {
+            if (listedIds.Contains(ad.Id) || ad.Label is null) {
+                continue;
+            }
+            if (MatchingEntry.HiddenReason(RunConversions.ToAdView(ad), version, targets) is HiddenKind kind) {
+                kinds[kind] = kinds.GetValueOrDefault(kind) + 1;
+            }
+        }
+        return kinds;
+    }
+
     public async Task<ReportOutcome> RunAsync(ReportInput input, CancellationToken cancellationToken) {
         DateTimeOffset now = time.GetUtcNow();
         events.Emit(new RunEvent(RunStage.ApplyChecks));
@@ -39,7 +54,8 @@ internal sealed class ReportStage(AdsEntry ads, HttpClient http, TimeProvider ti
         (IReadOnlyList<Ad> remaining, IReadOnlyList<string> covered) =
             AdsEntry.SplitReported(reportable, ads.ReportedSince(now - reportedLookback));
         (List<string> reported, List<string> carried, List<string> silent) = PickDue(input, remaining, covered, now);
-        return new ReportOutcome(reported, carried, silent, HiddenCounts(input, reported));
+        return new ReportOutcome(
+            reported, carried, silent, HiddenCounts(ads, input.StartedAt, input.Version, input.Targets, reported));
     }
 
     private static string MatchedAt(Ad ad) {
@@ -89,19 +105,5 @@ internal sealed class ReportStage(AdsEntry ads, HttpClient http, TimeProvider ti
         List<string> carried = [.. due.Where(ad => string.CompareOrdinal(MatchedAt(ad), startedAt) < 0).Select(ad => ad.Id)];
         List<string> silent = [.. covered, .. remaining.Where(ad => !dueIds.Contains(ad.Id)).Select(ad => ad.Id)];
         return ([.. due.Select(ad => ad.Id)], carried, silent);
-    }
-
-    private Dictionary<HiddenKind, int> HiddenCounts(ReportInput input, IReadOnlyList<string> reported) {
-        HashSet<string> reportedIds = [.. reported];
-        Dictionary<HiddenKind, int> kinds = [];
-        foreach (Ad ad in ads.NewSince(input.StartedAt)) {
-            if (reportedIds.Contains(ad.Id) || ad.Label is null) {
-                continue;
-            }
-            if (MatchingEntry.HiddenReason(RunConversions.ToAdView(ad), input.Version, input.Targets) is HiddenKind kind) {
-                kinds[kind] = kinds.GetValueOrDefault(kind) + 1;
-            }
-        }
-        return kinds;
     }
 }

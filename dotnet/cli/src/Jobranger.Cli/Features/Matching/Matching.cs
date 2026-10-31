@@ -52,6 +52,8 @@ internal static class Matching {
 
     public static DisplayFit DisplayFit(AdView ad, Targets targets) => AdRules.FitOf(ad, targets);
 
+    public static bool IsStrongMatch(AdView ad) => ad.Match?.Status == Fit.Strong;
+
     public static bool IsStale(AdView ad, DateOnly today) => AdRules.IsStale(ad, today);
 
     public static DateOnly? ParseDate(string? value) => AdRules.ParseDate(value);

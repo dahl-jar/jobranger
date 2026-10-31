@@ -28,4 +28,6 @@ internal sealed record DigestCard {
     public bool IsStrongMatch { get; init; }
 
     public bool ApplyExpired { get; init; }
+
+    public string ShownTitle => string.IsNullOrEmpty(DisplayTitle) ? Title : DisplayTitle;
 }
