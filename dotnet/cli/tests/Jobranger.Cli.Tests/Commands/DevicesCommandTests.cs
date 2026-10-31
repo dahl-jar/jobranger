@@ -61,14 +61,7 @@ public sealed class DevicesCommandTests : IDisposable {
 
     public DevicesCommandTests() {
         time.SetLocalTimeZone(TimeZoneInfo.Utc);
-        environment = new Hashtable {
-            ["HOME"] = temp.Path,
-            ["LANG"] = Locales.English,
-            ["JOBRANGER_CONFIG_DIR"] = Path.Combine(temp.Path, "config"),
-            ["JOBRANGER_DATA_DIR"] = Path.Combine(temp.Path, "data"),
-            ["JOBRANGER_STATE_DIR"] = Path.Combine(temp.Path, "state"),
-            ["JOBRANGER_SECRET_STORE"] = "file",
-        };
+        environment = CommandFixtures.Environment(temp, Locales.English);
     }
 
     public void Dispose() {

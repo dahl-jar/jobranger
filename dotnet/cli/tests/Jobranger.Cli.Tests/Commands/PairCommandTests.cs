@@ -26,15 +26,8 @@ public sealed class PairCommandTests : IDisposable {
     private readonly Hashtable environment;
 
     public PairCommandTests() {
-        environment = new Hashtable {
-            ["HOME"] = temp.Path,
-            ["LANG"] = Locales.English,
-            ["JOBRANGER_CONFIG_DIR"] = Path.Combine(temp.Path, "config"),
-            ["JOBRANGER_DATA_DIR"] = Path.Combine(temp.Path, "data"),
-            ["JOBRANGER_STATE_DIR"] = Path.Combine(temp.Path, "state"),
-            ["JOBRANGER_SECRET_STORE"] = "file",
-            ["JOBRANGER_RELAY_URL"] = $"http://127.0.0.1:{ClosedPort()}",
-        };
+        environment = CommandFixtures.Environment(temp, Locales.English);
+        environment["JOBRANGER_RELAY_URL"] = $"http://127.0.0.1:{ClosedPort()}";
     }
 
     public void Dispose() {

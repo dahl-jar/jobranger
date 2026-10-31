@@ -19,7 +19,7 @@ internal static class CardViews {
             card.Fit,
             FitLabel(card.Fit, messages),
             CardText.Cut(card.Company, CardText.FieldLimit),
-            CardText.Cut(string.IsNullOrEmpty(card.DisplayTitle) ? card.Title : card.DisplayTitle, CardText.FieldLimit),
+            CardText.Cut(card.ShownTitle, CardText.FieldLimit),
             string.Join(
                 TerminalLines.Separator,
                 meta.Where(part => PythonUnicode.Strip(part).Length > 0)
