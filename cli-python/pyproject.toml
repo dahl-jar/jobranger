@@ -14,7 +14,7 @@ dependencies = [
     "packaging>=24",
     "platformdirs>=4.12,<5",
     "pydantic>=2.14,<3",
-    "pypdf[crypto]>=6.21.3",
+    "pypdf[crypto]>=6.21.4",
     "ruamel.yaml>=0.19.1,<0.20",
 ]
 

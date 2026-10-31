@@ -188,6 +188,15 @@ def test_should_report_too_large_when_pdf_contents_array_passes_output_limit() -
     assert reply == TOO_LARGE
 
 
+def test_should_report_too_large_when_pdf_pages_pass_entry_limit() -> None:
+    data = pdf_with_text("x")
+
+    with apply_configuration(page_tree_maximum_page_entries=0):
+        reply = cv_worker.extract(".pdf", data)
+
+    assert reply == TOO_LARGE
+
+
 @pytest.mark.parametrize(
     ("body", "expected"),
     [
