@@ -2,6 +2,7 @@ using System.Collections.Frozen;
 using System.Globalization;
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 using Jobranger.Cli.Http;
 using Jobranger.Cli.Text;
 using static Jobranger.Cli.Features.Sources.LinkedInPages;
@@ -77,13 +78,13 @@ internal sealed class LinkedInSource : ISource {
             byte[] body = await SourceHttp.GetAsync(client, new Uri(postingUrl + jobId), options, cancellationToken)
                 .ConfigureAwait(false);
             return LinkedInPages.ParsePosting(Encoding.UTF8.GetString(body));
-        } catch (Exception error) when (SourceHttp.IsFailure(error, cancellationToken) && !IsRateLimited(error)) {
+        } catch (Exception error) when (SourceHttp.IsFailure(error, cancellationToken) && !FailsRun(error)) {
             return null;
         }
     }
 
-    private static bool IsRateLimited(Exception error) =>
-        error is HttpRequestException { StatusCode: HttpStatusCode.TooManyRequests };
+    private static bool FailsRun(Exception error) =>
+        error is RegexMatchTimeoutException or HttpRequestException { StatusCode: HttpStatusCode.TooManyRequests };
 
     private static bool IsWanted(FetchContext context, Card card) =>
         !context.KnownIds.Contains(idPrefix + card.JobId)

@@ -1,6 +1,7 @@
 using System.Collections.Specialized;
 using System.Globalization;
 using System.Net;
+using System.Text.RegularExpressions;
 using System.Web;
 using Jobranger.Cli.Features.Sources;
 using Jobranger.Cli.Tests.Mocks;
@@ -123,12 +124,15 @@ public sealed class LinkedInSourceTests {
         FakeSiteHandler handler = Site(FirstPageOnly,
             id => id == "4000000003" ? Status(HttpStatusCode.TooManyRequests) : Body(postingHtml));
 
-        SourceException error = await Assert.ThrowsAsync<SourceException>(
-            () => source.FetchAsync(Context(handler), CancellationToken.None));
+        await AssertFailsWithoutCursor(handler);
+    }
 
-        Assert.Equal(
-            ("linkedin:4000000001", 0, "linkedin search failed"),
-            (Ids(error.Partial?.Listings), error.Partial?.Cursors.Count, error.Message));
+    [Fact]
+    public async Task ShouldFailWithoutCursor_WhenPostingMatchTimesOut() {
+        FakeSiteHandler handler = Site(FirstPageOnly,
+            id => id == "4000000003" ? throw new RegexMatchTimeoutException() : Body(postingHtml));
+
+        await AssertFailsWithoutCursor(handler);
     }
 
     [Fact]
@@ -215,6 +219,15 @@ public sealed class LinkedInSourceTests {
         SourceBatch batch = await source.FetchAsync(Context(handler), cancel.Token);
 
         Assert.Equal(("linkedin:4000000001", 0, true), (Ids(batch.Listings), batch.Cursors.Count, batch.Partial));
+    }
+
+    private static async Task AssertFailsWithoutCursor(FakeSiteHandler handler) {
+        SourceException error = await Assert.ThrowsAsync<SourceException>(
+            () => source.FetchAsync(Context(handler), CancellationToken.None));
+
+        Assert.Equal(
+            ("linkedin:4000000001", 0, "linkedin search failed"),
+            (Ids(error.Partial?.Listings), error.Partial?.Cursors.Count, error.Message));
     }
 
     private static string FirstPageOnly(string keyword, int start) => start == 0 ? searchHtml : emptyPage;
