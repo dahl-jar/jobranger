@@ -193,6 +193,18 @@ public sealed class ConfigFileTests : IDisposable {
         Assert.Equal(["null", "true", "123", "~", "1e3"], ConfigFile.Load(path, Home).Targets.Places);
     }
 
+    [Theory]
+    [InlineData("Senior dev\tOslo")]
+    [InlineData("Built X.\nLed Y.\u2028Shipped Z.")]
+    [InlineData("Built X.\u0085Led Y.")]
+    public void ShouldReadSavedPlace_WhenPlaceHasTabOrLineSeparator(string place) {
+        ConfigFile.Save(path, Full() with { Targets = new Targets { Places = [place] } }, Home, NullLogger.Instance);
+
+        AppConfig loaded = ConfigFile.Load(path, Home);
+
+        Assert.Equal([place], loaded.Targets.Places);
+    }
+
     [Fact]
     public void ShouldWriteFileWithMode0600_WhenSavingConfig() {
         ConfigFile.Save(path, Full(), Home, NullLogger.Instance);

@@ -27,6 +27,7 @@ DRIVERS = (
     ("provider_requests.py", ("--prompt", PROVIDER_PROMPT, "--out", PROVIDER_REQUESTS)),
     ("budget_estimates.py", ("--out", BUDGET_ESTIMATES)),
     ("matching.py", ("--inputs", MATCHING_INPUTS, "--out", GOLDEN)),
+    ("lax_typing.py", ("--inputs", MATCHING_INPUTS, "--out", GOLDEN)),
 )
 
 log = logging.getLogger("export_goldens")
