@@ -55,9 +55,13 @@ description = "Test the edge worker"
 depends = ["edge:install"]
 run = "pnpm --dir edge test"
 
+[tasks."test:release"]
+description = "Test the release scripts"
+run = "bash scripts/release/tests/release_test.sh"
+
 [tasks.test]
 description = "Run every suite"
-depends = ["test:dotnet", "test:python", "test:web", "test:edge"]
+depends = ["test:dotnet", "test:python", "test:web", "test:edge", "test:release"]
 
 [tasks."contracts:check"]
 description = "Regenerate contract code and fail on drift or untracked files"

@@ -86,7 +86,7 @@ internal static class AdRules {
         return null;
     }
 
-    private static string Normalize(string value) => MatchText.CollapseSpace(PythonUnicode.CaseFold(value));
+    private static string Normalize(string value) => PythonUnicode.CollapseSpace(PythonUnicode.CaseFold(value));
 
     private static bool ContainsWord(string text, string word) {
         int start = text.IndexOf(word, StringComparison.Ordinal);

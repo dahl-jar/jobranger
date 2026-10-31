@@ -1,0 +1,27 @@
+jobranger · torsdag 8. oktober
+
+1 godt treff, 1 delvis treff og 1 annonse vist likevel i morges, valgt ut blant 40 nye annonser.
+
+NYE I DAG
+
+20. okt, om 12 dager · ✓ Passer godt
+<script>alert(1)</script>
+O'Brien & Sons
+Oslo · Backend · FINN
+Build backend [31m services.
+Åpne annonsen ↗: https://ads.example.test/job/a%20b?q=x%20y#f%20g
+
+Ingen dato, søk tidlig · ◐ Passer delvis
+Company One
+Developer One
+Oslo · FINN
+Build backend services.
+
+20. okt, om 12 dager · Vist likevel
+Company One
+Developer One
+Oslo · Backend · FINN
+Build backend services.
+
+Leste FINN og NAV i natt.
+Stopp disse e-postene: jobranger config edit

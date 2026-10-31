@@ -1,15 +1,6 @@
 name: Test frontend
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - contracts/**
-      - "!contracts/src/**"
-      - "!contracts/tests/**"
-      - "!contracts/stryker-config.json"
-      - web/**
-      - .github/workflows/web.yml
   pull_request:
     paths:
       - contracts/**
@@ -18,6 +9,7 @@ on:
       - "!contracts/stryker-config.json"
       - web/**
       - .github/workflows/web.yml
+  workflow_call:
   workflow_dispatch:
 
 permissions:

@@ -10,4 +10,18 @@ public sealed class CanonicalUrlsTests {
     public void ShouldLowerHostLikePython_WhenHostHasSpecialCasing(string url, string expected) {
         Assert.Equal(expected, CanonicalUrls.Of(url));
     }
+
+    [Fact]
+    public void ShouldKeepHost_WhenPathIsEmpty() {
+        string canonical = CanonicalUrls.Of("https://Ads.example.test");
+
+        Assert.Equal("https://ads.example.test", canonical);
+    }
+
+    [Fact]
+    public void ShouldKeepHostCase_WhenSchemeIsInvalid() {
+        string canonical = CanonicalUrls.Of("h!tp://Host/x");
+
+        Assert.EndsWith("h!tp://Host/x", canonical, StringComparison.Ordinal);
+    }
 }

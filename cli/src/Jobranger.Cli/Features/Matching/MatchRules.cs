@@ -64,7 +64,7 @@ internal static class MatchRules {
         if (raw.RequiredExperienceYears is double count && (!double.IsFinite(count) || count < 0)) {
             return null;
         }
-        if (!Fit.All.Contains(raw.Status) || MatchText.Strip(raw.Reason).Length == 0) {
+        if (!Fit.All.Contains(raw.Status) || PythonUnicode.Strip(raw.Reason).Length == 0) {
             return null;
         }
         return new Match(
@@ -101,7 +101,7 @@ internal static class MatchRules {
     public static string YearCount(double years) =>
         $"{YearsText(years)} {(years == oneYear ? "year" : "years")}";
 
-    public static string Clean(string text) => WordTruncation.Cut(MatchText.CollapseSpace(text), textLimit);
+    public static string Clean(string text) => WordTruncation.Cut(PythonUnicode.CollapseSpace(text), textLimit);
 
     private static string YearsText(double value) =>
         value.ToString(shortFormat, CultureInfo.InvariantCulture).Replace(upperExponent, lowerExponent);
@@ -116,5 +116,5 @@ internal static class MatchRules {
         match.RequiredExperienceYears is double years && MaxYears(limits) is double cap && years > cap;
 
     private static List<string> Items(IReadOnlyList<string> items) =>
-        [.. items.Where(item => MatchText.Strip(item).Length > 0).Select(Clean).Take(ItemLimit)];
+        [.. items.Where(item => PythonUnicode.Strip(item).Length > 0).Select(Clean).Take(ItemLimit)];
 }

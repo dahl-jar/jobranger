@@ -38,6 +38,11 @@ FIXTURES = CONTRACTS / "fixtures"
 WEB_CONTRACT = ROOT / "web" / "src" / "features" / "relay" / "contract"
 CLI_CONTRACT = ROOT / "cli-python" / "src" / "jobranger" / "contract"
 WORKFLOWS = ROOT / ".github" / "workflows"
+RELEASE_WORKFLOW = "release-cli.yml"
+RELEASE_GATE_JOB = "version"
+COMPONENT_WORKFLOWS = sorted(
+    path.name for path in WORKFLOWS.glob("*.yml") if path.name != RELEASE_WORKFLOW
+)
 SESSION_SPEC = CONTRACTS / "session" / "v1.md"
 IGNORABLES = CONTRACTS / "unicode" / "default-ignorable-15.0.0.json"
 BMP_MAX = 0xFFFF
@@ -250,6 +255,13 @@ def git_attribute(path: Path, name: str) -> str:
 
 def path_id(path: Path) -> str:
     return str(path.relative_to(ROOT))
+
+
+def load_workflow(name: str) -> dict[str, Any]:
+    workflow: dict[str, Any] = YAML(typ="safe").load(
+        (WORKFLOWS / name).read_text("utf-8")
+    )
+    return workflow
 
 
 def base64_chars(byte_count: int) -> int:
@@ -1231,11 +1243,9 @@ def test_should_not_mark_hand_written_code_as_generated(path: Path) -> None:
     ],
 )
 def test_should_run_workflow_on_contract_change(workflow: str, path: str) -> None:
-    triggers = YAML(typ="safe").load((WORKFLOWS / workflow).read_text("utf-8"))["on"]
+    paths = load_workflow(workflow)["on"]["pull_request"]["paths"]
 
-    paths = [triggers[event]["paths"] for event in ("push", "pull_request")]
-
-    assert all(path in event_paths for event_paths in paths)
+    assert path in paths
 
 
 @pytest.mark.parametrize("workflow", ["cli-python.yml", "web.yml"])
@@ -1246,12 +1256,28 @@ def test_should_run_workflow_on_contract_change(workflow: str, path: str) -> Non
 def test_should_skip_workflow_on_csharp_contract_change(
     workflow: str, path: str
 ) -> None:
-    triggers = YAML(typ="safe").load((WORKFLOWS / workflow).read_text("utf-8"))["on"]
+    paths = load_workflow(workflow)["on"]["pull_request"]["paths"]
 
-    paths = [triggers[event]["paths"] for event in ("push", "pull_request")]
+    assert f"!{path}" in paths
+    assert paths.index(f"!{path}") > paths.index("contracts/**")
 
-    assert all(
-        f"!{path}" in event_paths
-        and event_paths.index(f"!{path}") > event_paths.index("contracts/**")
-        for event_paths in paths
-    )
+
+@pytest.mark.parametrize("workflow", COMPONENT_WORKFLOWS)
+def test_should_gate_release_on_component_workflow(workflow: str) -> None:
+    jobs = load_workflow(RELEASE_WORKFLOW)["jobs"]
+
+    callers = [
+        name
+        for name, job in jobs.items()
+        if job.get("uses") == f"./.github/workflows/{workflow}"
+    ]
+
+    assert callers
+    assert set(callers) <= set(jobs[RELEASE_GATE_JOB]["needs"])
+
+
+@pytest.mark.parametrize("workflow", COMPONENT_WORKFLOWS)
+def test_should_let_release_call_component_workflow(workflow: str) -> None:
+    triggers = load_workflow(workflow)["on"]
+
+    assert "workflow_call" in triggers

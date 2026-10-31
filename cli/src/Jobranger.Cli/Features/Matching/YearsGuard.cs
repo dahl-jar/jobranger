@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 using Jobranger.Cli.Config;
+using Jobranger.Cli.Text;
 using RegexMatch = System.Text.RegularExpressions.Match;
 
 namespace Jobranger.Cli.Features.Matching;
@@ -39,7 +40,7 @@ internal static partial class YearsGuard {
         }
         StatedYears? best = null;
         foreach (string segment in ItemSplit().Split(text)) {
-            string item = MatchText.CollapseSpace(segment);
+            string item = PythonUnicode.CollapseSpace(segment);
             foreach (RegexMatch found in YearPhrase().Matches(item)) {
                 if (IsOptional(item, found)) {
                     continue;
