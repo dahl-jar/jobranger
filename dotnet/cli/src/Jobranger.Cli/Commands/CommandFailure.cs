@@ -25,14 +25,16 @@ internal static class CommandFailure {
         ConfigInvalidException invalid =>
             new ReadFailure(configInvalid, [.. invalid.Errors.Select(problem => problem.Describe(messages))]),
         SchemaTooNewException => new ReadFailure(schemaTooNew, [messages.DatabaseTooNew]),
-        MigrationException => new ReadFailure(migrationFailed, [messages.DatabaseUnreadable(paths.DbPath())]),
-        SqliteException => new ReadFailure(databaseUnreadable, [messages.DatabaseUnreadable(paths.DbPath())]),
+        MigrationException => DatabaseFailure(migrationFailed, paths, messages),
+        SqliteException => DatabaseFailure(databaseUnreadable, paths, messages),
         SecretStoreUnavailableException => new ReadFailure(secretStoreFailed, [messages.SecretStoreFailed]),
         PrivateDirException dir => new ReadFailure(dirNotWritable, [messages.DirNotWritable(dir.Path)]),
-        PrivateFileException file when file.Path == paths.DbPath() =>
-            new ReadFailure(databaseUnreadable, [messages.DatabaseUnreadable(paths.DbPath())]),
+        PrivateFileException file when file.Path == paths.DbPath() => DatabaseFailure(databaseUnreadable, paths, messages),
         PrivateFileException file => new ReadFailure(fileUnreadable, [messages.FileUnreadable(file.Path)]),
         IOException or UnauthorizedAccessException => new ReadFailure(fileUnreadable, [messages.FileAccessFailed]),
         _ => null,
     };
+
+    private static ReadFailure DatabaseFailure(string code, Paths paths, IMessages messages) =>
+        new(code, [messages.DatabaseUnreadable(paths.DbPath())]);
 }

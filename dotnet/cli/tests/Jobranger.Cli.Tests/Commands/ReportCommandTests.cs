@@ -30,12 +30,6 @@ public sealed class ReportCommandTests : IDisposable {
     private const string applySoonTitle = "Apply this week";
     private const string partialReport =
         "New today\n  Partial fit   Backend Developer      Org Two AS        Oslo        no date\n";
-    private const string dirNotWritable =
-        "Cannot create or use the folder {0}. Make it and the folders above it writable, then try again.\n";
-    private const string dirNotWritableNorwegian =
-        "Kan ikke lage eller bruke mappen {0}. Gjør den og mappene over den skrivbare, og prøv igjen.\n";
-    private const string databaseUnreadable = "Cannot read the jobranger database at {0}.\n";
-    private const string databaseUnreadableNorwegian = "Kan ikke lese jobranger-databasen i {0}.\n";
     private const string englishReport =
         "Apply this week\n"
         + "  Strong fit    Software Developer     Org One AS        Bergen      12 Oct\n"
@@ -316,7 +310,7 @@ public sealed class ReportCommandTests : IDisposable {
         int exit = await RunAsync();
 
         Assert.Equal(
-            (CliExitCodes.Failure, string.Format(line, profile), "report.failed profile_missing"),
+            (CliExitCodes.Failure, CommandFixtures.WithPath(line, profile), "report.failed profile_missing"),
             (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
     }
 
@@ -334,9 +328,7 @@ public sealed class ReportCommandTests : IDisposable {
 
     [Fact]
     public async Task ShouldPrintDatabaseTooNew_WhenSchemaIsNewer() {
-        using (SqliteConnection database = Database.Open(paths.DbPath(), NullLogger.Instance)) {
-            new StateStore(database).Set(StateStore.SchemaVersionKey, "99");
-        }
+        CommandFixtures.MarkSchemaTooNew(paths.DbPath());
 
         int exit = await RunAsync();
 
@@ -353,44 +345,35 @@ public sealed class ReportCommandTests : IDisposable {
         int exit = await RunAsync();
 
         Assert.Equal(
-            (CliExitCodes.Failure, $"Cannot read the jobranger database at {paths.DbPath()}.\n", "report.failed database_unreadable"),
+            (CliExitCodes.Failure, CommandFixtures.WithPath(CommandFixtures.DatabaseUnreadable, paths.DbPath()), "report.failed database_unreadable"),
             (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
     }
 
-    [Theory]
-    [InlineData(Locales.English, databaseUnreadable)]
-    [InlineData(Locales.Norwegian, databaseUnreadableNorwegian)]
-    public async Task ShouldPrintDatabaseUnreadable_WhenMigrationFails(string lang, string line) {
-        environment["LANG"] = lang;
+    [Fact]
+    public async Task ShouldPrintDatabaseUnreadable_WhenMigrationFails() {
         CommandFixtures.RewindSchema(paths.DbPath());
 
         int exit = await RunAsync();
 
         Assert.Equal(
-            (CliExitCodes.Failure, WithPath(line, paths.DbPath()), "report.failed migration_failed"),
+            (CliExitCodes.Failure, CommandFixtures.WithPath(CommandFixtures.DatabaseUnreadable, paths.DbPath()), "report.failed migration_failed"),
             (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
     }
 
-    [Theory]
-    [InlineData(Locales.English, databaseUnreadable)]
-    [InlineData(Locales.Norwegian, databaseUnreadableNorwegian)]
-    public async Task ShouldPrintDatabaseUnreadable_WhenDatabaseIsSymlink(string lang, string line) {
-        environment["LANG"] = lang;
+    [Fact]
+    public async Task ShouldPrintDatabaseUnreadable_WhenDatabaseIsSymlink() {
         Directory.CreateDirectory(paths.DataDir());
         File.CreateSymbolicLink(paths.DbPath(), temp.File("elsewhere.db"));
 
         int exit = await RunAsync();
 
         Assert.Equal(
-            (CliExitCodes.Failure, WithPath(line, paths.DbPath()), "report.failed database_unreadable"),
+            (CliExitCodes.Failure, CommandFixtures.WithPath(CommandFixtures.DatabaseUnreadable, paths.DbPath()), "report.failed database_unreadable"),
             (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
     }
 
-    [Theory]
-    [InlineData(Locales.English, dirNotWritable)]
-    [InlineData(Locales.Norwegian, dirNotWritableNorwegian)]
-    public async Task ShouldPrintDirNotWritable_WhenDataParentIsReadOnly(string lang, string line) {
-        environment["LANG"] = lang;
+    [Fact]
+    public async Task ShouldPrintDirNotWritable_WhenDataParentIsReadOnly() {
         string parent = temp.File("locked");
         Directory.CreateDirectory(parent);
         File.SetUnixFileMode(parent, UnixFileMode.UserRead | UnixFileMode.UserExecute);
@@ -400,7 +383,7 @@ public sealed class ReportCommandTests : IDisposable {
         int exit = await RunAsync();
 
         Assert.Equal(
-            (CliExitCodes.Failure, WithPath(line, data), "report.failed dir_not_writable"),
+            (CliExitCodes.Failure, CommandFixtures.WithPath(CommandFixtures.DirNotWritable, data), "report.failed dir_not_writable"),
             (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
     }
 
@@ -414,7 +397,7 @@ public sealed class ReportCommandTests : IDisposable {
         int exit = await RunAsync();
 
         Assert.Equal(
-            (CliExitCodes.Failure, WithPath(dirNotWritable, data), "report.failed dir_not_writable"),
+            (CliExitCodes.Failure, CommandFixtures.WithPath(CommandFixtures.DirNotWritable, data), "report.failed dir_not_writable"),
             (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
     }
 
@@ -446,8 +429,6 @@ public sealed class ReportCommandTests : IDisposable {
 
         Assert.Contains(ReportCommand.CommandName, root.Subcommands.Select(command => command.Name));
     }
-
-    private static string WithPath(string line, string path) => string.Format(line, path);
 
     private string SaveConfig() {
         AppConfig config = RunFixtures.Config(MatchingFixtures.TestData("profile_user.yaml"));

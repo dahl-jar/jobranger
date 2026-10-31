@@ -3,7 +3,6 @@ using System.Runtime.Versioning;
 using Jobranger.Cli.Config;
 using Jobranger.Cli.Features.Link;
 using Jobranger.Cli.Files;
-using Jobranger.Cli.Logging;
 using Jobranger.Cli.Text;
 using Microsoft.Extensions.Logging;
 
@@ -30,10 +29,6 @@ internal static class LinkCommandRun {
             return await action(new OpenedLink(link, urls, paths, output, logger), cancellationToken)
                 .ConfigureAwait(false);
         } catch (Exception error) when (CommandFailure.Of(error, paths, messages) is ReadFailure failure) {
-            return await FailAsync(failure).ConfigureAwait(false);
-        }
-
-        async Task<int> FailAsync(ReadFailure failure) {
             logFailure(logger, failure.Code);
             foreach (string line in failure.Lines) {
                 await output.WriteLineAsync(line).ConfigureAwait(false);

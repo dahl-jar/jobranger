@@ -102,7 +102,7 @@ public sealed class FileSecretStoreTests : IDisposable {
 
         PrivateFileException refused = Assert.Throws<PrivateFileException>(() => foreign.Load());
 
-        Assert.Equal((foreignFile, mode), (refused.Path, File.GetUnixFileMode(foreignFile)));
+        Assert.Equal((foreignFile, mode, false), (refused.Path, File.GetUnixFileMode(foreignFile), refused.IsUnreadable));
     }
 
     private async Task LockFreshFilesInParallel() {

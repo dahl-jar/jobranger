@@ -13,9 +13,13 @@ namespace Jobranger.Cli.Tests.Mocks;
 
 internal static class CommandFixtures {
     public const string FileAccessFailed = "Cannot read a jobranger file. Check the folder permissions.\n";
+    public const string DatabaseUnreadable = "Cannot read the jobranger database at {0}.\n";
+    public const string DirNotWritable =
+        "Cannot create or use the folder {0}. Make it and the folders above it writable, then try again.\n";
 
     private const string logFileName = "2026-10-09.jsonl";
     private const string schemaBeforeDevices = "3";
+    private const string schemaTooNew = "99";
 
     public static Hashtable Environment(TempDir temp, string language) => new() {
         ["HOME"] = temp.Path,
@@ -34,10 +38,12 @@ internal static class CommandFixtures {
     }
 
     [UnsupportedOSPlatform("windows")]
-    public static void RewindSchema(string dbPath) {
-        using SqliteConnection database = Database.Open(dbPath, NullLogger.Instance);
-        new StateStore(database).Set(StateStore.SchemaVersionKey, schemaBeforeDevices);
-    }
+    public static void RewindSchema(string dbPath) => SetSchema(dbPath, schemaBeforeDevices);
+
+    [UnsupportedOSPlatform("windows")]
+    public static void MarkSchemaTooNew(string dbPath) => SetSchema(dbPath, schemaTooNew);
+
+    public static string WithPath(string line, string path) => string.Format(line, path);
 
     public static IAnsiConsole BrokenConsole(Type failure) =>
         AnsiConsole.Create(new AnsiConsoleSettings {
@@ -47,6 +53,12 @@ internal static class CommandFixtures {
             Out = new AnsiConsoleOutput(new BrokenWriter((Exception)Activator.CreateInstance(failure)!)),
             EnvironmentVariables = [],
         });
+
+    [UnsupportedOSPlatform("windows")]
+    private static void SetSchema(string dbPath, string version) {
+        using SqliteConnection database = Database.Open(dbPath, NullLogger.Instance);
+        new StateStore(database).Set(StateStore.SchemaVersionKey, version);
+    }
 
     private sealed class BrokenWriter(Exception failure) : TextWriter {
         public override Encoding Encoding => Encoding.UTF8;

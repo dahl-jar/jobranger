@@ -21,7 +21,6 @@ namespace Jobranger.Cli.Tests.Commands;
 public sealed class DevicesCommandTests : IDisposable {
     private const string otherName = "Chrome on Linux";
     private const string seenAt = "2026-10-27T08:00:00+00:00";
-    private const string unreadable = "Cannot read the jobranger database at {0}.";
     private const string keysFileFailed =
         "New link keys could not be made because jobranger cannot use {0} ({1}). "
         + "Fix or remove that file, then run jobranger unpair again.";
@@ -36,10 +35,8 @@ public sealed class DevicesCommandTests : IDisposable {
         "). Make that file and its folder readable and writable, then run jobranger unpair again.";
     private const string keysWriteAdviceNorwegian =
         "). Gjør filen og mappen lesbare og skrivbare, og kjør jobranger unpair på nytt.";
-    private const string dirNotWritable =
-        "Cannot create or use the folder {0}. Make it and the folders above it writable, then try again.";
     private const string dirNotWritableNorwegian =
-        "Kan ikke lage eller bruke mappen {0}. Gjør den og mappene over den skrivbare, og prøv igjen.";
+        "Kan ikke lage eller bruke mappen {0}. Gjør den og mappene over den skrivbare, og prøv igjen.\n";
     private const string accessFailedNorwegian = "Kan ikke lese en jobranger-fil. Sjekk tilgangene til mappen.\n";
     private const string dirFailure = "dir_not_writable";
     private const string notJsonReason = "not UTF-8 JSON";
@@ -255,7 +252,7 @@ public sealed class DevicesCommandTests : IDisposable {
 
         int exit = await RunAsync("unpair");
 
-        Assert.Equal((CliExitCodes.Failure, string.Format(line, lockPath)), (exit, console.Output.TrimEnd()));
+        Assert.Equal((CliExitCodes.Failure, CommandFixtures.WithPath(line, lockPath)), (exit, console.Output.TrimEnd()));
         Assert.Single(Remaining());
         Assert.Contains("lock_unreadable", LoggedFailures());
     }
@@ -271,7 +268,7 @@ public sealed class DevicesCommandTests : IDisposable {
         int exit = await RunAsync("unpair");
 
         Assert.Equal(CliExitCodes.Failure, exit);
-        Assert.StartsWith(WithPath(opening, MetadataPath()), console.Output, StringComparison.Ordinal);
+        Assert.StartsWith(CommandFixtures.WithPath(opening, MetadataPath()), console.Output, StringComparison.Ordinal);
         Assert.EndsWith(advice, console.Output.TrimEnd(), StringComparison.Ordinal);
         Assert.Empty(Remaining());
     }
@@ -305,7 +302,7 @@ public sealed class DevicesCommandTests : IDisposable {
         int exit = await RunAsync("unpair");
 
         Assert.Equal(
-            (CliExitCodes.Failure, WithPath(keysWriteOpening, secrets) + "symbolic link" + keysWriteAdvice),
+            (CliExitCodes.Failure, CommandFixtures.WithPath(keysWriteOpening, secrets) + "symbolic link" + keysWriteAdvice),
             (exit, console.Output.TrimEnd()));
     }
 
@@ -322,7 +319,7 @@ public sealed class DevicesCommandTests : IDisposable {
 
         File.SetUnixFileMode(secrets, PrivateFile.OwnerOnlyFileMode);
         Assert.Equal(CliExitCodes.Failure, exit);
-        Assert.StartsWith(WithPath(opening, secrets), console.Output, StringComparison.Ordinal);
+        Assert.StartsWith(CommandFixtures.WithPath(opening, secrets), console.Output, StringComparison.Ordinal);
         Assert.EndsWith(advice, console.Output.TrimEnd(), StringComparison.Ordinal);
         Assert.DoesNotContain(removal, console.Output, StringComparison.Ordinal);
         Assert.Equal(savedSecrets, File.ReadAllText(secrets));
@@ -338,7 +335,7 @@ public sealed class DevicesCommandTests : IDisposable {
         int exit = await UnpairWithReadOnlyConfigAsync();
 
         Assert.Equal(CliExitCodes.Failure, exit);
-        Assert.StartsWith(WithPath(opening, SecretsPath()), console.Output, StringComparison.Ordinal);
+        Assert.StartsWith(CommandFixtures.WithPath(opening, SecretsPath()), console.Output, StringComparison.Ordinal);
         Assert.EndsWith(advice, console.Output.TrimEnd(), StringComparison.Ordinal);
         Assert.DoesNotContain(removal, console.Output, StringComparison.Ordinal);
         Assert.Equal(savedSecrets, File.ReadAllText(SecretsPath()));
@@ -427,7 +424,7 @@ public sealed class DevicesCommandTests : IDisposable {
 
     [Fact]
     public async Task ShouldPrintDatabaseTooNew_WhenSchemaIsNewer() {
-        MarkSchemaTooNew();
+        CommandFixtures.MarkSchemaTooNew(DatabasePath());
 
         int exit = await RunAsync("devices", "list");
 
@@ -442,7 +439,7 @@ public sealed class DevicesCommandTests : IDisposable {
 
         int exit = await RunAsync("devices", "list");
 
-        Assert.Equal((CliExitCodes.Failure, WithPath(unreadable, DatabasePath())), (exit, console.Output.TrimEnd()));
+        Assert.Equal((CliExitCodes.Failure, CommandFixtures.WithPath(CommandFixtures.DatabaseUnreadable, DatabasePath())), (exit, console.Output));
     }
 
     [Theory]
@@ -454,7 +451,7 @@ public sealed class DevicesCommandTests : IDisposable {
 
         int exit = await RunAsync(args);
 
-        Assert.Equal((CliExitCodes.Failure, WithPath(unreadable, DatabasePath())), (exit, console.Output.TrimEnd()));
+        Assert.Equal((CliExitCodes.Failure, CommandFixtures.WithPath(CommandFixtures.DatabaseUnreadable, DatabasePath())), (exit, console.Output));
         Assert.Contains("migration_failed", LoggedFailures());
         Assert.Contains("devices.failed", LoggedEvents());
     }
@@ -480,11 +477,11 @@ public sealed class DevicesCommandTests : IDisposable {
 
         int exit = await RunAsync("devices", "list");
 
-        Assert.Equal((CliExitCodes.Failure, WithPath(unreadable, DatabasePath())), (exit, console.Output.TrimEnd()));
+        Assert.Equal((CliExitCodes.Failure, CommandFixtures.WithPath(CommandFixtures.DatabaseUnreadable, DatabasePath())), (exit, console.Output));
     }
 
     [Theory]
-    [InlineData(Locales.English, dirNotWritable)]
+    [InlineData(Locales.English, CommandFixtures.DirNotWritable)]
     [InlineData(Locales.Norwegian, dirNotWritableNorwegian)]
     public async Task ShouldPrintDirNotWritable_WhenDataFolderCannotBeMade(string lang, string line) {
         environment["LANG"] = lang;
@@ -493,7 +490,7 @@ public sealed class DevicesCommandTests : IDisposable {
 
         int exit = await RunAsync("devices", "list");
 
-        Assert.Equal((CliExitCodes.Failure, WithPath(line, data)), (exit, console.Output.TrimEnd()));
+        Assert.Equal((CliExitCodes.Failure, CommandFixtures.WithPath(line, data)), (exit, console.Output));
         Assert.Contains(dirFailure, LoggedFailures());
     }
 
@@ -505,7 +502,7 @@ public sealed class DevicesCommandTests : IDisposable {
 
         int exit = await RunAsync("devices", "list");
 
-        Assert.Equal((CliExitCodes.Failure, WithPath(dirNotWritable, data)), (exit, console.Output.TrimEnd()));
+        Assert.Equal((CliExitCodes.Failure, CommandFixtures.WithPath(CommandFixtures.DirNotWritable, data)), (exit, console.Output));
     }
 
     [Fact]
@@ -516,7 +513,7 @@ public sealed class DevicesCommandTests : IDisposable {
 
         int exit = await RunAsync("unpair");
 
-        Assert.Equal((CliExitCodes.Failure, WithPath(dirNotWritable, state)), (exit, console.Output.TrimEnd()));
+        Assert.Equal((CliExitCodes.Failure, CommandFixtures.WithPath(CommandFixtures.DirNotWritable, state)), (exit, console.Output));
         Assert.Single(Remaining());
     }
 
@@ -570,7 +567,7 @@ public sealed class DevicesCommandTests : IDisposable {
 
     [Fact]
     public async Task ShouldLogFailure_WhenSchemaIsNewer() {
-        MarkSchemaTooNew();
+        CommandFixtures.MarkSchemaTooNew(DatabasePath());
 
         await RunAsync("devices", "list");
 
@@ -596,8 +593,6 @@ public sealed class DevicesCommandTests : IDisposable {
         Assert.Equal(CliExitCodes.Ok, exit);
         Assert.Contains(new EnglishMessages().UnpairDescription, console.Output, StringComparison.Ordinal);
     }
-
-    private static string WithPath(string line, string path) => string.Format(line, path);
 
     private static string WithReason(string line, string path, string reason) => string.Format(line, path, reason);
 
@@ -659,11 +654,6 @@ public sealed class DevicesCommandTests : IDisposable {
     private IReadOnlyList<string> Remaining() {
         using SqliteConnection database = OpenDatabase();
         return [.. new DeviceStore(database).List().Select(device => device.Id)];
-    }
-
-    private void MarkSchemaTooNew() {
-        using SqliteConnection database = OpenDatabase();
-        new StateStore(database).Set(StateStore.SchemaVersionKey, "99");
     }
 
     private async Task<string> LoadChannelAsync() {
