@@ -17,6 +17,7 @@ internal static class LinkCommandRun {
     private const string configFailure = "config_invalid";
     private const string schemaFailure = "schema_too_new";
     private const string databaseFailure = "database_unreadable";
+    private const string fileFailure = "file_unreadable";
     private const string dirFailure = "dir_not_writable";
     private const string secretStoreFailure = "secret_store_failed";
 
@@ -47,6 +48,8 @@ internal static class LinkCommandRun {
             return await FailAsync(secretStoreFailure, [messages.SecretStoreFailed]).ConfigureAwait(false);
         } catch (PrivateDirException dir) {
             return await FailAsync(dirFailure, [messages.DirNotWritable(dir.Path)]).ConfigureAwait(false);
+        } catch (PrivateFileException file) when (file.Path != paths.DbPath()) {
+            return await FailAsync(fileFailure, [messages.FileUnreadable(file.Path)]).ConfigureAwait(false);
         } catch (Exception error) when (error is SqliteException or PrivateFileException) {
             return await FailAsync(databaseFailure, [messages.DatabaseUnreadable(paths.DbPath())]).ConfigureAwait(false);
         }

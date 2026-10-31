@@ -5,6 +5,7 @@ using System.Runtime.Versioning;
 using System.Text;
 using Jobranger.Cli.Commands;
 using Jobranger.Cli.Features.Link;
+using Jobranger.Cli.Files;
 using Jobranger.Cli.Secrets;
 using Jobranger.Cli.Storage;
 using Jobranger.Cli.Tests.Mocks;
@@ -92,13 +93,27 @@ public sealed class PairCommandTests : IDisposable {
     }
 
     [Fact]
+    public async Task ShouldPrintFileUnreadable_WhenPairLockHasNoPermissions() {
+        string lockPath = new Paths(environment).PairLockPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(lockPath)!);
+        File.WriteAllBytes(lockPath, []);
+        File.SetUnixFileMode(lockPath, UnixFileMode.None);
+
+        int exit = await RunAsync();
+
+        Assert.Equal((CliExitCodes.Failure, $"Cannot read {lockPath}."), (exit, console.Output.TrimEnd()));
+        string log = LogText();
+        Assert.Contains("pairing.failed", log, StringComparison.Ordinal);
+        Assert.Contains("file_unreadable", log, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ShouldPrintDirNotWritable_WhenDataFolderCannotBeMade() {
         string parent = temp.File("read-only");
         Directory.CreateDirectory(parent);
         File.SetUnixFileMode(parent, readOnlyDir);
         string data = Path.Combine(parent, "data");
         environment["JOBRANGER_DATA_DIR"] = data;
-        string logs = Path.Combine(temp.Path, "state", "logs");
 
         int exit = await RunAsync();
 
@@ -106,15 +121,13 @@ public sealed class PairCommandTests : IDisposable {
             (CliExitCodes.Failure,
                 $"Cannot create or use the folder {data}. Make it and the folders above it writable, then try again."),
             (exit, console.Output.TrimEnd()));
-        string log = File.ReadAllText(Assert.Single(Directory.GetFiles(logs)));
+        string log = LogText();
         Assert.Contains("pairing.failed", log, StringComparison.Ordinal);
         Assert.Contains("dir_not_writable", log, StringComparison.Ordinal);
     }
 
     [Fact]
     public async Task ShouldPrintSecretStoreFailed_WhenStoreDoesNotAnswer() {
-        string logs = Path.Combine(temp.Path, "state", "logs");
-
         int exit = await RunAsync(
             inputRedirected: true,
             (_, _, _, _, _, _) => Task.FromException<Link>(new SecretStoreUnavailableException("link-keys", "timeout")));
@@ -122,8 +135,7 @@ public sealed class PairCommandTests : IDisposable {
         Assert.Equal(
             (CliExitCodes.Failure, "The secret store did not answer. Unlock it and try again."),
             (exit, console.Output.TrimEnd()));
-        string log = Assert.Single(Directory.GetFiles(logs));
-        Assert.Contains("pairing.failed", File.ReadAllText(log), StringComparison.Ordinal);
+        Assert.Contains("pairing.failed", LogText(), StringComparison.Ordinal);
     }
 
     [Theory]
@@ -155,6 +167,9 @@ public sealed class PairCommandTests : IDisposable {
             [new PairCommand(services, environment, TimeProvider.System, inputRedirected, openLink)];
         return root.Parse([PairCommand.CommandName]).InvokeAsync(null, TestContext.Current.CancellationToken);
     }
+
+    private string LogText() =>
+        File.ReadAllText(Assert.Single(Directory.GetFiles(Path.Combine(temp.Path, "state", "logs"))));
 
     private string DatabasePath() {
         string dataDir = Path.Combine(temp.Path, "data");
