@@ -6,6 +6,7 @@ using Jobranger.Cli.Features.Providers;
 using Jobranger.Cli.Features.Runs;
 using Jobranger.Cli.Features.Sources;
 using Jobranger.Cli.Files;
+using Jobranger.Cli.Http;
 using Jobranger.Cli.Tests.Mocks;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
@@ -205,6 +206,20 @@ public sealed class RunsTests : IDisposable {
             FakeModelClient.Answering(reply), [], null, null, TestContext.Current.CancellationToken);
 
         Assert.Equal(1, result.UnknownEvidenceDropped);
+    }
+
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task ShouldFlagSkippedModel_WhenNoClientOpens(bool clientOpens, bool skipped) {
+        ads.Upsert(Pending(1, "Utvikler", "Org One AS"));
+        FakeModelClient? refused = clientOpens
+            ? new FakeModelClient((_, _) => throw new ApiException(ApiErrorKind.Auth, "refused"))
+            : null;
+
+        RunResult result = await RunAsync(refused, [], null, null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(((StopReason?)StopReason.Auth, skipped), (result.ModelStopped, result.ModelSkipped));
     }
 
     private static AppConfig Limited(decimal limit) {

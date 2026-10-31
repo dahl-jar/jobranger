@@ -27,6 +27,8 @@ internal sealed record RunResult {
 
     public StopReason? ModelStopped { get; init; }
 
+    public bool ModelSkipped { get; init; }
+
     public bool BudgetPaused => ModelStopped == StopReason.Budget;
 
     public bool UnpricedLimit { get; init; }

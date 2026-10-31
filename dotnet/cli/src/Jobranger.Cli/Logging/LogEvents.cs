@@ -140,4 +140,16 @@ internal static partial class LogEvents {
         Level = LogLevel.Warning,
         Message = "digest email failed error_type={ErrorType} failure={Failure} status={Status}")]
     public static partial void EmailFailed(ILogger logger, string errorType, string failure, int? status);
+
+    [LoggerMessage(EventName = "run.failed", Level = LogLevel.Warning, Message = "run failed failure={Failure}")]
+    public static partial void RunFailed(ILogger logger, string failure);
+
+    [LoggerMessage(EventName = "run.stop_forced", Level = LogLevel.Warning, Message = "stopped waiting for the cancelled run")]
+    public static partial void RunStopForced(ILogger logger);
+
+    [LoggerMessage(
+        EventName = "run.secret_store_failed",
+        Level = LogLevel.Warning,
+        Message = "secret store failed, the run goes on without it")]
+    public static partial void RunSecretStoreFailed(ILogger logger);
 }

@@ -103,6 +103,36 @@ internal sealed class EnglishMessages : IMessages {
     public string UpdateAvailable(string latest, string current, string command) =>
         $"jobranger {latest} is out (you have {current}). Upgrade: {command}";
 
+    public string RunDescription => "Read the job sources, check new ads and send the results.";
+
+    public string RunReading(string sources) => $"Reading {sources}...";
+
+    public string RunCounts(int adsRead, int newAds, int matches) => $"{adsRead} ads read, {newAds} new, {matches} matches.";
+
+    public string RunSentBoth(string email) => $"\u2713 Sent to the website and to {email}";
+
+    public string RunSentEmail(string email) => $"\u2713 Sent to {email}";
+
+    public string RunSavedForWebsite => "\u2713 Saved for the website";
+
+    public string RunEmailFailed(string reason) => $"\u2715 Email not sent: {reason}";
+
+    public string RunLocked => "Another run is in progress.";
+
+    public string AiChecksSkipped => "AI checks skipped: no model or key. Set one with: jobranger init";
+
+    public string UnpricedLimitWarning =>
+        "Your model has no price, so the monthly limit cannot be checked. "
+        + "AI checks stay paused until you set a price for the model or remove the limit.";
+
+    public string UnknownEvidenceDropped(int count) =>
+        $"{count} {(count == 1 ? "ad was" : "ads were")} dropped because the AI cited something that is not in your profile. "
+        + "Check your guidance.";
+
+    public string ConfigMissing => "No config yet. Set up with: jobranger init";
+
+    public string FileUnreadable(string path) => $"Cannot read {path}.";
+
     public string PairDescription => "Connect the website to this machine.";
 
     public string PairAlreadyRunning => "Pairing is already running in another terminal.";

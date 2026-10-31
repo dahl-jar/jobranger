@@ -6,6 +6,9 @@ using Microsoft.Extensions.Logging;
 namespace Jobranger.Cli.Features.Matching;
 
 internal static class Matching {
+    private const string openAiWrapperKey = "json_schema";
+    private const string openAiSchemaKey = "schema";
+
     public static string LimitRules(Limits limits) => MatchRules.LimitRules(limits);
 
     public static double? MaxYears(Limits limits) => MatchRules.MaxYears(limits);
@@ -16,7 +19,9 @@ internal static class Matching {
     public static string AssessmentVersion(string system) => SystemPrompt.Version(system);
 
     public static JsonObject SchemaFor(ProviderName provider) =>
-        JsonNode.Parse(provider == ProviderName.Anthropic ? AssessmentSchema.Anthropic : AssessmentSchema.OpenAI)!.AsObject();
+        provider == ProviderName.Anthropic
+            ? JsonNode.Parse(AssessmentSchema.Anthropic)!.AsObject()
+            : JsonNode.Parse(AssessmentSchema.OpenAI)![openAiWrapperKey]![openAiSchemaKey]!.AsObject();
 
     public static PromptText BuildPrompt(AdView ad, string system, DateOnly date, IReadOnlyList<PromptExample> examples) =>
         ClassifyPrompts.Build(ad, system, date, examples);

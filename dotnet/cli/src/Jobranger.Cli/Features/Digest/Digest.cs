@@ -10,4 +10,6 @@ internal static class Digest {
 
     public static string HiddenLine(IReadOnlyList<HiddenCount> hidden, double? maxYears, IMessages messages) =>
         TerminalLines.HiddenLine(hidden, maxYears, messages);
+
+    public static string SourcePhrase(string source, IMessages messages) => DigestSources.Phrase(source, messages);
 }

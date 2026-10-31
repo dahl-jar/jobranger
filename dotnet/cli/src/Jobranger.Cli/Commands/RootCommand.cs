@@ -24,6 +24,7 @@ internal sealed class RootCommand : System.CommandLine.RootCommand {
         Action = help;
         if (!OperatingSystem.IsWindows()) {
             Subcommands.Add(new PairCommand(services));
+            Subcommands.Add(new RunCommand(services));
         }
     }
 
@@ -41,6 +42,9 @@ internal sealed class RootCommand : System.CommandLine.RootCommand {
             Output = services.Console.Profile.Out.Writer,
             Error = services.ErrorConsole.Profile.Out.Writer,
         };
+        if (!OperatingSystem.IsWindows() && parsed.CommandResult.Command is RunCommand) {
+            configuration.ProcessTerminationTimeout = null;
+        }
         return await parsed.InvokeAsync(configuration, cancellationToken).ConfigureAwait(false);
     }
 

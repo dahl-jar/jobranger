@@ -69,6 +69,7 @@ internal sealed class RunPass(
             HiddenCounts = progress.Report.HiddenCounts,
             Pending = progress.Classified.Pending,
             ModelStopped = progress.Classified.Stopped,
+            ModelSkipped = model is null,
             UnknownEvidenceDropped = progress.Classified.UnknownEvidenceDropped,
             UnpricedLimit = model is RunModel used && BudgetEntry.UnpricedLimit(request.Config, used.Prices),
             Version = progress.Version,

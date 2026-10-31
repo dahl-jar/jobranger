@@ -28,6 +28,20 @@ internal sealed class Delivery(
 
     private static readonly IMessages digestMessages = new EnglishMessages();
 
+    public static IReadOnlyList<string> SummaryLines(RunResult result, IMessages messages) {
+        List<string> lines = [];
+        if (result.ModelSkipped) {
+            lines.Add(messages.AiChecksSkipped);
+        }
+        if (result.UnpricedLimit) {
+            lines.Add(messages.UnpricedLimitWarning);
+        }
+        if (result.UnknownEvidenceDropped > 0) {
+            lines.Add(messages.UnknownEvidenceDropped(result.UnknownEvidenceDropped));
+        }
+        return lines;
+    }
+
     public async Task<DeliveryResult> DeliverAsync(AppConfig config, RunResult result, CancellationToken cancellationToken) {
         if (result.Status is not (RunStatus.Completed or RunStatus.Failed)) {
             return new DeliveryResult();

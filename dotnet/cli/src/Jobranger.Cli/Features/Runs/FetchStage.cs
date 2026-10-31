@@ -8,7 +8,7 @@ namespace Jobranger.Cli.Features.Runs;
 internal sealed class FetchStage(TimeProvider time, IRunEvents events, TimeSpan cancelGrace) {
     private const string deadlineError = "deadline";
 
-    private static readonly TimeSpan defaultCancelGrace = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan defaultCancelGrace = TimeSpan.FromSeconds(1);
 
     public FetchStage(TimeProvider time, IRunEvents events)
         : this(time, events, defaultCancelGrace) {

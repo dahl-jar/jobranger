@@ -87,6 +87,32 @@ internal interface IMessages {
 
     string UpdateAvailable(string latest, string current, string command);
 
+    string RunDescription { get; }
+
+    string RunReading(string sources);
+
+    string RunCounts(int adsRead, int newAds, int matches);
+
+    string RunSentBoth(string email);
+
+    string RunSentEmail(string email);
+
+    string RunSavedForWebsite { get; }
+
+    string RunEmailFailed(string reason);
+
+    string RunLocked { get; }
+
+    string AiChecksSkipped { get; }
+
+    string UnpricedLimitWarning { get; }
+
+    string UnknownEvidenceDropped(int count);
+
+    string ConfigMissing { get; }
+
+    string FileUnreadable(string path);
+
     string PairDescription { get; }
 
     string PairAlreadyRunning { get; }
