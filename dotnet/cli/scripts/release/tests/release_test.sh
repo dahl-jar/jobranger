@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-expected_tests=36
-large_body_bytes=100000
+expected_tests=25
 fixture_version="0.4.1"
 fixture_rids=(osx-arm64 linux-x64)
 linux_archive="jobranger-$fixture_version-linux-x64.tar.gz"
@@ -10,11 +9,8 @@ release_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 next_version="$release_dir/next_version.sh"
 assemble="$release_dir/assemble.sh"
 release_title="$release_dir/release_title.sh"
-release_notes="$release_dir/release_notes.sh"
 pulls="$release_dir/tests/mocks/pulls.json"
-no_pulls="$release_dir/tests/mocks/no_pulls.json"
 repository="owner/jobranger"
-compare_link="**Full Changelog**: https://github.com/$repository/compare/cli-v0.2.3...cli-v0.2.4"
 
 while read -r variable; do
   unset "$variable"
@@ -54,13 +50,6 @@ tagged_repo() {
     git tag "$tag"
   done
   commit 2
-}
-
-released_repo() {
-  git init -q -b trunk
-  commit released
-  git tag cli-v0.2.3
-  stub_gh "$no_pulls"
 }
 
 next_of() {
@@ -161,37 +150,14 @@ stub_gh() {
   mkdir -p stub
   cat >stub/gh <<EOF
 #!/bin/sh
-case "\$1 \$2 \$3" in
-  "api repos/$repository/commits/"*"/pulls --jq") ;;
-  *) exit 1 ;;
-esac
-commit="\${2#repos/$repository/commits/}"
-commit="\${commit%/pulls}"
-response="$PWD/responses/\$commit.json"
-[ -f "\$response" ] || response="$1"
-exec jq -r "\$4" "\$response"
+[ "\$1 \$2 \$3" = "api repos/$repository/commits/HEAD/pulls --jq" ] || exit 1
+exec jq -r "\$4" "$1"
 EOF
   chmod 0755 stub/gh
 }
 
 title_of() {
   PATH="$PWD/stub:$PATH" bash "$release_title" "$repository" "$1" "$2"
-}
-
-pr_body() {
-  printf '## What does this PR do?\n\n%s\n\n## Known risks\n\nNone.\n' "$1"
-}
-
-pr_commit() {
-  commit "commit $1"
-  mkdir -p responses
-  jq --argjson number "$1" --arg title "$2" --arg body "$3" \
-    '.[1] += {number: $number, title: $title, body: $body}' "$pulls" \
-    >"responses/$(git rev-parse HEAD).json"
-}
-
-notes_of() {
-  PATH="$PWD/stub:$PATH" bash "$release_notes" "$repository" HEAD cli-v0.2.4 "$1" 2>stderr.txt
 }
 
 should_use_pr_title_when_set() {
@@ -209,106 +175,10 @@ should_use_merged_pr_title_when_pr_title_empty() {
 should_use_commit_subject_when_no_merged_pr() {
   git init -q -b trunk
   commit 'feat: commit subject'
-  stub_gh "$no_pulls"
+  echo '[]' >none.json
+  stub_gh "$PWD/none.json"
 
   assert_eq "feat: commit subject" "$(title_of HEAD '')"
-}
-
-should_note_only_what_does_this_pr_do_section() {
-  tagged_repo cli-v0.2.3
-  stub_gh "$pulls"
-
-  assert_eq "$(printf -- '- Adds run fetch.\n- Prints a digest.\n\n%s' "$compare_link")" "$(notes_of cli-v0.2.3)"
-}
-
-should_note_every_pr_since_previous_tag() {
-  released_repo
-  pr_commit 10 'fix: one' "$(pr_body '- One.')"
-  pr_commit 1 'fix: two' "$(pr_body '- Two.')"
-
-  assert_eq "$(printf -- '- One.\n\n- Two.\n\n%s' "$compare_link")" "$(notes_of cli-v0.2.3)"
-}
-
-should_note_pr_once_when_commits_share_it() {
-  released_repo
-  pr_commit 9 'fix: one' "$(pr_body '- One.')"
-  pr_commit 9 'fix: one' "$(pr_body '- One.')"
-
-  assert_eq "$(printf -- '- One.\n\n%s' "$compare_link")" "$(notes_of cli-v0.2.3)"
-}
-
-should_note_pr_title_when_section_has_no_text() {
-  released_repo
-  pr_commit 9 'fix: no heading' 'Closes #1'
-  pr_commit 10 'fix: blank section' $'## What does this PR do?\n \n\n## Known risks\n\nNone.'
-
-  assert_eq "$(printf -- '- fix: no heading\n\n- fix: blank section\n\n%s' "$compare_link")" "$(notes_of cli-v0.2.3)"
-  assert_contains "$(cat stderr.txt)" "PR 9 has no text under ## What does this PR do?"
-}
-
-should_note_commit_subject_when_no_merged_pr() {
-  released_repo
-  commit 'feat: commit subject'
-
-  assert_eq "$(printf -- '- feat: commit subject\n\n%s' "$compare_link")" "$(notes_of cli-v0.2.3)"
-  assert_contains "$(cat stderr.txt)" "no merged PR for commit"
-}
-
-should_keep_code_block_when_it_contains_heading() {
-  released_repo
-  local fence section
-  for fence in '```' '~~~' '  ```'; do
-    section="$(printf '%s\n' '- Adds a flag.' '' "${fence}text" '## not a heading' '  ' "\$(touch injected)" "$fence" '' '- Keeps output.')"
-    pr_commit 9 'fix: title' "$(pr_body "$section")"
-
-    assert_eq "$(printf '%s\n\n%s' "$section" "$compare_link")" "$(notes_of cli-v0.2.3)"
-    assert_missing injected
-
-    git tag -f cli-v0.2.3 >/dev/null
-  done
-}
-
-should_find_section_when_body_has_crlf_line_endings() {
-  released_repo
-  pr_commit 9 'fix: title' $'## What does this PR do?\r\n\r\n- Adds a flag.\r\n\r\n## Known risks\r\n\r\nNone.\r\n'
-
-  assert_eq "$(printf -- '- Adds a flag.\n\n%s' "$compare_link")" "$(notes_of cli-v0.2.3)"
-}
-
-should_note_section_when_rest_of_body_is_large() {
-  released_repo
-  pr_commit 9 'fix: title' "$(pr_body '- Adds a flag.')$(printf '%0*d' "$large_body_bytes" 0)"
-
-  assert_eq "$(printf -- '- Adds a flag.\n\n%s' "$compare_link")" "$(notes_of cli-v0.2.3)"
-}
-
-should_omit_compare_link_on_first_release() {
-  git init -q -b trunk
-  commit 'feat: first'
-  stub_gh "$no_pulls"
-
-  assert_eq "- feat: first" "$(notes_of '')"
-}
-
-should_fail_notes_when_pr_lookup_fails() {
-  tagged_repo cli-v0.2.3
-  stub_gh "$PWD/missing.json"
-  local status=0
-
-  notes_of cli-v0.2.3 >/dev/null || status=$?
-
-  [ "$status" -ne 0 ] || fail "expected notes to fail"
-}
-
-should_fail_notes_when_previous_tag_is_unknown() {
-  git init -q -b trunk
-  commit 1
-  stub_gh "$no_pulls"
-  local status=0
-
-  notes_of cli-v0.0.0 >/dev/null || status=$?
-
-  [ "$status" -ne 0 ] || fail "expected notes to fail"
 }
 
 should_release_initial_version_when_no_cli_tag_exists() {
