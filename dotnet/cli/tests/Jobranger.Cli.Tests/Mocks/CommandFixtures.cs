@@ -18,6 +18,7 @@ internal static class CommandFixtures {
         "Cannot create or use the folder {0}. Make it and the folders above it writable, then try again.\n";
 
     private const string logFileName = "2026-10-09.jsonl";
+    private const string failureField = "failure";
     private const string schemaBeforeDevices = "3";
     private const string schemaTooNew = "99";
 
@@ -34,8 +35,15 @@ internal static class CommandFixtures {
 
     public static string LoggedFailure(Paths paths) {
         JsonObject entry = LogLines.Read(LogPath(paths))[^1];
-        return $"{entry[LogFields.Event]} {entry["failure"]}";
+        return FailureText(entry);
     }
+
+    public static string LoggedFailures(string logDir) =>
+        string.Join(
+            ", ",
+            LogLines.Read(Assert.Single(Directory.GetFiles(logDir)))
+                .Where(entry => entry[failureField] is not null)
+                .Select(FailureText));
 
     [UnsupportedOSPlatform("windows")]
     public static void RewindSchema(string dbPath) => SetSchema(dbPath, schemaBeforeDevices);
@@ -45,14 +53,16 @@ internal static class CommandFixtures {
 
     public static string WithPath(string line, string path) => string.Format(line, path);
 
-    public static IAnsiConsole BrokenConsole(Type failure) =>
+    public static IAnsiConsole BrokenConsole(Type failure, AnsiSupport ansi = AnsiSupport.No) =>
         AnsiConsole.Create(new AnsiConsoleSettings {
-            Ansi = AnsiSupport.No,
+            Ansi = ansi,
             ColorSystem = ColorSystemSupport.NoColors,
             Interactive = InteractionSupport.No,
             Out = new AnsiConsoleOutput(new BrokenWriter((Exception)Activator.CreateInstance(failure)!)),
             EnvironmentVariables = [],
         });
+
+    private static string FailureText(JsonObject entry) => $"{entry[LogFields.Event]} {entry[failureField]}";
 
     [UnsupportedOSPlatform("windows")]
     private static void SetSchema(string dbPath, string version) {
@@ -64,5 +74,7 @@ internal static class CommandFixtures {
         public override Encoding Encoding => Encoding.UTF8;
 
         public override void Write(char value) => throw failure;
+
+        public override void Flush() => throw failure;
     }
 }

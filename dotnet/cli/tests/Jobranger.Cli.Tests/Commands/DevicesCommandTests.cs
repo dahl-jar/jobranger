@@ -1,4 +1,5 @@
 using System.Collections;
+using System.CommandLine;
 using System.Runtime.Versioning;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -469,6 +470,38 @@ public sealed class DevicesCommandTests : IDisposable {
         Assert.Contains("file_unreadable", LoggedFailures());
     }
 
+    [Theory]
+    [InlineData(typeof(IOException), "devices", "list")]
+    [InlineData(typeof(UnauthorizedAccessException), "devices", "list")]
+    [InlineData(typeof(IOException), "devices", "revoke", "unknown")]
+    [InlineData(typeof(IOException), "unpair")]
+    public async Task ShouldExitWithoutTrace_WhenOutputCannotBeWritten(Type failure, params string[] args) {
+        int exit = await RunBrokenAsync(failure, args);
+
+        Assert.Equal(
+            (CliExitCodes.Failure, "", "devices.failed output_failed"),
+            (exit, console.Errors, CommandFixtures.LoggedFailures(LogDir())));
+    }
+
+    [Fact]
+    public async Task ShouldExitWithoutTrace_WhenFailureLineCannotBeWritten() {
+        CommandFixtures.MarkSchemaTooNew(DatabasePath());
+
+        int exit = await RunBrokenAsync(typeof(IOException), "devices", "list");
+
+        Assert.Equal(
+            (CliExitCodes.Failure, "", "devices.failed schema_too_new, devices.failed output_failed"),
+            (exit, console.Errors, CommandFixtures.LoggedFailures(LogDir())));
+    }
+
+    [Fact]
+    public async Task ShouldKeepTrace_WhenWriterFailsWithOtherError() {
+        int exit = await RunBrokenAsync(typeof(InvalidOperationException), "devices", "list");
+
+        Assert.Equal(CliExitCodes.Failure, exit);
+        Assert.Contains(nameof(InvalidOperationException), console.Errors, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task ShouldPrintDatabaseUnreadable_WhenDatabaseIsSymlink() {
         string target = temp.File("target.db");
@@ -607,6 +640,21 @@ public sealed class DevicesCommandTests : IDisposable {
         return root.Parse(args).InvokeAsync(null, TestContext.Current.CancellationToken);
     }
 
+    private Task<int> RunBrokenAsync(Type failure, params string[] args) {
+        CliServices services = CliServices.Create(
+            time, CommandFixtures.BrokenConsole(failure), console.ErrorConsole, environment);
+        System.CommandLine.RootCommand root = [
+            new DevicesCommand(services, environment, time, openLink),
+            new UnpairCommand(services, environment, inputRedirected, openLink),
+        ];
+        InvocationConfiguration configuration = new() { Error = console.ErrorConsole.Profile.Out.Writer };
+        return root.Parse(args)
+            .InvokeAsync(configuration, TestContext.Current.CancellationToken)
+            .WaitAsync(TestWaits.Step, TestContext.Current.CancellationToken);
+    }
+
+    private string LogDir() => Path.Combine(temp.Path, "state", "logs");
+
     private async Task<int> UnpairWithReadOnlyConfigAsync() {
         string secrets = WriteSecrets(savedSecrets);
         string config = Path.GetDirectoryName(secrets)!;
@@ -681,7 +729,7 @@ public sealed class DevicesCommandTests : IDisposable {
     private string?[] LoggedFailures() => [.. LogEntries().Select(line => (string?)line["failure"])];
 
     private IReadOnlyList<JsonObject> LogEntries() =>
-        LogLines.Read(Path.Combine(temp.Path, "state", "logs", logFile));
+        LogLines.Read(Path.Combine(LogDir(), logFile));
 
     private string DatabasePath() {
         string dataDir = Path.Combine(temp.Path, "data");
