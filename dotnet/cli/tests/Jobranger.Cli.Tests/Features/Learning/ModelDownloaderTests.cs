@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using Jobranger.Cli.Features.Learning;
 using Jobranger.Cli.Tests.Mocks;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Jobranger.Cli.Tests.Features.Learning;
 
@@ -80,23 +81,31 @@ public sealed class ModelDownloaderTests : IDisposable {
 
     [Fact(Timeout = testTimeoutMs)]
     public async Task ShouldFailDownload_WhenBodyStalls() {
+        RecordingTime time = new();
         using HttpClient http = new(new StalledBodyHandler([1, 2]));
-        ModelDownloader downloader = Downloader(http);
+        ModelDownloader downloader = new(http, folder.FullName, [file], longIdleTimeout, time);
+        Task download = downloader.EnsureAsync(TestContext.Current.CancellationToken);
+        await time.WaitForAsync(longIdleTimeout);
 
-        await Assert.ThrowsAsync<ModelDownloadException>(
-            () => downloader.EnsureAsync(TestContext.Current.CancellationToken));
+        time.Advance(longIdleTimeout);
 
+        await Assert.ThrowsAsync<ModelDownloadException>(() => download);
         Assert.Empty(folder.GetFiles());
     }
 
     [Fact(Timeout = testTimeoutMs)]
     public async Task ShouldFinishDownload_WhenChunksArriveWithinIdleTimeout() {
-        TrickleBodyHandler handler = new(body, trickleGap);
-        using HttpClient http = new(handler);
-        ModelDownloader downloader = new(http, folder.FullName, [file], trickleIdleTimeout);
+        RecordingTime time = new();
+        using HttpClient http = new(new TrickleBodyHandler(body, trickleGap, time));
+        ModelDownloader downloader = new(http, folder.FullName, [file], trickleIdleTimeout, time);
+        Task download = downloader.EnsureAsync(TestContext.Current.CancellationToken);
 
-        await downloader.EnsureAsync(TestContext.Current.CancellationToken);
+        for (int chunk = 0; chunk < body.Length; chunk++) {
+            await time.WaitForAsync(trickleGap);
+            time.Advance(trickleGap);
+        }
 
+        await download;
         Assert.Equal(body, File.ReadAllBytes(Path.Combine(folder.FullName, file.Name)));
     }
 
@@ -167,5 +176,6 @@ public sealed class ModelDownloaderTests : IDisposable {
     private static HttpClient Serving(byte[] content) =>
         new(new FakeHttpHandler(new Dictionary<Uri, byte[]> { [url] = content }));
 
-    private ModelDownloader Downloader(HttpClient http) => new(http, folder.FullName, [file], idleTimeout);
+    private ModelDownloader Downloader(HttpClient http) =>
+        new(http, folder.FullName, [file], idleTimeout, new FakeTimeProvider());
 }
