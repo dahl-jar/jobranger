@@ -146,8 +146,6 @@ internal sealed class EnglishMessages : IMessages {
 
     public string DevicesRevokeDescription => "Remove one paired browser.";
 
-    public string DevicesRevokeIdDescription => "The browser's id, or the start of it.";
-
     public string UnpairDescription => "Remove every paired browser.";
 
     public string DevicesNone => "No paired browsers. Pair one with: jobranger pair";
@@ -164,19 +162,25 @@ internal sealed class EnglishMessages : IMessages {
     public string DevicesAmbiguous(string id) =>
         $"More than one browser has an id that starts with {id}. Nothing was revoked. Use more of the id.";
 
-    public string DevicesSecretStoreFailed => "The secret store did not answer. Unlock it and try again.";
+    public string SecretStoreFailed => "The secret store did not answer. Unlock it and try again.";
 
     public string Unpaired(int count) =>
-        $"\u2713 Unpaired {count} browser(s). The website can no longer reach this machine.";
+        $"\u2713 Unpaired {count} {(count == 1 ? "browser" : "browsers")}. "
+        + "The website can no longer reach this machine.";
 
     public string UnpairNone => "No paired browsers.";
 
-    public string UnpairKeysFailed =>
-        "The browsers are removed, but new link keys could not be made. Run jobranger unpair again.";
+    public string UnpairKeysFailed => "New link keys could not be made. Run jobranger unpair again.";
+
+    public string UnpairKeysFileFailed(string path) =>
+        $"New link keys could not be made because jobranger cannot use {path}. "
+        + "Fix or remove that file, then run jobranger unpair again.";
 
     public string DatabaseTooNew => "The database was made by a newer jobranger. Update jobranger and try again.";
 
     public string DatabaseUnreadable(string path) => $"Cannot read the jobranger database at {path}.";
+
+    public string FileUnreadable(string path) => $"Cannot read {path}.";
 
     public Language Language => Language.En;
 

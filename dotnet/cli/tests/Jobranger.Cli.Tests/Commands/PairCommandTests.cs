@@ -5,6 +5,7 @@ using System.Runtime.Versioning;
 using System.Text;
 using Jobranger.Cli.Commands;
 using Jobranger.Cli.Features.Link;
+using Jobranger.Cli.Secrets;
 using Jobranger.Cli.Storage;
 using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Cli.Text;
@@ -83,6 +84,34 @@ public sealed class PairCommandTests : IDisposable {
         Assert.Equal((CliExitCodes.Failure, string.Format(line, DatabasePath())), (exit, console.Output.TrimEnd()));
     }
 
+    [Fact]
+    public async Task ShouldPrintDatabaseUnreadable_WhenDatabaseIsSymlink() {
+        string target = temp.File("target.db");
+        File.WriteAllBytes(target, []);
+        File.CreateSymbolicLink(DatabasePath(), target);
+
+        int exit = await RunAsync();
+
+        Assert.Equal(
+            (CliExitCodes.Failure, $"Cannot read the jobranger database at {DatabasePath()}."),
+            (exit, console.Output.TrimEnd()));
+    }
+
+    [Fact]
+    public async Task ShouldPrintSecretStoreFailed_WhenStoreDoesNotAnswer() {
+        string logs = Path.Combine(temp.Path, "state", "logs");
+
+        int exit = await RunAsync(
+            inputRedirected: true,
+            (_, _, _, _, _, _) => Task.FromException<Link>(new SecretStoreUnavailableException("link-keys", "timeout")));
+
+        Assert.Equal(
+            (CliExitCodes.Failure, "The secret store did not answer. Unlock it and try again."),
+            (exit, console.Output.TrimEnd()));
+        string log = Assert.Single(Directory.GetFiles(logs));
+        Assert.Contains("pairing.failed", File.ReadAllText(log), StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(false, true)]
     [InlineData(true, false)]
@@ -106,7 +135,7 @@ public sealed class PairCommandTests : IDisposable {
 
     private Task<int> RunAsync() => RunAsync(inputRedirected: true, Link.OpenAsync);
 
-    private Task<int> RunAsync(bool inputRedirected, PairCommand.LinkOpener openLink) {
+    private Task<int> RunAsync(bool inputRedirected, LinkCommandRun.LinkOpener openLink) {
         CliServices services = CliServices.Create(TimeProvider.System, console.Console, console.ErrorConsole, environment);
         System.CommandLine.RootCommand root =
             [new PairCommand(services, environment, TimeProvider.System, inputRedirected, openLink)];

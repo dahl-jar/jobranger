@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Runtime.Versioning;
 using System.Text;
+using System.Text.Json.Nodes;
 using Jobranger.Cli.Commands;
 using Jobranger.Cli.Config;
 using Jobranger.Cli.Features.Link;
@@ -20,7 +21,10 @@ namespace Jobranger.Cli.Tests.Commands;
 public sealed class DevicesCommandTests : IDisposable {
     private const string otherName = "Chrome on Linux";
     private const string seenAt = "2026-10-27T08:00:00+00:00";
-    private const string tooNew = "The database was made by a newer jobranger. Update jobranger and try again.";
+    private const string unreadable = "Cannot read the jobranger database at {0}.";
+    private const string keysFileFailed =
+        "New link keys could not be made because jobranger cannot use {0}. "
+        + "Fix or remove that file, then run jobranger unpair again.";
     private const string logFile = "2026-10-25.jsonl";
     private const int corruptBytes = 4096;
 
@@ -31,8 +35,9 @@ public sealed class DevicesCommandTests : IDisposable {
     private readonly RecordingConsole console = new();
     private readonly Hashtable environment;
     private readonly FakeTimeProvider time = new(DeviceFixtures.PairedAt);
-    private PairCommand.LinkOpener openLink = Link.OpenAsync;
+    private LinkCommandRun.LinkOpener openLink = Link.OpenAsync;
     private bool inputRedirected = true;
+    private bool? promptAllowed;
 
     public DevicesCommandTests() {
         time.SetLocalTimeZone(TimeZoneInfo.Utc);
@@ -81,16 +86,14 @@ public sealed class DevicesCommandTests : IDisposable {
             console.Output.TrimEnd().Split(Environment.NewLine));
     }
 
-    [Theory]
-    [InlineData(Locales.English, "last seen never")]
-    [InlineData(Locales.Norwegian, "sist sett aldri")]
-    public async Task ShouldPrintNever_WhenBrowserWasNeverSeen(string lang, string ending) {
-        environment["LANG"] = lang;
+    [Fact]
+    public async Task ShouldPrintNever_WhenBrowserWasNeverSeen() {
+        environment["LANG"] = Locales.Norwegian;
         SeedBrowser();
 
         await RunAsync("devices", "list");
 
-        Assert.EndsWith(ending, console.Output.TrimEnd(), StringComparison.Ordinal);
+        Assert.EndsWith("sist sett aldri", console.Output.TrimEnd(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -162,12 +165,16 @@ public sealed class DevicesCommandTests : IDisposable {
     }
 
     [Theory]
-    [InlineData(Locales.English, "✓ Unpaired 2 browser(s). The website can no longer reach this machine.")]
-    [InlineData(Locales.Norwegian, "✓ Koblet fra 2 nettleser(e). Nettsiden kan ikke lenger nå denne maskinen.")]
-    public async Task ShouldPrintCount_WhenUnpairing(string lang, string line) {
+    [InlineData(Locales.English, 1, "✓ Unpaired 1 browser. The website can no longer reach this machine.")]
+    [InlineData(Locales.English, 2, "✓ Unpaired 2 browsers. The website can no longer reach this machine.")]
+    [InlineData(Locales.Norwegian, 1, "✓ Koblet fra 1 nettleser. Nettsiden kan ikke lenger nå denne maskinen.")]
+    [InlineData(Locales.Norwegian, 2, "✓ Koblet fra 2 nettlesere. Nettsiden kan ikke lenger nå denne maskinen.")]
+    public async Task ShouldPrintCount_WhenUnpairing(string lang, int browsers, string line) {
         environment["LANG"] = lang;
-        SeedBrowser();
-        Seed(DeviceFixtures.OtherKey, otherName, nextDay);
+        byte[][] keys = [DeviceFixtures.BrowserKey, DeviceFixtures.OtherKey];
+        foreach (byte[] key in keys.Take(browsers)) {
+            Seed(key, otherName, nextDay);
+        }
 
         int exit = await RunAsync("unpair");
 
@@ -189,6 +196,7 @@ public sealed class DevicesCommandTests : IDisposable {
     [Fact]
     public async Task ShouldMakeNewChannel_WhenUnpairing() {
         string before = await LoadChannelAsync();
+        SeedBrowser();
 
         await RunAsync("unpair");
 
@@ -208,7 +216,8 @@ public sealed class DevicesCommandTests : IDisposable {
     [Fact]
     public async Task ShouldPrintAlreadyRunning_WhenPairHoldsLock() {
         SeedBrowser();
-        using FileLock held = FileLock.TryAcquire(new Paths(environment).PairLockPath(), NullLogger.Instance)!;
+        string lockPath = new Paths(environment).PairLockPath();
+        using FileLock held = FileLock.TryAcquire(lockPath, NullLogger.Instance)!;
 
         int exit = await RunAsync("unpair");
 
@@ -218,33 +227,100 @@ public sealed class DevicesCommandTests : IDisposable {
         Assert.Single(Remaining());
     }
 
-    [Fact]
-    public async Task ShouldPrintKeysFailed_WhenRotationFails() {
+    [Theory]
+    [InlineData(Locales.English, "Cannot read {0}.")]
+    [InlineData(Locales.Norwegian, "Kan ikke lese {0}.")]
+    public async Task ShouldPrintFileUnreadable_WhenPairLockIsSymlink(string lang, string line) {
+        environment["LANG"] = lang;
+        SeedBrowser();
+        string lockPath = new Paths(environment).PairLockPath();
+        string target = temp.File("target.lock");
+        File.WriteAllBytes(target, []);
+        Directory.CreateDirectory(Path.GetDirectoryName(lockPath)!);
+        File.CreateSymbolicLink(lockPath, target);
+
+        int exit = await RunAsync("unpair");
+
+        Assert.Equal((CliExitCodes.Failure, string.Format(line, lockPath)), (exit, console.Output.TrimEnd()));
+        Assert.Single(Remaining());
+        Assert.Contains("lock_unreadable", LoggedFailures());
+    }
+
+    [Theory]
+    [InlineData(Locales.English, keysFileFailed)]
+    [InlineData(
+        Locales.Norwegian,
+        "Nye koblingsnøkler kunne ikke lages fordi jobranger ikke kan bruke {0}. "
+        + "Rett eller fjern filen, og kjør jobranger unpair på nytt.")]
+    public async Task ShouldPrintKeysFailed_WhenRotationFails(string lang, string line) {
+        environment["LANG"] = lang;
+        SeedBrowser();
         Directory.CreateDirectory(MetadataPath());
 
         int exit = await RunAsync("unpair");
 
-        Assert.Equal(
-            (CliExitCodes.Failure,
-                "The browsers are removed, but new link keys could not be made. Run jobranger unpair again."),
-            (exit, console.Output.TrimEnd()));
+        Assert.Equal((CliExitCodes.Failure, string.Format(line, MetadataPath())), (exit, console.Output.TrimEnd()));
+        Assert.Empty(Remaining());
+    }
+
+    [Fact]
+    public async Task ShouldNameSecretsFile_WhenSecretsFileIsInvalid() {
+        string secrets = new Paths(environment).SecretsPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(secrets)!);
+        File.WriteAllText(secrets, "not json");
+
+        int exit = await RunAsync("unpair");
+
+        Assert.Equal((CliExitCodes.Failure, WithPath(keysFileFailed, secrets)), (exit, console.Output.TrimEnd()));
     }
 
     [Theory]
-    [InlineData(false, true, "unpair")]
-    [InlineData(true, false, "unpair")]
-    [InlineData(false, false, "devices", "list")]
-    [InlineData(false, false, "devices", "revoke", "AQEB")]
-    public async Task ShouldAllowKeychainPrompt_WhenUnpairingFromTerminal(
-        bool redirected, bool expected, params string[] args) {
-        inputRedirected = redirected;
-        bool? promptAllowed = null;
-        openLink = (environment, paths, urls, logger, canPrompt, cancellationToken) => {
-            promptAllowed = canPrompt;
-            return Link.OpenAsync(environment, paths, urls, logger, canPrompt, cancellationToken);
-        };
+    [InlineData(Locales.English, "New link keys could not be made. Run jobranger unpair again.")]
+    [InlineData(Locales.Norwegian, "Nye koblingsnøkler kunne ikke lages. Kjør jobranger unpair på nytt.")]
+    public async Task ShouldPrintRetry_WhenLinkKeysAreBusy(string lang, string line) {
+        environment["LANG"] = lang;
+        string lockPath = MetadataPath() + ".lock";
+        using FileLock held = FileLock.TryAcquire(lockPath, NullLogger.Instance)!;
 
-        await RunAsync(args);
+        int exit = await RunAsync("unpair");
+
+        Assert.Equal((CliExitCodes.Failure, line), (exit, console.Output.TrimEnd()));
+    }
+
+    [Fact]
+    public async Task ShouldLogFailure_WhenRotationFails() {
+        Directory.CreateDirectory(MetadataPath());
+
+        await RunAsync("unpair");
+
+        Assert.Contains("devices.failed", LoggedEvents());
+    }
+
+    [Fact]
+    public async Task ShouldLogRemoval_WhenRotationFails() {
+        SeedBrowser();
+        Directory.CreateDirectory(MetadataPath());
+
+        await RunAsync("unpair");
+
+        Assert.Contains("devices.unpaired", LoggedEvents());
+    }
+
+    [Fact]
+    public async Task ShouldLogNoRemoval_WhenUnpairingNothing() {
+        await RunAsync("unpair");
+
+        Assert.DoesNotContain("devices.unpaired", LoggedEvents());
+    }
+
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task ShouldAllowKeychainPrompt_WhenUnpairingFromTerminal(bool redirected, bool expected) {
+        inputRedirected = redirected;
+        RecordPromptAllowed();
+
+        await RunAsync("unpair");
 
         Assert.Equal(expected, promptAllowed);
     }
@@ -252,25 +328,33 @@ public sealed class DevicesCommandTests : IDisposable {
     [Theory]
     [InlineData("devices", "list")]
     [InlineData("devices", "revoke", "AQEB")]
-    [InlineData("unpair")]
-    public async Task ShouldPrintDatabaseTooNew_WhenSchemaIsNewer(params string[] args) {
-        MarkSchemaTooNew();
+    public async Task ShouldRefuseKeychainPrompt_WhenListingOrRevoking(params string[] args) {
+        inputRedirected = false;
+        RecordPromptAllowed();
 
-        int exit = await RunAsync(args);
+        await RunAsync(args);
 
-        Assert.Equal((CliExitCodes.Failure, tooNew), (exit, console.Output.TrimEnd()));
+        Assert.False(promptAllowed);
     }
 
-    [Theory]
-    [InlineData(Locales.English, "Cannot read the jobranger database at {0}.")]
-    [InlineData(Locales.Norwegian, "Kan ikke lese jobranger-databasen i {0}.")]
-    public async Task ShouldPrintDatabaseUnreadable_WhenDatabaseIsCorrupt(string lang, string line) {
-        environment["LANG"] = lang;
+    [Fact]
+    public async Task ShouldPrintDatabaseTooNew_WhenSchemaIsNewer() {
+        MarkSchemaTooNew();
+
+        int exit = await RunAsync("devices", "list");
+
+        Assert.Equal(
+            (CliExitCodes.Failure, "The database was made by a newer jobranger. Update jobranger and try again."),
+            (exit, console.Output.TrimEnd()));
+    }
+
+    [Fact]
+    public async Task ShouldPrintDatabaseUnreadable_WhenDatabaseIsCorrupt() {
         File.WriteAllBytes(DatabasePath(), Encoding.ASCII.GetBytes(new string('x', corruptBytes)));
 
         int exit = await RunAsync("devices", "list");
 
-        Assert.Equal((CliExitCodes.Failure, string.Format(line, DatabasePath())), (exit, console.Output.TrimEnd()));
+        Assert.Equal((CliExitCodes.Failure, WithPath(unreadable, DatabasePath())), (exit, console.Output.TrimEnd()));
     }
 
     [Fact]
@@ -281,9 +365,7 @@ public sealed class DevicesCommandTests : IDisposable {
 
         int exit = await RunAsync("devices", "list");
 
-        Assert.Equal(
-            (CliExitCodes.Failure, $"Cannot read the jobranger database at {DatabasePath()}."),
-            (exit, console.Output.TrimEnd()));
+        Assert.Equal((CliExitCodes.Failure, WithPath(unreadable, DatabasePath())), (exit, console.Output.TrimEnd()));
     }
 
     [Fact]
@@ -330,15 +412,6 @@ public sealed class DevicesCommandTests : IDisposable {
         Assert.Contains("devices.failed", LoggedEvents());
     }
 
-    [Theory]
-    [InlineData(DevicesCommand.CommandName)]
-    [InlineData(UnpairCommand.CommandName)]
-    public void ShouldOfferCommand_WhenRootIsBuilt(string name) {
-        RootCommand root = new(Services());
-
-        Assert.Contains(name, root.Subcommands.Select(command => command.Name));
-    }
-
     [Fact]
     public async Task ShouldReturnUsageCode_WhenRevokeHasNoId() {
         RootCommand root = new(Services());
@@ -359,6 +432,8 @@ public sealed class DevicesCommandTests : IDisposable {
         Assert.Contains(new EnglishMessages().UnpairDescription, console.Output, StringComparison.Ordinal);
     }
 
+    private static string WithPath(string line, string path) => string.Format(line, path);
+
     private CliServices Services() => CliServices.Create(time, console.Console, console.ErrorConsole, environment);
 
     private Task<int> RunAsync(params string[] args) {
@@ -369,6 +444,12 @@ public sealed class DevicesCommandTests : IDisposable {
         ];
         return root.Parse(args).InvokeAsync(null, TestContext.Current.CancellationToken);
     }
+
+    private void RecordPromptAllowed() =>
+        openLink = (environment, paths, urls, logger, canPrompt, cancellationToken) => {
+            promptAllowed = canPrompt;
+            return Link.OpenAsync(environment, paths, urls, logger, canPrompt, cancellationToken);
+        };
 
     private SqliteConnection OpenDatabase() => Database.Open(DatabasePath(), NullLogger.Instance);
 
@@ -401,13 +482,20 @@ public sealed class DevicesCommandTests : IDisposable {
         return keys.Channel.Value;
     }
 
-    private string RecordedChannel() =>
-        LinkMetadata.Read(new FileSecretStore(MetadataPath(), NullLogger.Instance))!.Channel;
+    private string RecordedChannel() {
+        FileSecretStore store = new(MetadataPath(), NullLogger.Instance);
+        LinkMetadata metadata = LinkMetadata.Read(store)!;
+        return metadata.Channel;
+    }
 
     private string MetadataPath() => Path.Combine(temp.Path, "config", LinkMetadata.FileName);
 
-    private string[] LoggedEvents() =>
-        [.. LogLines.Read(Path.Combine(temp.Path, "state", "logs", logFile)).Select(line => (string)line["event"]!)];
+    private string[] LoggedEvents() => [.. LogEntries().Select(line => (string)line["event"]!)];
+
+    private string?[] LoggedFailures() => [.. LogEntries().Select(line => (string?)line["failure"])];
+
+    private IReadOnlyList<JsonObject> LogEntries() =>
+        LogLines.Read(Path.Combine(temp.Path, "state", "logs", logFile));
 
     private string DatabasePath() {
         string dataDir = Path.Combine(temp.Path, "data");

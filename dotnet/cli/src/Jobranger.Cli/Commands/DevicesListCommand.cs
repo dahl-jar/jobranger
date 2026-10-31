@@ -3,6 +3,7 @@ using System.CommandLine;
 using System.Globalization;
 using System.Runtime.Versioning;
 using Jobranger.Cli.Features.Link;
+using Jobranger.Cli.Logging;
 using Jobranger.Cli.Storage;
 using Jobranger.Cli.Text;
 
@@ -15,14 +16,15 @@ internal sealed class DevicesListCommand : Command {
     private const int shortIdChars = 8;
 
     public DevicesListCommand(
-        CliServices services, IDictionary environment, TimeProvider time, PairCommand.LinkOpener openLink)
+        CliServices services, IDictionary environment, TimeProvider time, LinkCommandRun.LinkOpener openLink)
         : base(CommandName, services.Messages.DevicesListDescription) {
-        SetAction((_, cancellationToken) => DeviceCommandRun.RunAsync(
+        SetAction((_, cancellationToken) => LinkCommandRun.RunAsync(
             services,
             environment,
             canPrompt: false,
             openLink,
-            (link, output, _, _) => ListAsync(link, output, services.Messages, time),
+            LogEvents.DevicesFailed,
+            (opened, _) => ListAsync(opened.Link, opened.Output, services.Messages, time),
             cancellationToken));
     }
 

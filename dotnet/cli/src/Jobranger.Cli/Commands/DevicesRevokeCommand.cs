@@ -14,17 +14,18 @@ internal sealed class DevicesRevokeCommand : Command {
 
     private const string idArgument = "id";
 
-    public DevicesRevokeCommand(CliServices services, IDictionary environment, PairCommand.LinkOpener openLink)
+    public DevicesRevokeCommand(CliServices services, IDictionary environment, LinkCommandRun.LinkOpener openLink)
         : base(CommandName, services.Messages.DevicesRevokeDescription) {
-        Argument<string> id = new(idArgument) { Description = services.Messages.DevicesRevokeIdDescription };
+        Argument<string> id = new(idArgument);
         Arguments.Add(id);
-        SetAction((parseResult, cancellationToken) => DeviceCommandRun.RunAsync(
+        SetAction((parseResult, cancellationToken) => LinkCommandRun.RunAsync(
             services,
             environment,
             canPrompt: false,
             openLink,
-            (link, output, logger, _) =>
-                RevokeAsync(link, output, logger, services.Messages, parseResult.GetRequiredValue(id)),
+            LogEvents.DevicesFailed,
+            (opened, _) => RevokeAsync(
+                opened.Link, opened.Output, opened.Logger, services.Messages, parseResult.GetRequiredValue(id)),
             cancellationToken));
     }
 

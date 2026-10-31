@@ -148,9 +148,7 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string DevicesListDescription => "Vis tilkoblede nettlesere.";
 
-    public string DevicesRevokeDescription => "Fjern \u00e9n tilkoblet nettleser.";
-
-    public string DevicesRevokeIdDescription => "Nettleserens id, eller starten av den.";
+    public string DevicesRevokeDescription => "Fjern én tilkoblet nettleser.";
 
     public string UnpairDescription => "Fjern alle tilkoblede nettlesere.";
 
@@ -168,19 +166,25 @@ internal sealed class NorwegianMessages : IMessages {
     public string DevicesAmbiguous(string id) =>
         $"Flere nettlesere har en id som starter med {id}. Ingenting ble fjernet. Bruk mer av id-en.";
 
-    public string DevicesSecretStoreFailed => "Hemmelighetslageret svarte ikke. L\u00e5s det opp og pr\u00f8v igjen.";
+    public string SecretStoreFailed => "Hemmelighetslageret svarte ikke. Lås det opp og prøv igjen.";
 
     public string Unpaired(int count) =>
-        $"\u2713 Koblet fra {count} nettleser(e). Nettsiden kan ikke lenger n\u00e5 denne maskinen.";
+        $"\u2713 Koblet fra {count} {(count == 1 ? "nettleser" : "nettlesere")}. "
+        + "Nettsiden kan ikke lenger nå denne maskinen.";
 
     public string UnpairNone => "Ingen tilkoblede nettlesere.";
 
-    public string UnpairKeysFailed =>
-        "Nettleserne er fjernet, men nye koblingsn\u00f8kler kunne ikke lages. Kj\u00f8r jobranger unpair p\u00e5 nytt.";
+    public string UnpairKeysFailed => "Nye koblingsnøkler kunne ikke lages. Kjør jobranger unpair på nytt.";
+
+    public string UnpairKeysFileFailed(string path) =>
+        $"Nye koblingsnøkler kunne ikke lages fordi jobranger ikke kan bruke {path}. "
+        + "Rett eller fjern filen, og kjør jobranger unpair på nytt.";
 
     public string DatabaseTooNew => "Databasen er laget av en nyere jobranger. Oppdater jobranger og prøv igjen.";
 
     public string DatabaseUnreadable(string path) => $"Kan ikke lese jobranger-databasen i {path}.";
+
+    public string FileUnreadable(string path) => $"Kan ikke lese {path}.";
 
     public Language Language => Language.Nb;
 

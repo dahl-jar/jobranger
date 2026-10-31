@@ -14,7 +14,7 @@ internal sealed class DevicesCommand : Command {
     }
 
     public DevicesCommand(
-        CliServices services, IDictionary environment, TimeProvider time, PairCommand.LinkOpener openLink)
+        CliServices services, IDictionary environment, TimeProvider time, LinkCommandRun.LinkOpener openLink)
         : base(CommandName, services.Messages.DevicesDescription) {
         Subcommands.Add(new DevicesListCommand(services, environment, time, openLink));
         Subcommands.Add(new DevicesRevokeCommand(services, environment, openLink));

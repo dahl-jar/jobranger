@@ -129,8 +129,6 @@ internal interface IMessages {
 
     string DevicesRevokeDescription { get; }
 
-    string DevicesRevokeIdDescription { get; }
-
     string UnpairDescription { get; }
 
     string DevicesNone { get; }
@@ -145,7 +143,7 @@ internal interface IMessages {
 
     string DevicesAmbiguous(string id);
 
-    string DevicesSecretStoreFailed { get; }
+    string SecretStoreFailed { get; }
 
     string Unpaired(int count);
 
@@ -153,9 +151,13 @@ internal interface IMessages {
 
     string UnpairKeysFailed { get; }
 
+    string UnpairKeysFileFailed(string path);
+
     string DatabaseTooNew { get; }
 
     string DatabaseUnreadable(string path);
+
+    string FileUnreadable(string path);
 
     Language Language { get; }
 
