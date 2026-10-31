@@ -24,7 +24,7 @@ namespace Jobranger.Cli.Features.Rechecks;
 internal sealed class Rechecks(Paths paths, TimeProvider time, ILogger logger) {
     public SaveResult SaveConfig(string text) {
         ConfigFile.SaveText(paths.ConfigPath(), text, paths.Home(), logger);
-        return new SaveResult(Empty: false, Estimate());
+        return new SaveResult(BackToDefault: false, Estimate());
     }
 
     public SaveResult SaveGuidance(string text) {
@@ -34,14 +34,13 @@ internal sealed class Rechecks(Paths paths, TimeProvider time, ILogger logger) {
 
     public SaveResult ResetGuidance() {
         MatchingEntry.ResetGuidance(paths.GuidancePath(), logger);
-        return new SaveResult(Empty: true, Estimate());
+        return new SaveResult(BackToDefault: true, Estimate());
     }
 
     public SaveResult SaveAbout(string text) {
-        string about = PythonUnicode.Strip(text);
-        UserContext context = ProfilesEntry.LoadContext(paths.ContextPath()) with { About = about };
+        UserContext context = ProfilesEntry.LoadContext(paths.ContextPath()) with { About = PythonUnicode.Strip(text) };
         ProfilesEntry.SaveContext(paths.ContextPath(), context, logger);
-        return new SaveResult(about.Length == 0, Estimate());
+        return new SaveResult(BackToDefault: false, Estimate());
     }
 
     public RecheckEstimate? Estimate() {

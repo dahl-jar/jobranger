@@ -7,20 +7,20 @@ using Jobranger.Cli.Logging;
 using Jobranger.Cli.Platform;
 using Jobranger.Cli.Text;
 using Microsoft.Extensions.Logging;
+using RechecksEntry = Jobranger.Cli.Features.Rechecks.Rechecks;
 
 namespace Jobranger.Cli.Commands;
 
 [UnsupportedOSPlatform("windows")]
-internal sealed class EditSession(CliServices services, EditSeams seams, ILogger logger) {
-    public const string SaveFailure = "save_failed";
-
+internal sealed class EditSession(CliServices services, EditServices editServices, ILogger logger) {
+    private const string saveFailure = "save_failed";
     private const string notStartedFailure = "editor_not_started";
     private const string failedExitFailure = "editor_failed_exit";
     private const string tempFileFailure = "edit_file_failed";
 
     private readonly IMessages messages = services.Messages;
     private readonly TextWriter output = services.Console.Profile.Out.Writer;
-    private readonly Paths paths = new(seams.Environment);
+    private readonly Paths paths = new(editServices.Environment);
 
     public static async Task WriteSavedAsync(
         TextWriter output, IMessages messages, string savedLine, RecheckEstimate? estimate) {
@@ -33,9 +33,27 @@ internal sealed class EditSession(CliServices services, EditSeams seams, ILogger
         }
     }
 
-    public async Task<int> RunAsync(EditRequest request, CancellationToken cancellationToken) {
+    public static async Task<int> FailSaveAsync(TextWriter output, IMessages messages, ILogger logger, string path) {
+        LogEvents.EditFailed(logger, saveFailure);
+        await output.WriteLineAsync(messages.SaveFailed(path)).ConfigureAwait(false);
+        return CliExitCodes.Failure;
+    }
+
+    public static Task<int> RunAsync(
+        CliServices services,
+        EditServices editServices,
+        Type command,
+        Func<Paths, RechecksEntry, EditRequest> request,
+        CancellationToken cancellationToken) {
+        ILogger logger = services.Logs.CreateLogger(command.FullName!);
+        Paths paths = new(editServices.Environment);
+        RechecksEntry rechecks = new(paths, editServices.Time, logger);
+        return new EditSession(services, editServices, logger).RunAsync(request(paths, rechecks), cancellationToken);
+    }
+
+    private async Task<int> RunAsync(EditRequest request, CancellationToken cancellationToken) {
         string? text = null;
-        int loaded = ReadFailures.PrintLines(
+        int exit = ReadFailures.PrintLines(
             () => {
                 text = request.Load();
                 return [];
@@ -46,11 +64,11 @@ internal sealed class EditSession(CliServices services, EditSeams seams, ILogger
             output);
         return text is string loadedText
             ? await EditAsync(request, loadedText, cancellationToken).ConfigureAwait(false)
-            : loaded;
+            : exit;
     }
 
     private async Task<int> EditAsync(EditRequest request, string text, CancellationToken cancellationToken) {
-        EditorRunner editor = new(seams.Environment, paths.StateDir(), seams.Process, logger);
+        EditorRunner editor = new(editServices.Environment, paths.StateDir(), editServices.Process, logger);
         string current = text;
         while (true) {
             string edited;
@@ -63,29 +81,27 @@ internal sealed class EditSession(CliServices services, EditSeams seams, ILogger
             try {
                 saved = request.Save(edited);
             } catch (ConfigInvalidException invalid) {
-                if (!await AsksAgainAsync(invalid).ConfigureAwait(false)) {
+                if (!await WantsAnotherEditAsync(invalid).ConfigureAwait(false)) {
                     await output.WriteLineAsync(request.KeptLine).ConfigureAwait(false);
                     return CliExitCodes.Ok;
                 }
                 current = edited;
                 continue;
             } catch (Exception error) when (error is IOException or UnauthorizedAccessException) {
-                LogEvents.EditFailed(logger, SaveFailure);
-                await output.WriteLineAsync(messages.SaveFailed(request.TargetPath)).ConfigureAwait(false);
-                return CliExitCodes.Failure;
+                return await FailSaveAsync(output, messages, logger, request.TargetPath).ConfigureAwait(false);
             }
             await WriteSavedAsync(output, messages, request.SavedLine(saved), saved.Estimate).ConfigureAwait(false);
             return CliExitCodes.Ok;
         }
     }
 
-    private async Task<bool> AsksAgainAsync(ConfigInvalidException invalid) {
+    private async Task<bool> WantsAnotherEditAsync(ConfigInvalidException invalid) {
         foreach (ConfigError error in invalid.Errors) {
             await output.WriteLineAsync(error.Describe(messages)).ConfigureAwait(false);
         }
         await output.WriteAsync(messages.EditAgain).ConfigureAwait(false);
         await output.FlushAsync().ConfigureAwait(false);
-        return seams.ReadLine() is string answer
+        return editServices.ReadLine() is string answer
             && !messages.EditNoAnswers.Contains(answer.Trim(), StringComparer.OrdinalIgnoreCase);
     }
 

@@ -2,7 +2,6 @@ using System.CommandLine;
 using System.Runtime.Versioning;
 using Jobranger.Cli.Files;
 using Jobranger.Cli.Text;
-using Microsoft.Extensions.Logging;
 using MatchingEntry = Jobranger.Cli.Features.Matching.Matching;
 using RechecksEntry = Jobranger.Cli.Features.Rechecks.Rechecks;
 
@@ -14,24 +13,24 @@ internal sealed class GuidanceEditCommand : Command {
 
     private const string suffix = ".md";
 
-    public GuidanceEditCommand(CliServices services, EditSeams seams)
+    public GuidanceEditCommand(CliServices services, EditServices editServices)
         : base(CommandName, services.Messages.GuidanceEditDescription) {
-        SetAction((_, cancellationToken) => RunAsync(services, seams, cancellationToken));
+        SetAction((_, cancellationToken) => EditSession.RunAsync(
+            services,
+            editServices,
+            typeof(GuidanceEditCommand),
+            (paths, rechecks) => Request(services.Messages, paths, rechecks),
+            cancellationToken));
     }
 
-    private static Task<int> RunAsync(CliServices services, EditSeams seams, CancellationToken cancellationToken) {
-        ILogger logger = services.Logs.CreateLogger(typeof(GuidanceEditCommand).FullName!);
-        IMessages messages = services.Messages;
-        Paths paths = new(seams.Environment);
-        RechecksEntry rechecks = new(paths, seams.Time, logger);
+    private static EditRequest Request(IMessages messages, Paths paths, RechecksEntry rechecks) {
         string path = paths.GuidancePath();
-        EditRequest request = new(
+        return new EditRequest(
             () => MatchingEntry.LoadGuidance(path).Text,
             suffix,
             path,
             rechecks.SaveGuidance,
-            result => result.Empty ? messages.GuidanceBackToDefault : messages.Saved(path),
+            result => result.BackToDefault ? messages.GuidanceBackToDefault : messages.Saved(path),
             messages.GuidanceKept);
-        return new EditSession(services, seams, logger).RunAsync(request, cancellationToken);
     }
 }

@@ -8,11 +8,11 @@ internal sealed class AboutCommand : Command {
     public const string CommandName = "about";
 
     public AboutCommand(CliServices services)
-        : this(services, EditSeams.System()) {
+        : this(services, EditServices.Create()) {
     }
 
-    public AboutCommand(CliServices services, EditSeams seams)
+    public AboutCommand(CliServices services, EditServices editServices)
         : base(CommandName, services.Messages.AboutDescription) {
-        Subcommands.Add(new AboutEditCommand(services, seams));
+        Subcommands.Add(new AboutEditCommand(services, editServices));
     }
 }

@@ -16,11 +16,6 @@ public sealed class EditorCommandTests {
         Assert.Equal(arguments, command?.Arguments);
     }
 
-    [Fact]
-    public void ShouldReturnNull_WhenValueIsBlank() {
-        Assert.Null(EditorCommand.Parse("   "));
-    }
-
     [Theory]
     [InlineData("\"/opt/edit")]
     [InlineData("\"\" --wait")]

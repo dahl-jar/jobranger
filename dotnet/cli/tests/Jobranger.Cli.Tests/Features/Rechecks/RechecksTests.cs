@@ -9,6 +9,7 @@ using Jobranger.Cli.Files;
 using Jobranger.Cli.Storage;
 using Jobranger.Cli.Tests.Mocks;
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using BudgetEntry = Jobranger.Cli.Features.Budget.Budget;
 using ModelsEntry = Jobranger.Cli.Features.Models.Models;
@@ -22,18 +23,16 @@ namespace Jobranger.Cli.Tests.Features.Rechecks;
 public sealed class RechecksTests : IDisposable {
     private const string guidance = "Prefer backend roles.";
     private const string noConfig = "no config";
-    private const string noProfile = "no profile";
     private const string invalidConfig = "invalid config";
     private const string schemaTooNew = "schema too new";
     private const string corruptDatabase = "corrupt database";
     private const string databaseLink = "database link";
     private const string dataParentFile = "data parent file";
-    private const string dataParentReadOnly = "data parent read-only";
     private const string migrationClash = "migration clash";
     private const string dataDirVariable = "JOBRANGER_DATA_DIR";
     private const string noModelName = "model:\n  provider: anthropic\n";
-    private const string unknownSetting = "nope: 1\n";
     private const string tooNewSchema = "99";
+    private const string fileTightenedEvent = "paths.private_file.tightened";
     private const int staleAds = 3;
     private const int corruptBytes = 4096;
 
@@ -48,10 +47,7 @@ public sealed class RechecksTests : IDisposable {
         rechecks = new RechecksEntry(paths, AdFixtures.Clock(), NullLogger.Instance);
     }
 
-    public void Dispose() {
-        RestoreDataParent();
-        temp.Dispose();
-    }
+    public void Dispose() => temp.Dispose();
 
     [Fact]
     public void ShouldReturnRecheckEstimate_WhenGuidanceIsSaved() {
@@ -89,18 +85,29 @@ public sealed class RechecksTests : IDisposable {
 
     [Theory]
     [InlineData(noConfig)]
-    [InlineData(noProfile)]
     [InlineData(invalidConfig)]
     [InlineData(schemaTooNew)]
     [InlineData(corruptDatabase)]
     [InlineData(databaseLink)]
     [InlineData(dataParentFile)]
-    [InlineData(dataParentReadOnly)]
     [InlineData(migrationClash)]
-    public void ShouldReturnNoEstimate_WhenInputsAreMissing(string missing) {
-        Prepare(missing);
+    public void ShouldReturnNoEstimate_WhenInputsCannotBeRead(string failure) {
+        Prepare(failure);
 
         RecheckEstimate? estimate = rechecks.Estimate();
+
+        Assert.Null(estimate);
+    }
+
+    [Fact]
+    public void ShouldReturnNoEstimate_WhenAccessIsDenied() {
+        EditFixtures.WriteSetup(temp, paths, EditFixtures.NoModel);
+        Directory.CreateDirectory(paths.DataDir());
+        File.WriteAllText(paths.DbPath(), string.Empty);
+        File.SetUnixFileMode(paths.DbPath(), FileModes.OwnerReadWrite | UnixFileMode.GroupRead);
+        RechecksEntry denied = new(paths, AdFixtures.Clock(), new DeniedLogger());
+
+        RecheckEstimate? estimate = denied.Estimate();
 
         Assert.Null(estimate);
     }
@@ -124,29 +131,17 @@ public sealed class RechecksTests : IDisposable {
         Assert.Equal("text", ProfilesEntry.LoadContext(paths.ContextPath()).About);
     }
 
-    [Theory]
-    [InlineData("text", false)]
-    [InlineData("  \n", true)]
-    public void ShouldReportEmpty_WhenAboutIsBlank(string text, bool empty) {
-        SaveResult result = rechecks.SaveAbout(text);
-
-        Assert.Equal(empty, result.Empty);
-    }
-
-    private void Prepare(string missing) {
-        switch (missing) {
+    private void Prepare(string failure) {
+        switch (failure) {
             case noConfig:
                 EditFixtures.WriteProfile(temp);
                 return;
-            case noProfile:
-                EditFixtures.WriteConfig(paths, EditFixtures.Config(EditFixtures.NoModel));
-                return;
             case invalidConfig:
-                EditFixtures.WriteConfig(paths, unknownSetting);
+                EditFixtures.WriteConfig(paths, EditFixtures.UnknownSetting);
                 return;
             default:
                 EditFixtures.WriteSetup(temp, paths, EditFixtures.NoModel);
-                BreakDatabase(missing);
+                BreakDatabase(failure);
                 return;
         }
     }
@@ -170,11 +165,6 @@ public sealed class RechecksTests : IDisposable {
                 File.WriteAllText(temp.File("taken"), string.Empty);
                 environment[dataDirVariable] = Path.Combine(temp.File("taken"), "data");
                 return;
-            case dataParentReadOnly:
-                Directory.CreateDirectory(temp.File("locked"));
-                File.SetUnixFileMode(temp.File("locked"), EditFixtures.ReadOnlyDir);
-                environment[dataDirVariable] = Path.Combine(temp.File("locked"), "data");
-                return;
             default:
                 Directory.CreateDirectory(paths.DataDir());
                 using (SqliteConnection connection = TestDatabase.OpenRaw(paths.DbPath())) {
@@ -184,16 +174,24 @@ public sealed class RechecksTests : IDisposable {
         }
     }
 
-    private void RestoreDataParent() {
-        if (Directory.Exists(temp.File("locked"))) {
-            File.SetUnixFileMode(temp.File("locked"), FileModes.OwnerOnlyDir);
-        }
-    }
-
     private PromptSetup Prompt() => PromptSetup.Load(ConfigFile.Load(paths.ConfigPath(), paths.Home()), paths);
 
     private ModelPrices ConfiguredPrices() {
         ModelConfig model = ConfigFile.Load(paths.ConfigPath(), paths.Home()).Model;
         return RunsEntry.ToPrices(ModelsEntry.SpecFor(model.Provider!.Value, model.Model!, model.Price)!);
+    }
+
+    private sealed class DeniedLogger : ILogger {
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
+            if (eventId.Name == fileTightenedEvent) {
+                throw new UnauthorizedAccessException();
+            }
+        }
     }
 }

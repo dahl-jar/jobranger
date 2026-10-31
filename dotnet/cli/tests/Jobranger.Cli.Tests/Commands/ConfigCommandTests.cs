@@ -13,7 +13,6 @@ namespace Jobranger.Cli.Tests.Commands;
 public sealed class ConfigCommandTests : IDisposable {
     private const string show = "show";
     private const string edit = "edit";
-    private const string unknownSetting = "nope: 1\n";
     private const string unknownSettingLine = "nope: is not a known setting\n";
     private const string unknownSettingLineNorwegian = "nope: er ikke en kjent innstilling\n";
     private const string kept = "Kept the previous config.\n";
@@ -60,7 +59,7 @@ public sealed class ConfigCommandTests : IDisposable {
 
     [Fact]
     public async Task ShouldPrintErrors_WhenShownConfigIsInvalid() {
-        EditFixtures.WriteConfig(paths, validConfig + unknownSetting);
+        EditFixtures.WriteConfig(paths, validConfig + EditFixtures.UnknownSetting);
 
         int exit = await RunAsync(EditFixtures.Exits(0), show);
 
@@ -104,7 +103,7 @@ public sealed class ConfigCommandTests : IDisposable {
         environment["LANG"] = lang;
         EditFixtures.WriteConfig(paths, validConfig);
 
-        int exit = await RunAsync(EditFixtures.Writes(validConfig + unknownSetting), [answer], edit);
+        int exit = await RunAsync(EditFixtures.Writes(validConfig + EditFixtures.UnknownSetting), [answer], edit);
 
         Assert.Equal((CliExitCodes.Ok, error + prompt + keptLine), (exit, console.Output));
         Assert.Equal(validConfig, File.ReadAllText(paths.ConfigPath()));
@@ -116,14 +115,14 @@ public sealed class ConfigCommandTests : IDisposable {
         List<string> opened = [];
         FakeEditorProcess editor = new(file => {
             opened.Add(File.ReadAllText(file));
-            File.WriteAllText(file, opened.Count == 1 ? validConfig + unknownSetting : "# fixed\n" + validConfig);
+            File.WriteAllText(file, opened.Count == 1 ? validConfig + EditFixtures.UnknownSetting : "# fixed\n" + validConfig);
             return 0;
         });
 
         int exit = await RunAsync(editor, [string.Empty], edit);
 
         Assert.Equal(CliExitCodes.Ok, exit);
-        Assert.Equal([validConfig, validConfig + unknownSetting], opened);
+        Assert.Equal([validConfig, validConfig + EditFixtures.UnknownSetting], opened);
         Assert.Equal("# fixed\n" + validConfig, File.ReadAllText(paths.ConfigPath()));
     }
 
@@ -133,7 +132,7 @@ public sealed class ConfigCommandTests : IDisposable {
         int starts = 0;
         FakeEditorProcess editor = new(file => {
             starts++;
-            File.WriteAllText(file, validConfig + unknownSetting);
+            File.WriteAllText(file, validConfig + EditFixtures.UnknownSetting);
             return starts == 1 ? 0 : 1;
         });
 
@@ -191,6 +190,23 @@ public sealed class ConfigCommandTests : IDisposable {
     }
 
     [Fact]
+    public async Task ShouldOpenEditor_WhenSavedConfigIsInvalid() {
+        string broken = validConfig + EditFixtures.UnknownSetting;
+        EditFixtures.WriteConfig(paths, broken);
+        string opened = string.Empty;
+        FakeEditorProcess editor = new(file => {
+            opened = File.ReadAllText(file);
+            File.WriteAllText(file, validConfig);
+            return 0;
+        });
+
+        int exit = await RunAsync(editor, edit);
+
+        Assert.Equal((CliExitCodes.Ok, $"✓ Saved {paths.ConfigPath()}\n"), (exit, console.Output));
+        Assert.Equal((broken, validConfig), (opened, File.ReadAllText(paths.ConfigPath())));
+    }
+
+    [Fact]
     public async Task ShouldPrintWriteFailure_WhenFolderIsReadOnly() {
         EditFixtures.WriteConfig(paths, validConfig);
         FakeEditorProcess editor = new(file => {
@@ -221,7 +237,7 @@ public sealed class ConfigCommandTests : IDisposable {
 
     private Task<int> RunAsync(FakeEditorProcess editor, string?[] answers, string subcommand) {
         ConfigCommand command = new(
-            EditFixtures.Services(environment, console), EditFixtures.Seams(environment, editor, answers));
+            EditFixtures.Services(environment, console), EditFixtures.EditServices(environment, editor, answers));
         return EditFixtures.InvokeAsync(command, console, ConfigCommand.CommandName, subcommand);
     }
 }

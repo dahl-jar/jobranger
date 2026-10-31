@@ -1,20 +1,42 @@
+using System.Collections;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.Versioning;
 using Jobranger.Cli.Platform;
 using Jobranger.Cli.Tests.Mocks;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Jobranger.Cli.Tests.Platform;
 
+[UnsupportedOSPlatform("windows")]
+[Collection(currentFolderCollection)]
 public sealed class EditorProcessTests : IDisposable {
+    private const string currentFolderCollection = "current folder";
     private const string shell = "/bin/sh";
     private const string runScript = "-c";
     private const string failedExitScript = "exit 3";
     private const int failedExit = 3;
+    private const string pathVariable = "PATH";
+    private const string editorName = "vi";
+    private const string pathText = "from PATH";
+    private const string currentText = "from current folder";
+    private const string directoryEntry = "directory";
+    private const string plainFileEntry = "plain file";
+    private const string brokenLinkEntry = "broken link";
+    private const string linkLoopEntry = "link loop";
+    private const string pipeEntry = "pipe";
+    private const string lockedFolderEntry = "locked folder";
+    private const UnixFileMode runnable = FileModes.OwnerOnlyDir;
 
     private readonly TempDir temp = new();
-    private readonly EditorProcess process = new();
+    private readonly EditorProcess process = new(new Hashtable());
+    private readonly string startFolder = Directory.GetCurrentDirectory();
 
-    public void Dispose() => temp.Dispose();
+    public void Dispose() {
+        Directory.SetCurrentDirectory(startFolder);
+        temp.Dispose();
+    }
 
     [Fact]
     public async Task ShouldReturnExitCode_WhenProgramExits() {
@@ -37,6 +59,108 @@ public sealed class EditorProcessTests : IDisposable {
         await TestWaits.UntilAsync(() => IsGone(processId));
     }
 
+    [Theory]
+    [InlineData(directoryEntry)]
+    [InlineData(plainFileEntry)]
+    [InlineData(brokenLinkEntry)]
+    [InlineData(linkLoopEntry)]
+    [InlineData(pipeEntry)]
+    [InlineData(lockedFolderEntry)]
+    public void ShouldPickNextFolder_WhenEntryIsNotRunnable(string entry) {
+        string first = Folder("first");
+        string second = Folder("second");
+        string expected = WriteScript(second, pathText);
+        AddEntry(first, entry);
+
+        string found = EditorProcess.Resolve(editorName, $"{first}{Path.PathSeparator}{second}");
+
+        File.SetUnixFileMode(first, FileModes.OwnerOnlyDir);
+        Assert.Equal(expected, found);
+    }
+
+    [Fact]
+    public void ShouldPickLink_WhenLinkTargetIsRunnable() {
+        string target = WriteScript(Folder("target"), pathText);
+        string link = Path.Combine(Folder("links"), editorName);
+        File.CreateSymbolicLink(link, target);
+
+        string found = EditorProcess.Resolve(editorName, Path.GetDirectoryName(link));
+
+        Assert.Equal(link, found);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(".")]
+    [InlineData(":")]
+    public void ShouldThrowNotFound_WhenOnlyCurrentFolderHasProgram(string? searchPath) {
+        string current = Folder("current");
+        WriteScript(current, currentText);
+        Directory.SetCurrentDirectory(current);
+
+        Assert.Throws<Win32Exception>(() => EditorProcess.Resolve(editorName, searchPath));
+    }
+
+    [Theory]
+    [InlineData("./vi")]
+    [InlineData("/opt/edit")]
+    public void ShouldKeepProgram_WhenValueHasFolder(string program) {
+        string found = EditorProcess.Resolve(program, null);
+
+        Assert.Equal(program, found);
+    }
+
+    [Fact]
+    public async Task ShouldOpenPathEditor_WhenCurrentFolderHasSameName() {
+        string bin = Folder("bin");
+        string current = Folder("current");
+        WriteScript(bin, pathText);
+        WriteScript(current, currentText);
+        Directory.SetCurrentDirectory(current);
+        Hashtable environment = new() { [pathVariable] = bin };
+        EditorRunner runner = new(environment, temp.File("state"), new EditorProcess(environment), NullLogger.Instance);
+
+        string edited = await runner.EditAsync("old", ".md", TestContext.Current.CancellationToken);
+
+        Assert.Equal(pathText, edited);
+    }
+
+    private static string WriteScript(string folder, string text) {
+        string path = Path.Combine(folder, editorName);
+        File.WriteAllText(path, $"#!/bin/sh\nprintf '{text}' > \"$1\"\n");
+        File.SetUnixFileMode(path, runnable);
+        return path;
+    }
+
+    private static void AddEntry(string folder, string entry) {
+        string path = Path.Combine(folder, editorName);
+        switch (entry) {
+            case directoryEntry:
+                Directory.CreateDirectory(path);
+                return;
+            case plainFileEntry:
+                File.WriteAllText(path, string.Empty);
+                return;
+            case brokenLinkEntry:
+                File.CreateSymbolicLink(path, path + "-gone");
+                return;
+            case linkLoopEntry:
+                File.CreateSymbolicLink(path, path);
+                return;
+            case pipeEntry:
+                using (Process pipe = Process.Start("mkfifo", [path])) {
+                    pipe.WaitForExit();
+                }
+                File.SetUnixFileMode(path, runnable);
+                return;
+            default:
+                WriteScript(folder, currentText);
+                File.SetUnixFileMode(folder, UnixFileMode.None);
+                return;
+        }
+    }
+
     private static bool IsGone(int processId) {
         try {
             using Process found = Process.GetProcessById(processId);
@@ -45,4 +169,13 @@ public sealed class EditorProcessTests : IDisposable {
             return true;
         }
     }
+
+    private string Folder(string name) {
+        string path = temp.File(name);
+        Directory.CreateDirectory(path);
+        return path;
+    }
+
+    [CollectionDefinition(currentFolderCollection, DisableParallelization = true)]
+    public sealed class CurrentFolderRuns;
 }

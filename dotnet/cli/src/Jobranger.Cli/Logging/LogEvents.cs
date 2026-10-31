@@ -105,8 +105,11 @@ internal static partial class LogEvents {
     [LoggerMessage(EventName = "edit.failed", Level = LogLevel.Warning, Message = "edit failed failure={Failure}")]
     public static partial void EditFailed(ILogger logger, string failure);
 
-    [LoggerMessage(EventName = "edit.cleanup_failed", Level = LogLevel.Warning, Message = "edit folder not removed")]
-    public static partial void EditCleanupFailed(ILogger logger);
+    [LoggerMessage(
+        EventName = "edit.cleanup_failed",
+        Level = LogLevel.Warning,
+        Message = "edit folder not removed dir={Dir} error_type={ErrorType}")]
+    public static partial void EditCleanupFailed(ILogger logger, string dir, string errorType);
 
     [LoggerMessage(
         EventName = "recheck.skipped",

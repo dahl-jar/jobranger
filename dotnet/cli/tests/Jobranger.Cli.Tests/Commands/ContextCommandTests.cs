@@ -63,11 +63,13 @@ public sealed class ContextCommandTests : IDisposable {
     [Fact]
     public async Task ShouldPrintErrors_WhenContextFileIsBroken() {
         Directory.CreateDirectory(paths.ConfigDir());
-        File.WriteAllText(paths.ContextPath(), "- about\n");
+        File.WriteAllText(paths.ContextPath(), EditFixtures.BrokenContext);
 
         int exit = await RunAsync();
 
-        Assert.Equal((CliExitCodes.Failure, "context.yaml: is not a section of settings\n"), (exit, console.Output));
+        Assert.Equal(
+            (CliExitCodes.Failure, EditFixtures.BrokenContextLine, "settings.read_failed config_invalid"),
+            (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
     }
 
     private Task<int> RunAsync() {

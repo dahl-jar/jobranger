@@ -75,7 +75,7 @@ internal sealed class EditorRunner(IDictionary environment, string stateDir, IEd
                 Directory.Delete(folder, recursive: true);
             }
         } catch (Exception error) when (error is IOException or UnauthorizedAccessException) {
-            LogEvents.EditCleanupFailed(logger);
+            LogEvents.EditCleanupFailed(logger, Path.GetFileName(folder), error.GetType().Name);
         }
     }
 }

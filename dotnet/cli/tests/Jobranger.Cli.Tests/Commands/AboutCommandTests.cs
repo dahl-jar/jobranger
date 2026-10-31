@@ -1,7 +1,9 @@
 using System.Collections;
 using System.Runtime.Versioning;
 using Jobranger.Cli.Commands;
+using Jobranger.Cli.Config;
 using Jobranger.Cli.Features.Profiles;
+using Jobranger.Cli.Features.Runs;
 using Jobranger.Cli.Files;
 using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Messaging.Limits;
@@ -77,13 +79,26 @@ public sealed class AboutCommandTests : IDisposable {
     [Fact]
     public async Task ShouldPrintErrors_WhenAboutFileIsBroken() {
         Directory.CreateDirectory(paths.ConfigDir());
-        File.WriteAllText(paths.ContextPath(), "- about\n");
+        File.WriteAllText(paths.ContextPath(), EditFixtures.BrokenContext);
         FakeEditorProcess editor = EditFixtures.Exits(0);
 
         int exit = await RunAsync(editor);
 
-        Assert.Equal((CliExitCodes.Failure, "context.yaml: is not a section of settings\n"), (exit, console.Output));
+        Assert.Equal((CliExitCodes.Failure, EditFixtures.BrokenContextLine), (exit, console.Output));
         Assert.Empty(editor.Starts);
+    }
+
+    [Fact]
+    public async Task ShouldPrintRecheckLine_WhenAboutEditChangesPrompt() {
+        EditFixtures.WriteSetup(temp, paths, EditFixtures.NoModel);
+        AppConfig saved = ConfigFile.Load(paths.ConfigPath(), paths.Home());
+        EditFixtures.AddAds(paths, 1, PromptSetup.Load(saved, paths).Version);
+
+        int exit = await RunAsync(EditFixtures.Writes(newText));
+
+        Assert.Equal(
+            (CliExitCodes.Ok, $"✓ Saved {paths.ContextPath()}\n  Rechecks 1 ad on the next run.\n"),
+            (exit, console.Output));
     }
 
     private static IReadOnlyList<ContextDoc> FullDocs() =>
@@ -96,7 +111,7 @@ public sealed class AboutCommandTests : IDisposable {
 
     private Task<int> RunAsync(FakeEditorProcess editor, params string?[] answers) {
         AboutCommand command = new(
-            EditFixtures.Services(environment, console), EditFixtures.Seams(environment, editor, answers));
+            EditFixtures.Services(environment, console), EditFixtures.EditServices(environment, editor, answers));
         return EditFixtures.InvokeAsync(command, console, AboutCommand.CommandName, edit);
     }
 }

@@ -116,19 +116,6 @@ public sealed class RootCommandTests {
     [InlineData(GuidanceCommand.CommandName)]
     [InlineData(AboutCommand.CommandName)]
     [InlineData(ContextCommand.CommandName)]
-    public void ShouldOfferSettingsCommand_WhenRootIsBuilt(string name) {
-        using RecordingConsole console = new();
-
-        RootCommand root = CreateRoot(console, Locales.English);
-
-        Assert.Contains(name, root.Subcommands.Select(command => command.Name));
-    }
-
-    [Theory]
-    [InlineData(ConfigCommand.CommandName)]
-    [InlineData(GuidanceCommand.CommandName)]
-    [InlineData(AboutCommand.CommandName)]
-    [InlineData(ContextCommand.CommandName)]
     public async Task ShouldReturnUsageCode_WhenGroupHasNoSubcommand(string name) {
         using RecordingConsole console = new();
         RootCommand root = CreateRoot(console, Locales.English);

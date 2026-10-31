@@ -90,6 +90,19 @@ public sealed class GuidanceCommandTests : IDisposable {
     }
 
     [Fact]
+    public async Task ShouldLogFolderName_WhenFolderIsTightened() {
+        WriteGuidance(oldText);
+        File.SetUnixFileMode(paths.ConfigDir(), FileModes.SharedDir);
+
+        await RunAsync(EditFixtures.Writes(newText), edit);
+
+        IEnumerable<string?> tightened = LogLines.Read(CommandFixtures.LogPath(paths))
+            .Where(line => line[LogFields.Event]?.ToString() == "paths.private_dir.tightened")
+            .Select(line => line["dir"]?.ToString());
+        Assert.Contains(Path.GetFileName(paths.ConfigDir()), tightened);
+    }
+
+    [Fact]
     public async Task ShouldLogSkippedRecheck_WhenConfigIsMissing() {
         int exit = await RunAsync(EditFixtures.Writes(newText), edit);
 
@@ -200,16 +213,18 @@ public sealed class GuidanceCommandTests : IDisposable {
     }
 
     [Theory]
-    [InlineData(show)]
-    [InlineData(edit)]
-    public async Task ShouldPrintErrors_WhenGuidanceFileIsBroken(string subcommand) {
+    [InlineData(show, "settings.read_failed config_invalid")]
+    [InlineData(edit, "edit.failed config_invalid")]
+    public async Task ShouldPrintErrors_WhenGuidanceFileIsBroken(string subcommand, string logged) {
         Directory.CreateDirectory(paths.ConfigDir());
         File.WriteAllBytes(paths.GuidancePath(), Utf8Fixtures.WithInvalidByte("a", "b"));
         FakeEditorProcess editor = EditFixtures.Exits(0);
 
         int exit = await RunAsync(editor, subcommand);
 
-        Assert.Equal((CliExitCodes.Failure, "guidance.md: is not UTF-8 text\n"), (exit, console.Output));
+        Assert.Equal(
+            (CliExitCodes.Failure, "guidance.md: is not UTF-8 text\n", logged),
+            (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
         Assert.Empty(editor.Starts);
     }
 
@@ -222,7 +237,7 @@ public sealed class GuidanceCommandTests : IDisposable {
 
     private Task<int> RunAsync(FakeEditorProcess editor, string?[] answers, string subcommand) {
         GuidanceCommand command = new(
-            EditFixtures.Services(environment, console), EditFixtures.Seams(environment, editor, answers));
+            EditFixtures.Services(environment, console), EditFixtures.EditServices(environment, editor, answers));
         return EditFixtures.InvokeAsync(command, console, GuidanceCommand.CommandName, subcommand);
     }
 }

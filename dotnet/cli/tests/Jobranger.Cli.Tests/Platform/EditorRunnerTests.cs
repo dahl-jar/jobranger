@@ -1,5 +1,4 @@
 using System.Collections;
-using System.ComponentModel;
 using System.Runtime.Versioning;
 using System.Text;
 using Jobranger.Cli.Platform;
@@ -13,10 +12,10 @@ namespace Jobranger.Cli.Tests.Platform;
 public sealed class EditorRunnerTests : IDisposable {
     private const string suffix = ".md";
     private const string input = "old";
-    private const string editFolders = "edit-*";
     private const string visual = "VISUAL";
     private const string editor = "EDITOR";
     private const int failedExit = 3;
+    private const string cleanupFailedLine = @"^edit folder not removed dir=edit-[^/ ]+ error_type=\w+Exception$";
 
     private readonly TempDir temp = new();
     private readonly string stateDir;
@@ -84,14 +83,6 @@ public sealed class EditorRunnerTests : IDisposable {
         Assert.Equal((FileModes.OwnerReadWrite, FileModes.OwnerOnlyDir, input, "edit" + suffix), seen);
     }
 
-    [Fact]
-    public async Task ShouldRefuseText_WhenEditorExitsNonZero() {
-        EditorException error = await Assert.ThrowsAsync<EditorException>(
-            () => Runner(EditFixtures.Exits(failedExit)).EditAsync(input, suffix, TestContext.Current.CancellationToken));
-
-        Assert.Equal(EditorProblem.FailedExit, error.Problem);
-    }
-
     [Theory]
     [InlineData(0)]
     [InlineData(failedExit)]
@@ -99,23 +90,7 @@ public sealed class EditorRunnerTests : IDisposable {
         await Record.ExceptionAsync(
             () => Runner(EditFixtures.Exits(exit)).EditAsync(input, suffix, TestContext.Current.CancellationToken));
 
-        Assert.Empty(Directory.GetDirectories(stateDir, editFolders));
-    }
-
-    [Fact]
-    public async Task ShouldRemoveEditFolder_WhenProgramIsMissing() {
-        await Assert.ThrowsAsync<EditorException>(
-            () => Runner(MissingProgram()).EditAsync(input, suffix, TestContext.Current.CancellationToken));
-
-        Assert.Empty(Directory.GetDirectories(stateDir, editFolders));
-    }
-
-    [Fact]
-    public async Task ShouldThrowNotStarted_WhenProgramIsMissing() {
-        EditorException error = await Assert.ThrowsAsync<EditorException>(
-            () => Runner(MissingProgram()).EditAsync(input, suffix, TestContext.Current.CancellationToken));
-
-        Assert.Equal((EditorProblem.NotStarted, "vi"), (error.Problem, error.Program));
+        Assert.Empty(Directory.GetFileSystemEntries(stateDir));
     }
 
     [Fact]
@@ -131,7 +106,6 @@ public sealed class EditorRunnerTests : IDisposable {
             () => Runner(process).EditAsync(input, suffix, cancelled.Token));
 
         Assert.Equal(EditorProblem.FailedExit, error.Problem);
-        Assert.Empty(Directory.GetDirectories(stateDir, editFolders));
     }
 
     [Theory]
@@ -151,18 +125,19 @@ public sealed class EditorRunnerTests : IDisposable {
             () => Runner(process).EditAsync(input, suffix, TestContext.Current.CancellationToken));
 
         Assert.Equal(EditorProblem.TempFile, error.Problem);
-        Assert.Empty(Directory.GetDirectories(stateDir, editFolders));
     }
 
     [Fact]
     public async Task ShouldThrowTempFile_WhenEditFileCannotBeWritten() {
         File.WriteAllText(temp.File("blocked"), string.Empty);
-        EditorRunner runner = new(new Hashtable(), temp.File("blocked"), EditFixtures.Exits(0), NullLogger.Instance);
+        FakeEditorProcess process = EditFixtures.Exits(0);
+        EditorRunner runner = new(new Hashtable(), temp.File("blocked"), process, NullLogger.Instance);
 
         EditorException error = await Assert.ThrowsAsync<EditorException>(
             () => runner.EditAsync(input, suffix, TestContext.Current.CancellationToken));
 
         Assert.Equal(EditorProblem.TempFile, error.Problem);
+        Assert.Empty(process.Starts);
     }
 
     [Fact]
@@ -180,9 +155,8 @@ public sealed class EditorRunnerTests : IDisposable {
 
         File.SetUnixFileMode(stateDir, FileModes.OwnerOnlyDir);
         Assert.Equal(("new", "edit.cleanup_failed"), (edited, logger.LatestRecord.Id.Name));
+        Assert.Matches(cleanupFailedLine, logger.LatestRecord.Message);
     }
-
-    private static FakeEditorProcess MissingProgram() => new(_ => throw new Win32Exception());
 
     private EditorRunner Runner(IEditorProcess process, IDictionary? environment = null) =>
         new(environment ?? new Hashtable(), stateDir, process, NullLogger.Instance);

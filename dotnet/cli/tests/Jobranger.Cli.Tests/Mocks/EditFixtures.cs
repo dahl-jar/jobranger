@@ -21,6 +21,9 @@ internal static class EditFixtures {
     public const UnixFileMode ReadOnlyDir = UnixFileMode.UserRead | UnixFileMode.UserExecute;
     public const string EditAgain = "Edit again? (Y/n) ";
     public const string EditAgainNorwegian = "Endre igjen? (J/n) ";
+    public const string BrokenContext = "- about\n";
+    public const string BrokenContextLine = "context.yaml: is not a section of settings\n";
+    public const string UnknownSetting = "nope: 1\n";
 
     private const string modelSection = "model:\n";
     private const string notifySection = "notify:\n";
@@ -62,9 +65,9 @@ internal static class EditFixtures {
 
     public static FakeEditorProcess Exits(int code) => new(_ => code);
 
-    public static EditSeams Seams(IDictionary environment, IEditorProcess editor, params string?[] answers) {
+    public static EditServices EditServices(IDictionary environment, IEditorProcess editor, params string?[] answers) {
         Queue<string?> pending = new(answers);
-        return new EditSeams(
+        return new EditServices(
             environment, AdFixtures.Clock(), editor, () => pending.Count > 0 ? pending.Dequeue() : null);
     }
 
