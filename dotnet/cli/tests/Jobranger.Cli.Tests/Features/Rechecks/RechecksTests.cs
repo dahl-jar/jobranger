@@ -4,7 +4,6 @@ using Jobranger.Cli.Config;
 using Jobranger.Cli.Features.Budget;
 using Jobranger.Cli.Features.Profiles;
 using Jobranger.Cli.Features.Rechecks;
-using Jobranger.Cli.Features.Runs;
 using Jobranger.Cli.Files;
 using Jobranger.Cli.Storage;
 using Jobranger.Cli.Tests.Mocks;
@@ -56,14 +55,16 @@ public sealed class RechecksTests : IDisposable {
 
         SaveResult result = rechecks.SaveGuidance(guidance);
 
-        Assert.Equal(BudgetEntry.EstimateRecheck(staleAds, Prompt().System.Length, ConfiguredPrices()), result.Estimate);
+        Assert.Equal(
+            BudgetEntry.EstimateRecheck(staleAds, EditFixtures.CurrentPrompt(paths).System.Length, ConfiguredPrices()),
+            result.Estimate);
         Assert.NotNull(result.Estimate?.CostUsd);
     }
 
     [Fact]
     public void ShouldCountCurrentAds_WhenGuidanceChangesPrompt() {
         EditFixtures.WriteSetup(temp, paths, EditFixtures.PricedModel);
-        EditFixtures.AddAds(paths, 1, Prompt().Version);
+        EditFixtures.AddAds(paths, 1, EditFixtures.CurrentPrompt(paths).Version);
 
         SaveResult result = rechecks.SaveGuidance(guidance);
 
@@ -134,7 +135,6 @@ public sealed class RechecksTests : IDisposable {
     private void Prepare(string failure) {
         switch (failure) {
             case noConfig:
-                EditFixtures.WriteProfile(temp);
                 return;
             case invalidConfig:
                 EditFixtures.WriteConfig(paths, EditFixtures.UnknownSetting);
@@ -173,8 +173,6 @@ public sealed class RechecksTests : IDisposable {
                 return;
         }
     }
-
-    private PromptSetup Prompt() => PromptSetup.Load(ConfigFile.Load(paths.ConfigPath(), paths.Home()), paths);
 
     private ModelPrices ConfiguredPrices() {
         ModelConfig model = ConfigFile.Load(paths.ConfigPath(), paths.Home()).Model;

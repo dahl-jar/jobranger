@@ -40,6 +40,7 @@ internal static partial class UnixFiles {
     private const int runtimeCreate = 0x20;
     private const int runtimeExclusive = 0x40;
     private const int runtimeNoFollow = 0x200;
+    private const int runtimeExecuteAccess = 0x1;
     private const int createNewFlags =
         runtimeWriteOnly | runtimeCreate | runtimeExclusive | runtimeNoFollow | runtimeCloseOnExec;
 
@@ -86,6 +87,8 @@ internal static partial class UnixFiles {
         Span<byte> status = stackalloc byte[fileStatusSize];
         return LinkStatus(path, status) != failed && IsRegular(status);
     }
+
+    public static bool CanExecute(string path) => NativeAccess(path, runtimeExecuteAccess) != failed;
 
     public static uint EffectiveUserId() => GetEffectiveUserId();
 
@@ -149,6 +152,9 @@ internal static partial class UnixFiles {
 
     [LibraryImport(runtimeNative, EntryPoint = "SystemNative_LStat", StringMarshalling = StringMarshalling.Utf8)]
     private static partial int LinkStatus(string path, Span<byte> status);
+
+    [LibraryImport(runtimeNative, EntryPoint = "SystemNative_Access", StringMarshalling = StringMarshalling.Utf8)]
+    private static partial int NativeAccess(string path, int mode);
 
     [LibraryImport(runtimeNative, EntryPoint = "SystemNative_GetEUid")]
     private static partial uint GetEffectiveUserId();

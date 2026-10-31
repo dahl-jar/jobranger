@@ -2,7 +2,9 @@ using System.Collections;
 using System.CommandLine;
 using System.Runtime.Versioning;
 using Jobranger.Cli.Commands;
+using Jobranger.Cli.Config;
 using Jobranger.Cli.Features.Ads;
+using Jobranger.Cli.Features.Runs;
 using Jobranger.Cli.Files;
 using Jobranger.Cli.Platform;
 using Jobranger.Cli.Storage;
@@ -37,8 +39,8 @@ internal static class EditFixtures {
         return text[..start] + model + text[end..];
     }
 
-    public static void WriteProfile(TempDir temp) =>
-        File.WriteAllText(temp.File(profileFileName), ProfileFixtures.FactsProfile + profileFacts);
+    public static PromptSetup CurrentPrompt(Paths paths) =>
+        PromptSetup.Load(ConfigFile.Load(paths.ConfigPath(), paths.Home()), paths);
 
     public static void WriteConfig(Paths paths, string text) {
         Directory.CreateDirectory(paths.ConfigDir());
@@ -47,7 +49,7 @@ internal static class EditFixtures {
 
     public static void WriteSetup(TempDir temp, Paths paths, string model) {
         WriteConfig(paths, Config(model));
-        WriteProfile(temp);
+        File.WriteAllText(temp.File(profileFileName), ProfileFixtures.FactsProfile + profileFacts);
     }
 
     public static void AddAds(Paths paths, int count, string version) {

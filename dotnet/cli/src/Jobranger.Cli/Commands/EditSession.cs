@@ -12,7 +12,7 @@ using RechecksEntry = Jobranger.Cli.Features.Rechecks.Rechecks;
 namespace Jobranger.Cli.Commands;
 
 [UnsupportedOSPlatform("windows")]
-internal sealed class EditSession(CliServices services, EditServices editServices, ILogger logger) {
+internal sealed class EditSession(CliServices services, EditServices editServices, Paths paths, ILogger logger) {
     private const string saveFailure = "save_failed";
     private const string notStartedFailure = "editor_not_started";
     private const string failedExitFailure = "editor_failed_exit";
@@ -20,7 +20,6 @@ internal sealed class EditSession(CliServices services, EditServices editService
 
     private readonly IMessages messages = services.Messages;
     private readonly TextWriter output = services.Console.Profile.Out.Writer;
-    private readonly Paths paths = new(editServices.Environment);
 
     public static async Task WriteSavedAsync(
         TextWriter output, IMessages messages, string savedLine, RecheckEstimate? estimate) {
@@ -48,7 +47,7 @@ internal sealed class EditSession(CliServices services, EditServices editService
         ILogger logger = services.Logs.CreateLogger(command.FullName!);
         Paths paths = new(editServices.Environment);
         RechecksEntry rechecks = new(paths, editServices.Time, logger);
-        return new EditSession(services, editServices, logger).RunAsync(request(paths, rechecks), cancellationToken);
+        return new EditSession(services, editServices, paths, logger).RunAsync(request(paths, rechecks), cancellationToken);
     }
 
     private async Task<int> RunAsync(EditRequest request, CancellationToken cancellationToken) {

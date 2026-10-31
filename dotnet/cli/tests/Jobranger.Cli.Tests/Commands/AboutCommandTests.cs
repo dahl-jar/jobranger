@@ -1,9 +1,7 @@
 using System.Collections;
 using System.Runtime.Versioning;
 using Jobranger.Cli.Commands;
-using Jobranger.Cli.Config;
 using Jobranger.Cli.Features.Profiles;
-using Jobranger.Cli.Features.Runs;
 using Jobranger.Cli.Files;
 using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Messaging.Limits;
@@ -91,8 +89,7 @@ public sealed class AboutCommandTests : IDisposable {
     [Fact]
     public async Task ShouldPrintRecheckLine_WhenAboutEditChangesPrompt() {
         EditFixtures.WriteSetup(temp, paths, EditFixtures.NoModel);
-        AppConfig saved = ConfigFile.Load(paths.ConfigPath(), paths.Home());
-        EditFixtures.AddAds(paths, 1, PromptSetup.Load(saved, paths).Version);
+        EditFixtures.AddAds(paths, 1, EditFixtures.CurrentPrompt(paths).Version);
 
         int exit = await RunAsync(EditFixtures.Writes(newText));
 

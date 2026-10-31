@@ -10,8 +10,6 @@ namespace Jobranger.Cli.Platform;
 [UnsupportedOSPlatform("windows")]
 internal sealed class EditorProcess(IDictionary environment) : IEditorProcess {
     private const string pathVariable = "PATH";
-    private const UnixFileMode anyExecute =
-        UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;
 
     private static readonly PosixSignal[] heldSignals =
         [PosixSignal.SIGINT, PosixSignal.SIGQUIT, PosixSignal.SIGTERM, PosixSignal.SIGHUP];
@@ -51,7 +49,7 @@ internal sealed class EditorProcess(IDictionary environment) : IEditorProcess {
         FileInfo file = new(path);
         try {
             FileSystemInfo target = file.ResolveLinkTarget(returnFinalTarget: true) ?? file;
-            return target.Exists && UnixFiles.IsRegularPath(target.FullName) && (target.UnixFileMode & anyExecute) != 0;
+            return UnixFiles.IsRegularPath(target.FullName) && UnixFiles.CanExecute(target.FullName);
         } catch (Exception error) when (error is IOException or UnauthorizedAccessException) {
             return false;
         }

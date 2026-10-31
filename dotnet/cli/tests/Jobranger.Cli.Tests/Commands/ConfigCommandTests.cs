@@ -2,8 +2,6 @@ using System.Collections;
 using System.ComponentModel;
 using System.Runtime.Versioning;
 using Jobranger.Cli.Commands;
-using Jobranger.Cli.Config;
-using Jobranger.Cli.Features.Runs;
 using Jobranger.Cli.Files;
 using Jobranger.Cli.Tests.Mocks;
 
@@ -145,8 +143,7 @@ public sealed class ConfigCommandTests : IDisposable {
     [Fact]
     public async Task ShouldPrintRecheckLine_WhenConfigEditChangesPrompt() {
         EditFixtures.WriteSetup(temp, paths, EditFixtures.NoModel);
-        AppConfig saved = ConfigFile.Load(paths.ConfigPath(), paths.Home());
-        EditFixtures.AddAds(paths, 1, PromptSetup.Load(saved, paths).Version);
+        EditFixtures.AddAds(paths, 1, EditFixtures.CurrentPrompt(paths).Version);
         string changed = validConfig.Replace("hide_masters: true", "hide_masters: false", StringComparison.Ordinal);
 
         int exit = await RunAsync(EditFixtures.Writes(changed), edit);
@@ -176,7 +173,7 @@ public sealed class ConfigCommandTests : IDisposable {
     }
 
     [Fact]
-    public async Task ShouldPrintErrors_WhenEditedConfigFileIsBroken() {
+    public async Task ShouldPrintErrors_WhenConfigIsNotUtf8() {
         EditFixtures.WriteConfig(paths, string.Empty);
         File.WriteAllBytes(paths.ConfigPath(), Utf8Fixtures.WithInvalidByte("a", "b"));
         FakeEditorProcess editor = EditFixtures.Exits(0);
