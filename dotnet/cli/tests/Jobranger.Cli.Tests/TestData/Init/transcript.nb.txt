@@ -1,0 +1,40 @@
+
+jobranger-oppsett · 1 av 4 · modell
+? Hvilken AI-leverandør skal lese annonsene?
+? API-nøkkel
+✓ Nøkkelen virker.
+Kostnadsanslagene regner med 9 annonser om dagen.
+? Hvilken modell?
+? Månedsgrense i USD (tomt = ingen grense)
+
+jobranger-oppsett · 2 av 4 · om deg
+? Sti til profilen din
+? Hvilke roller?
+
+jobranger-oppsett · 3 av 4 · grenser og kilder
+? Nivå
+? Erfaring annonsen ber om
+? Skjul annonser som krever master? (J/n)
+? Steder (tomt = hvor som helst)
+  Hvor som helst i Norge, kan flytte
+Kilder
+  ✓ NAV              åpen stillingsfeed
+  ✓ Karrieresider    Teamtailor og Ashby
+  – FINN             av
+  – LinkedIn         av
+    Vilkårene til FINN og LinkedIn tillater ikke automatisk innsamling.
+    Slå det bare på til egen, personlig bruk.
+? Slå på FINN eller LinkedIn til personlig bruk? (j/N)
+
+jobranger-oppsett · 4 av 4 · levering
+? Hvordan vil du få treffene?
+? E-postadresse
+? Send via
+? SMTP-server
+? SMTP-brukernavn
+? SMTP-passord (Gmail: app-passord)
+✓ Test-e-post sendt til user@example.test
+? Kjøretider (24 t, skilt med komma)
+✓ Lagret {home}/config/config.yaml
+✓ Hemmeligheter lagret i {home}/config/secrets.json, bare på denne maskinen.
+Neste: jobranger run

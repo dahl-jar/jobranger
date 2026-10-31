@@ -6,9 +6,10 @@ using Microsoft.Data.Sqlite;
 namespace Jobranger.Cli.Features.Budget;
 
 internal sealed class Budget(SqliteConnection connection) {
+    public const int DefaultAdsPerDay = 9;
+
     private const long callsPerSpend = 1;
     private const long adsPerCall = 1;
-    private const int defaultAdsPerDay = 9;
     private const int recentDays = 14;
     private const decimal microUsdPerUsd = 1_000_000m;
     private const decimal tokensPerMtok = 1_000_000m;
@@ -128,7 +129,7 @@ internal sealed class Budget(SqliteConnection connection) {
 
     public decimal AdsPerDay(DateOnly today) {
         List<UsageDay> days = CheckedDays(RecentDays(today));
-        return days.Count > 0 ? days.Average(day => (decimal)day.AdsChecked) : defaultAdsPerDay;
+        return days.Count > 0 ? days.Average(day => (decimal)day.AdsChecked) : DefaultAdsPerDay;
     }
 
     public UsageSummary Summary(AppConfig config, DateOnly today) {

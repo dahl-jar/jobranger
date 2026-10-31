@@ -362,4 +362,172 @@ internal interface IMessages {
     string EmailResendTooSlow(int seconds);
 
     string EmailSecretStore { get; }
+
+    string InitDescription { get; }
+
+    string InitNeedsTerminal { get; }
+
+    string InitStartOver(string path);
+
+    string InitCancelled { get; }
+
+    string InitModelTitle { get; }
+
+    string InitYouTitle { get; }
+
+    string InitLimitsTitle { get; }
+
+    string InitDeliveryTitle { get; }
+
+    string PromptYesOrNo { get; }
+
+    string PromptMoreChoices { get; }
+
+    string PromptCheckboxHelp { get; }
+
+    string InitProvider { get; }
+
+    string InitApiKey { get; }
+
+    string InitOllamaUrl { get; }
+
+    string InitEnvVarWins(string variable);
+
+    string InitKeyRejected(string provider);
+
+    string InitCouldNotReach(string provider, string errorType);
+
+    string InitTryAgain { get; }
+
+    string InitKeyWorks { get; }
+
+    string InitOllamaAnswered { get; }
+
+    string InitNoModels(string provider);
+
+    string InitModel { get; }
+
+    string InitModelRowNoPrice(string name);
+
+    string InitPriceInput { get; }
+
+    string InitPriceOutput { get; }
+
+    string InitNotAmount { get; }
+
+    string InitMonthlyLimit { get; }
+
+    string InitSecretStoreFailed { get; }
+
+    string InitProfilePath { get; }
+
+    string InitProfileMissing(string path);
+
+    string InitRoles { get; }
+
+    string InitPickOne { get; }
+
+    string InitLevels { get; }
+
+    string InitYears { get; }
+
+    string InitHideMasters { get; }
+
+    string InitPlaces { get; }
+
+    string InitRelocate { get; }
+
+    string InitAnywhere { get; }
+
+    string InitPlacesMoving(string places);
+
+    string InitSourcesHeading { get; }
+
+    string InitSourceNav { get; }
+
+    string InitSourceEmployers { get; }
+
+    string InitSourceFinn { get; }
+
+    string InitSourceLinkedIn { get; }
+
+    string InitSourceTerms { get; }
+
+    string InitSourcePersonal { get; }
+
+    string InitOptIn { get; }
+
+    string InitOptInWhich { get; }
+
+    string InitHow { get; }
+
+    string InitChannelWebsite { get; }
+
+    string InitChannelEmail { get; }
+
+    string InitAddress { get; }
+
+    string InitNotAddress { get; }
+
+    string InitSendThrough { get; }
+
+    string InitViaSmtp { get; }
+
+    string InitViaResend { get; }
+
+    string InitSmtpServer { get; }
+
+    string InitNotSmtpServer { get; }
+
+    string InitSmtpUser { get; }
+
+    string InitSmtpPassword { get; }
+
+    string InitResendKey { get; }
+
+    string InitSendFrom { get; }
+
+    string InitNotSender { get; }
+
+    string InitTestSent(string address);
+
+    string InitTestFailed(string reason);
+
+    string InitTestSubject { get; }
+
+    string InitTestBody(string stamp);
+
+    string InitRunTimes { get; }
+
+    string InitRunTimesWrong(string reason);
+
+    string InitSaved(string path);
+
+    string InitSecretsStored(string place);
+
+    string InitStoreKeychain { get; }
+
+    string InitStoreKeyring { get; }
+
+    string InitNext { get; }
+
+    string InitSaveFailed(string path);
+
+    string InitSecretsKept { get; }
+
+    char PromptYesKey { get; }
+
+    char PromptNoKey { get; }
+
+    string InitStepHeader(int number, int count, string title);
+
+    string InitCostBasis(int ads);
+
+    string InitModelRow(string name, decimal usd);
+
+    string InitRoleLabel(string id, string label);
+
+    string InitLevelLabel(string level);
+
+    string InitYearsLabel(string band);
 }

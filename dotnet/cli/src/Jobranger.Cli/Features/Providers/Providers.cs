@@ -13,6 +13,8 @@ internal sealed class Providers(Func<HttpMessageHandler> createHandler, TimeProv
         [ProviderName.OpenRouter] = "openrouter_api_key",
     };
 
+    public static string? SecretName(ProviderName provider) => secretNames.GetValueOrDefault(provider);
+
     public async Task<IModelClient> CreateAsync(
         ModelConfig model,
         Func<string, CancellationToken, Task<string?>> secrets,

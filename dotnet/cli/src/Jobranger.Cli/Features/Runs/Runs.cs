@@ -1,6 +1,7 @@
 using System.Runtime.Versioning;
 using Jobranger.Cli.Config;
 using Jobranger.Cli.Features.Ads;
+using Jobranger.Cli.Features.Budget;
 using Jobranger.Cli.Features.Digest;
 using Jobranger.Cli.Features.Matching;
 using Jobranger.Cli.Features.Models;
@@ -28,6 +29,8 @@ internal sealed class Runs(
     TimeProvider time,
     ILogger logger) {
     public static AdView ToAdView(Ad ad) => RunConversions.ToAdView(ad);
+
+    public static ModelPrices ToPrices(ModelSpec spec) => RunConversions.ToPrices(spec);
 
     public static DigestCard ToDigestCard(AdView view, string url, Targets targets) =>
         RunConversions.ToDigestCard(view, url, targets);

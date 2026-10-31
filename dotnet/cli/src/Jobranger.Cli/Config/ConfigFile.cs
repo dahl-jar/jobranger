@@ -34,10 +34,7 @@ internal static class ConfigFile {
 
     [UnsupportedOSPlatform("windows")]
     public static void Save(string path, AppConfig config, string home, ILogger logger) {
-        IReadOnlyList<ConfigError> problems = AppConfigValidator.Validate(config);
-        if (problems.Count > 0) {
-            throw new ConfigInvalidException(path, problems);
-        }
+        RequireValid(path, config);
         YamlTree? previous = null;
         if (File.Exists(path)) {
             previous = ReadTree(path);
@@ -45,8 +42,13 @@ internal static class ConfigFile {
                 throw new ConfigInvalidException(path, previous.Errors);
             }
         }
-        JsonObject model = ConfigWriter.ToTree(config, home);
-        PrivateFile.Write(path, strictUtf8.GetBytes(YamlEmitter.Emit(model, previous)), logger);
+        Write(path, config, previous, home, logger);
+    }
+
+    [UnsupportedOSPlatform("windows")]
+    public static void SaveFresh(string path, AppConfig config, string home, ILogger logger) {
+        RequireValid(path, config);
+        Write(path, config, null, home, logger);
     }
 
     public static Language? ReadLanguage(string path) {
@@ -59,6 +61,19 @@ internal static class ConfigFile {
     }
 
     public static YamlTree ReadTree(string path) => new YamlReader(ReadText(path), Path.GetFileName(path)).Read();
+
+    private static void RequireValid(string path, AppConfig config) {
+        IReadOnlyList<ConfigError> problems = AppConfigValidator.Validate(config);
+        if (problems.Count > 0) {
+            throw new ConfigInvalidException(path, problems);
+        }
+    }
+
+    [UnsupportedOSPlatform("windows")]
+    private static void Write(string path, AppConfig config, YamlTree? previous, string home, ILogger logger) {
+        JsonObject model = ConfigWriter.ToTree(config, home);
+        PrivateFile.Write(path, strictUtf8.GetBytes(YamlEmitter.Emit(model, previous)), logger);
+    }
 
     private static string ReadText(string path) {
         byte[] bytes = [];
