@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, get_args
 
 import pytest
-from factories import CONTRACTS
+from factories import MESSAGES
 from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 from ruamel.yaml import YAML
@@ -33,9 +33,9 @@ from jobranger.contract.fields import decode_base64, encode_url, parse_timestamp
 from jobranger.contract.payload import Chunk, Payload
 from jobranger.matching.rules import DisplayFit
 
-ROOT = CONTRACTS.parent
-FIXTURES = CONTRACTS / "fixtures"
-WEB_CONTRACT = ROOT / "web" / "src" / "features" / "relay" / "contract"
+ROOT = MESSAGES.parent
+FIXTURES = MESSAGES / "fixtures"
+FRONTEND_CONTRACT = ROOT / "frontend" / "src" / "features" / "relay" / "contract"
 CLI_CONTRACT = ROOT / "cli-python" / "src" / "jobranger" / "contract"
 WORKFLOWS = ROOT / ".github" / "workflows"
 RELEASE_WORKFLOW = "release-cli.yml"
@@ -43,8 +43,8 @@ RELEASE_GATE_JOB = "version"
 COMPONENT_WORKFLOWS = sorted(
     path.name for path in WORKFLOWS.glob("*.yml") if path.name != RELEASE_WORKFLOW
 )
-SESSION_SPEC = CONTRACTS / "session" / "v1.md"
-IGNORABLES = CONTRACTS / "unicode" / "default-ignorable-15.0.0.json"
+SESSION_SPEC = MESSAGES / "session" / "v1.md"
+IGNORABLES = MESSAGES / "unicode" / "default-ignorable-15.0.0.json"
 BMP_MAX = 0xFFFF
 JOINERS = {0x200C, 0x200D}
 NAME_CONTROLS = [(0x0000, 0x001F), (0x007F, 0x009F), (0x2028, 0x2029)]
@@ -82,17 +82,17 @@ GENERATED = [
     CLI_CONTRACT / "envelope.py",
     CLI_CONTRACT / "payload.schema.json",
     CLI_CONTRACT / "envelope.schema.json",
-    *sorted(WEB_CONTRACT.glob("*.gen.*")),
+    *sorted(FRONTEND_CONTRACT.glob("*.gen.*")),
 ]
 HAND_WRITTEN = [
     CLI_CONTRACT / "__init__.py",
     CLI_CONTRACT / "codec.py",
     CLI_CONTRACT / "fields.py",
     CLI_CONTRACT / "limits.py",
-    WEB_CONTRACT / "limits.ts",
-    WEB_CONTRACT / "validate.ts",
-    WEB_CONTRACT / "scan.ts",
-    WEB_CONTRACT / "contract.test.ts",
+    FRONTEND_CONTRACT / "limits.ts",
+    FRONTEND_CONTRACT / "validate.ts",
+    FRONTEND_CONTRACT / "scan.ts",
+    FRONTEND_CONTRACT / "contract.test.ts",
 ]
 SIGNALR_INVOCATION = (
     '{{"type":1,"invocationId":"1","target":"Send","arguments":[{}]}}\x1e'
@@ -114,7 +114,9 @@ MAX_LENGTH_URL = URL_PREFIX + "a" * (limits.URL_MAX_CHARS - len(URL_PREFIX))
 PATTERN_LENGTH = re.compile(r"\{[0-9]+,([0-9]+)\}\$$")
 SPEC_CONSTANT = re.compile(r"`([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)`")
 SPEC_VALUE = re.compile(r"`([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)` \(([0-9,]+)\)")
-WEB_LIMIT = re.compile(r"^export const ([A-Z][A-Z0-9_]*) = ([0-9_]+)$", re.MULTILINE)
+FRONTEND_LIMIT = re.compile(
+    r"^export const ([A-Z][A-Z0-9_]*) = ([0-9_]+)$", re.MULTILINE
+)
 
 
 def load(path: Path) -> Any:
@@ -135,7 +137,7 @@ def fixture_id(path: Path) -> str:
 
 @cache
 def schema(name: str) -> dict[str, Any]:
-    loaded: dict[str, Any] = load(CONTRACTS / f"{name}.schema.json")
+    loaded: dict[str, Any] = load(MESSAGES / f"{name}.schema.json")
     return loaded
 
 
@@ -927,17 +929,17 @@ def test_should_offer_every_display_fit_in_schema() -> None:
     assert set(payload_defs()["Fit"]["enum"]) == fits
 
 
-def test_should_match_web_limits_with_cli_limits() -> None:
-    text = (WEB_CONTRACT / "limits.ts").read_text(encoding="utf-8")
+def test_should_match_frontend_limits_with_cli_limits() -> None:
+    text = (FRONTEND_CONTRACT / "limits.ts").read_text(encoding="utf-8")
     cli = {
         name: value
         for name, value in vars(limits).items()
         if name.isupper() and type(value) is int
     }
 
-    web = {name: int(value) for name, value in WEB_LIMIT.findall(text)}
+    frontend = {name: int(value) for name, value in FRONTEND_LIMIT.findall(text)}
 
-    assert web == cli
+    assert frontend == cli
 
 
 def test_should_define_every_limit_named_in_session_spec() -> None:
@@ -1050,7 +1052,7 @@ def test_should_type_reply_ref_like_command_id() -> None:
     [
         CLI_CONTRACT / "payload.py",
         CLI_CONTRACT / "envelope.py",
-        *sorted(WEB_CONTRACT.glob("*.gen.*")),
+        *sorted(FRONTEND_CONTRACT.glob("*.gen.*")),
     ],
     ids=lambda path: path.name,
 )
@@ -1067,10 +1069,10 @@ def test_should_keep_generated_code_free_of_comments(path: Path) -> None:
 @pytest.mark.parametrize(
     "path",
     [
-        *sorted(CONTRACTS.glob("*.schema.json")),
+        *sorted(MESSAGES.glob("*.schema.json")),
         *sorted(CLI_CONTRACT.glob("*.schema.json")),
-        WEB_CONTRACT / "schemas.gen.ts",
-        WEB_CONTRACT / "validate.gen.js",
+        FRONTEND_CONTRACT / "schemas.gen.ts",
+        FRONTEND_CONTRACT / "validate.gen.js",
     ],
     ids=path_id,
 )
@@ -1224,42 +1226,37 @@ def test_should_not_mark_hand_written_code_as_generated(path: Path) -> None:
 @pytest.mark.parametrize(
     ("workflow", "path"),
     [
-        ("cli-python.yml", "contracts/**"),
-        ("cli-python.yml", "web/src/features/relay/contract/**"),
-        ("web.yml", "contracts/**"),
-        ("contracts.yml", "web/scripts/**"),
-        ("contracts.yml", "scripts/codegen/**"),
-        ("contracts.yml", "contracts/**"),
-        ("relay.yml", "contracts/**"),
-        ("contracts.yml", "cli-python/pyproject.toml"),
-        ("contracts.yml", "cli-python/uv.lock"),
-        ("contracts.yml", "web/package.json"),
-        ("contracts.yml", "web/pnpm-lock.yaml"),
-        ("contracts.yml", ".gitattributes"),
-        ("contracts.yml", "Jobranger.slnx"),
-        ("contracts.yml", "Directory.*.props"),
-        ("contracts.yml", "global.json"),
-        ("contracts.yml", "nuget.config"),
+        ("cli-python.yml", "messages/**"),
+        ("cli-python.yml", "frontend/src/features/relay/contract/**"),
+        ("frontend.yml", "messages/**"),
+        ("messages.yml", "frontend/scripts/**"),
+        ("messages.yml", "messages/**"),
+        ("relay.yml", "messages/**"),
+        ("cli.yml", "messages/**"),
+        ("cli.yml", "dotnet/messages/**"),
+        ("relay.yml", "dotnet/messages/**"),
+        ("messages.yml", ".github/workflows/cli.yml"),
+        ("messages.yml", ".github/workflows/relay.yml"),
+        ("messages.yml", ".github/workflows/frontend.yml"),
+        ("messages.yml", ".github/workflows/cli-python.yml"),
+        ("messages.yml", "dotnet/messages/**"),
+        ("messages.yml", "cli-python/pyproject.toml"),
+        ("messages.yml", "cli-python/uv.lock"),
+        ("messages.yml", "frontend/package.json"),
+        ("messages.yml", "frontend/pnpm-lock.yaml"),
+        ("messages.yml", ".gitattributes"),
+        ("messages.yml", "cli-python/.gitattributes"),
+        ("messages.yml", "frontend/.gitattributes"),
+        ("messages.yml", "dotnet/Jobranger.slnx"),
+        ("messages.yml", "dotnet/Directory.*.props"),
+        ("messages.yml", "dotnet/global.json"),
+        ("messages.yml", "dotnet/nuget.config"),
     ],
 )
 def test_should_run_workflow_on_contract_change(workflow: str, path: str) -> None:
     paths = load_workflow(workflow)["on"]["pull_request"]["paths"]
 
     assert path in paths
-
-
-@pytest.mark.parametrize("workflow", ["cli-python.yml", "web.yml"])
-@pytest.mark.parametrize(
-    "path",
-    ["contracts/src/**", "contracts/tests/**", "contracts/stryker-config.json"],
-)
-def test_should_skip_workflow_on_csharp_contract_change(
-    workflow: str, path: str
-) -> None:
-    paths = load_workflow(workflow)["on"]["pull_request"]["paths"]
-
-    assert f"!{path}" in paths
-    assert paths.index(f"!{path}") > paths.index("contracts/**")
 
 
 @pytest.mark.parametrize("workflow", COMPONENT_WORKFLOWS)

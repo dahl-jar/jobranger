@@ -1,7 +1,1 @@
 * text=auto eol=lf
-
-cli-python/src/jobranger/contract/payload.py linguist-generated=true -merge
-cli-python/src/jobranger/contract/envelope.py linguist-generated=true -merge
-cli-python/src/jobranger/contract/*.schema.json linguist-generated=true -merge
-web/src/features/relay/contract/*.gen.* linguist-generated=true -merge
-cli/tests/**/Golden/** linguist-generated=true -merge

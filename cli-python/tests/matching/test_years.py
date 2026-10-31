@@ -4,13 +4,13 @@ import json
 from typing import Any
 
 import pytest
-from factories import CONTRACTS, make_match
+from factories import MESSAGES, make_match
 
 from jobranger.matching.years import StatedYears, apply_years_guard, stated_years
 from jobranger.settings import Limits
 
 CASES: list[dict[str, Any]] = json.loads(
-    (CONTRACTS / "fixtures" / "matching" / "years_cases.json").read_text(
+    (MESSAGES / "fixtures" / "matching" / "years_cases.json").read_text(
         encoding="utf-8"
     )
 )

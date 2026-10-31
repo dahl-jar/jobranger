@@ -17,9 +17,11 @@ runs:
   using: composite
   steps:
     - shell: bash
+      working-directory: dotnet
       run: dotnet restore cli/src/Jobranger.Cli/Jobranger.Cli.csproj --locked-mode
 
     - shell: bash
+      working-directory: dotnet
       env:
         RID: ${{ inputs.rid }}
         VERSION: ${{ inputs.version }}

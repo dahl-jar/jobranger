@@ -12,16 +12,19 @@ runs:
   steps:
     - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
       with:
-        global-json-file: global.json
+        global-json-file: dotnet/global.json
 
     - if: inputs.build == 'true'
       shell: bash
+      working-directory: dotnet
       run: dotnet restore Jobranger.slnx --locked-mode
 
     - if: inputs.build == 'true'
       shell: bash
+      working-directory: dotnet
       run: dotnet format Jobranger.slnx --verify-no-changes --no-restore
 
     - if: inputs.build == 'true'
       shell: bash
+      working-directory: dotnet
       run: dotnet build Jobranger.slnx -c Release --no-restore -warnaserror

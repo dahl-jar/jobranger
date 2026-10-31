@@ -3,14 +3,14 @@ name: Test CLI
 on:
   pull_request:
     paths:
-      - cli/**
-      - contracts/**
-      - deploy/cli/**
-      - Jobranger.slnx
-      - Directory.*.props
-      - global.json
-      - nuget.config
-      - .config/dotnet-tools.json
+      - dotnet/cli/**
+      - dotnet/messages/**
+      - messages/**
+      - dotnet/Jobranger.slnx
+      - dotnet/Directory.*.props
+      - dotnet/global.json
+      - dotnet/nuget.config
+      - dotnet/.config/dotnet-tools.json
       - .editorconfig
       - .github/actions/dotnet-setup/**
       - .github/workflows/cli.yml
@@ -25,6 +25,9 @@ jobs:
     name: Format, build and test
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: dotnet
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
@@ -35,6 +38,9 @@ jobs:
     name: Secret store on macOS
     runs-on: macos-15
     timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: dotnet
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
@@ -61,6 +67,9 @@ jobs:
     name: Secret store on Linux
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: dotnet
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
@@ -110,5 +119,5 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      - run: docker build -f deploy/cli/Dockerfile -t jobranger-cli:ci .
+      - run: docker build -f dotnet/cli/deploy/Dockerfile -t jobranger-cli:ci .
       - run: docker run --rm jobranger-cli:ci --version | grep -Ex "jobranger [0-9]+\.[0-9]+\.[0-9]+"

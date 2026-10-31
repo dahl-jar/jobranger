@@ -38,8 +38,8 @@ if TYPE_CHECKING:
     import pytest
 
 FIXTURES = Path(__file__).parent / "fixtures"
-CONTRACTS_DIR = "contracts"
-CONTRACTS_MARKER = Path(CONTRACTS_DIR) / "payload.schema.json"
+MESSAGES_DIR = "messages"
+MESSAGES_MARKER = Path(MESSAGES_DIR) / "payload.schema.json"
 OLLAMA_URL = "http://box:11434"
 OLLAMA_PASSWORD = "pass-1234"
 CREDENTIAL_OLLAMA_URL = f"http://user:{OLLAMA_PASSWORD}@box:11434"
@@ -107,16 +107,16 @@ OTHER_TEAMTAILOR_FEED = EmployerFeed(
 )
 
 
-def find_contracts(start: Path) -> Path:
+def find_messages(start: Path) -> Path:
     root = next(
-        (parent for parent in start.parents if (parent / CONTRACTS_MARKER).is_file()),
+        (parent for parent in start.parents if (parent / MESSAGES_MARKER).is_file()),
         None,
     )
-    assert root is not None, f"no folder above {start} holds {CONTRACTS_MARKER}"
-    return root / CONTRACTS_DIR
+    assert root is not None, f"no folder above {start} holds {MESSAGES_MARKER}"
+    return root / MESSAGES_DIR
 
 
-CONTRACTS = find_contracts(Path(__file__).resolve())
+MESSAGES = find_messages(Path(__file__).resolve())
 
 
 def targets(**overrides: object) -> Targets:

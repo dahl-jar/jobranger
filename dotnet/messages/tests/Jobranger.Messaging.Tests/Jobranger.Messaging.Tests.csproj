@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3.mtp-v2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Jobranger.Messaging\Jobranger.Messaging.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\..\..\messages\envelope.schema.json" Link="TestData\Messages\envelope.schema.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\..\messages\payload.schema.json" Link="TestData\Messages\payload.schema.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\..\messages\fixtures\envelope\*.json" LinkBase="TestData\Messages\fixtures\envelope" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\..\messages\fixtures\envelope-invalid\*.json" LinkBase="TestData\Messages\fixtures\envelope-invalid" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\..\messages\fixtures\payload\*.json" LinkBase="TestData\Messages\fixtures\payload" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\..\messages\fixtures\payload-invalid\*.json" LinkBase="TestData\Messages\fixtures\payload-invalid" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\..\messages\fixtures\urls\*.json" LinkBase="TestData\Messages\fixtures\urls" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\..\frontend\src\features\relay\contract\limits.ts" Link="TestData\Frontend\limits.ts" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
