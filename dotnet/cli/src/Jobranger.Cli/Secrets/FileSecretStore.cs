@@ -29,7 +29,7 @@ internal sealed class FileSecretStore(string path, ILogger logger) {
     }
 
     public IReadOnlyDictionary<string, string> Load() {
-        using FileStream? stream = PrivateFile.OpenRead(Path, logger);
+        using FileStream? stream = OpenExisting();
         if (stream is null) {
             return new Dictionary<string, string>();
         }
@@ -55,21 +55,29 @@ internal sealed class FileSecretStore(string path, ILogger logger) {
         return content.ToArray();
     }
 
+    private FileStream? OpenExisting() {
+        try {
+            return PrivateFile.OpenRead(Path, logger);
+        } catch (PrivateFileException error) {
+            throw Unreadable(error.Reason);
+        }
+    }
+
     private Dictionary<string, string> Parse(byte[] content) {
         JsonDocument document;
         try {
             document = JsonDocument.Parse(content);
         } catch (JsonException) {
-            throw new PrivateFileException(Path, notJsonReason);
+            throw Unreadable(notJsonReason);
         }
         using (document) {
             if (document.RootElement.ValueKind != JsonValueKind.Object) {
-                throw new PrivateFileException(Path, notStringsReason);
+                throw Unreadable(notStringsReason);
             }
             try {
                 return Strings(document.RootElement);
             } catch (InvalidOperationException) {
-                throw new PrivateFileException(Path, notJsonReason);
+                throw Unreadable(notJsonReason);
             }
         }
     }
@@ -79,10 +87,12 @@ internal sealed class FileSecretStore(string path, ILogger logger) {
         foreach (JsonProperty property in root.EnumerateObject()) {
             values[property.Name] = property.Value.ValueKind == JsonValueKind.String
                 ? property.Value.GetString()!
-                : throw new PrivateFileException(Path, notStringsReason);
+                : throw Unreadable(notStringsReason);
         }
         return values;
     }
+
+    private PrivateFileException Unreadable(string reason) => new(Path, reason) { IsUnreadable = true };
 
     private T Guard<T>(Func<T> action) {
         try {

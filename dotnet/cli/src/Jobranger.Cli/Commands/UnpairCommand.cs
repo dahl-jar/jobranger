@@ -59,13 +59,23 @@ internal sealed class UnpairCommand : Command {
         try {
             using LinkKeyPair rotated = await opened.Link.RotateKeysAsync(cancellationToken).ConfigureAwait(false);
         } catch (LinkKeyException error) when (error.InnerException is PrivateFileException file) {
-            return await FailAsync(opened, keysFailure, messages.UnpairKeysFileFailed(file.Path)).ConfigureAwait(false);
+            return await FailAsync(opened, KeysFileFailure(file), KeysFileLine(messages, file)).ConfigureAwait(false);
         } catch (LinkKeyException) {
             return await FailAsync(opened, keysFailure, messages.UnpairKeysFailed).ConfigureAwait(false);
         }
         string line = removed == 0 ? messages.UnpairNone : messages.Unpaired(removed);
         await opened.Output.WriteLineAsync(line).ConfigureAwait(false);
         return CliExitCodes.Ok;
+    }
+
+    private static string KeysFileLine(IMessages messages, PrivateFileException file) =>
+        file.IsUnreadable
+            ? messages.UnpairKeysFileFailed(file.Path, file.Reason)
+            : messages.UnpairKeysWriteFailed(file.Path, file.Reason);
+
+    private static string KeysFileFailure(PrivateFileException file) {
+        string reason = file.Reason.Replace(Path.GetDirectoryName(file.Path)!, string.Empty, StringComparison.Ordinal);
+        return $"{keysFailure} reason={reason}";
     }
 
     private static async Task<int> FailAsync(LinkCommandRun.OpenedLink opened, string failure, string line) {

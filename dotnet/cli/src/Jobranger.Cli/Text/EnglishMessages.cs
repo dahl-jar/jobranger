@@ -172,9 +172,13 @@ internal sealed class EnglishMessages : IMessages {
 
     public string UnpairKeysFailed => "New link keys could not be made. Run jobranger unpair again.";
 
-    public string UnpairKeysFileFailed(string path) =>
-        $"New link keys could not be made because jobranger cannot use {path}. "
+    public string UnpairKeysFileFailed(string path, string reason) =>
+        $"New link keys could not be made because jobranger cannot use {path} ({reason}). "
         + "Fix or remove that file, then run jobranger unpair again.";
+
+    public string UnpairKeysWriteFailed(string path, string reason) =>
+        $"New link keys could not be made because jobranger cannot change {path} ({reason}). "
+        + "Make that file and its folder writable, then run jobranger unpair again.";
 
     public string DatabaseTooNew => "The database was made by a newer jobranger. Update jobranger and try again.";
 

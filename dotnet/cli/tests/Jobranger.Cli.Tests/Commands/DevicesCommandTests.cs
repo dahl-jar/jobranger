@@ -23,10 +23,25 @@ public sealed class DevicesCommandTests : IDisposable {
     private const string seenAt = "2026-10-27T08:00:00+00:00";
     private const string unreadable = "Cannot read the jobranger database at {0}.";
     private const string keysFileFailed =
-        "New link keys could not be made because jobranger cannot use {0}. "
+        "New link keys could not be made because jobranger cannot use {0} ({1}). "
         + "Fix or remove that file, then run jobranger unpair again.";
+    private const string keysFileFailedNorwegian =
+        "Nye koblingsnøkler kunne ikke lages fordi jobranger ikke kan bruke {0} ({1}). "
+        + "Rett eller fjern filen, og kjør jobranger unpair på nytt.";
+    private const string keysWriteOpening =
+        "New link keys could not be made because jobranger cannot change {0} (";
+    private const string keysWriteOpeningNorwegian =
+        "Nye koblingsnøkler kunne ikke lages fordi jobranger ikke kan endre {0} (";
+    private const string keysWriteAdvice =
+        "). Make that file and its folder writable, then run jobranger unpair again.";
+    private const string keysWriteAdviceNorwegian =
+        "). Gjør filen og mappen skrivbare, og kjør jobranger unpair på nytt.";
+    private const string notJsonReason = "not UTF-8 JSON";
+    private const string notStringsReason = "not a JSON object of strings";
+    private const string savedSecrets = "{\"smtp_password\": \"fake-password\"}";
     private const string logFile = "2026-10-25.jsonl";
     private const int corruptBytes = 4096;
+    private const UnixFileMode readOnlyDir = UnixFileMode.UserRead | UnixFileMode.UserExecute;
 
     private static readonly DateTimeOffset nextDay = DeviceFixtures.PairedAt.AddDays(1);
     private static readonly DateTimeOffset lateEvening = new(2026, 10, 25, 23, 30, 0, TimeSpan.Zero);
@@ -247,31 +262,86 @@ public sealed class DevicesCommandTests : IDisposable {
     }
 
     [Theory]
-    [InlineData(Locales.English, keysFileFailed)]
-    [InlineData(
-        Locales.Norwegian,
-        "Nye koblingsnøkler kunne ikke lages fordi jobranger ikke kan bruke {0}. "
-        + "Rett eller fjern filen, og kjør jobranger unpair på nytt.")]
-    public async Task ShouldPrintKeysFailed_WhenRotationFails(string lang, string line) {
+    [InlineData(Locales.English, keysWriteOpening, keysWriteAdvice)]
+    [InlineData(Locales.Norwegian, keysWriteOpeningNorwegian, keysWriteAdviceNorwegian)]
+    public async Task ShouldPrintKeysFailed_WhenRotationFails(string lang, string opening, string advice) {
         environment["LANG"] = lang;
         SeedBrowser();
         Directory.CreateDirectory(MetadataPath());
 
         int exit = await RunAsync("unpair");
 
-        Assert.Equal((CliExitCodes.Failure, string.Format(line, MetadataPath())), (exit, console.Output.TrimEnd()));
+        Assert.Equal(CliExitCodes.Failure, exit);
+        Assert.StartsWith(WithPath(opening, MetadataPath()), console.Output, StringComparison.Ordinal);
+        Assert.EndsWith(advice, console.Output.TrimEnd(), StringComparison.Ordinal);
         Assert.Empty(Remaining());
     }
 
-    [Fact]
-    public async Task ShouldNameSecretsFile_WhenSecretsFileIsInvalid() {
-        string secrets = new Paths(environment).SecretsPath();
-        Directory.CreateDirectory(Path.GetDirectoryName(secrets)!);
-        File.WriteAllText(secrets, "not json");
+    [Theory]
+    [InlineData(Locales.English, "not json", notJsonReason, keysFileFailed)]
+    [InlineData(Locales.Norwegian, "not json", notJsonReason, keysFileFailedNorwegian)]
+    [InlineData(Locales.English, "[]", notStringsReason, keysFileFailed)]
+    [InlineData(Locales.English, "{\"smtp_password\": 1234}", notStringsReason, keysFileFailed)]
+    [InlineData(Locales.English, "{\"smtp_password\": \"\\ud800\"}", notJsonReason, keysFileFailed)]
+    public async Task ShouldAdviseRemoval_WhenSecretsContentIsInvalid(
+        string lang, string content, string reason, string line) {
+        environment["LANG"] = lang;
+        string secrets = WriteSecrets(content);
 
         int exit = await RunAsync("unpair");
 
-        Assert.Equal((CliExitCodes.Failure, WithPath(keysFileFailed, secrets)), (exit, console.Output.TrimEnd()));
+        Assert.Equal(
+            (CliExitCodes.Failure, WithReason(line, secrets, reason)),
+            (exit, console.Output.TrimEnd()));
+    }
+
+    [Fact]
+    public async Task ShouldAdviseRemoval_WhenSecretsFileIsSymlink() {
+        string secrets = SecretsPath();
+        string target = temp.File("target.json");
+        File.WriteAllText(target, savedSecrets);
+        Directory.CreateDirectory(Path.GetDirectoryName(secrets)!);
+        File.CreateSymbolicLink(secrets, target);
+
+        int exit = await RunAsync("unpair");
+
+        Assert.Equal(
+            (CliExitCodes.Failure, WithReason(keysFileFailed, secrets, "symbolic link")),
+            (exit, console.Output.TrimEnd()));
+    }
+
+    [Theory]
+    [InlineData(Locales.English, keysWriteOpening, keysWriteAdvice, "remove")]
+    [InlineData(Locales.Norwegian, keysWriteOpeningNorwegian, keysWriteAdviceNorwegian, "fjern")]
+    public async Task ShouldNotAdviseRemoval_WhenConfigDirIsReadOnly(
+        string lang, string opening, string advice, string removal) {
+        environment["LANG"] = lang;
+
+        int exit = await UnpairWithReadOnlyConfigAsync();
+
+        Assert.Equal(CliExitCodes.Failure, exit);
+        Assert.StartsWith(WithPath(opening, SecretsPath()), console.Output, StringComparison.Ordinal);
+        Assert.EndsWith(advice, console.Output.TrimEnd(), StringComparison.Ordinal);
+        Assert.DoesNotContain(removal, console.Output, StringComparison.Ordinal);
+        Assert.Equal(savedSecrets, File.ReadAllText(SecretsPath()));
+    }
+
+    [Fact]
+    public async Task ShouldLogReason_WhenSecretsFileIsInvalid() {
+        WriteSecrets("not json");
+
+        await RunAsync("unpair");
+
+        Assert.Contains($"keys reason={notJsonReason}", LoggedFailures());
+    }
+
+    [Fact]
+    public async Task ShouldLogReasonWithoutFolder_WhenConfigDirIsReadOnly() {
+        await UnpairWithReadOnlyConfigAsync();
+
+        Assert.Contains(
+            LoggedFailures(),
+            failure => failure?.StartsWith("keys reason=Access to the path '/.secrets.json.", StringComparison.Ordinal) == true);
     }
 
     [Theory]
@@ -434,6 +504,8 @@ public sealed class DevicesCommandTests : IDisposable {
 
     private static string WithPath(string line, string path) => string.Format(line, path);
 
+    private static string WithReason(string line, string path, string reason) => string.Format(line, path, reason);
+
     private CliServices Services() => CliServices.Create(time, console.Console, console.ErrorConsole, environment);
 
     private Task<int> RunAsync(params string[] args) {
@@ -444,6 +516,28 @@ public sealed class DevicesCommandTests : IDisposable {
         ];
         return root.Parse(args).InvokeAsync(null, TestContext.Current.CancellationToken);
     }
+
+    private async Task<int> UnpairWithReadOnlyConfigAsync() {
+        string secrets = WriteSecrets(savedSecrets);
+        string config = Path.GetDirectoryName(secrets)!;
+        File.WriteAllBytes(secrets + ".lock", []);
+        File.WriteAllBytes(MetadataPath() + ".lock", []);
+        File.SetUnixFileMode(config, readOnlyDir);
+        try {
+            return await RunAsync("unpair");
+        } finally {
+            File.SetUnixFileMode(config, FileModes.OwnerOnlyDir);
+        }
+    }
+
+    private string WriteSecrets(string content) {
+        string secrets = SecretsPath();
+        Directory.CreateDirectory(Path.GetDirectoryName(secrets)!);
+        File.WriteAllText(secrets, content);
+        return secrets;
+    }
+
+    private string SecretsPath() => new Paths(environment).SecretsPath();
 
     private void RecordPromptAllowed() =>
         openLink = (environment, paths, urls, logger, canPrompt, cancellationToken) => {

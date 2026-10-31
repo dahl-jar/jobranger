@@ -151,7 +151,9 @@ internal interface IMessages {
 
     string UnpairKeysFailed { get; }
 
-    string UnpairKeysFileFailed(string path);
+    string UnpairKeysFileFailed(string path, string reason);
+
+    string UnpairKeysWriteFailed(string path, string reason);
 
     string DatabaseTooNew { get; }
 
