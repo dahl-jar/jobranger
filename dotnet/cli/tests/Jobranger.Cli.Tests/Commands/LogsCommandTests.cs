@@ -85,6 +85,17 @@ public sealed class LogsCommandTests : IDisposable {
     }
 
     [Fact]
+    public async Task ShouldPrintDatabaseUnreadable_WhenMigrationFails() {
+        CommandFixtures.RewindSchema(paths.DbPath());
+
+        int exit = await RunAsync();
+
+        Assert.Equal(
+            (CliExitCodes.Failure, $"Cannot read the jobranger database at {paths.DbPath()}.\n", "logs.failed migration_failed"),
+            (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
+    }
+
+    [Fact]
     public async Task ShouldPrintFileUnreadable_WhenLogFileIsSymlink() {
         StartRun();
         Directory.CreateDirectory(paths.LogDir());

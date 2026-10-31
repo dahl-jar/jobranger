@@ -4,23 +4,13 @@ using Jobranger.Cli.Config;
 using Jobranger.Cli.Features.Link;
 using Jobranger.Cli.Files;
 using Jobranger.Cli.Logging;
-using Jobranger.Cli.Secrets;
-using Jobranger.Cli.Storage;
 using Jobranger.Cli.Text;
-using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 
 namespace Jobranger.Cli.Commands;
 
 [UnsupportedOSPlatform("windows")]
 internal static class LinkCommandRun {
-    private const string configFailure = "config_invalid";
-    private const string schemaFailure = "schema_too_new";
-    private const string databaseFailure = "database_unreadable";
-    private const string fileFailure = "file_unreadable";
-    private const string dirFailure = "dir_not_writable";
-    private const string secretStoreFailure = "secret_store_failed";
-
     public static async Task<int> RunAsync(
         CliServices services,
         IDictionary environment,
@@ -39,24 +29,13 @@ internal static class LinkCommandRun {
                 await openLink(environment, paths, urls, logger, canPrompt, cancellationToken).ConfigureAwait(false);
             return await action(new OpenedLink(link, urls, paths, output, logger), cancellationToken)
                 .ConfigureAwait(false);
-        } catch (ConfigInvalidException invalid) {
-            return await FailAsync(configFailure, [.. invalid.Errors.Select(error => error.Describe(messages))])
-                .ConfigureAwait(false);
-        } catch (SchemaTooNewException) {
-            return await FailAsync(schemaFailure, [messages.DatabaseTooNew]).ConfigureAwait(false);
-        } catch (SecretStoreUnavailableException) {
-            return await FailAsync(secretStoreFailure, [messages.SecretStoreFailed]).ConfigureAwait(false);
-        } catch (PrivateDirException dir) {
-            return await FailAsync(dirFailure, [messages.DirNotWritable(dir.Path)]).ConfigureAwait(false);
-        } catch (PrivateFileException file) when (file.Path != paths.DbPath()) {
-            return await FailAsync(fileFailure, [messages.FileUnreadable(file.Path)]).ConfigureAwait(false);
-        } catch (Exception error) when (error is SqliteException or PrivateFileException) {
-            return await FailAsync(databaseFailure, [messages.DatabaseUnreadable(paths.DbPath())]).ConfigureAwait(false);
+        } catch (Exception error) when (CommandFailure.Of(error, paths, messages) is ReadFailure failure) {
+            return await FailAsync(failure).ConfigureAwait(false);
         }
 
-        async Task<int> FailAsync(string failure, string[] lines) {
-            logFailure(logger, failure);
-            foreach (string line in lines) {
+        async Task<int> FailAsync(ReadFailure failure) {
+            logFailure(logger, failure.Code);
+            foreach (string line in failure.Lines) {
                 await output.WriteLineAsync(line).ConfigureAwait(false);
             }
             return CliExitCodes.Failure;

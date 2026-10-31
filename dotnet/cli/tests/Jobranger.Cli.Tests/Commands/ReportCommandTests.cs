@@ -30,7 +30,12 @@ public sealed class ReportCommandTests : IDisposable {
     private const string applySoonTitle = "Apply this week";
     private const string partialReport =
         "New today\n  Partial fit   Backend Developer      Org Two AS        Oslo        no date\n";
-    private const string accessFailedNorwegian = "Kan ikke lese en jobranger-fil. Sjekk tilgangene til mappen.\n";
+    private const string dirNotWritable =
+        "Cannot create or use the folder {0}. Make it and the folders above it writable, then try again.\n";
+    private const string dirNotWritableNorwegian =
+        "Kan ikke lage eller bruke mappen {0}. Gjør den og mappene over den skrivbare, og prøv igjen.\n";
+    private const string databaseUnreadable = "Cannot read the jobranger database at {0}.\n";
+    private const string databaseUnreadableNorwegian = "Kan ikke lese jobranger-databasen i {0}.\n";
     private const string englishReport =
         "Apply this week\n"
         + "  Strong fit    Software Developer     Org One AS        Bergen      12 Oct\n"
@@ -353,9 +358,23 @@ public sealed class ReportCommandTests : IDisposable {
     }
 
     [Theory]
-    [InlineData(Locales.English, "Cannot read {0}.\n")]
-    [InlineData(Locales.Norwegian, "Kan ikke lese {0}.\n")]
-    public async Task ShouldPrintFileUnreadable_WhenDatabaseIsSymlink(string lang, string line) {
+    [InlineData(Locales.English, databaseUnreadable)]
+    [InlineData(Locales.Norwegian, databaseUnreadableNorwegian)]
+    public async Task ShouldPrintDatabaseUnreadable_WhenMigrationFails(string lang, string line) {
+        environment["LANG"] = lang;
+        CommandFixtures.RewindSchema(paths.DbPath());
+
+        int exit = await RunAsync();
+
+        Assert.Equal(
+            (CliExitCodes.Failure, WithPath(line, paths.DbPath()), "report.failed migration_failed"),
+            (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
+    }
+
+    [Theory]
+    [InlineData(Locales.English, databaseUnreadable)]
+    [InlineData(Locales.Norwegian, databaseUnreadableNorwegian)]
+    public async Task ShouldPrintDatabaseUnreadable_WhenDatabaseIsSymlink(string lang, string line) {
         environment["LANG"] = lang;
         Directory.CreateDirectory(paths.DataDir());
         File.CreateSymbolicLink(paths.DbPath(), temp.File("elsewhere.db"));
@@ -363,37 +382,39 @@ public sealed class ReportCommandTests : IDisposable {
         int exit = await RunAsync();
 
         Assert.Equal(
-            (CliExitCodes.Failure, string.Format(line, paths.DbPath()), "report.failed file_unreadable"),
+            (CliExitCodes.Failure, WithPath(line, paths.DbPath()), "report.failed database_unreadable"),
             (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
     }
 
     [Theory]
-    [InlineData(Locales.English, CommandFixtures.FileAccessFailed)]
-    [InlineData(Locales.Norwegian, accessFailedNorwegian)]
-    public async Task ShouldPrintFileAccessFailed_WhenDataParentIsReadOnly(string lang, string line) {
+    [InlineData(Locales.English, dirNotWritable)]
+    [InlineData(Locales.Norwegian, dirNotWritableNorwegian)]
+    public async Task ShouldPrintDirNotWritable_WhenDataParentIsReadOnly(string lang, string line) {
         environment["LANG"] = lang;
         string parent = temp.File("locked");
         Directory.CreateDirectory(parent);
         File.SetUnixFileMode(parent, UnixFileMode.UserRead | UnixFileMode.UserExecute);
-        environment[dataDirVariable] = Path.Combine(parent, "data");
+        string data = Path.Combine(parent, "data");
+        environment[dataDirVariable] = data;
 
         int exit = await RunAsync();
 
         Assert.Equal(
-            (CliExitCodes.Failure, line, "report.failed file_unreadable"),
+            (CliExitCodes.Failure, WithPath(line, data), "report.failed dir_not_writable"),
             (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
     }
 
     [Fact]
-    public async Task ShouldPrintFileAccessFailed_WhenDataParentIsFile() {
+    public async Task ShouldPrintDirNotWritable_WhenDataParentIsFile() {
         string parent = temp.File("taken");
         File.WriteAllText(parent, string.Empty);
-        environment[dataDirVariable] = Path.Combine(parent, "data");
+        string data = Path.Combine(parent, "data");
+        environment[dataDirVariable] = data;
 
         int exit = await RunAsync();
 
         Assert.Equal(
-            (CliExitCodes.Failure, CommandFixtures.FileAccessFailed, "report.failed file_unreadable"),
+            (CliExitCodes.Failure, WithPath(dirNotWritable, data), "report.failed dir_not_writable"),
             (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
     }
 
@@ -425,6 +446,8 @@ public sealed class ReportCommandTests : IDisposable {
 
         Assert.Contains(ReportCommand.CommandName, root.Subcommands.Select(command => command.Name));
     }
+
+    private static string WithPath(string line, string path) => string.Format(line, path);
 
     private string SaveConfig() {
         AppConfig config = RunFixtures.Config(MatchingFixtures.TestData("profile_user.yaml"));

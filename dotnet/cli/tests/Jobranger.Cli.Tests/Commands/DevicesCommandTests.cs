@@ -40,6 +40,7 @@ public sealed class DevicesCommandTests : IDisposable {
         "Cannot create or use the folder {0}. Make it and the folders above it writable, then try again.";
     private const string dirNotWritableNorwegian =
         "Kan ikke lage eller bruke mappen {0}. Gjør den og mappene over den skrivbare, og prøv igjen.";
+    private const string accessFailedNorwegian = "Kan ikke lese en jobranger-fil. Sjekk tilgangene til mappen.\n";
     private const string dirFailure = "dir_not_writable";
     private const string notJsonReason = "not UTF-8 JSON";
     private const string notStringsReason = "not a JSON object of strings";
@@ -442,6 +443,33 @@ public sealed class DevicesCommandTests : IDisposable {
         int exit = await RunAsync("devices", "list");
 
         Assert.Equal((CliExitCodes.Failure, WithPath(unreadable, DatabasePath())), (exit, console.Output.TrimEnd()));
+    }
+
+    [Theory]
+    [InlineData("devices", "list")]
+    [InlineData("devices", "revoke", "AQEB")]
+    [InlineData("unpair")]
+    public async Task ShouldPrintDatabaseUnreadable_WhenMigrationFails(params string[] args) {
+        CommandFixtures.RewindSchema(DatabasePath());
+
+        int exit = await RunAsync(args);
+
+        Assert.Equal((CliExitCodes.Failure, WithPath(unreadable, DatabasePath())), (exit, console.Output.TrimEnd()));
+        Assert.Contains("migration_failed", LoggedFailures());
+        Assert.Contains("devices.failed", LoggedEvents());
+    }
+
+    [Theory]
+    [InlineData(typeof(IOException), Locales.English, CommandFixtures.FileAccessFailed)]
+    [InlineData(typeof(UnauthorizedAccessException), Locales.Norwegian, accessFailedNorwegian)]
+    public async Task ShouldPrintFileAccessFailed_WhenLinkHitsRawFileError(Type failure, string lang, string line) {
+        environment["LANG"] = lang;
+        openLink = (_, _, _, _, _, _) => Task.FromException<Link>((Exception)Activator.CreateInstance(failure)!);
+
+        int exit = await RunAsync("devices", "list");
+
+        Assert.Equal((CliExitCodes.Failure, line), (exit, console.Output));
+        Assert.Contains("file_unreadable", LoggedFailures());
     }
 
     [Fact]

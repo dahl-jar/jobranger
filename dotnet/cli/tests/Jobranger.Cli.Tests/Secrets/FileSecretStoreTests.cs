@@ -11,6 +11,7 @@ namespace Jobranger.Cli.Tests.Secrets;
 public sealed class FileSecretStoreTests : IDisposable {
     private const UnixFileMode readOnlyDir = UnixFileMode.UserRead | UnixFileMode.UserExecute;
     private const UnixFileMode unlistableDir = UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+    private const string foreignFile = "/etc/passwd";
 
     private const int parallelCallers = 8;
     private const int lockRounds = 20;
@@ -91,6 +92,17 @@ public sealed class FileSecretStoreTests : IDisposable {
 
             Assert.Equal(file.Path, refused.Path);
         }
+    }
+
+    [Fact]
+    public void ShouldNamePath_WhenFileBelongsToAnotherUser() {
+        Assert.SkipWhen(Environment.UserName == "root", "root can change any file mode");
+        UnixFileMode mode = File.GetUnixFileMode(foreignFile);
+        FileSecretStore foreign = new(foreignFile, NullLogger.Instance);
+
+        PrivateFileException refused = Assert.Throws<PrivateFileException>(() => foreign.Load());
+
+        Assert.Equal((foreignFile, mode), (refused.Path, File.GetUnixFileMode(foreignFile)));
     }
 
     private async Task LockFreshFilesInParallel() {

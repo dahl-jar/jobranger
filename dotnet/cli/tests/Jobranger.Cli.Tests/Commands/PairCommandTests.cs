@@ -80,6 +80,20 @@ public sealed class PairCommandTests : IDisposable {
     }
 
     [Fact]
+    public async Task ShouldPrintDatabaseUnreadable_WhenMigrationFails() {
+        CommandFixtures.RewindSchema(DatabasePath());
+
+        int exit = await RunAsync();
+
+        Assert.Equal(
+            (CliExitCodes.Failure, $"Cannot read the jobranger database at {DatabasePath()}."),
+            (exit, console.Output.TrimEnd()));
+        string log = LogText();
+        Assert.Contains("pairing.failed", log, StringComparison.Ordinal);
+        Assert.Contains("migration_failed", log, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ShouldPrintDatabaseUnreadable_WhenDatabaseIsSymlink() {
         string target = temp.File("target.db");
         File.WriteAllBytes(target, []);
