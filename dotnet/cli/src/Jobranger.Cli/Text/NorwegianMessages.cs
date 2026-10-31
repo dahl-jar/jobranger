@@ -144,9 +144,54 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string PairPaired(string agent) => $"\u2713 Koblet til {agent}.";
 
+    public string DevicesDescription => "Vis eller fjern tilkoblede nettlesere.";
+
+    public string DevicesListDescription => "Vis tilkoblede nettlesere.";
+
+    public string DevicesRevokeDescription => "Fjern én tilkoblet nettleser.";
+
+    public string UnpairDescription => "Fjern alle tilkoblede nettlesere.";
+
+    public string DevicesNone => "Ingen tilkoblede nettlesere. Koble til en med: jobranger pair";
+
+    public string DeviceLine(string id, string name, string pairedOn, string lastSeenOn) =>
+        $"{id}  {name}  koblet til {pairedOn}  sist sett {lastSeenOn}";
+
+    public string DeviceNeverSeen => "aldri";
+
+    public string DevicesRevoked(string name) => $"\u2713 Fjernet {name}.";
+
+    public string DevicesNoMatch(string id) => $"Ingen nettleser med id {id}.";
+
+    public string DevicesAmbiguous(string id) =>
+        $"Flere nettlesere har en id som starter med {id}. Ingenting ble fjernet. Bruk mer av id-en.";
+
+    public string SecretStoreFailed => "Hemmelighetslageret svarte ikke. Lås det opp og prøv igjen.";
+
+    public string Unpaired(int count) =>
+        $"\u2713 Koblet fra {count} {(count == 1 ? "nettleser" : "nettlesere")}. "
+        + "Nettsiden kan ikke lenger nå denne maskinen.";
+
+    public string UnpairNone => "Ingen tilkoblede nettlesere.";
+
+    public string UnpairKeysFailed => "Nye koblingsnøkler kunne ikke lages. Kjør jobranger unpair på nytt.";
+
+    public string UnpairKeysFileFailed(string path, string reason) =>
+        $"Nye koblingsnøkler kunne ikke lages fordi jobranger ikke kan bruke {path} ({reason}). "
+        + "Rett eller fjern filen, og kjør jobranger unpair på nytt.";
+
+    public string UnpairKeysWriteFailed(string path, string reason) =>
+        $"Nye koblingsnøkler kunne ikke lages fordi jobranger ikke kan endre {path} ({reason}). "
+        + "Gjør filen og mappen lesbare og skrivbare, og kjør jobranger unpair på nytt.";
+
     public string DatabaseTooNew => "Databasen er laget av en nyere jobranger. Oppdater jobranger og prøv igjen.";
 
     public string DatabaseUnreadable(string path) => $"Kan ikke lese jobranger-databasen i {path}.";
+
+    public string DirNotWritable(string path) =>
+        $"Kan ikke lage eller bruke mappen {path}. Gjør den og mappene over den skrivbare, og prøv igjen.";
+
+    public string FileUnreadable(string path) => $"Kan ikke lese {path}.";
 
     public string ReportDescription => "Vis de åpne treffene dine.";
 
@@ -163,8 +208,6 @@ internal sealed class NorwegianMessages : IMessages {
     public string ConfigMissing => "Ingen oppsettsfil ennå. Sett opp med: jobranger init";
 
     public string ProfileMissing(string path) => $"Ingen profilfil på {path}. Sett opp med: jobranger init";
-
-    public string FileUnreadable(string path) => $"Kan ikke lese {path}.";
 
     public string FileAccessFailed => "Kan ikke lese en jobranger-fil. Sjekk tilgangene til mappen.";
 
