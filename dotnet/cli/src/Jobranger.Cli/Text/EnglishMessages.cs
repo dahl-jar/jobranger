@@ -20,6 +20,12 @@ internal sealed class EnglishMessages : IMessages {
 
     public string OptionsPlaceholder => "options";
 
+    public string ArgumentsHeading => "Arguments:";
+
+    public string CommandsHeading => "Commands:";
+
+    public string CommandPlaceholder => "command";
+
     public string HelpOptionDescription => "Show help and usage";
 
     public string VersionOptionDescription => "Show the version";
@@ -145,6 +151,8 @@ internal sealed class EnglishMessages : IMessages {
     public string DevicesListDescription => "List paired browsers.";
 
     public string DevicesRevokeDescription => "Remove one paired browser.";
+
+    public string DevicesRevokeIdDescription => "The browser's id, or the start of it.";
 
     public string UnpairDescription => "Remove every paired browser.";
 

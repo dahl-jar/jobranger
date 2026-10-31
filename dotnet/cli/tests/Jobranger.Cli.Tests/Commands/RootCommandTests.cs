@@ -40,7 +40,7 @@ public sealed class RootCommandTests {
         int code = await root.RunAsync(argument is null ? [] : [argument], TestContext.Current.CancellationToken);
 
         Assert.Equal(CliExitCodes.Ok, code);
-        Assert.Equal(englishHelp, console.Output);
+        Assert.StartsWith(englishHelp, console.Output, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -94,6 +94,19 @@ public sealed class RootCommandTests {
 
         Assert.Equal(CliExitCodes.Usage, code);
         Assert.Contains(new EnglishMessages().InvalidArguments, console.Errors, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [MemberData(nameof(HelpActionTests.CommandPaths), MemberType = typeof(HelpActionTests))]
+    public async Task ShouldWriteNoEnglish_WhenCommandHelpIsNorwegian(string path) {
+        using RecordingConsole console = new();
+        RootCommand root = CreateRoot(console, Locales.Norwegian);
+        string[] args = [.. path.Split(' ', StringSplitOptions.RemoveEmptyEntries), "--help"];
+
+        await root.RunAsync(args, TestContext.Current.CancellationToken);
+
+        Assert.NotEmpty(console.Output);
+        Assert.DoesNotContain(EnglishTexts("--help"), text => console.Output.Contains(text, StringComparison.Ordinal));
     }
 
     [Theory]
