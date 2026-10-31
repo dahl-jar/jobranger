@@ -24,7 +24,7 @@ internal static class ResendReply {
     private static string? Read(byte[] body) {
         try {
             return JsonNode.Parse(body)?[messageField]?.GetValue<string>();
-        } catch (Exception error) when (error is JsonException or InvalidOperationException) {
+        } catch (Exception error) when (error is JsonException or InvalidOperationException or ArgumentException) {
             return null;
         }
     }
