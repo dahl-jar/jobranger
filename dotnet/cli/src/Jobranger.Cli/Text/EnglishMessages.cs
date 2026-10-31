@@ -20,6 +20,12 @@ internal sealed class EnglishMessages : IMessages {
 
     public string OptionsPlaceholder => "options";
 
+    public string ArgumentsHeading => "Arguments:";
+
+    public string CommandsHeading => "Commands:";
+
+    public string CommandPlaceholder => "command";
+
     public string HelpOptionDescription => "Show help and usage";
 
     public string VersionOptionDescription => "Show the version";
@@ -146,6 +152,8 @@ internal sealed class EnglishMessages : IMessages {
 
     public string DevicesRevokeDescription => "Remove one paired browser.";
 
+    public string DevicesRevokeIdDescription => "The browser's id, or the start of it.";
+
     public string UnpairDescription => "Remove every paired browser.";
 
     public string DevicesNone => "No paired browsers. Pair one with: jobranger pair";
@@ -191,7 +199,7 @@ internal sealed class EnglishMessages : IMessages {
 
     public string ReportDescription => "Show your open matches.";
 
-    public string ReportNoMatches => "No matches yet. Run one with: jobranger run";
+    public string ReportNoMatches => "No matches yet. Start a run with: jobranger run";
 
     public string ReportNoDate => "no date";
 

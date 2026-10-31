@@ -1,0 +1,11 @@
+Beskrivelse:
+  Fjern én tilkoblet nettleser.
+
+Bruk:
+  jobranger devices revoke <id> [valg]
+
+Argumenter:
+  <id>  Nettleserens id, eller starten av den.
+
+Valg:
+  -?, -h, --help  Vis hjelp og bruk

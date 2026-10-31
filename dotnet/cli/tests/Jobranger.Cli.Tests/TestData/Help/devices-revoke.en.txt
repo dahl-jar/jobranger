@@ -1,0 +1,11 @@
+Description:
+  Remove one paired browser.
+
+Usage:
+  jobranger devices revoke <id> [options]
+
+Arguments:
+  <id>  The browser's id, or the start of it.
+
+Options:
+  -?, -h, --help  Show help and usage
