@@ -14,7 +14,7 @@ internal static class Profiles {
     public static Profile Load(string path) {
         YamlTree tree = ConfigFile.ReadTree(path);
         List<ConfigError> errors = [.. tree.Errors];
-        Profile? profile = errors.Count == 0 ? ProfileFile.Read(tree.Root, Path.GetFileName(path), errors) : null;
+        Profile? profile = errors.Count == 0 ? ProfileFile.Read(tree, Path.GetFileName(path), errors) : null;
         if (errors.Count > 0 || profile is null) {
             throw new ConfigInvalidException(path, errors);
         }
@@ -25,7 +25,7 @@ internal static class Profiles {
         StringBuilder json = new();
         AppendObject(json, 0, [
             (ProfileFile.SummaryKey, (text, _) => PythonJson.AppendString(text, profile.Summary)),
-            (ProfileFile.YearsKey, (text, _) => text.Append(PythonJson.Float(profile.ProfessionalYears))),
+            (ProfileFile.YearsKey, (text, _) => text.Append(Years(profile.ProfessionalYears))),
             (ProfileFile.HasMasterKey, (text, _) => text.Append(PythonJson.Bool(profile.HasMaster))),
             (ProfileFile.EducationKey, (text, level) => AppendEvidence(text, level, profile.Education)),
             (ProfileFile.ExperienceKey, (text, level) => AppendEvidence(text, level, profile.Experience)),
@@ -102,6 +102,8 @@ internal static class Profiles {
 
     private static void AppendStrings(StringBuilder json, int depth, IReadOnlyList<string> items) =>
         AppendItems(json, depth, '[', ']', items, (text, _, item) => PythonJson.AppendString(text, item));
+
+    private static string Years(double years) => double.IsFinite(years) ? PythonJson.Float(years) : PythonJson.Null;
 
     private static void AppendOptional(StringBuilder json, string? text) {
         if (text is null) {

@@ -24,7 +24,8 @@ internal static partial class Classifier {
         Limits limits,
         string version) {
         Match? parsed = MatchRules.Parse(assessment.Match, version);
-        Match? match = parsed is null ? null : MatchRules.Validate(parsed, evidenceIds, educationIds, limits);
+        Match? validated = parsed is null ? null : MatchRules.Validate(parsed, evidenceIds, educationIds, limits);
+        Match? match = validated is null ? null : YearsGuard.Apply(validated, ad.Title, ad.Description, limits);
         if (match is null || RoleFields(assessment) is not { } roleFields) {
             return null;
         }

@@ -1,26 +1,9 @@
-using System.Globalization;
 using System.Text.Json;
 using Jobranger.Cli.Text;
 
 namespace Jobranger.Cli.Features.Matching;
 
 internal static class ReplyFields {
-    private static readonly Dictionary<string, double> specialNumbers = new(StringComparer.OrdinalIgnoreCase) {
-        ["inf"] = double.PositiveInfinity,
-        ["+inf"] = double.PositiveInfinity,
-        ["infinity"] = double.PositiveInfinity,
-        ["+infinity"] = double.PositiveInfinity,
-        ["-inf"] = double.NegativeInfinity,
-        ["-infinity"] = double.NegativeInfinity,
-        ["nan"] = double.NaN,
-        ["+nan"] = double.NaN,
-        ["-nan"] = double.NaN,
-    };
-    private static readonly HashSet<string> trueWords =
-        new(StringComparer.OrdinalIgnoreCase) { "1", "on", "t", "true", "y", "yes" };
-    private static readonly HashSet<string> falseWords =
-        new(StringComparer.OrdinalIgnoreCase) { "0", "off", "f", "false", "n", "no" };
-
     public static Dictionary<string, JsonElement>? Object(JsonElement element) {
         if (element.ValueKind != JsonValueKind.Object) {
             return null;
@@ -63,17 +46,13 @@ internal static class ReplyFields {
             return flag;
         }
         if (StrictNumber(element) is double number) {
-            return number switch {
-                1 => true,
-                0 => false,
-                _ => null,
-            };
+            return PydanticLax.Bool(number);
         }
         string? text = JsonText.String(element);
         if (text is null) {
             return null;
         }
-        return trueWords.Contains(text) ? true : falseWords.Contains(text) ? false : null;
+        return PydanticLax.Bool(text);
     }
 
     public static double? LaxNumber(JsonElement element) {
@@ -86,12 +65,6 @@ internal static class ReplyFields {
         if (JsonText.String(element) is not string text) {
             return null;
         }
-        string stripped = PythonUnicode.Strip(text);
-        if (specialNumbers.TryGetValue(stripped, out double special)) {
-            return special;
-        }
-        return double.TryParse(stripped, NumberStyles.Float, CultureInfo.InvariantCulture, out double parsed)
-            ? parsed
-            : null;
+        return PydanticLax.Float(text);
     }
 }
