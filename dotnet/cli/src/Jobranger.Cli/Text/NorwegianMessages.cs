@@ -148,6 +148,22 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string DatabaseUnreadable(string path) => $"Kan ikke lese jobranger-databasen i {path}.";
 
+    public string ReportDescription => "Vis de åpne treffene dine.";
+
+    public string ReportNoMatches => "Ingen treff ennå. Start en kjøring med: jobranger run";
+
+    public string ReportNoDate => "ingen dato";
+
+    public string LogsDescription => "Vis logglinjene fra siste kjøring.";
+
+    public string LogsNoRuns => "Ingen kjøringer ennå. Start en med: jobranger run";
+
+    public string LogsMissing(int keepDays) => $"Ingen logglinjer for siste kjøring. Logger lagres i {keepDays} dager.";
+
+    public string ConfigMissing => "Ingen oppsettsfil ennå. Sett opp med: jobranger init";
+
+    public string FileUnreadable(string path) => $"Kan ikke lese {path}.";
+
     public Language Language => Language.Nb;
 
     public string DigestSubject(int matches, string date) => $"jobranger: {matches} treff, {date}";

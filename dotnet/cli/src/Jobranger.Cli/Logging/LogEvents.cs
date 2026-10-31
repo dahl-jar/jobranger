@@ -58,6 +58,18 @@ internal static partial class LogEvents {
     public static partial void PairingFailed(ILogger logger, string failure);
 
     [LoggerMessage(
+        EventName = "report.failed",
+        Level = LogLevel.Warning,
+        Message = "report failed failure={Failure}")]
+    public static partial void ReportFailed(ILogger logger, string failure);
+
+    [LoggerMessage(
+        EventName = "logs.failed",
+        Level = LogLevel.Warning,
+        Message = "logs failed failure={Failure}")]
+    public static partial void LogsFailed(ILogger logger, string failure);
+
+    [LoggerMessage(
         EventName = "pairing.refused",
         Level = LogLevel.Warning,
         Message = "relay refused pairing status={Status} error_type={ErrorType}")]
