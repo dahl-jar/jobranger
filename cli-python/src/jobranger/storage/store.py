@@ -292,7 +292,7 @@ class Store:
             "UPDATE ads SET label = ?, summary = ?, requires_master = ?, "
             "is_programming_job = ?, display_title = ?, role_type = ?, "
             "technologies = ?, requirements = ?, assessment = ?, "
-            "assessment_version = ?, classified_at = ?, "
+            "label_attempts = 0, assessment_version = ?, classified_at = ?, "
             "first_classified_at = COALESCE(first_classified_at, ?) "
             "WHERE id = ?",
             (

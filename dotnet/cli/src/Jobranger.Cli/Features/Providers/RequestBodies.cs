@@ -6,6 +6,8 @@ using System.Text.Json;
 namespace Jobranger.Cli.Features.Providers;
 
 internal static class RequestBodies {
+    public const int MaxOutputTokens = 4096;
+
     private const string jsonType = "application/json";
 
     private static readonly JsonWriterOptions options = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };

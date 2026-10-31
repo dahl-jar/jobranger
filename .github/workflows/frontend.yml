@@ -1,17 +1,12 @@
 name: Test frontend
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - messages/**
-      - frontend/**
-      - .github/workflows/frontend.yml
   pull_request:
     paths:
       - messages/**
       - frontend/**
       - .github/workflows/frontend.yml
+  workflow_call:
   workflow_dispatch:
 
 permissions:

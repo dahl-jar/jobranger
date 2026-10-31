@@ -1,0 +1,216 @@
+{
+  "card": {
+    "id": "finn:1",
+    "source": "finn",
+    "title": "Developer One",
+    "display_title": null,
+    "company": "Company One",
+    "location": "Oslo",
+    "deadline": "2026-10-20",
+    "url": "https://ads.example.test/job/1",
+    "summary": "Build backend services.",
+    "role_label": "Backend",
+    "fit": "strong"
+  },
+  "cases": {
+    "empty": {
+      "site_url": null,
+      "day": "2026-10-08",
+      "ran_at": "2026-10-08T19:30:00+02:00",
+      "new_ads": 1,
+      "sources_read": [
+        "finn",
+        "nav"
+      ],
+      "hidden": {
+        "senior": 4,
+        "years": 2
+      }
+    },
+    "cut-for-size": {
+      "site_url": "https://site.example.test",
+      "day": "2026-10-08",
+      "ran_at": "2026-10-08T03:00:00+02:00",
+      "new_ads": 812,
+      "sources_read": [
+        "finn",
+        "nav"
+      ],
+      "apply_soon": [
+        {
+          "id": "finn:1",
+          "deadline": "2026-10-12"
+        }
+      ],
+      "new_today": [
+        {
+          "id": "finn:new",
+          "summary": "Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. Build backend services. ",
+          "copies": 50
+        }
+      ],
+      "carried": [
+        {
+          "id": "finn:2"
+        },
+        {
+          "id": "finn:3"
+        }
+      ]
+    },
+    "email-only": {
+      "site_url": null,
+      "day": "2026-10-08",
+      "ran_at": "2026-10-08T03:00:00+02:00",
+      "new_ads": 40,
+      "sources_read": [
+        "finn",
+        "nav"
+      ],
+      "new_today": [
+        {
+          "id": "finn:1",
+          "company": "<script>alert(1)</script>",
+          "title": "O'Brien & Sons",
+          "location": "Oslo\u202e",
+          "summary": "Build\t\nbackend \u0000\u001b[31m services.",
+          "url": "https://ads.example.test/job/a b?q=x y#f g"
+        },
+        {
+          "id": "finn:2",
+          "fit": "partial",
+          "deadline": null,
+          "role_label": "",
+          "url": "javascript:alert(1)"
+        },
+        {
+          "id": "finn:3",
+          "fit": "on_request",
+          "url": "https://user@ads.example.test/job/3"
+        }
+      ]
+    },
+    "website-on": {
+      "site_url": "https://site.example.test/base/?from=mail#top",
+      "day": "2026-10-08",
+      "ran_at": "2026-10-08T13:00:00+02:00",
+      "new_ads": 30,
+      "sources_read": [
+        "finn",
+        "teamtailor:acme",
+        "ashby:beta"
+      ],
+      "employer_pages": 2,
+      "hidden": {
+        "senior": 3,
+        "masters": 3,
+        "role": 1,
+        "years": 2,
+        "other": 1
+      },
+      "max_years": 2.5,
+      "apply_soon": [
+        {
+          "id": "finn:3",
+          "deadline": "2026-10-13"
+        },
+        {
+          "id": "finn:2",
+          "deadline": "2026-10-09"
+        },
+        {
+          "id": "finn:1",
+          "deadline": "2026-10-08"
+        }
+      ],
+      "new_today": [
+        {
+          "id": "teamtailor:acme:4",
+          "source": "teamtailor:acme"
+        }
+      ]
+    },
+    "carried": {
+      "site_url": null,
+      "day": "2026-10-08",
+      "ran_at": "2026-10-08T03:00:00+02:00",
+      "new_ads": 5,
+      "sources_read": [
+        "finn",
+        "nav"
+      ],
+      "closed_since_last": 1,
+      "new_today": [
+        {
+          "id": "finn:1"
+        }
+      ],
+      "carried": [
+        {
+          "id": "finn:2",
+          "deadline": "2026-10-15"
+        },
+        {
+          "id": "finn:3",
+          "deadline": null
+        }
+      ]
+    },
+    "budget-paused": {
+      "site_url": null,
+      "day": "2026-10-08",
+      "ran_at": "2026-10-08T03:00:00+02:00",
+      "new_ads": 5,
+      "sources_read": [
+        "finn",
+        "nav"
+      ],
+      "budget_paused": true,
+      "pending": 1,
+      "closed_since_last": 12,
+      "new_today": [
+        {
+          "id": "finn:1"
+        }
+      ]
+    },
+    "model-stopped": {
+      "site_url": null,
+      "day": "2026-10-08",
+      "ran_at": "2026-10-08T03:00:00+02:00",
+      "new_ads": 5,
+      "sources_read": [
+        "finn",
+        "nav"
+      ],
+      "model_stopped": "auth",
+      "pending": 5,
+      "failed_sources": [
+        "linkedin"
+      ],
+      "new_today": [
+        {
+          "id": "finn:1"
+        }
+      ]
+    },
+    "failed-sources": {
+      "site_url": null,
+      "day": "2026-10-08",
+      "ran_at": "2026-10-08T03:00:00+02:00",
+      "new_ads": 0,
+      "sources_read": [
+        "finn"
+      ],
+      "failed_sources": [
+        "finn",
+        "nav",
+        "linkedin",
+        "teamtailor:acme",
+        "ashby:beta",
+        "foo",
+        "bar"
+      ]
+    }
+  }
+}

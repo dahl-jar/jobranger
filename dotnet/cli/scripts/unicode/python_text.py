@@ -18,6 +18,8 @@ CODE_POINTS = 0x110000
 ENTITY_PREFIX = "&"
 IGNORE_CASE_LETTERS = "abcdefghijklmnopqrstuvwxyzæøå. "
 WORD = re.compile(r"\w")
+HIDDEN_CATEGORIES = frozenset({"Cc", "Cs", "Cn"})
+URL_DELIMITERS = "/?#@:"
 
 
 def hex_code(code: int) -> str:
@@ -81,6 +83,13 @@ def dropped_ranges() -> list[list[str]]:
     return ranges(lambda char: ord(char) in dropped)
 
 
+def expands_to_url_delimiter(char: str) -> bool:
+    if char.isascii():
+        return False
+    normalized = unicodedata.normalize("NFKC", char)
+    return any(mark in normalized for mark in URL_DELIMITERS)
+
+
 def section(name: str, entries: list[list[str]]) -> str:
     body = ",\n".join(f"    {json.dumps(entry)}" for entry in entries)
     return f'  "{name}": [\n{body}\n  ]'
@@ -101,6 +110,12 @@ def write_tables() -> None:
         section("ignore_case", ignore_case_rows()),
         section("charrefs", charref_rows()),
         section("dropped_charrefs", dropped_ranges()),
+        section(
+            "hidden",
+            ranges(lambda char: unicodedata.category(char) in HIDDEN_CATEGORIES),
+        ),
+        section("unprintable", ranges(lambda char: not char.isprintable())),
+        section("nfkc_delimiters", ranges(expands_to_url_delimiter)),
     ]
     text = "{\n" + "\n".join(lines) + "\n" + ",\n".join(sections) + "\n}\n"
     TABLES.write_text(text, encoding="utf-8")

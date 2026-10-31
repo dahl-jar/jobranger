@@ -7,4 +7,5 @@ internal sealed record YamlTree(
     IReadOnlyDictionary<string, KeyComments> Comments,
     IReadOnlyDictionary<string, int> KeyOrder,
     IReadOnlyList<string> Trailing,
-    IReadOnlyList<ConfigError> Errors);
+    IReadOnlyList<ConfigError> Errors,
+    IReadOnlyDictionary<string, YamlScalar> Scalars);

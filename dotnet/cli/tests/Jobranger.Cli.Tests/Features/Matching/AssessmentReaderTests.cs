@@ -6,6 +6,10 @@ using MatchingEntry = Jobranger.Cli.Features.Matching.Matching;
 namespace Jobranger.Cli.Tests.Features.Matching;
 
 public sealed class AssessmentReaderTests {
+    private static readonly JsonArray replyYears = LaxGolden.Rows("reply-years.json");
+
+    public static TheoryData<int> ReplyYearsRows => LaxGolden.Indexes(replyYears);
+
     [Fact]
     public void ShouldParseFixtureReply_WhenEveryFieldIsValid() {
         AdAssessment? assessment = MatchingEntry.ParseAssessment(MatchingFixtures.Payload().ToJsonString());
@@ -74,8 +78,22 @@ public sealed class AssessmentReaderTests {
     }
 
     [Theory]
-    [InlineData("\"3\"", 3.0)]
-    [InlineData("\"\u00a02.5\u2003\"", 2.5)]
+    [MemberData(nameof(ReplyYearsRows))]
+    public void ShouldMatchPython_WhenReplyYearsIsText(int row) {
+        JsonNode golden = replyYears[row]!;
+        string id = golden["id"]!.GetValue<string>();
+        string? years = golden["years"]?.GetValue<string>();
+        JsonObject payload = MatchingFixtures.Payload();
+        payload["match"]!["required_experience_years"] = golden["text"]!.GetValue<string>();
+
+        AdAssessment? assessment = MatchingEntry.ParseAssessment(payload.ToJsonString());
+
+        Assert.Equal(
+            (id, years is not null, LaxGolden.ReprBits(years)),
+            (id, assessment is not null, LaxGolden.Bits(assessment?.Match.RequiredExperienceYears)));
+    }
+
+    [Theory]
     [InlineData("true", 1.0)]
     [InlineData("false", 0.0)]
     [InlineData("2", 2.0)]

@@ -1,0 +1,45 @@
+name: Publish CLI
+description: Publishes the self-contained CLI for one runtime and checks the version it prints.
+
+inputs:
+  rid:
+    description: Runtime identifier, osx-arm64 or linux-x64
+    required: true
+  version:
+    description: Version stamped into the build and expected from --version. Empty keeps the csproj version
+    required: false
+    default: ""
+  output:
+    description: Folder the published files go to
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      working-directory: dotnet
+      run: dotnet restore cli/src/Jobranger.Cli/Jobranger.Cli.csproj --locked-mode
+
+    - shell: bash
+      working-directory: dotnet
+      env:
+        RID: ${{ inputs.rid }}
+        VERSION: ${{ inputs.version }}
+        OUTPUT: ${{ inputs.output }}
+      run: |
+        if [ -n "$VERSION" ]; then
+          set -- "-p:Version=$VERSION"
+        fi
+        dotnet publish cli/src/Jobranger.Cli/Jobranger.Cli.csproj -c Release -r "$RID" --no-restore -o "$OUTPUT" "$@"
+
+    - shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        OUTPUT: ${{ inputs.output }}
+        DOTNET_BUNDLE_EXTRACT_BASE_DIR: ${{ runner.temp }}/bundle
+      run: |
+        if [ -n "$VERSION" ]; then
+          "$OUTPUT/jobranger" --version | grep -Fx "jobranger $VERSION"
+        else
+          "$OUTPUT/jobranger" --version | grep -Ex 'jobranger [0-9]+\.[0-9]+\.[0-9]+'
+        fi

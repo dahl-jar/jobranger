@@ -1,20 +1,6 @@
 name: Test CLI
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - dotnet/cli/**
-      - dotnet/messages/**
-      - messages/**
-      - dotnet/Jobranger.slnx
-      - dotnet/Directory.*.props
-      - dotnet/global.json
-      - dotnet/nuget.config
-      - dotnet/.config/dotnet-tools.json
-      - .editorconfig
-      - .github/actions/dotnet-setup/**
-      - .github/workflows/cli.yml
   pull_request:
     paths:
       - dotnet/cli/**
@@ -28,6 +14,7 @@ on:
       - .editorconfig
       - .github/actions/dotnet-setup/**
       - .github/workflows/cli.yml
+  workflow_call:
   workflow_dispatch:
 
 permissions:
@@ -45,7 +32,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - uses: ./.github/actions/dotnet-setup
-      - run: dotnet test --project cli/tests/Jobranger.Cli.Tests -c Release --no-build --minimum-expected-tests 2432
+      - run: dotnet test --project cli/tests/Jobranger.Cli.Tests -c Release --no-build --minimum-expected-tests 4008
 
   secrets-macos:
     name: Secret store on macOS
@@ -105,9 +92,6 @@ jobs:
     name: Publish ${{ matrix.rid }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: dotnet
     strategy:
       fail-fast: false
       matrix:
@@ -123,11 +107,10 @@ jobs:
         with:
           build: "false"
 
-      - run: dotnet restore cli/src/Jobranger.Cli/Jobranger.Cli.csproj --locked-mode
-      - run: dotnet publish cli/src/Jobranger.Cli/Jobranger.Cli.csproj -c Release -r ${{ matrix.rid }} --no-restore -o "$RUNNER_TEMP/publish"
-      - run: '"$RUNNER_TEMP/publish/jobranger" --version | grep -Ex "jobranger [0-9]+\.[0-9]+\.[0-9]+"'
-        env:
-          DOTNET_BUNDLE_EXTRACT_BASE_DIR: ${{ runner.temp }}/bundle
+      - uses: ./.github/actions/cli-publish
+        with:
+          rid: ${{ matrix.rid }}
+          output: ${{ runner.temp }}/publish
 
   image:
     name: Build image

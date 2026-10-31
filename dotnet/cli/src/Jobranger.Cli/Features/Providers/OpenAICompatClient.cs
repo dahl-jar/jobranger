@@ -19,7 +19,6 @@ internal sealed class OpenAICompatClient(
     private const string ollamaDefaultTag = ":latest";
     private const string cacheKeyPrefix = "jobranger-";
     private const int cacheKeyHexChars = 16;
-    private const int maxOutputTokens = 4096;
     private const string effort = "low";
 
     private static readonly Dictionary<string, StopKind> stopKinds = new(StringComparer.Ordinal) {
@@ -160,7 +159,7 @@ internal sealed class OpenAICompatClient(
         WriteMessage(writer, "system", prompt.System);
         WriteMessage(writer, "user", prompt.User);
         writer.WriteEndArray();
-        writer.WriteNumber("max_completion_tokens", maxOutputTokens);
+        writer.WriteNumber("max_completion_tokens", RequestBodies.MaxOutputTokens);
         if (provider == ProviderName.OpenAI) {
             writer.WriteString("prompt_cache_key", CacheKey(prompt.System));
             if (supportsEffort) {

@@ -1,0 +1,6 @@
+{
+  "ads": "SELECT id, source, source_id, title, company, location, published, deadline, url, description, label, summary, requires_master, is_programming_job, display_title, role_type, technologies, requirements, assessment, assessment_version, apply_url, apply_status, republished, active, closed_reason, dedup_key, label_attempts, description_attempts FROM ads ORDER BY id",
+  "state": "SELECT key, value FROM state WHERE key != 'schema_version' ORDER BY key",
+  "runs": "SELECT status, ads_read, new_ads, matches, hidden, failed_sources FROM runs ORDER BY id",
+  "usage_days": "SELECT day, calls, input_tokens, output_tokens, printf('%.6f', cost_usd), ads_read, ads_checked FROM usage_days ORDER BY day"
+}

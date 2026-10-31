@@ -10,6 +10,14 @@ internal sealed class SharedBackoff(TimeProvider time) {
     private DateTimeOffset until = DateTimeOffset.MinValue;
     private TimeSpan step = firstPause;
 
+    public bool Paused {
+        get {
+            lock (gate) {
+                return until > time.GetUtcNow();
+            }
+        }
+    }
+
     public Task WaitAsync(CancellationToken cancellationToken) {
         TimeSpan remaining;
         lock (gate) {

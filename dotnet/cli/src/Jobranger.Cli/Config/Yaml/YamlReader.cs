@@ -9,23 +9,35 @@ namespace Jobranger.Cli.Config.Yaml;
 internal sealed partial class YamlReader(string text, string fileName) {
     private const char commentMark = '#';
     private const char newLine = '\n';
-    private const char carriageReturn = '\r';
     private const char tab = '\t';
     private const char space = ' ';
+    private const char escapeMark = '\\';
+    private const char valueMark = ':';
+    private const string documentStart = "---";
+    private const string documentEnd = "...";
     private const string inlineLeadIn = " \t:";
     private const int bracketWidth = 1;
     private const int maxDepth = 32;
     private const int firstLine = 1;
+    private const int separatorReach = 1;
+    private const int notFound = -1;
 
-    private readonly Parser parser = new(new Scanner(new StringReader(text), skipComments: true));
-    private readonly List<(int Start, int End)> scalarSpans = [];
+    private readonly Parser parser =
+        new(new Scanner(new StringReader(YamlCharacters.Mask(text)), skipComments: true));
+    private readonly List<ScalarSpan> scalarSpans = [];
+    private readonly List<(int Start, int End)> flowSpans = [];
     private readonly List<(string Path, bool KeepsComments, int Start)> keys = [];
     private readonly Dictionary<string, string> inlineComments = [];
+    private readonly Dictionary<string, YamlScalar> scalars = new(StringComparer.Ordinal);
     private readonly List<ConfigError> errors = [];
     private int lastEnd;
     private ConfigError? alias;
 
     public YamlTree Read() {
+        int unprintable = FirstIndex(IsUnprintable);
+        if (unprintable != notFound) {
+            return Failed(NotYaml(LineOf(unprintable)));
+        }
         JsonNode? root = null;
         try {
             parser.Consume<StreamStart>();
@@ -39,7 +51,8 @@ internal sealed partial class YamlReader(string text, string fileName) {
         } catch (Exception error) when (error is InvalidOperationException or ArgumentException) {
             return Failed(NotYaml(parser.Current?.End.Line ?? firstLine));
         }
-        return AttachComments(root);
+        int misplaced = FirstIndex(IsMisplaced);
+        return misplaced == notFound ? AttachComments(root) : Failed(NotYaml(LineOf(misplaced)));
     }
 
     private JsonNode? ReadNode(string path, bool keepsComments, int depth) {
@@ -57,10 +70,11 @@ internal sealed partial class YamlReader(string text, string fileName) {
             case Scalar scalar:
                 parser.MoveNext();
                 lastEnd = At(scalar.End);
-                scalarSpans.Add((At(scalar.Start), lastEnd));
-                return scalar.Style == ScalarStyle.Plain && YamlNull.Literals.Contains(scalar.Value)
+                string value = ReadScalar(scalar);
+                scalars.TryAdd(path, new YamlScalar(value, scalar.Style, TagText(scalar.Tag)));
+                return scalar.Style == ScalarStyle.Plain && YamlNull.Literals.Contains(value)
                     ? null
-                    : JsonValue.Create(scalar.Value);
+                    : JsonValue.Create(value);
             case SequenceStart sequence:
                 return ReadList(sequence, path, depth);
             case MappingStart mapping:
@@ -78,7 +92,7 @@ internal sealed partial class YamlReader(string text, string fileName) {
         }
         SequenceEnd end = parser.Consume<SequenceEnd>();
         if (sequence.Style == SequenceStyle.Flow) {
-            lastEnd = At(end.End) + bracketWidth;
+            EndFlow(At(sequence.Start), end);
         }
         return list;
     }
@@ -90,27 +104,103 @@ internal sealed partial class YamlReader(string text, string fileName) {
             Scalar key = parser.Current as Scalar
                 ?? throw new YamlException(parser.Current!.Start, parser.Current.End, "mapping key is not text");
             parser.MoveNext();
-            string location = ConfigLocation.Join(path, key.Value);
+            string name = ReadScalar(key);
+            string location = ConfigLocation.Join(path, name);
             keys.Add((location, keepsComments, At(key.Start)));
             bool blockValue = parser.Current is SequenceStart { Style: SequenceStyle.Block }
                 or MappingStart { Style: MappingStyle.Block };
             JsonNode? value = ReadNode(
                 location, keepsComments && mapping.Style == MappingStyle.Block, depth + 1);
-            if (entries.ContainsKey(key.Value)) {
+            if (entries.ContainsKey(name)) {
                 errors.Add(new ConfigError(location, ConfigProblem.DuplicateKey));
                 continue;
             }
-            entries[key.Value] = value;
+            entries[name] = value;
             if (keepsComments) {
                 KeepInlineComment(location, blockValue ? At(key.End) : lastEnd);
             }
         }
         MappingEnd end = parser.Consume<MappingEnd>();
         if (mapping.Style == MappingStyle.Flow) {
-            lastEnd = At(end.End) + bracketWidth;
+            EndFlow(At(mapping.Start), end);
         }
         return entries;
     }
+
+    private string ReadScalar(Scalar scalar) {
+        ScalarSpan span = new(At(scalar.Start), At(scalar.End), scalar.Style);
+        scalarSpans.Add(span);
+        return HasSeparator(span) ? YamlCharacters.Unmask(scalar.Value, scalar.Style) : scalar.Value;
+    }
+
+    private bool HasSeparator(ScalarSpan span) => SpanText(span).Any(YamlCharacters.IsLineSeparator);
+
+    private string SpanText(ScalarSpan span) => text[span.Start..span.End];
+
+    private void EndFlow(int start, ParsingEvent end) {
+        lastEnd = At(end.End) + bracketWidth;
+        flowSpans.Add((start, lastEnd));
+    }
+
+    private int FirstIndex(Func<int, bool> matches) {
+        for (int index = 0; index < text.Length; index++) {
+            if (matches(index)) {
+                return index;
+            }
+        }
+        return notFound;
+    }
+
+    private bool IsUnprintable(int index) => !YamlCharacters.IsPrintable(text[index]);
+
+    private bool IsMisplaced(int index) => text[index] switch {
+        tab => !IsTabAllowed(index),
+        char character when YamlCharacters.IsLineSeparator(character) => !IsSeparatorAllowed(index),
+        _ => false,
+    };
+
+    private bool IsTabAllowed(int index) => SpanAt(index) switch {
+        null => IsInFlow(index) || IsInComment(index),
+        { Style: ScalarStyle.Plain } => false,
+        { Style: ScalarStyle.Literal or ScalarStyle.Folded } block => index > LineEnd(block.Start),
+        _ => true,
+    };
+
+    private bool IsSeparatorAllowed(int index) => SpanAt(index) switch {
+        null => YamlCharacters.EndsLine(text, index + 1),
+        ScalarSpan span => CanUnmask(span)
+            && (span.Style != ScalarStyle.Plain || FollowsText(span, index))
+            && !YamlCharacters.EndsLine(text, index + 1)
+            && !StartsDocumentMarker(index + 1),
+    };
+
+    private bool CanUnmask(ScalarSpan span) => span.Style switch {
+        ScalarStyle.Literal or ScalarStyle.Folded => false,
+        ScalarStyle.DoubleQuoted when SpanText(span).Contains(escapeMark) => false,
+        _ => !SpanText(span).Contains(newLine),
+    };
+
+    private bool FollowsText(ScalarSpan span, int index) =>
+        !text[span.Start..index].All(YamlCharacters.IsLineSeparator) && text[index - 1] != valueMark;
+
+    private bool StartsDocumentMarker(int index) =>
+        text.AsSpan(index).StartsWith(documentStart, StringComparison.Ordinal)
+            || text.AsSpan(index).StartsWith(documentEnd, StringComparison.Ordinal);
+
+    private ScalarSpan? SpanAt(int index) =>
+        scalarSpans.Where(span => index >= span.Start && index < span.End)
+            .Select(span => (ScalarSpan?)span)
+            .FirstOrDefault();
+
+    private bool IsInFlow(int index) => flowSpans.Any(span => index > span.Start && index < span.End);
+
+    private bool IsInComment(int index) {
+        int lineStart = text.LastIndexOf(newLine, index) + 1;
+        return Enumerable.Range(lineStart, index - lineStart)
+            .Any(at => text[at] == commentMark && SpanAt(at) is null);
+    }
+
+    private long LineOf(int index) => firstLine + text.AsSpan(0, index).Count(newLine);
 
     private void KeepInlineComment(string location, int from) {
         string? inline = ReadInlineComment(from);
@@ -156,7 +246,7 @@ internal sealed partial class YamlReader(string text, string fileName) {
             comments[path] = new KeyComments(
                 leading.GetValueOrDefault(path) ?? [], inlineComments.GetValueOrDefault(path));
         }
-        return new YamlTree(root, comments, KeyOrder(), trailing, errors);
+        return new YamlTree(root, comments, KeyOrder(), trailing, errors, scalars);
     }
 
     private Dictionary<string, int> KeyOrder() {
@@ -176,13 +266,28 @@ internal sealed partial class YamlReader(string text, string fileName) {
 
     private long ErrorLine(YamlException error) {
         if (error is not SyntaxErrorException) {
-            return error.Start.Line;
+            return SeparatorLine(error.Start.Line);
         }
         if (error.Start.Index == 0) {
             return TabIndentLine(parser.Current?.Start.Line ?? firstLine);
         }
         return IsTab(error.End) ? error.End.Line : error.Start.Line;
     }
+
+    private long SeparatorLine(long errorLine) {
+        long line = firstLine;
+        for (int index = 0; index < text.Length && line <= errorLine; index++) {
+            if (text[index] == newLine) {
+                line++;
+            } else if (line >= errorLine - separatorReach && IsLineEndSeparator(index)) {
+                return line;
+            }
+        }
+        return errorLine;
+    }
+
+    private bool IsLineEndSeparator(int index) =>
+        YamlCharacters.IsLineSeparator(text[index]) && YamlCharacters.EndsLine(text, index + 1);
 
     private bool IsTab(Mark mark) => mark.Index < text.Length && text[At(mark)] == tab;
 
@@ -192,7 +297,7 @@ internal sealed partial class YamlReader(string text, string fileName) {
         for (int lineStart = 0; lineStart < text.Length; lineStart = LineEnd(lineStart) + 1) {
             string content = text[lineStart..LineEnd(lineStart)];
             int indent = content.TakeWhile(character => character == space).Count();
-            bool blank = content.TrimEnd(carriageReturn).Length == indent;
+            bool blank = content.Length == indent;
             bool inBlockScalar = scalarIndent is int open && (blank || indent > open);
             if (!inBlockScalar) {
                 if (line >= fromLine && content.TakeWhile(char.IsWhiteSpace).Contains(tab)) {
@@ -206,7 +311,15 @@ internal sealed partial class YamlReader(string text, string fileName) {
     }
 
     private static YamlTree Failed(ConfigError error) =>
-        new(null, new Dictionary<string, KeyComments>(), new Dictionary<string, int>(), [], [error]);
+        new(
+            null,
+            new Dictionary<string, KeyComments>(),
+            new Dictionary<string, int>(),
+            [],
+            [error],
+            new Dictionary<string, YamlScalar>());
+
+    private static string? TagText(TagName tag) => tag.IsEmpty ? null : tag.Value;
 
     private ConfigError NotYaml(long line) =>
         new(fileName, ConfigProblem.NotYaml, line.ToString(CultureInfo.InvariantCulture));
@@ -220,4 +333,6 @@ internal sealed partial class YamlReader(string text, string fileName) {
 
     [GeneratedRegex(@"(^\s*-|:)\s+[|>][-+0-9]*\s*(#.*)?$", RegexOptions.CultureInvariant)]
     private static partial Regex BlockScalarStart();
+
+    private readonly record struct ScalarSpan(int Start, int End, ScalarStyle Style);
 }

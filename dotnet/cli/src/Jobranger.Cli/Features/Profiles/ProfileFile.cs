@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Jobranger.Cli.Config;
+using Jobranger.Cli.Config.Yaml;
 
 namespace Jobranger.Cli.Features.Profiles;
 
@@ -26,31 +27,45 @@ internal static partial class ProfileFile {
     private static readonly string[] evidenceKeys = [IdKey, NameKey, FactsKey, StartKey, EndKey];
     private static readonly string[] evidenceLists = [EducationKey, ExperienceKey, ProjectsKey];
 
-    public static Profile? Read(JsonNode? root, string fileName, List<ConfigError> errors) {
-        if (root is not JsonObject values) {
+    public static Profile? Read(YamlTree tree, string fileName, List<ConfigError> errors) {
+        if (tree.Root is not JsonObject values) {
             errors.Add(new ConfigError(fileName, ConfigProblem.NotSection));
             return null;
         }
-        ConfigSection section = new(values, string.Empty, profileKeys, errors);
-        string? summary = section.RequiredText(SummaryKey, blankAllowed: true);
-        decimal? years = section.RequiredNumber(YearsKey);
-        if (years < 0) {
-            errors.Add(new ConfigError(YearsKey, ConfigProblem.BelowZero));
-        }
-        Dictionary<string, List<Evidence>> lists = evidenceLists.ToDictionary(
-            key => key, key => EvidenceList(section, key, errors), StringComparer.Ordinal);
-        CheckUniqueIds(lists, errors);
-        Profile profile = new() {
+        ConfigSection section = new(values, string.Empty, profileKeys, errors, tree.Scalars);
+        Profile profile = ReadProfile(section, errors);
+        return errors.Count == 0 ? profile : null;
+    }
+
+    private static Profile ReadProfile(ConfigSection section, List<ConfigError> errors) {
+        string? summary = section.RequiredStrictText(SummaryKey);
+        double? years = Years(section, errors);
+        Dictionary<string, List<Evidence>> lists = ReadEvidenceLists(section, errors);
+        return new Profile {
             Summary = summary ?? string.Empty,
-            ProfessionalYears = (double)(years ?? 0),
-            HasMaster = section.Bool(HasMasterKey) ?? false,
+            ProfessionalYears = years ?? 0,
+            HasMaster = section.LaxFlag(HasMasterKey) ?? false,
             Education = lists[EducationKey],
             Experience = lists[ExperienceKey],
             Projects = lists[ProjectsKey],
-            Languages = section.TextList(LanguagesKey) ?? [],
-            Stack = section.TextList(StackKey) ?? [],
+            Languages = section.StrictTextList(LanguagesKey) ?? [],
+            Stack = section.StrictTextList(StackKey) ?? [],
         };
-        return errors.Count == 0 ? profile : null;
+    }
+
+    private static double? Years(ConfigSection section, List<ConfigError> errors) {
+        double? years = section.RequiredLaxNumber(YearsKey);
+        if (years is double value && !(value >= 0)) {
+            errors.Add(new ConfigError(YearsKey, ConfigProblem.BelowZero));
+        }
+        return years;
+    }
+
+    private static Dictionary<string, List<Evidence>> ReadEvidenceLists(ConfigSection section, List<ConfigError> errors) {
+        Dictionary<string, List<Evidence>> lists = evidenceLists.ToDictionary(
+            key => key, key => EvidenceList(section, key, errors), StringComparer.Ordinal);
+        CheckUniqueIds(lists, errors);
+        return lists;
     }
 
     private static List<Evidence> EvidenceList(ConfigSection section, string key, List<ConfigError> errors) {
@@ -64,24 +79,24 @@ internal static partial class ProfileFile {
     }
 
     private static Evidence ReadEvidence(ConfigSection item, string location, List<ConfigError> errors) {
-        string id = item.RequiredText(IdKey, blankAllowed: true) ?? string.Empty;
-        if (id.Length > 0 && !EvidenceIdPattern().IsMatch(id)) {
+        string? id = item.RequiredStrictText(IdKey);
+        if (id is not null && !EvidenceIdPattern().IsMatch(id)) {
             errors.Add(new ConfigError(ConfigLocation.Join(location, IdKey), ConfigProblem.NotEvidenceId));
-        } else if (ContextEdits.IsReserved(id)) {
+        } else if (id is not null && ContextEdits.IsReserved(id)) {
             errors.Add(new ConfigError(ConfigLocation.Join(location, IdKey), ConfigProblem.ReservedId));
         }
-        string facts = item.RequiredText(FactsKey, blankAllowed: true) ?? string.Empty;
+        string facts = item.RequiredStrictText(FactsKey) ?? string.Empty;
         ConfigSection.CheckLength(facts, ConfigLocation.Join(location, FactsKey), factsLimit, errors);
         return new Evidence(
-            id,
-            item.RequiredText(NameKey, blankAllowed: true) ?? string.Empty,
+            id ?? string.Empty,
+            item.RequiredStrictText(NameKey) ?? string.Empty,
             facts,
             Month(item, location, StartKey, errors),
             Month(item, location, EndKey, errors));
     }
 
     private static string? Month(ConfigSection item, string location, string key, List<ConfigError> errors) {
-        string? month = item.Text(key);
+        string? month = item.StrictText(key);
         if (month is not null && !MonthPattern().IsMatch(month)) {
             errors.Add(new ConfigError(ConfigLocation.Join(location, key), ConfigProblem.NotMonth));
         }

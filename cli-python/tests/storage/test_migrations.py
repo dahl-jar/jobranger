@@ -21,8 +21,9 @@ if TYPE_CHECKING:
 
 FIRST = Migration(1, ("CREATE TABLE state (key TEXT PRIMARY KEY, value TEXT)",))
 SECOND = Migration(2, ("CREATE TABLE extra (id INTEGER PRIMARY KEY)",))
-CSHARP_VERSION = 4
-NEWER_VERSION = 5
+DEVICES_VERSION = 4
+CSHARP_VERSION = 5
+NEWER_VERSION = 6
 DEVICE_COLUMNS = [
     ("id", "TEXT", 0, 1),
     ("name", "TEXT", 1, 0),
@@ -84,7 +85,7 @@ def test_should_refuse_database_newer_than_code(tmp_path: Path) -> None:
     migrate(conn)
     _set_version(conn, NEWER_VERSION)
 
-    with pytest.raises(SchemaTooNewError, match=r"schema 5 is newer .*\(4\)") as raised:
+    with pytest.raises(SchemaTooNewError, match=r"schema 6 is newer .*\(5\)") as raised:
         migrate(conn)
 
     assert (raised.value.found, raised.value.supported) == (
@@ -143,3 +144,23 @@ def test_should_backfill_first_classification_for_classified_ads(
 
     rows = conn.execute("SELECT id, first_classified_at FROM ads ORDER BY id")
     assert rows.fetchall() == [("a", "checked-a"), ("b", "seen-b"), ("c", None)]
+
+
+def test_should_reset_label_attempts_when_upgrading_from_version_four(
+    tmp_path: Path,
+) -> None:
+    conn = sqlite3.connect(tmp_path / "db.sqlite")
+    migrate(conn, MIGRATIONS[:DEVICES_VERSION])
+    conn.execute(
+        "INSERT INTO ads (id, source, source_id, title, company, url, dedup_key, "
+        "first_seen, label, label_attempts) VALUES "
+        "('a', 'finn', '1', 't', 'c', 'u', 'k', 'seen-a', 'junior', 2), "
+        "('b', 'finn', '2', 't', 'c', 'u', 'k', 'seen-b', 'error', 2), "
+        "('c', 'finn', '3', 't', 'c', 'u', 'k', 'seen-c', NULL, 2)"
+    )
+    conn.commit()
+
+    migrate(conn)
+
+    rows = conn.execute("SELECT id, label_attempts FROM ads ORDER BY id")
+    assert rows.fetchall() == [("a", 0), ("b", 2), ("c", 2)]

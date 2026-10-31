@@ -984,3 +984,15 @@ def test_should_keep_first_classification_time_when_reclassified(
         True,
         first.first_classified_at,
     )
+
+
+def test_should_reset_label_attempts_when_ad_classified(tmp_path: Path) -> None:
+    store, ad_id = _store_with_ad(tmp_path)
+    store.bump_label_attempts([ad_id])
+    store.bump_label_attempts([ad_id])
+
+    store.set_classification(ad_id, make_classification(), FAKE_VERSION)
+
+    with sqlite3.connect(tmp_path / "ads.db") as conn:
+        [attempts] = conn.execute("SELECT label_attempts FROM ads").fetchone()
+    assert attempts == 0

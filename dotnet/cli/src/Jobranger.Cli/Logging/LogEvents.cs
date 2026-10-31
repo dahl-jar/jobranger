@@ -12,6 +12,12 @@ internal static partial class LogEvents {
     [LoggerMessage(EventName = "source.crashed", Level = LogLevel.Error, Message = "source crashed source={Source}")]
     public static partial void SourceCrashed(ILogger logger, string source, Exception error);
 
+    [LoggerMessage(
+        EventName = "source.deadline_passed",
+        Level = LogLevel.Warning,
+        Message = "source passed its deadline, kept ads source={Source} count={Count}")]
+    public static partial void SourceDeadlinePassed(ILogger logger, string source, int count);
+
     [LoggerMessage(EventName = "nav.token.failed", Level = LogLevel.Error, Message = "public token request failed")]
     public static partial void NavTokenFailed(ILogger logger, Exception error);
 
@@ -74,4 +80,55 @@ internal static partial class LogEvents {
         Level = LogLevel.Warning,
         Message = "skipped feed item without guid, title or link source={Source}")]
     public static partial void TeamtailorItemSkipped(ILogger logger, string source);
+
+    [LoggerMessage(EventName = "run.locked", Level = LogLevel.Information, Message = "another run holds the run lock")]
+    public static partial void RunLocked(ILogger logger);
+
+    [LoggerMessage(
+        EventName = "classify.outdated",
+        Level = LogLevel.Information,
+        Message = "queued ads assessed with an older prompt count={Count}")]
+    public static partial void OutdatedQueued(ILogger logger, int count);
+
+    [LoggerMessage(
+        EventName = "classify.call_retried",
+        Level = LogLevel.Warning,
+        Message = "model call failed, ad queued again failure={Failure}")]
+    public static partial void ClassifyCallRetried(ILogger logger, string failure);
+
+    [LoggerMessage(
+        EventName = "classify.budget_paused",
+        Level = LogLevel.Information,
+        Message = "stopped model calls at the monthly limit")]
+    public static partial void ClassifyBudgetPaused(ILogger logger);
+
+    [LoggerMessage(
+        EventName = "classify.ad_over_limit",
+        Level = LogLevel.Warning,
+        Message = "skipped an ad whose model call costs more than the monthly limit ad_id={AdId}")]
+    public static partial void ClassifyAdOverLimit(ILogger logger, string adId);
+
+    [LoggerMessage(
+        EventName = "classify.provider.failed",
+        Level = LogLevel.Warning,
+        Message = "model call failed, classification stopped failure={Failure}")]
+    public static partial void ClassifyProviderFailed(ILogger logger, string failure);
+
+    [LoggerMessage(
+        EventName = "classify.spend.failed",
+        Level = LogLevel.Error,
+        Message = "could not record spend of a finished model call")]
+    public static partial void ClassifySpendFailed(ILogger logger, Exception error);
+
+    [LoggerMessage(
+        EventName = "apply.check.done",
+        Level = LogLevel.Information,
+        Message = "checked apply links checked={Checked} expired={Expired} unknown={Unknown} skipped={Skipped} blocked={Blocked}")]
+    public static partial void ApplyChecksDone(ILogger logger, int @checked, int expired, int unknown, int skipped, int blocked);
+
+    [LoggerMessage(
+        EventName = "apply.veto",
+        Level = LogLevel.Information,
+        Message = "expired an ad missing from its employer feed ad_id={AdId} source={Source}")]
+    public static partial void ApplyVetoed(ILogger logger, string adId, string source);
 }

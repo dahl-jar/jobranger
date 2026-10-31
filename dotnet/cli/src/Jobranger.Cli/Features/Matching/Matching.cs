@@ -1,4 +1,5 @@
 using System.Runtime.Versioning;
+using System.Text.Json.Nodes;
 using Jobranger.Cli.Config;
 using Microsoft.Extensions.Logging;
 
@@ -14,6 +15,9 @@ internal static class Matching {
 
     public static string AssessmentVersion(string system) => SystemPrompt.Version(system);
 
+    public static JsonObject SchemaFor(ProviderName provider) =>
+        JsonNode.Parse(provider == ProviderName.Anthropic ? AssessmentSchema.Anthropic : AssessmentSchema.OpenAI)!.AsObject();
+
     public static PromptText BuildPrompt(AdView ad, string system, DateOnly date, IReadOnlyList<PromptExample> examples) =>
         ClassifyPrompts.Build(ad, system, date, examples);
 
@@ -27,6 +31,9 @@ internal static class Matching {
         Limits limits,
         string version) =>
         Classifier.ToClassification(assessment, ad, evidence, education, limits, version);
+
+    public static bool CitesUnknownEvidence(AdAssessment assessment, IReadOnlySet<string> evidence, string version) =>
+        MatchRules.Parse(assessment.Match, version) is Match match && MatchRules.HasUnknownEvidence(match, evidence);
 
     public static Classification WithTitleLevel(string title, Classification result) =>
         Classifier.WithTitleLevel(title, result);

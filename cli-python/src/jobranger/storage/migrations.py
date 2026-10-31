@@ -185,7 +185,18 @@ DEVICES = Migration(
     ),
 )
 
-MIGRATIONS: tuple[Migration, ...] = (BASELINE, FIRST_CLASSIFICATION, DECISIONS, DEVICES)
+RESET_LABEL_ATTEMPTS = Migration(
+    5,
+    ("UPDATE ads SET label_attempts = 0 WHERE label IS NOT NULL AND label <> 'error'",),
+)
+
+MIGRATIONS: tuple[Migration, ...] = (
+    BASELINE,
+    FIRST_CLASSIFICATION,
+    DECISIONS,
+    DEVICES,
+    RESET_LABEL_ATTEMPTS,
+)
 
 
 def current_version(conn: sqlite3.Connection) -> int:

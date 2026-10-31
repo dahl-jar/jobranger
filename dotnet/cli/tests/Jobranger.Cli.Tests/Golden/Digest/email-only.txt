@@ -1,0 +1,27 @@
+jobranger · Thursday 8 October
+
+One strong fit, one partial fit and one ad shown on request this morning, picked from 40 new ads.
+
+NEW TODAY
+
+20 Oct, in 12 days · ✓ Strong fit
+<script>alert(1)</script>
+O'Brien & Sons
+Oslo · Backend · FINN
+Build backend [31m services.
+Open the ad ↗: https://ads.example.test/job/a%20b?q=x%20y#f%20g
+
+No date, apply early · ◐ Partial fit
+Company One
+Developer One
+Oslo · FINN
+Build backend services.
+
+20 Oct, in 12 days · Shown on request
+Company One
+Developer One
+Oslo · Backend · FINN
+Build backend services.
+
+Read FINN and NAV overnight.
+Stop these emails: jobranger config edit

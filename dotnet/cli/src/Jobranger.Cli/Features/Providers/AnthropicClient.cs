@@ -9,7 +9,6 @@ namespace Jobranger.Cli.Features.Providers;
 internal sealed class AnthropicClient(ApiSender sender, string key, string model, bool supportsEffort) : IModelClient {
     private const string messagesPath = "/v1/messages";
     private const string modelsPath = "/v1/models/";
-    private const int maxOutputTokens = 4096;
     private const string effort = "low";
     private const string textType = "text";
 
@@ -84,7 +83,7 @@ internal sealed class AnthropicClient(ApiSender sender, string key, string model
     }
 
     private void WriteMessage(Utf8JsonWriter writer, ClassifyPrompt prompt, JsonObject schema) {
-        writer.WriteNumber("max_tokens", maxOutputTokens);
+        writer.WriteNumber("max_tokens", RequestBodies.MaxOutputTokens);
         writer.WriteStartArray("messages");
         writer.WriteStartObject();
         writer.WriteString("role", "user");

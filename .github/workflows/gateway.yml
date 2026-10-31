@@ -1,15 +1,11 @@
 name: Test gateway
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - gateway/**
-      - .github/workflows/gateway.yml
   pull_request:
     paths:
       - gateway/**
       - .github/workflows/gateway.yml
+  workflow_call:
   workflow_dispatch:
 
 permissions:

@@ -12,6 +12,10 @@ public sealed class BudgetTests : IDisposable {
     private const decimal inFlightUsd = 0.01m;
     private const decimal oneMicroUsd = 0.000001m;
     private const int windowAds = 12;
+    private const long oneMtok = 1_000_000;
+    private const long promptCharsPerMtok = 2_000_000;
+    private const long systemChars = 100;
+    private const long typicalPromptChars = 2_230;
 
     private static readonly DateOnly today = new(2026, 10, 15);
     private static readonly ModelPrices free = new(0m, 0m, 0m, 0m, 0m);
@@ -44,41 +48,70 @@ public sealed class BudgetTests : IDisposable {
 
     public static TheoryData<decimal> ZeroLimits() => [0m, 0.0000005m];
 
+    public static TheoryData<decimal?, bool> FittingLimits() => new() {
+        { AdUsd + CacheWriteUsd + oneMicroUsd, true },
+        { 10m, false },
+        { null, true },
+    };
+
     public void Dispose() => db.Dispose();
 
     [Fact]
     public void ShouldStopCalls_WhenSpendEqualsLimit() {
-        bool allowed = budget.Allowed(Config(inFlightUsd + AdUsd), Prices, today, inFlightUsd);
+        bool allowed = budget.Allowed(Config(inFlightUsd + AdUsd), Prices, today, inFlightUsd, AdUsd);
 
         Assert.False(allowed);
     }
 
     [Fact]
     public void ShouldReserveCacheWrite_WhenNoCallIsInFlight() {
-        bool allowed = budget.Allowed(Config(AdUsd + CacheWriteUsd), Prices, today, 0m);
+        bool allowed = budget.Allowed(Config(AdUsd + CacheWriteUsd), Prices, today, 0m, AdUsd);
 
         Assert.False(allowed);
     }
 
     [Fact]
     public void ShouldSkipCacheWrite_WhenCallsAreInFlight() {
-        bool allowed = budget.Allowed(Config(inFlightUsd + AdUsd + oneMicroUsd), Prices, today, inFlightUsd);
+        bool allowed = budget.Allowed(Config(inFlightUsd + AdUsd + oneMicroUsd), Prices, today, inFlightUsd, AdUsd);
 
         Assert.True(allowed);
+    }
+
+    [Fact]
+    public void ShouldFlagCallOverLimit_WhenCallAndCacheWriteReachLimit() {
+        bool exceeds = BudgetEntry.ExceedsLimit(
+            Config(AdUsd + CacheWriteUsd + oneMicroUsd), Prices, AdUsd, AdUsd + oneMicroUsd);
+
+        Assert.True(exceeds);
+    }
+
+    [Theory]
+    [MemberData(nameof(FittingLimits))]
+    public void ShouldNotFlagCallOverLimit_WhenCallCanFitLimit(decimal? limit, bool priced) {
+        bool exceeds = BudgetEntry.ExceedsLimit(Config(limit), priced ? Prices : null, AdUsd, AdUsd);
+
+        Assert.False(exceeds);
+    }
+
+    [Fact]
+    public void ShouldNotFlagCallOverLimit_WhenTypicalAdCannotFitLimit() {
+        bool exceeds = BudgetEntry.ExceedsLimit(Config(AdUsd + CacheWriteUsd), Prices, AdUsd, 1m);
+
+        Assert.False(exceeds);
     }
 
     [Fact]
     public void ShouldCountReservation_WhenCallsAreInFlight() {
         Spend(today, 0.05);
 
-        bool allowed = budget.Allowed(Config(0.10m), Prices, today, 0.05m);
+        bool allowed = budget.Allowed(Config(0.10m), Prices, today, 0.05m, AdUsd);
 
         Assert.False(allowed);
     }
 
     [Fact]
     public void ShouldStopCalls_WhenLimitIsZero() {
-        bool allowed = budget.Allowed(Config(0m), Prices, today, 0m);
+        bool allowed = budget.Allowed(Config(0m), Prices, today, 0m, AdUsd);
 
         Assert.False(allowed);
     }
@@ -87,14 +120,23 @@ public sealed class BudgetTests : IDisposable {
     [MemberData(nameof(OutOfRangeAmounts))]
     public void ShouldRejectReservation_WhenOutsideAmountRange(decimal reserved) {
         ArgumentOutOfRangeException refused = Assert.Throws<ArgumentOutOfRangeException>(
-            () => budget.Allowed(Config(0.10m), Prices, today, reserved));
+            () => budget.Allowed(Config(0.10m), Prices, today, reserved, AdUsd));
 
         Assert.StartsWith("reserved_usd must be between 0 and 1000000 USD", refused.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [MemberData(nameof(OutOfRangeAmounts))]
+    public void ShouldRejectCallEstimate_WhenOutsideAmountRange(decimal callUsd) {
+        ArgumentOutOfRangeException refused = Assert.Throws<ArgumentOutOfRangeException>(
+            () => budget.Allowed(Config(0.10m), Prices, today, 0m, callUsd));
+
+        Assert.StartsWith("call_usd must be between 0 and 1000000 USD", refused.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void ShouldStopCalls_WhenReservationIsMaxAmount() {
-        bool allowed = budget.Allowed(Config(0.10m), Prices, today, AppConfigValidator.MaxAmountUsd);
+        bool allowed = budget.Allowed(Config(0.10m), Prices, today, AppConfigValidator.MaxAmountUsd, AdUsd);
 
         Assert.False(allowed);
     }
@@ -103,38 +145,47 @@ public sealed class BudgetTests : IDisposable {
     public void ShouldAllowCall_WhenModelIsFreeAndLimitIsUsed() {
         Spend(today, 1.0);
 
-        bool allowed = budget.Allowed(Config(1m), free, today, 0m);
+        bool allowed = budget.Allowed(Config(1m), free, today, 0m, AdUsd);
 
         Assert.True(allowed);
     }
 
     [Fact]
     public void ShouldStopCalls_WhenOnlyInputIsPriced() {
-        bool allowed = budget.Allowed(Config(0m), new ModelPrices(1m, 0m, 0m, 0m, 0m), today, 0m);
+        bool allowed = budget.Allowed(Config(0m), new ModelPrices(1m, 0m, 0m, 0m, 0m), today, 0m, AdUsd);
 
         Assert.False(allowed);
     }
 
     [Fact]
-    public void ShouldAllowCall_WhenCheckedCountsPassLongRange() {
+    public void ShouldEstimateAdCost_WhenCheckedCountsPassLongRange() {
         usage.Add(today.AddDays(-3), new UsageCounts(CostUsd: 0.5, AdsChecked: long.MaxValue));
         usage.Add(today.AddDays(-2), new UsageCounts(CostUsd: 0.5, AdsChecked: long.MaxValue));
 
-        bool allowed = budget.Allowed(Config(10m), Prices, today, 0m);
+        decimal estimate = budget.EstimateAdCost(Prices, false, today);
 
-        Assert.True(allowed);
+        Assert.Equal(AdUsd, estimate);
     }
 
     [Fact]
     public void ShouldStopCalls_WhenLimitIsSetAndPriceIsUnknown() {
-        bool allowed = budget.Allowed(Config(10m), null, today, 0m);
+        bool allowed = budget.Allowed(Config(10m), null, today, 0m, AdUsd);
 
         Assert.False(allowed);
     }
 
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    public void ShouldNotFlagUnpricedLimit_WhenLimitCanBeChecked(bool limited, bool priced) {
+        bool flagged = BudgetEntry.UnpricedLimit(Config(limited ? 1m : null), priced ? Prices : null);
+
+        Assert.False(flagged);
+    }
+
     [Fact]
     public void ShouldAllowCall_WhenNoLimitAndPriceIsUnknown() {
-        bool allowed = budget.Allowed(Config(null), null, today, 0m);
+        bool allowed = budget.Allowed(Config(null), null, today, 0m, AdUsd);
 
         Assert.True(allowed);
     }
@@ -144,7 +195,7 @@ public sealed class BudgetTests : IDisposable {
     public void ShouldIgnoreSpend_WhenSpentInAnotherMonth(DateOnly spentOn, DateOnly day) {
         Spend(spentOn, 5.0);
 
-        bool allowed = budget.Allowed(Config(1m), Prices, day, 0m);
+        bool allowed = budget.Allowed(Config(1m), Prices, day, 0m, AdUsd);
 
         Assert.True(allowed);
     }
@@ -203,6 +254,27 @@ public sealed class BudgetTests : IDisposable {
         decimal estimate = budget.EstimateAdCost(Prices, batch, today);
 
         Assert.Equal(expected, estimate);
+    }
+
+    [Fact]
+    public void ShouldPricePromptAndMaxOutput_WhenEstimatingCall() {
+        decimal estimate = budget.EstimateCallCost(Prices, promptCharsPerMtok, oneMtok, today);
+
+        Assert.Equal(Prices.Input + Prices.Output, estimate);
+    }
+
+    [Fact]
+    public void ShouldAddMeanAdLength_WhenSizingTypicalPrompt() {
+        long promptChars = BudgetEntry.TypicalPromptChars(systemChars);
+
+        Assert.Equal(typicalPromptChars, promptChars);
+    }
+
+    [Fact]
+    public void ShouldReserveAtLeastAdCost_WhenPromptIsShort() {
+        decimal estimate = budget.EstimateCallCost(Prices, 0, 0, today);
+
+        Assert.Equal(AdUsd, estimate);
     }
 
     [Theory]

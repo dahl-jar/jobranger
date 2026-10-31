@@ -1,0 +1,50 @@
+jobranger · torsdag 8. oktober
+
+4 gode treff i ettermiddag, valgt ut blant 30 nye annonser.
+
+SØK DENNE UKEN
+
+13. okt, om 5 dager · ✓ Passer godt
+Company One
+Developer One
+Oslo · Backend · FINN
+Build backend services.
+Åpne annonsen ↗: https://ads.example.test/job/1
+Marker som søkt: https://site.example.test/base/app/ad?id=finn%3A3&action=applied
+Ikke for meg: https://site.example.test/base/app/ad?id=finn%3A3&action=not_for_me
+
+9. okt, i morgen · ✓ Passer godt
+Company One
+Developer One
+Oslo · Backend · FINN
+Build backend services.
+Åpne annonsen ↗: https://ads.example.test/job/1
+Marker som søkt: https://site.example.test/base/app/ad?id=finn%3A2&action=applied
+Ikke for meg: https://site.example.test/base/app/ad?id=finn%3A2&action=not_for_me
+
+8. okt, i dag · ✓ Passer godt
+Company One
+Developer One
+Oslo · Backend · FINN
+Build backend services.
+Åpne annonsen ↗: https://ads.example.test/job/1
+Marker som søkt: https://site.example.test/base/app/ad?id=finn%3A1&action=applied
+Ikke for meg: https://site.example.test/base/app/ad?id=finn%3A1&action=not_for_me
+
+NYE I DAG
+
+20. okt, om 12 dager · ✓ Passer godt
+Company One
+Developer One
+Oslo · Backend · Karriereside
+Build backend services.
+Åpne annonsen ↗: https://ads.example.test/job/1
+Marker som søkt: https://site.example.test/base/app/ad?id=teamtailor%3Aacme%3A4&action=applied
+Ikke for meg: https://site.example.test/base/app/ad?id=teamtailor%3Aacme%3A4&action=not_for_me
+
+10 skjulte: 3 senior · 3 master · 2 krever 2+ år · 1 annen rolle · 1 annen grunn · vis: https://site.example.test/base/app/hidden
+
+Leste FINN og 2 karrieresider i dag.
+Åpne jobranger: https://site.example.test/base/app
+Innstillinger: https://site.example.test/base/app/settings
+Meld av: https://site.example.test/base/app/settings/delivery

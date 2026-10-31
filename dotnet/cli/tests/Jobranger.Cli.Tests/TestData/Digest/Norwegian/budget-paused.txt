@@ -1,0 +1,17 @@
+jobranger · torsdag 8. oktober
+
+1 godt treff i morges, valgt ut blant 5 nye annonser.
+
+NYE I DAG
+
+20. okt, om 12 dager · ✓ Passer godt
+Company One
+Developer One
+Oslo · Backend · FINN
+Build backend services.
+Åpne annonsen ↗: https://ads.example.test/job/1
+
+Leste FINN og NAV i natt.
+12 tidligere stillinger er avsluttet siden forrige kjøring.
+AI-sjekkene er satt på pause til neste måned: 1 annonse venter.
+Stopp disse e-postene: jobranger config edit

@@ -10,6 +10,7 @@ namespace Jobranger.Cli.Config.Yaml;
 internal static partial class YamlEmitter {
     private const int maxWidth = int.MaxValue;
     private const int indent = 2;
+    private const char tab = '\t';
     private const long afterEveryKey = long.MaxValue;
     private const long ranksPerKey = 2;
     private const string boolPattern =
@@ -131,7 +132,7 @@ internal static partial class YamlEmitter {
     };
 
     private static Scalar TextScalar(string text) =>
-        ResolvesToOtherType(text)
+        NeedsQuotes(text)
             ? new Scalar(null, null, text, ScalarStyle.DoubleQuoted, isPlainImplicit: false, isQuotedImplicit: true)
             : PlainScalar(text);
 
@@ -141,8 +142,9 @@ internal static partial class YamlEmitter {
     private static bool IsBlock(JsonNode? node) =>
         node is JsonObject || node is JsonArray list && list.Any(item => item is JsonObject or JsonArray);
 
-    private static bool ResolvesToOtherType(string text) =>
-        YamlNull.Literals.Contains(text) || CoreScalar().IsMatch(text);
+    private static bool NeedsQuotes(string text) =>
+        YamlNull.Literals.Contains(text) || CoreScalar().IsMatch(text)
+            || text.Any(character => character == tab || YamlCharacters.IsLineSeparator(character));
 
     [GeneratedRegex(boolPattern + "|" + numberPattern + "|" + timestampPattern, RegexOptions.CultureInvariant)]
     private static partial Regex CoreScalar();

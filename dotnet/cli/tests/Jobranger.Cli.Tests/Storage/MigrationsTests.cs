@@ -9,6 +9,7 @@ namespace Jobranger.Cli.Tests.Storage;
 [UnsupportedOSPlatform("windows")]
 public sealed class MigrationsTests : IDisposable {
     private const int openers = 3;
+    private const int devicesVersion = 4;
 
     private static readonly Migration first = new(1, ["CREATE TABLE state (key TEXT PRIMARY KEY, value TEXT)"]);
     private static readonly Migration second = new(2, ["CREATE TABLE extra (id INTEGER PRIMARY KEY)"]);
@@ -91,6 +92,22 @@ public sealed class MigrationsTests : IDisposable {
 
         Assert.Equal(["a|checked-a", "b|seen-b", "c|NULL"],
             TestDatabase.Rows(connection, "SELECT id, first_classified_at FROM ads ORDER BY id"));
+    }
+
+    [Fact]
+    public void ShouldResetLabelAttempts_WhenUpgradingFromVersionFour() {
+        Migrations.Migrate(connection, [.. Migrations.All.Where(migration => migration.Version <= devicesVersion)]);
+        TestDatabase.Execute(connection,
+            "INSERT INTO ads (id, source, source_id, title, company, url, dedup_key, first_seen, label, "
+            + "label_attempts) VALUES "
+            + "('a', 'finn', '1', 't', 'c', 'u', 'k', 'seen-a', 'junior', 2), "
+            + "('b', 'finn', '2', 't', 'c', 'u', 'k', 'seen-b', 'error', 2), "
+            + "('c', 'finn', '3', 't', 'c', 'u', 'k', 'seen-c', NULL, 2)");
+
+        Migrations.Migrate(connection, Migrations.All);
+
+        Assert.Equal(["a|0", "b|2", "c|2"],
+            TestDatabase.Rows(connection, "SELECT id, label_attempts FROM ads ORDER BY id"));
     }
 
     private List<string> Tables() => TestDatabase.Rows(connection, "SELECT name FROM sqlite_master WHERE type = 'table'");

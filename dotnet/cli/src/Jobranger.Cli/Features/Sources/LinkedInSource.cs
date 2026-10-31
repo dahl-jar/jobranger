@@ -39,7 +39,7 @@ internal sealed class LinkedInSource : ISource {
                 }
             }
         } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-            return Batch(listings, null);
+            return Batch(listings, null) with { Partial = true };
         } catch (Exception error) when (SourceHttp.IsFailure(error, cancellationToken)) {
             throw new SourceException("linkedin search failed", Batch(listings, null), error);
         }
