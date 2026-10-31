@@ -5,8 +5,8 @@ using Microsoft.Extensions.Logging.Testing;
 namespace Jobranger.Cli.Tests.Features.Link;
 
 public sealed class RelayLinkRetryTests : IAsyncDisposable {
-    private const string handle = "cli-handle";
-    private const string connectedEvent = "link.relay.connected";
+    private const string replacedEvent = "link.relay.replaced";
+    private const string retryingEvent = "link.relay.retrying";
 
     private static readonly TimeSpan connectedLong = TimeSpan.FromSeconds(60);
 
@@ -37,11 +37,26 @@ public sealed class RelayLinkRetryTests : IAsyncDisposable {
         Run(relay);
         TimeSpan first = await time.NextWaitAsync();
         int attemptsBeforeWait = relay.Handles.Count;
+        int retriesBeforeWait = logger.Collector.GetSnapshot().Count(record => record.Id.Name == retryingEvent);
 
         time.Advance(first);
 
         await TestWaits.UntilAsync(() => relay.Handles.Count == 2);
-        Assert.Equal((TimeSpan.FromSeconds(1), 1), (first, attemptsBeforeWait));
+        Assert.Equal((TimeSpan.FromSeconds(1), 1, 1), (first, attemptsBeforeWait, retriesBeforeWait));
+    }
+
+    [Fact]
+    public async Task ShouldStopReconnecting_WhenReplacedArrivesWithoutClose() {
+        relay.ConnectFailure = null;
+        relay.Replace();
+
+        Run(relay);
+
+        await running.WaitAsync(TestWaits.Step, Token);
+        IReadOnlyList<FakeLogRecord> records = logger.Collector.GetSnapshot();
+        Assert.Single(relay.Handles);
+        Assert.Single(records, record => record.Id.Name == replacedEvent);
+        Assert.DoesNotContain(records, record => record.Id.Name == retryingEvent);
     }
 
     [Fact]
@@ -51,7 +66,7 @@ public sealed class RelayLinkRetryTests : IAsyncDisposable {
         TimeSpan grown = await time.NextWaitAsync();
         relay.ConnectFailure = null;
         time.Advance(grown);
-        await TestWaits.UntilAsync(() => logger.Collector.GetSnapshot().Any(record => record.Id.Name == connectedEvent));
+        await RelayLinkLogs.ConnectedAsync(logger);
         time.Advance(connectedLong);
 
         relay.Disconnect();
@@ -77,6 +92,6 @@ public sealed class RelayLinkRetryTests : IAsyncDisposable {
 
     private static Task<string> NextHandleAsync(CancellationToken cancellationToken) {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(handle);
+        return Task.FromResult(FakeRelay.CliHandle);
     }
 }
