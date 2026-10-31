@@ -275,13 +275,19 @@ def test_should_give_senior_kind_when_ad_level_is_not_selected() -> None:
     assert (hidden.kind, hidden.detail) == ("senior", "Asks for Tech lead level")
 
 
-def test_should_render_requires_years_detail() -> None:
-    ad = make_ad(match=make_match(required_experience_years=4.0))
+@pytest.mark.parametrize(
+    ("years", "detail"),
+    [(4.0, "Requires 4 years"), (1, "Requires 1 year")],
+    ids=["four", "one"],
+)
+def test_should_render_requires_years_detail(years: float, detail: str) -> None:
+    ad = make_ad(match=make_match(required_experience_years=years))
+    limits = Limits(years=frozenset({"1-3"}))
 
-    hidden = hidden_reason(ad, FAKE_VERSION, targets())
+    hidden = hidden_reason(ad, FAKE_VERSION, targets(limits=limits))
 
     assert hidden is not None
-    assert hidden.detail == "Requires 4 years"
+    assert hidden.detail == detail
 
 
 def test_should_hide_ad_with_stale_version_as_other() -> None:
@@ -345,7 +351,7 @@ def test_should_render_only_limit_lines() -> None:
     rules = limit_rules(Limits(levels=frozenset({"junior"}), years=frozenset({"1-3"})))
 
     assert rules == "\n".join(
-        [YEAR_CAP_RULE.format(years=3), SENIOR_UNSUITABLE_RULE, MASTER_RULE]
+        [YEAR_CAP_RULE.format(years="3 years"), SENIOR_UNSUITABLE_RULE, MASTER_RULE]
     )
 
 

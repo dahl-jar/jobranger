@@ -10,6 +10,10 @@ namespace Jobranger.Cli.Config;
 
 internal static class ConfigFile {
     private const char byteOrderMark = '\uFEFF';
+    private const char carriageReturn = '\r';
+    private const char newLine = '\n';
+    private const string windowsLineEnd = "\r\n";
+    private const string unixLineEnd = "\n";
 
     private static readonly UTF8Encoding strictUtf8 =
         new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
@@ -66,7 +70,9 @@ internal static class ConfigFile {
             throw new ConfigInvalidException(path, [new ConfigError(Path.GetFileName(path), ConfigProblem.Unreadable)]);
         }
         try {
-            string text = strictUtf8.GetString(bytes);
+            string text = strictUtf8.GetString(bytes)
+                .Replace(windowsLineEnd, unixLineEnd, StringComparison.Ordinal)
+                .Replace(carriageReturn, newLine);
             return text.Length > 0 && text[0] == byteOrderMark ? text[1..] : text;
         } catch (DecoderFallbackException) {
             throw new ConfigInvalidException(path, [new ConfigError(Path.GetFileName(path), ConfigProblem.NotUtf8)]);

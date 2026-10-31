@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, get_args
 
 import pytest
+from factories import CONTRACTS
 from jsonschema import Draft202012Validator
 from pydantic import ValidationError
 from ruamel.yaml import YAML
@@ -32,20 +33,6 @@ from jobranger.contract.fields import decode_base64, encode_url, parse_timestamp
 from jobranger.contract.payload import Chunk, Payload
 from jobranger.matching.rules import DisplayFit
 
-CONTRACTS_DIR = "contracts"
-CONTRACTS_MARKER = Path(CONTRACTS_DIR) / "payload.schema.json"
-
-
-def find_contracts(start: Path) -> Path:
-    root = next(
-        (parent for parent in start.parents if (parent / CONTRACTS_MARKER).is_file()),
-        None,
-    )
-    assert root is not None, f"no folder above {start} holds {CONTRACTS_MARKER}"
-    return root / CONTRACTS_DIR
-
-
-CONTRACTS = find_contracts(Path(__file__).resolve())
 ROOT = CONTRACTS.parent
 FIXTURES = CONTRACTS / "fixtures"
 WEB_CONTRACT = ROOT / "web" / "src" / "features" / "relay" / "contract"
