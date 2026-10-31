@@ -22,11 +22,10 @@ internal static class TerminalLines {
     }
 
     public static string MatchLine(DigestCard card, IMessages messages) {
-        string title = string.IsNullOrEmpty(card.DisplayTitle) ? card.Title : card.DisplayTitle;
         string date = card.DeadlineDate is DateOnly due ? messages.DigestShortDate(due) : messages.ReportNoDate;
         return matchIndent
             + Column(FitLabel(card.Fit, messages), fitWidth)
-            + Column(CardText.Cut(title, titleWidth), titleWidth)
+            + Column(CardText.Cut(card.ShownTitle, titleWidth), titleWidth)
             + Column(CardText.Cut(card.Company, companyWidth), companyWidth)
             + Column(CardText.Cut(card.Location, locationWidth), locationWidth)
             + date;

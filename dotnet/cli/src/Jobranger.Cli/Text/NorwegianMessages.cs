@@ -164,6 +164,8 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string FileUnreadable(string path) => $"Kan ikke lese {path}.";
 
+    public string FileAccessFailed => "Kan ikke lese en jobranger-fil. Sjekk tilgangene til mappen.";
+
     public Language Language => Language.Nb;
 
     public string DigestSubject(int matches, string date) => $"jobranger: {matches} treff, {date}";

@@ -76,7 +76,7 @@ public sealed class TerminalLinesTests {
     }
 
     [Fact]
-    public void ShouldCutField_WhenTextPassesColumn() {
+    public void ShouldCutTitle_WhenTextPassesColumn() {
         DigestCard card = matchCard with { Title = new string('x', longTitleLength) };
 
         Assert.Equal(

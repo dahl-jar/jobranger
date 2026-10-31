@@ -94,6 +94,20 @@ public sealed class LogsCommandTests : IDisposable {
     }
 
     [Fact]
+    public async Task ShouldPrintFileAccessFailed_WhenLogFolderIsLocked() {
+        StartRun();
+        Directory.CreateDirectory(paths.LogDir());
+        File.SetUnixFileMode(paths.LogDir(), UnixFileMode.None);
+
+        int exit = await RunAsync();
+
+        File.SetUnixFileMode(paths.LogDir(), FileModes.OwnerOnlyDir);
+        Assert.Equal(
+            (CliExitCodes.Failure, CommandFixtures.FileAccessFailed),
+            (exit, console.Output));
+    }
+
+    [Fact]
     public void ShouldOfferLogsCommand_WhenRootIsBuilt() {
         RootCommand root = new(CliServices.Create(clock, console.Console, console.ErrorConsole, environment));
 

@@ -42,9 +42,9 @@ internal sealed class ReportCommand : Command {
                 output.WriteLine(line);
             }
             return CliExitCodes.Ok;
-        } catch (Exception error) when (ReadFailures.Covers(error)) {
-            LogEvents.ReportFailed(logger, ReadFailures.Code(error));
-            foreach (string line in ReadFailures.Lines(error, paths, messages)) {
+        } catch (Exception error) when (ReadFailures.Of(error, paths, messages) is ReadFailure failure) {
+            LogEvents.ReportFailed(logger, failure.Code);
+            foreach (string line in failure.Lines) {
                 output.WriteLine(line);
             }
             return CliExitCodes.Failure;

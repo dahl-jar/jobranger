@@ -77,21 +77,21 @@ public sealed class RunConversionsTests {
     }
 
     [Fact]
+    public void ShouldLeaveStrongMatchOff_WhenStatusIsStretch() {
+        AdView view = MatchingFixtures.Ad with { Match = MatchingFixtures.StrongMatch with { Status = "stretch" } };
+
+        DigestCard card = RunConversions.ToDigestCard(view, adUrl, MatchingFixtures.AllRoles());
+
+        Assert.False(card.IsStrongMatch);
+    }
+
+    [Fact]
     public void ShouldMarkApplyExpired_WhenApplyStatusIsExpired() {
         AdView view = MatchingFixtures.Ad with { ApplyStatus = "expired" };
 
         DigestCard card = RunConversions.ToDigestCard(view, adUrl, MatchingFixtures.AllRoles());
 
         Assert.True(card.ApplyExpired);
-    }
-
-    [Fact]
-    public void ShouldParseDeadline_WhenAdHasDeadline() {
-        AdView view = MatchingFixtures.Ad with { Deadline = "2026-10-12" };
-
-        DigestCard card = RunConversions.ToDigestCard(view, adUrl, MatchingFixtures.AllRoles());
-
-        Assert.Equal(new DateOnly(2026, 10, 12), card.DeadlineDate);
     }
 
     [Theory]

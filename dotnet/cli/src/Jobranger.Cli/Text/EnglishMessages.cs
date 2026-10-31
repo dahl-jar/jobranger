@@ -160,6 +160,8 @@ internal sealed class EnglishMessages : IMessages {
 
     public string FileUnreadable(string path) => $"Cannot read {path}.";
 
+    public string FileAccessFailed => "Cannot read a jobranger file. Check the folder permissions.";
+
     public Language Language => Language.En;
 
     public string DigestSubject(int matches, string date) =>

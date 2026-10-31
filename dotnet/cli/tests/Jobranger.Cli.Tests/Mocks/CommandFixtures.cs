@@ -6,6 +6,8 @@ using Jobranger.Cli.Logging;
 namespace Jobranger.Cli.Tests.Mocks;
 
 internal static class CommandFixtures {
+    public const string FileAccessFailed = "Cannot read a jobranger file. Check the folder permissions.\n";
+
     private const string logFileName = "2026-10-09.jsonl";
 
     public static Hashtable Environment(TempDir temp, string language) => new() {

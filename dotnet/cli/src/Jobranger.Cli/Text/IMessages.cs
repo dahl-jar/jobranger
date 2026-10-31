@@ -143,6 +143,8 @@ internal interface IMessages {
 
     string FileUnreadable(string path);
 
+    string FileAccessFailed { get; }
+
     Language Language { get; }
 
     string DigestSubject(int matches, string date);

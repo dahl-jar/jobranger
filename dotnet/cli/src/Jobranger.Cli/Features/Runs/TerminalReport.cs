@@ -31,7 +31,7 @@ internal static class TerminalReport {
                 RanAt = now,
             },
             today);
-        return Rendered(data, messages);
+        return Render(data, messages);
     }
 
     private static List<Ad> Candidates(AdsEntry ads, DateOnly today, DateTimeOffset since, string version, Targets targets) {
@@ -52,7 +52,7 @@ internal static class TerminalReport {
         return cards;
     }
 
-    private static List<string> Rendered(DigestData data, IMessages messages) {
+    private static List<string> Render(DigestData data, IMessages messages) {
         List<string> lines = [];
         AddBlock(lines, messages.DigestApplySoonTitle, data.ApplySoon, messages);
         AddBlock(lines, messages.DigestNewTodayTitle, data.NewToday, messages);

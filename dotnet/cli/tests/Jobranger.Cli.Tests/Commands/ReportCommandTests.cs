@@ -25,9 +25,10 @@ public sealed class ReportCommandTests : IDisposable {
     private const string noMatches = "No matches yet. Run one with: jobranger run\n";
     private const string noMatchesNorwegian = "Ingen treff ennå. Start en kjøring med: jobranger run\n";
     private const string strongLine = "  Strong fit    Software Developer     Org One AS        Bergen      12 Oct";
-    private const string partialDate = "no date\n";
     private const string applySoonTitle = "Apply this week";
-    private const string hiddenWord = "hidden";
+    private const string partialReport =
+        "New today\n  Partial fit   Backend Developer      Org Two AS        Oslo        no date\n";
+    private const string accessFailedNorwegian = "Kan ikke lese en jobranger-fil. Sjekk tilgangene til mappen.\n";
     private const string englishReport =
         "Apply this week\n"
         + "  Strong fit    Software Developer     Org One AS        Bergen      12 Oct\n"
@@ -44,7 +45,9 @@ public sealed class ReportCommandTests : IDisposable {
         + "  Passer delvis Backend Developer      Org Two AS        Oslo        ingen dato\n"
         + "\n"
         + "1 skjult: 1 senior\n";
+    private const string dataDirVariable = "JOBRANGER_DATA_DIR";
     private const int corruptBytes = 4096;
+    private const double requiredYears = 5;
 
     private static readonly Ad strongAd = AdFixtures.Numbered(1) with {
         Title = "Software Developer",
@@ -90,7 +93,7 @@ public sealed class ReportCommandTests : IDisposable {
     [Theory]
     [InlineData(Locales.English, englishReport)]
     [InlineData(Locales.Norwegian, norwegianReport)]
-    public async Task ShouldPrintBlocksAndHiddenLine_WhenMatchesExist(string lang, string report) {
+    public async Task ShouldPrintReport_WhenMatchesExist(string lang, string report) {
         environment["LANG"] = lang;
         string version = SaveConfig();
         AddAd(strongAd, juniorLabel, Fit.Strong, version);
@@ -131,20 +134,9 @@ public sealed class ReportCommandTests : IDisposable {
         AddAd(partialAd, juniorLabel, Fit.Stretch, version);
         StartRun();
 
-        await RunAsync();
+        int exit = await RunAsync();
 
-        Assert.DoesNotContain(applySoonTitle, console.Output, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task ShouldEndAfterLastMatch_WhenNothingIsHidden() {
-        string version = SaveConfig();
-        AddAd(partialAd, juniorLabel, Fit.Stretch, version);
-        StartRun();
-
-        await RunAsync();
-
-        Assert.EndsWith(partialDate, console.Output, StringComparison.Ordinal);
+        Assert.Equal((CliExitCodes.Ok, partialReport), (exit, console.Output));
     }
 
     [Fact]
@@ -235,9 +227,60 @@ public sealed class ReportCommandTests : IDisposable {
         AddAd(seniorAd, seniorLabel, Fit.Strong, version, new FakeTimeProvider(AdFixtures.Now.AddDays(-1)));
         StartRun();
 
+        int exit = await RunAsync();
+
+        Assert.Equal((CliExitCodes.Ok, partialReport), (exit, console.Output));
+    }
+
+    [Fact]
+    public async Task ShouldLeaveOutReportedAd_WhenAssessmentVersionIsOld() {
+        SaveConfig();
+        AddAd(strongAd, juniorLabel, Fit.Strong, AdFixtures.OutdatedVersion);
+        StartRun();
+        WithStore(store => store.MarkReported([strongAd.Id], AdFixtures.Now.AddMinutes(1)));
+
         await RunAsync();
 
-        Assert.DoesNotContain(hiddenWord, console.Output, StringComparison.Ordinal);
+        Assert.Equal(noMatches, console.Output);
+    }
+
+    [Fact]
+    public async Task ShouldLeaveOutHiddenCount_WhenUserAskedToSeeAd() {
+        string version = SaveConfig();
+        AddAd(seniorAd, seniorLabel, Fit.Strong, version);
+        WithStore(store => store.MarkAd(seniorAd.Id, AdAction.ShowAnyway, AdFixtures.Now));
+        StartRun();
+
+        int exit = await RunAsync();
+
+        Assert.Equal(
+            (CliExitCodes.Ok, "New today\n  Strong fit    Senior Developer       Org Three AS      Bergen      no date\n"),
+            (exit, console.Output));
+    }
+
+    [Fact]
+    public async Task ShouldPrintYearCap_WhenAdNeedsMoreYears() {
+        string version = SaveConfig();
+        AddAd(partialAd, juniorLabel, Fit.Stretch, version);
+        AddAd(seniorAd, juniorLabel, Fit.Strong, version, years: requiredYears);
+        StartRun();
+
+        int exit = await RunAsync();
+
+        Assert.Equal((CliExitCodes.Ok, $"{partialReport}\n1 hidden: 1 need 1+ yrs\n"), (exit, console.Output));
+    }
+
+    [Fact]
+    public async Task ShouldLeaveOutAd_WhenDeadlinePassedInLocalTime() {
+        clock.SetUtcNow(new DateTimeOffset(2026, 10, 9, 23, 0, 0, TimeSpan.Zero));
+        clock.SetLocalTimeZone(TimeZoneInfo.CreateCustomTimeZone("plus-two", TimeSpan.FromHours(2), "plus-two", "plus-two"));
+        string version = SaveConfig();
+        AddAd(strongAd with { Deadline = "2026-10-09" }, juniorLabel, Fit.Strong, version);
+        StartRun();
+
+        await RunAsync();
+
+        Assert.Equal(noMatches, console.Output);
     }
 
     [Theory]
@@ -306,6 +349,36 @@ public sealed class ReportCommandTests : IDisposable {
             (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
     }
 
+    [Theory]
+    [InlineData(Locales.English, CommandFixtures.FileAccessFailed)]
+    [InlineData(Locales.Norwegian, accessFailedNorwegian)]
+    public async Task ShouldPrintFileAccessFailed_WhenDataParentIsReadOnly(string lang, string line) {
+        environment["LANG"] = lang;
+        string parent = temp.File("locked");
+        Directory.CreateDirectory(parent);
+        File.SetUnixFileMode(parent, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+        environment[dataDirVariable] = Path.Combine(parent, "data");
+
+        int exit = await RunAsync();
+
+        Assert.Equal(
+            (CliExitCodes.Failure, line, "report.failed file_unreadable"),
+            (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
+    }
+
+    [Fact]
+    public async Task ShouldPrintFileAccessFailed_WhenDataParentIsFile() {
+        string parent = temp.File("taken");
+        File.WriteAllText(parent, string.Empty);
+        environment[dataDirVariable] = Path.Combine(parent, "data");
+
+        int exit = await RunAsync();
+
+        Assert.Equal(
+            (CliExitCodes.Failure, CommandFixtures.FileAccessFailed, "report.failed file_unreadable"),
+            (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
+    }
+
     [Fact]
     public void ShouldOfferReportCommand_WhenRootIsBuilt() {
         RootCommand root = new(CliServices.Create(clock, console.Console, console.ErrorConsole, environment));
@@ -319,15 +392,14 @@ public sealed class ReportCommandTests : IDisposable {
         return PromptSetup.Load(config, paths).Version;
     }
 
-    private void AddAd(Ad ad, string label, string status, string version) => AddAd(ad, label, status, version, clock);
-
-    private void AddAd(Ad ad, string label, string status, string version, TimeProvider seenAt) {
+    private void AddAd(Ad ad, string label, string status, string version, TimeProvider? seenAt = null, double? years = null) {
         using SqliteConnection connection = Database.Open(paths.DbPath(), NullLogger.Instance);
-        new AdStore(connection, seenAt).Upsert(ad);
+        new AdStore(connection, seenAt ?? clock).Upsert(ad);
+        Match match = MatchingFixtures.StrongMatch with { Status = status, RequiredExperienceYears = years, Version = version };
         StoredClassification classification = AdFixtures.Classification with {
             Label = label,
             DisplayTitle = ad.DisplayTitle,
-            Assessment = MatchingEntry.EncodeMatch(MatchingFixtures.StrongMatch with { Status = status, Version = version }, []),
+            Assessment = MatchingEntry.EncodeMatch(match, []),
         };
         new AdsEntry(connection, clock).SetClassification(ad.Id, classification, version);
     }

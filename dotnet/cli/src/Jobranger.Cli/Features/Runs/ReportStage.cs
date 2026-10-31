@@ -18,11 +18,11 @@ internal sealed class ReportStage(AdsEntry ads, HttpClient http, TimeProvider ti
     private static readonly string activeStatus = WireNames.Of(ApplyStatus.Active);
 
     public static Dictionary<HiddenKind, int> HiddenCounts(
-        AdsEntry ads, DateTimeOffset since, string version, Targets targets, IReadOnlyList<string> reported) {
-        HashSet<string> reportedIds = [.. reported];
+        AdsEntry ads, DateTimeOffset since, string version, Targets targets, IReadOnlyList<string> listed) {
+        HashSet<string> listedIds = [.. listed];
         Dictionary<HiddenKind, int> kinds = [];
         foreach (Ad ad in ads.NewSince(since)) {
-            if (reportedIds.Contains(ad.Id) || ad.Label is null) {
+            if (listedIds.Contains(ad.Id) || ad.Label is null) {
                 continue;
             }
             if (MatchingEntry.HiddenReason(RunConversions.ToAdView(ad), version, targets) is HiddenKind kind) {
