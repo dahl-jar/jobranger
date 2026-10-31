@@ -35,3 +35,4 @@ jobs:
       - run: dotnet test --project messages/tests/Jobranger.Messaging.Tests -c Release --no-build
       - run: dotnet test --project relay/tests/Jobranger.Relay.Core.Tests -c Release --no-build
       - run: dotnet test --project relay/tests/Jobranger.Relay.Tests -c Release --no-build
+      - run: bash relay/scripts/release/tests/pin_image_test.sh

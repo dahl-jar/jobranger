@@ -1,0 +1,97 @@
+name: Release relay
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - messages/**
+      - dotnet/messages/**
+      - dotnet/relay/**
+      - dotnet/Jobranger.slnx
+      - dotnet/Directory.*.props
+      - dotnet/global.json
+      - dotnet/nuget.config
+      - dotnet/.config/dotnet-tools.json
+      - .editorconfig
+      - .github/actions/dotnet-setup/**
+      - .github/workflows/relay.yml
+      - .github/workflows/release-relay.yml
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: release-relay-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  relay:
+    uses: ./.github/workflows/relay.yml
+    permissions:
+      contents: read
+
+  publish:
+    name: Publish image
+    needs: relay
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - uses: ./.github/actions/dotnet-setup
+        with:
+          build: "false"
+
+      - uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - shell: bash
+        working-directory: dotnet
+        run: dotnet restore relay/src/Jobranger.Relay/Jobranger.Relay.csproj --locked-mode
+
+      - id: push
+        shell: bash
+        working-directory: dotnet
+        run: |
+          dotnet publish relay/src/Jobranger.Relay/Jobranger.Relay.csproj -c Release --no-restore \
+            -t:PublishContainer \
+            -p:ContainerRuntimeIdentifier=linux-x64 \
+            -p:ContainerRegistry=ghcr.io \
+            -p:ContainerRepository=dahl-jar/jobranger/relay \
+            "-p:ContainerImageTags=\"sha-$GITHUB_SHA;latest\"" \
+            -getProperty:GeneratedContainerDigest \
+            -getResultOutputFile:"$RUNNER_TEMP/digest.txt"
+          digest="$(cat "$RUNNER_TEMP/digest.txt")"
+          test -n "$digest"
+          echo "digest=$digest" >>"$GITHUB_OUTPUT"
+
+  pin:
+    name: Pin image in manifests
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: ${{ secrets.MANIFESTS_REPO }}
+          ssh-key: ${{ secrets.MANIFESTS_DEPLOY_KEY }}
+          path: manifests
+
+      - shell: bash
+        working-directory: manifests
+        env:
+          DIGEST: ${{ needs.publish.outputs.digest }}
+        run: bash "$GITHUB_WORKSPACE/dotnet/relay/scripts/release/pin_image.sh" "$GITHUB_SHA" "$DIGEST"

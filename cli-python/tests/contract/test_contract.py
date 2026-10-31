@@ -39,9 +39,12 @@ FRONTEND_CONTRACT = ROOT / "frontend" / "src" / "features" / "relay" / "contract
 CLI_CONTRACT = ROOT / "cli-python" / "src" / "jobranger" / "contract"
 WORKFLOWS = ROOT / ".github" / "workflows"
 RELEASE_WORKFLOW = "release-cli.yml"
+RELAY_RELEASE_WORKFLOW = "release-relay.yml"
 RELEASE_GATE_JOB = "version"
 COMPONENT_WORKFLOWS = sorted(
-    path.name for path in WORKFLOWS.glob("*.yml") if path.name != RELEASE_WORKFLOW
+    path.name
+    for path in WORKFLOWS.glob("*.yml")
+    if path.name not in {RELEASE_WORKFLOW, RELAY_RELEASE_WORKFLOW}
 )
 SESSION_SPEC = MESSAGES / "session" / "v1.md"
 IGNORABLES = MESSAGES / "unicode" / "default-ignorable-15.0.0.json"
