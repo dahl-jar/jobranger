@@ -2,6 +2,7 @@ using System.Runtime.Versioning;
 using Jobranger.Cli.Config;
 using Jobranger.Cli.Features.Digest;
 using Jobranger.Cli.Features.Runs;
+using Jobranger.Cli.Files;
 using Jobranger.Cli.Logging;
 using Jobranger.Cli.Secrets;
 using Jobranger.Cli.Text;
@@ -40,7 +41,7 @@ internal sealed class Delivery(
             ads.MarkReported(result.ReportedIds, now);
             return new DeliveryResult();
         }
-        DigestInput input = DeliveryCards.Input(ads, RunsEntry.Recent(connection, recentRuns), result, config, now);
+        DigestInput input = DigestInputs.From(ads, RunsEntry.Recent(connection, recentRuns), result, config, now);
         DigestData data = DigestEntry.Build(input, DateOnly.FromDateTime(now.DateTime));
         if (!HasNews(data)) {
             return new DeliveryResult();
@@ -67,13 +68,12 @@ internal sealed class Delivery(
 
     private async Task<SendFailure?> SendAsync(
         EmailConfig email, RenderedDigest rendered, long? runId, CancellationToken cancellationToken) {
+        (string secretName, Func<string?, EmailAddresses, IEmailSender> createSender) = SenderFor(email, rendered, runId);
         string? secret;
         try {
-            secret = await credentials
-                .GetSecretAsync(email.Via == EmailVia.Resend ? resendSecret : smtpSecret, cancellationToken)
-                .ConfigureAwait(false);
-        } catch (SecretStoreUnavailableException) {
-            return new SendFailure(SendFailureKind.SecretStore, messages.EmailSecretStore, nameof(SecretStoreUnavailableException));
+            secret = await credentials.GetSecretAsync(secretName, cancellationToken).ConfigureAwait(false);
+        } catch (Exception error) when (error is SecretStoreUnavailableException or PrivateFileException) {
+            return new SendFailure(SendFailureKind.SecretStore, messages.EmailSecretStore, error.GetType().Name);
         }
         if (email.Address is null) {
             return new SendFailure(SendFailureKind.MissingAddress, messages.EmailMissingAddress);
@@ -81,26 +81,13 @@ internal sealed class Delivery(
         if (EmailAddresses.From(email) is not EmailAddresses addresses) {
             return new SendFailure(SendFailureKind.UnusableAddress, messages.EmailUnusableAddress);
         }
-        return email.Via == EmailVia.Resend
-            ? await SendThroughResendAsync(secret, rendered, addresses, runId, cancellationToken).ConfigureAwait(false)
-            : await SendThroughSmtpAsync(email, secret, rendered, addresses, cancellationToken).ConfigureAwait(false);
+        IEmailSender sender = createSender(secret, addresses);
+        return await sender.SendAsync(rendered, addresses, cancellationToken).ConfigureAwait(false);
     }
 
-    private Task<SendFailure?> SendThroughResendAsync(
-        string? key, RenderedDigest rendered, EmailAddresses addresses, long? runId, CancellationToken cancellationToken) {
-        if (string.IsNullOrEmpty(key)) {
-            return Task.FromResult<SendFailure?>(new SendFailure(SendFailureKind.MissingResendKey, messages.EmailMissingResendKey));
-        }
-        ResendSender sender = new(transport, messages, time);
-        return sender.SendAsync(key, rendered, addresses, IdempotencyKey.For(runId, rendered, addresses), cancellationToken);
-    }
-
-    private Task<SendFailure?> SendThroughSmtpAsync(
-        EmailConfig email, string? password, RenderedDigest rendered, EmailAddresses addresses, CancellationToken cancellationToken) {
-        if (email.SmtpUrl is null) {
-            return Task.FromResult<SendFailure?>(new SendFailure(SendFailureKind.MissingSmtpUrl, messages.EmailMissingSmtpUrl));
-        }
-        SmtpSender sender = new(transport, messages, time);
-        return sender.SendAsync(email.SmtpUrl, email.SmtpUser, password, rendered, addresses, cancellationToken);
-    }
+    private (string SecretName, Func<string?, EmailAddresses, IEmailSender> CreateSender) SenderFor(
+        EmailConfig email, RenderedDigest rendered, long? runId) => email.Via == EmailVia.Resend
+            ? (resendSecret, (apiKey, addresses) =>
+                new ResendSender(apiKey, IdempotencyKey.For(runId, rendered, addresses), transport, messages, time))
+            : (smtpSecret, (password, _) => new SmtpSender(email.SmtpUrl, email.SmtpUser, password, transport, messages, time));
 }

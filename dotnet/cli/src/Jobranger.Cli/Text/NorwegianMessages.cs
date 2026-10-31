@@ -279,11 +279,11 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string EmailNotSmtp(string host, int port) => $"Serveren på {host}:{port} er ikke en SMTP-server.";
 
-    public string EmailSmtpLogin(string host, int port) => $"SMTP-innlogging på {host}:{port} mislyktes.";
+    public string EmailSmtpLoginFailed(string host, int port) => $"SMTP-innlogging på {host}:{port} mislyktes.";
 
-    public string EmailSmtpRecipient(string to) => $"Serveren avviste {to}.";
+    public string EmailSmtpRecipientRefused(string to) => $"Serveren avviste {to}.";
 
-    public string EmailSmtpSender(string sender) => $"Serveren avviste avsenderen {sender}.";
+    public string EmailSmtpSenderRefused(string sender) => $"Serveren avviste avsenderen {sender}.";
 
     public string EmailSmtpStatus(int status) => $"SMTP-serveren svarte {status}.";
 
@@ -291,7 +291,7 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string EmailTlsCertificate(string host) => $"Kunne ikke bekrefte TLS-sertifikatet til {host}.";
 
-    public string EmailTls(string host, int port) => $"TLS med {host}:{port} mislyktes.";
+    public string EmailTlsFailed(string host, int port) => $"TLS med {host}:{port} mislyktes.";
 
     public string EmailSmtpDisconnected(string host, int port) => $"SMTP-serveren på {host}:{port} lukket tilkoblingen.";
 
@@ -307,7 +307,7 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string EmailSmtpTooSlow(string host, int port, int seconds) => $"SMTP-serveren på {host}:{port} brukte mer enn {seconds} s, så sendingen ble stoppet.";
 
-    public string EmailResendKey => "Resend avviste nøkkelen.";
+    public string EmailResendKeyRefused => "Resend avviste nøkkelen.";
 
     public string EmailUnusableResendKey => "Den lagrede Resend API-nøkkelen har tegn en API-nøkkel ikke kan ha. Legg til en med: jobranger init";
 

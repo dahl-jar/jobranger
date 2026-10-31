@@ -38,12 +38,15 @@ public sealed class SmtpReplyLimitTests {
         Assert.True(reply.IsOver);
     }
 
-    [Fact]
-    public void ShouldResetCount_WhenReplyEnds() {
+    [Theory]
+    [InlineData("lines")]
+    [InlineData("bytes")]
+    public void ShouldResetCount_WhenReplyEnds(string limit) {
         using SmtpReplyLimit reply = new();
+        string text = limit == "lines" ? Lines(60) : LineOfBytes(maxBytes);
 
-        Log(reply, Lines(60));
-        Log(reply, Lines(60));
+        Log(reply, text);
+        Log(reply, text);
 
         Assert.False(reply.IsOver);
     }

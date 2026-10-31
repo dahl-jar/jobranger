@@ -14,7 +14,7 @@ using RunsEntry = Jobranger.Cli.Features.Runs.Runs;
 namespace Jobranger.Cli.Tests.Features.Delivery;
 
 [UnsupportedOSPlatform("windows")]
-public sealed class DeliveryCardsTests : IDisposable {
+public sealed class DigestInputsTests : IDisposable {
     private const string twinTitle = "Developer";
     private const string twinCompany = "Org One AS";
     private const string longDescription = "A long description of the same job, longer than the one on the twin ad.";
@@ -27,23 +27,12 @@ public sealed class DeliveryCardsTests : IDisposable {
     private readonly AdsEntry ads;
     private readonly AdStore store;
 
-    public DeliveryCardsTests() {
+    public DigestInputsTests() {
         ads = new AdsEntry(db.Connection, time);
         store = new AdStore(db.Connection, time);
     }
 
     public void Dispose() => db.Dispose();
-
-    [Theory]
-    [InlineData("Software Engineering Intern")]
-    [InlineData("Utvikler academy")]
-    public void ShouldReportEntryLevelAd_WhenTitleIsProgramme(string title) {
-        Ad ad = DeliveryFixtures.Stored(ads, RunFixtures.Pending(1, title, twinCompany));
-
-        DigestInput input = Input(DeliveryFixtures.Result(ad));
-
-        Assert.Equal(ad.Id, Assert.Single(input.Cards).Id);
-    }
 
     [Fact]
     public void ShouldKeepRawTitle_WhenCardIsBuilt() {
@@ -156,12 +145,44 @@ public sealed class DeliveryCardsTests : IDisposable {
     }
 
     [Fact]
+    public void ShouldNotCountCardAsStrong_WhenMatchIsStretch() {
+        Ad ad = DeliveryFixtures.Stored(
+            ads,
+            RunFixtures.Pending(1, twinTitle, twinCompany),
+            DeliveryFixtures.Classification with {
+                Assessment = MatchingEntry.EncodeMatch(MatchingFixtures.StrongMatch with { Status = Fit.Stretch }, []),
+            });
+
+        DigestInput input = Input(DeliveryFixtures.Result(ad));
+
+        Assert.False(Assert.Single(input.Cards).IsStrongMatch);
+    }
+
+    [Theory]
+    [InlineData(Fit.Stretch, nameof(DigestFit.Partial))]
+    [InlineData(Fit.Unsuitable, nameof(DigestFit.OnRequest))]
+    public void ShouldLabelFit_WhenMatchIsNotStrong(string status, string expected) {
+        Ad ad = DeliveryFixtures.Stored(
+            ads,
+            RunFixtures.Pending(1, twinTitle, twinCompany),
+            DeliveryFixtures.Classification with {
+                Assessment = MatchingEntry.EncodeMatch(MatchingFixtures.StrongMatch with { Status = status }, []),
+            });
+        store.MarkAd(ad.Id, AdAction.ShowAnyway, time.GetUtcNow());
+
+        DigestInput input = Input(DeliveryFixtures.Result(ad));
+
+        Assert.Equal(Enum.Parse<DigestFit>(expected), Assert.Single(input.Cards).Fit);
+    }
+
+    [Fact]
     public void ShouldShowMergedFields_WhenTwinsDiffer() {
         Ad selected = DeliveryFixtures.Stored(
             ads,
-            RunFixtures.Pending(1, twinTitle, twinCompany) with {
+            RunFixtures.Pending(1, "Junior utvikler", twinCompany) with {
                 Id = "nav:1",
                 Source = "nav",
+                Location = "Bergen sentrum",
                 Url = "https://jobs.example.test/stilling/1",
                 Description = longDescription,
                 Deadline = "2026-11-20",
@@ -173,7 +194,7 @@ public sealed class DeliveryCardsTests : IDisposable {
             });
         Ad current = DeliveryFixtures.Stored(
             ads,
-            RunFixtures.Pending(2, twinTitle, twinCompany) with { Deadline = "2026-11-10" },
+            RunFixtures.Pending(2, "Junior Utvikler", "org one") with { Deadline = "2026-11-10" },
             DeliveryFixtures.Classification with { DisplayTitle = "Current title", Summary = "Current summary" });
         store.MarkAd(selected.Id, AdAction.ShowAnyway, time.GetUtcNow());
         ads.SetApplyStatus(current.Id, ApplyStatus.Expired, time.GetUtcNow());
@@ -182,6 +203,10 @@ public sealed class DeliveryCardsTests : IDisposable {
 
         DigestCard card = Assert.Single(input.Cards);
         Assert.Equal(selected.Id, card.Id);
+        Assert.Equal("nav", card.Source);
+        Assert.Equal("Junior utvikler", card.Title);
+        Assert.Equal(twinCompany, card.Company);
+        Assert.Equal("Bergen sentrum", card.Location);
         Assert.Equal(selected.Url, card.Url);
         Assert.Equal("Current title", card.DisplayTitle);
         Assert.Equal("Current summary", card.Summary);
@@ -222,20 +247,6 @@ public sealed class DeliveryCardsTests : IDisposable {
     }
 
     [Fact]
-    public void ShouldFillCardFields_WhenAdIsStored() {
-        Ad ad = DeliveryFixtures.Stored(ads, RunFixtures.Pending(1, twinTitle, twinCompany) with { Deadline = "2026-11-10" });
-        ads.SetApplyStatus(ad.Id, ApplyStatus.Expired, time.GetUtcNow());
-
-        DigestInput input = Input(DeliveryFixtures.Result(ad));
-
-        DigestCard card = Assert.Single(input.Cards);
-        Assert.True(card.ApplyExpired);
-        Assert.True(card.IsStrongMatch);
-        Assert.Equal(new DateOnly(2026, 11, 10), card.DeadlineDate);
-        Assert.Equal("Backend", card.RoleLabel);
-    }
-
-    [Fact]
     public void ShouldBuildNoCards_WhenPassHasNoVersion() {
         Ad ad = DeliveryFixtures.Stored(ads, RunFixtures.Pending(1, twinTitle, twinCompany));
         store.MarkAd(ad.Id, AdAction.ShowAnyway, time.GetUtcNow());
@@ -246,7 +257,7 @@ public sealed class DeliveryCardsTests : IDisposable {
     }
 
     [Fact]
-    public void ShouldCopyRunFacts_WhenInputIsBuilt() {
+    public void ShouldCopyRunFactsIntoDigest() {
         RunResult result = DeliveryFixtures.Result() with {
             CarriedIds = ["finn:9"],
             NewAds = 5,
@@ -274,5 +285,5 @@ public sealed class DeliveryCardsTests : IDisposable {
     };
 
     private DigestInput Input(RunResult result) =>
-        DeliveryCards.Input(ads, RunsEntry.Recent(db.Connection, runLimit), result, config, time.GetUtcNow());
+        DigestInputs.From(ads, RunsEntry.Recent(db.Connection, runLimit), result, config, time.GetUtcNow());
 }

@@ -11,7 +11,6 @@ using Microsoft.Extensions.Time.Testing;
 namespace Jobranger.Cli.Tests.Features.Delivery;
 
 public sealed class ResendSenderTests {
-    private const string emptyJson = "{}";
     private const string idempotencyKey = "key-1";
     private const int maxReplyBytes = 64 * 1024;
 
@@ -19,7 +18,7 @@ public sealed class ResendSenderTests {
 
     [Fact]
     public async Task ShouldPostDigest_WhenKeyIsGiven() {
-        FakeApiHandler handler = FakeApiHandler.Json(200, emptyJson);
+        FakeApiHandler handler = FakeApiHandler.Json(200, DeliveryFixtures.EmptyJson);
 
         SendFailure? failure = await SendAsync(handler);
 
@@ -42,7 +41,7 @@ public sealed class ResendSenderTests {
         int created = 0;
         ResendSender sender = Sender(() => {
             created++;
-            return FakeApiHandler.Json(200, emptyJson);
+            return FakeApiHandler.Json(200, DeliveryFixtures.EmptyJson);
         });
 
         await SendWithAsync(sender, TestContext.Current.CancellationToken);
@@ -52,12 +51,36 @@ public sealed class ResendSenderTests {
     }
 
     [Theory]
-    [InlineData(307, emptyJson, nameof(SendFailureKind.ResendRedirect), "Resend answered with a redirect (307), so the email was not sent.")]
-    [InlineData(401, emptyJson, nameof(SendFailureKind.ResendKey), "Resend refused the key.")]
-    [InlineData(403, emptyJson, nameof(SendFailureKind.ResendKey), "Resend refused the key.")]
+    [InlineData(202)]
+    [InlineData(299)]
+    public async Task ShouldCountAsSent_WhenStatusIsSuccess(int status) {
+        SendFailure? failure = await SendAsync(FakeApiHandler.Json(status, DeliveryFixtures.EmptyJson));
+
+        Assert.Null(failure);
+    }
+
+    [Theory]
+    [InlineData("re_a b")]
+    [InlineData("re_a~b")]
+    public async Task ShouldSendKey_WhenItHasOnlyPrintableAscii(string key) {
+        FakeApiHandler handler = FakeApiHandler.Json(200, DeliveryFixtures.EmptyJson);
+
+        SendFailure? failure = await SendWithAsync(Sender(() => handler, key), TestContext.Current.CancellationToken);
+
+        Assert.Null(failure);
+        Assert.Equal("Bearer " + key, handler.Last.Header("Authorization"));
+    }
+
+    [Theory]
+    [InlineData(300, DeliveryFixtures.EmptyJson, nameof(SendFailureKind.ResendRedirect), "Resend answered with a redirect (300), so the email was not sent.")]
+    [InlineData(307, DeliveryFixtures.EmptyJson, nameof(SendFailureKind.ResendRedirect), "Resend answered with a redirect (307), so the email was not sent.")]
+    [InlineData(399, DeliveryFixtures.EmptyJson, nameof(SendFailureKind.ResendRedirect), "Resend answered with a redirect (399), so the email was not sent.")]
+    [InlineData(400, DeliveryFixtures.EmptyJson, nameof(SendFailureKind.ResendStatus), "Resend answered 400.")]
+    [InlineData(401, DeliveryFixtures.EmptyJson, nameof(SendFailureKind.ResendKey), "Resend refused the key.")]
+    [InlineData(403, DeliveryFixtures.EmptyJson, nameof(SendFailureKind.ResendKey), "Resend refused the key.")]
     [InlineData(422, "{\"message\":\"bad sender\"}", nameof(SendFailureKind.ResendRejected), "bad sender")]
     [InlineData(422, "not json", nameof(SendFailureKind.ResendStatus), "Resend answered 422.")]
-    [InlineData(500, emptyJson, nameof(SendFailureKind.ResendStatus), "Resend answered 500.")]
+    [InlineData(500, DeliveryFixtures.EmptyJson, nameof(SendFailureKind.ResendStatus), "Resend answered 500.")]
     public async Task ShouldExplainFailure_WhenResendRefuses(int status, string body, string kind, string reason) {
         SendFailure? failure = await SendAsync(FakeApiHandler.Json(status, body));
 
@@ -86,8 +109,9 @@ public sealed class ResendSenderTests {
     [Fact]
     public void ShouldCleanMessage_WhenResendRejects() {
         string text = "bad\u0007  sender\n" + new string('x', 300);
+        byte[] body = Encoding.UTF8.GetBytes(new JsonObject { ["message"] = text }.ToJsonString());
 
-        string message = ResendReply.Message(Encoding.UTF8.GetBytes(new JsonObject { ["message"] = text }.ToJsonString()));
+        string message = ResendReply.Message(body);
 
         Assert.Equal(200, message.Length);
         Assert.StartsWith("bad sender xxx", message, StringComparison.Ordinal);
@@ -96,8 +120,9 @@ public sealed class ResendSenderTests {
     [Fact]
     public void ShouldCutMessageByCodePoints_WhenItHasEmoji() {
         string text = string.Concat(Enumerable.Repeat("\U0001F600", 201));
+        byte[] body = Encoding.UTF8.GetBytes(new JsonObject { ["message"] = text }.ToJsonString());
 
-        string message = ResendReply.Message(Encoding.UTF8.GetBytes(new JsonObject { ["message"] = text }.ToJsonString()));
+        string message = ResendReply.Message(body);
 
         Assert.Equal(200, CodePoints.Count(message));
     }
@@ -118,10 +143,9 @@ public sealed class ResendSenderTests {
     [InlineData("re_é")]
     [InlineData("re_\n")]
     public async Task ShouldRefuseKey_WhenKeyHasHiddenCharacters(string key) {
-        FakeApiHandler handler = FakeApiHandler.Json(200, emptyJson);
+        FakeApiHandler handler = FakeApiHandler.Json(200, DeliveryFixtures.EmptyJson);
 
-        SendFailure? failure = await Sender(() => handler).SendAsync(
-            key, DeliveryFixtures.Rendered, DeliveryFixtures.Addresses, idempotencyKey, TestContext.Current.CancellationToken);
+        SendFailure? failure = await SendWithAsync(Sender(() => handler, key), TestContext.Current.CancellationToken);
 
         Assert.Equal(SendFailureKind.UnusableResendKey, failure?.Kind);
         Assert.Empty(handler.Requests);
@@ -168,12 +192,7 @@ public sealed class ResendSenderTests {
     public async Task ShouldCountAsSent_WhenBodyStalls() {
         using StalledBodyHandler handler = new([]);
 
-        SendFailure? failure = await Sender(() => handler).SendAsync(
-            DeliveryFixtures.ResendKey,
-            DeliveryFixtures.Rendered,
-            DeliveryFixtures.Addresses,
-            idempotencyKey,
-            TestContext.Current.CancellationToken).WaitAsync(TestWaits.Step, TestContext.Current.CancellationToken);
+        SendFailure? failure = await SendWithAsync(Sender(() => handler), TestContext.Current.CancellationToken);
 
         Assert.Null(failure);
     }
@@ -201,17 +220,13 @@ public sealed class ResendSenderTests {
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sending);
     }
 
-    private ResendSender Sender(Func<HttpMessageHandler> create) =>
-        new(DeliveryTransport.Production with { CreateResendHandler = create }, new EnglishMessages(), time);
+    private ResendSender Sender(Func<HttpMessageHandler> create, string apiKey = DeliveryFixtures.ResendKey) =>
+        new(apiKey, idempotencyKey, DeliveryTransport.Production with { CreateResendHandler = create }, new EnglishMessages(), time);
 
     private Task<SendFailure?> SendAsync(FakeApiHandler handler) =>
         SendWithAsync(Sender(() => handler), TestContext.Current.CancellationToken);
 
     private static Task<SendFailure?> SendWithAsync(ResendSender sender, CancellationToken cancellationToken) =>
-        sender.SendAsync(
-            DeliveryFixtures.ResendKey,
-            DeliveryFixtures.Rendered,
-            DeliveryFixtures.Addresses,
-            idempotencyKey,
-            cancellationToken).WaitAsync(TestWaits.Step, TestContext.Current.CancellationToken);
+        sender.SendAsync(DeliveryFixtures.Rendered, DeliveryFixtures.Addresses, cancellationToken)
+            .WaitAsync(TestWaits.Step, TestContext.Current.CancellationToken);
 }
