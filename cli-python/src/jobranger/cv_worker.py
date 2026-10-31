@@ -10,6 +10,7 @@ from typing import IO, TYPE_CHECKING
 
 from defusedxml import ElementTree
 from pypdf import PdfReader
+from pypdf.errors import LimitReachedError
 
 from jobranger.cv import (
     DOCX_SUFFIX,
@@ -49,6 +50,12 @@ NOTE_PARTS = ("word/footnotes.xml", "word/endnotes.xml")
 HEADER_PART = re.compile(r"word/header\d*\.xml")
 FOOTER_PART = re.compile(r"word/footer\d*\.xml")
 XML_EVENTS = ("start", "end")
+WORK_LIMIT_MESSAGES = (
+    "Reached maximum number of tokens",
+    "Limit reached while decompressing",
+    "Stream decoding exceeded the maximum accumulated",
+    "Array-based stream has",
+)
 
 
 class TooLargeError(Exception):
@@ -136,6 +143,15 @@ class _CappedReader:
 
 
 def _pdf_text(data: bytes) -> str:
+    try:
+        return _read_pdf_text(data)
+    except LimitReachedError as error:
+        if str(error).startswith(WORK_LIMIT_MESSAGES):
+            raise TooLargeError from error
+        raise
+
+
+def _read_pdf_text(data: bytes) -> str:
     reader = PdfReader(io.BytesIO(data))
     if len(reader.pages) > MAX_PDF_PAGES:
         raise TooLargeError

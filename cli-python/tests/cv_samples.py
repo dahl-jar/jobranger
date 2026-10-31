@@ -16,6 +16,7 @@ CV_PDF = CV_FIXTURES / "cv_user.pdf"
 LONG_LINE = "Backend developer at Employer One AS building data pipelines. " * 5
 PDF_TEXT_LINE = b"BT /F1 12 Tf 50 700 Td (Backend developer at Employer One AS) Tj ET\n"
 PDF_FONT = b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"
+FIRST_STREAM_NUMBER = 4
 DOCUMENT_MEMBER = "word/document.xml"
 WORD_NAMESPACES = (
     'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
@@ -33,20 +34,23 @@ def flate_stream(content: bytes) -> bytes:
     )
 
 
-def pdf(page_streams: Sequence[bytes]) -> bytes:
-    page_count = len(page_streams)
-    first_page = 3 + page_count + 1
-    kids = b" ".join(b"%d 0 R" % (first_page + index) for index in range(page_count))
+def _references(first: int, count: int) -> list[bytes]:
+    return [b"%d 0 R" % (first + index) for index in range(count)]
+
+
+def _pdf_file(streams: Sequence[bytes], page_contents: Sequence[bytes]) -> bytes:
+    page_count = len(page_contents)
+    kids = b" ".join(_references(FIRST_STREAM_NUMBER + len(streams), page_count))
     objects = [
         b"<< /Type /Catalog /Pages 2 0 R >>",
         b"<< /Type /Pages /Kids [%b] /Count %d >>" % (kids, page_count),
         PDF_FONT,
-        *page_streams,
+        *streams,
     ]
     objects += [
         b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
-        b"/Resources << /Font << /F1 3 0 R >> >> /Contents %d 0 R >>" % (4 + index)
-        for index in range(page_count)
+        b"/Resources << /Font << /F1 3 0 R >> >> /Contents %b >>" % contents
+        for contents in page_contents
     ]
     out = io.BytesIO()
     out.write(b"%PDF-1.7\n")
@@ -65,9 +69,22 @@ def pdf(page_streams: Sequence[bytes]) -> bytes:
     return out.getvalue()
 
 
+def pdf(page_streams: Sequence[bytes]) -> bytes:
+    return _pdf_file(page_streams, _references(FIRST_STREAM_NUMBER, len(page_streams)))
+
+
+def pdf_with_contents_array(contents: Sequence[bytes]) -> bytes:
+    references = b" ".join(_references(FIRST_STREAM_NUMBER, len(contents)))
+    streams = [flate_stream(content) for content in contents]
+    return _pdf_file(streams, [b"[%b]" % references])
+
+
+def page_stream(text: str) -> bytes:
+    return flate_stream(f"BT /F1 12 Tf 72 720 Td ({text}) Tj ET".encode())
+
+
 def pdf_with_text(text: str) -> bytes:
-    content = f"BT /F1 12 Tf 72 720 Td ({text}) Tj ET".encode()
-    return pdf([flate_stream(content)])
+    return pdf([page_stream(text)])
 
 
 def repeated_cv_pdf(pages: int) -> bytes:
