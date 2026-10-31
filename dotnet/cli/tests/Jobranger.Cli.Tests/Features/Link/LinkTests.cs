@@ -11,6 +11,7 @@ using Jobranger.Messaging.Proofs;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
+using Microsoft.Extensions.Time.Testing;
 using NSec.Cryptography;
 using LinkEntry = Jobranger.Cli.Features.Link.Link;
 
@@ -43,7 +44,7 @@ public sealed class LinkTests : IDisposable {
     public LinkTests() {
         file = new FileSecretStore(temp.File(SecretFixtures.FileName), NullLogger.Instance);
         http = relay.Client();
-        parts = new LinkParts(new DeviceStore(db.Connection), new RelayApiClient(http, FakeRelay.Address), relay);
+        parts = new LinkParts(new DeviceStore(db.Connection), new RelayApiClient(http, FakeRelay.Address, new FakeTimeProvider()), relay);
     }
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
