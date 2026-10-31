@@ -1,15 +1,21 @@
+using Jobranger.Cli.Config;
 using Jobranger.Cli.Features.Ads;
 using Jobranger.Cli.Features.Budget;
+using Jobranger.Cli.Features.Digest;
 using Jobranger.Cli.Features.Matching;
 using Jobranger.Cli.Features.Models;
 using Jobranger.Cli.Features.Providers;
 using Jobranger.Cli.Features.Sources;
+using Jobranger.Cli.Storage;
 using AdsEntry = Jobranger.Cli.Features.Ads.Ads;
+using CatalogueEntry = Jobranger.Cli.Catalogue.Catalogue;
 using MatchingEntry = Jobranger.Cli.Features.Matching.Matching;
 
 namespace Jobranger.Cli.Features.Runs;
 
 internal static class RunConversions {
+    private static readonly string expiredStatus = WireNames.Of(ApplyStatus.Expired);
+
     public static Ad ToAd(SourceListing listing) => new() {
         Id = listing.Id,
         Source = listing.Source,
@@ -92,4 +98,39 @@ internal static class RunConversions {
     public static TokenCounts ToTokens(TokenUsage? usage) => usage is null
         ? new TokenCounts(0, 0, 0, 0, 0)
         : new TokenCounts(usage.Input, usage.CacheWrite5m, usage.CacheWrite1h, usage.CacheRead, usage.Output);
+
+    public static DigestCard ToDigestCard(AdView view, string url, Targets targets) => new() {
+        Id = view.Id,
+        Source = view.Source,
+        Title = view.Title,
+        DisplayTitle = view.DisplayTitle,
+        Company = view.Company,
+        Location = view.Location,
+        Deadline = view.Deadline,
+        DeadlineDate = MatchingEntry.ParseDate(view.Deadline),
+        Url = url,
+        Summary = view.Summary,
+        RoleLabel = CatalogueEntry.Load().RoleLabel(view.RoleType),
+        Fit = ToDigestFit(MatchingEntry.DisplayFit(view, targets)),
+        IsStrongMatch = MatchingEntry.IsStrongMatch(view),
+        ApplyExpired = view.ApplyStatus == expiredStatus,
+    };
+
+    public static IReadOnlyList<HiddenCount> ToHiddenCounts(IReadOnlyDictionary<HiddenKind, int> counts) =>
+        [.. counts.Select(count => new HiddenCount(ToHiddenGroup(count.Key), count.Value))];
+
+    private static DigestFit ToDigestFit(DisplayFit fit) => fit switch {
+        DisplayFit.Strong => DigestFit.Strong,
+        DisplayFit.Partial => DigestFit.Partial,
+        _ => DigestFit.OnRequest,
+    };
+
+    private static HiddenGroup ToHiddenGroup(HiddenKind kind) => kind switch {
+        HiddenKind.Senior => HiddenGroup.Senior,
+        HiddenKind.Years => HiddenGroup.Years,
+        HiddenKind.Masters => HiddenGroup.Masters,
+        HiddenKind.Role => HiddenGroup.Role,
+        HiddenKind.Place => HiddenGroup.Place,
+        _ => HiddenGroup.Other,
+    };
 }

@@ -32,7 +32,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - uses: ./.github/actions/dotnet-setup
-      - run: dotnet test --project cli/tests/Jobranger.Cli.Tests -c Release --no-build --minimum-expected-tests 4185
+      - run: dotnet test --project cli/tests/Jobranger.Cli.Tests -c Release --no-build --minimum-expected-tests 4322
 
   secrets-macos:
     name: Secret store on macOS

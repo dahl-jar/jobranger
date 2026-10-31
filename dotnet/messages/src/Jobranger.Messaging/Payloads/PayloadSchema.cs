@@ -25,14 +25,15 @@ internal static class PayloadSchema {
     private static readonly BuildOptions buildOptions = new() { SchemaRegistry = new SchemaRegistry() };
     private static readonly JsonSchema root = JsonSchema.FromText(document.ToJsonString(), buildOptions, baseUri);
     private static readonly Dictionary<string, string> definitionsByTag = TaggedDefinitions();
-    private static readonly ConcurrentDictionary<string, JsonSchema> schemas = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, Lazy<JsonSchema>> schemas = new(StringComparer.Ordinal);
 
     public static JsonObject DefinitionNodes => document[definitions]!.AsObject();
 
     public static bool TryGetDefinition(string tag, [NotNullWhen(true)] out string? definition) =>
         definitionsByTag.TryGetValue(tag, out definition);
 
-    public static JsonSchema For(string definition) => schemas.GetOrAdd(definition, Build);
+    public static JsonSchema For(string definition) =>
+        schemas.GetOrAdd(definition, key => new Lazy<JsonSchema>(() => Build(key))).Value;
 
     public static string NameOf(string reference) => reference[referencePrefix.Length..];
 

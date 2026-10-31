@@ -1,12 +1,14 @@
 using System.Runtime.Versioning;
 using Jobranger.Cli.Config;
 using Jobranger.Cli.Features.Ads;
+using Jobranger.Cli.Features.Digest;
 using Jobranger.Cli.Features.Matching;
 using Jobranger.Cli.Features.Models;
 using Jobranger.Cli.Features.Providers;
 using Jobranger.Cli.Features.Sources;
 using Jobranger.Cli.Files;
 using Jobranger.Cli.Logging;
+using Jobranger.Cli.Text;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using AdsEntry = Jobranger.Cli.Features.Ads.Ads;
@@ -27,7 +29,19 @@ internal sealed class Runs(
     ILogger logger) {
     public static AdView ToAdView(Ad ad) => RunConversions.ToAdView(ad);
 
+    public static DigestCard ToDigestCard(AdView view, string url, Targets targets) =>
+        RunConversions.ToDigestCard(view, url, targets);
+
+    public static IReadOnlyList<HiddenCount> ToHiddenCounts(IReadOnlyDictionary<HiddenKind, int> counts) =>
+        RunConversions.ToHiddenCounts(counts);
+
     public static IReadOnlyList<RunRow> Recent(SqliteConnection connection, int limit) => new RunStore(connection).List(limit);
+
+    public static RunRow? LastRun(SqliteConnection connection) => new RunStore(connection).Last();
+
+    public static IReadOnlyList<string> Report(
+        SqliteConnection connection, AppConfig config, Paths paths, RunRow lastRun, TimeProvider time, IMessages messages) =>
+        TerminalReport.Lines(connection, config, paths, lastRun, time, messages);
 
     public async Task<RunResult> RunAsync(RunRequest request, CancellationToken cancellationToken) {
         RunModel? model = await CreateModelAsync(request.Config.Model, cancellationToken).ConfigureAwait(false);
