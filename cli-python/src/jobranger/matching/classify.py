@@ -13,6 +13,7 @@ from jobranger.events import RunEvent
 from jobranger.matching.assessment import AdAssessment, Check
 from jobranger.matching.rules import Match, parse_match
 from jobranger.matching.text import truncate_at_word
+from jobranger.matching.years import apply_years_guard
 from jobranger.providers.base import (
     ClassifyPrompt,
     ProviderError,
@@ -185,6 +186,7 @@ def to_classification(
     )
     if match is None:
         return None
+    match = apply_years_guard(match, ad.title, ad.description, limits)
     role_fields = _role_fields(assessment)
     if role_fields is None:
         return None

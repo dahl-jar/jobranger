@@ -22,11 +22,11 @@ type HiddenKind = Literal["senior", "years", "masters", "role", "place", "other"
 type DisplayFit = Literal["strong", "partial", "on_request"]
 
 YEAR_CAP_RULE = (
-    "The search accepts roles requiring at most {years:g} years. A mandatory "
-    "minimum above {years:g} years is unsuitable, even with skill fit; name the "
+    "The search accepts roles requiring at most {years}. A mandatory "
+    "minimum above {years} is unsuitable, even with skill fit; name the "
     "shortfall as a blocker. A master's, or a bachelor's with relevant work "
     "experience, is unsuitable when that experience route needs more than "
-    "{years:g} years or does not state the years; name it as a blocker."
+    "{years} or does not state the years; name it as a blocker."
 )
 NO_YEAR_CAP_RULE = "The search accepts roles requiring any number of years."
 SENIOR_UNSUITABLE_RULE = (
@@ -62,6 +62,7 @@ YEAR_BAND_CAPS: dict[YearBand, float | None] = {
     "6+": None,
 }
 NO_YEARS = 0.0
+ONE_YEAR = 1
 VALID_FITS = frozenset({"strong", "stretch", "unsuitable", "unknown"})
 REPORTABLE_FITS = frozenset({"strong", "stretch"})
 MATCH_TEXT_LIMIT = 300
@@ -105,7 +106,9 @@ def band_of(years: float) -> YearBand:
 
 def limit_rules(limits: Limits) -> str:
     cap = max_years(limits)
-    lines = [NO_YEAR_CAP_RULE if cap is None else YEAR_CAP_RULE.format(years=cap)]
+    lines = [
+        NO_YEAR_CAP_RULE if cap is None else YEAR_CAP_RULE.format(years=year_count(cap))
+    ]
     if limits.levels.isdisjoint(SENIOR_LEVELS):
         lines.append(SENIOR_UNSUITABLE_RULE)
     else:
@@ -114,6 +117,11 @@ def limit_rules(limits: Limits) -> str:
     if limits.hide_masters:
         lines.append(MASTER_RULE)
     return "\n".join(lines)
+
+
+def year_count(years: float) -> str:
+    unit = "year" if years == ONE_YEAR else "years"
+    return f"{years:g} {unit}"
 
 
 def parse_match(
@@ -218,7 +226,7 @@ def _limit_reason(ad: Ad, limits: Limits) -> Hidden | None:
         return Hidden("senior", f"Asks for {LEVEL_NAMES[level]} level")
     years = ad.match.required_experience_years if ad.match else None
     if years is not None and band_of(years) not in limits.years:
-        return Hidden("years", f"Requires {years:g} years")
+        return Hidden("years", f"Requires {year_count(years)}")
     if limits.hide_masters and ad.requires_master:
         return Hidden("masters", "Master's required")
     return None
@@ -287,7 +295,7 @@ def _parse_metadata(value: dict[str, object]) -> tuple[str, str, bool] | None:
         or not isinstance(low_code, bool)
     ):
         return None
-    return status, _clean(reason), low_code
+    return status, clean_text(reason), low_code
 
 
 def _validate_fit(
@@ -319,11 +327,11 @@ def _texts(value: object) -> tuple[str, ...] | None:
     texts = [item for item in value if isinstance(item, str)]
     if len(texts) != len(value):
         return None
-    items = [_clean(item) for item in texts if item.strip()]
+    items = [clean_text(item) for item in texts if item.strip()]
     return tuple(items[:MATCH_ITEM_LIMIT])
 
 
-def _clean(text: str) -> str:
+def clean_text(text: str) -> str:
     return truncate_at_word(" ".join(text.split()), MATCH_TEXT_LIMIT)
 
 
