@@ -24,7 +24,7 @@ namespace Jobranger.Cli.Tests.Commands;
 public sealed class ReportCommandTests : IDisposable {
     private const string juniorLabel = "junior";
     private const string seniorLabel = "senior";
-    private const string noMatches = "No matches yet. Run one with: jobranger run\n";
+    private const string noMatches = "No matches yet. Start a run with: jobranger run\n";
     private const string noMatchesNorwegian = "Ingen treff ennå. Start en kjøring med: jobranger run\n";
     private const string strongLine = "  Strong fit    Software Developer     Org One AS        Bergen      12 Oct";
     private const string applySoonTitle = "Apply this week";

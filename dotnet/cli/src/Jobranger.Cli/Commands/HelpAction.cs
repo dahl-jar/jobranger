@@ -11,7 +11,6 @@ internal sealed class HelpAction(IAnsiConsole console, IMessages messages) : Syn
     private const string columnGap = "  ";
     private const string aliasSeparator = ", ";
     private const char optionPrefix = '-';
-    private const string repeatMark = "...";
     private const char tokenSeparator = ' ';
 
     public override int Invoke(ParseResult parseResult) {
@@ -43,48 +42,39 @@ internal sealed class HelpAction(IAnsiConsole console, IMessages messages) : Syn
         string commandToken = command.Action is null
             ? $"<{messages.CommandPlaceholder}>"
             : $"[{messages.CommandPlaceholder}]";
-        string[] commandTokens = VisibleCommands(command).Any() ? [commandToken] : [];
+        string[] commandTokens = command.Subcommands.Count > 0 ? [commandToken] : [];
         return string.Join(tokenSeparator, [
             RootCommand.ProgramName,
             .. path.Skip(1).Select(step => step.Name),
-            .. VisibleArguments(command).Select(ArgumentToken),
+            .. command.Arguments.Select(ArgumentToken),
             .. commandTokens,
             $"[{messages.OptionsPlaceholder}]",
         ]);
     }
 
-    private static (string Name, string Description)[] ArgumentRows(Command command) =>
-        [.. VisibleArguments(command).Select(argument => (ArgumentToken(argument), argument.Description ?? string.Empty))];
+    private static Row[] ArgumentRows(Command command) =>
+        [.. command.Arguments.Select(argument => new Row(ArgumentToken(argument), argument.Description))];
 
-    private static (string Name, string Description)[] OptionRows(Command[] path) =>
+    private static Row[] OptionRows(Command[] path) =>
         [.. path[^1].Options
             .Concat(path.SkipLast(1).SelectMany(ancestor => ancestor.Options).Where(option => option.Recursive))
             .Where(option => !option.Hidden)
-            .Select(option => (Names(option), option.Description ?? string.Empty))];
+            .Select(option => new Row(Names(option), option.Description))];
 
-    private static (string Name, string Description)[] CommandRows(Command command) =>
-        [.. VisibleCommands(command).Select(child => (child.Name, child.Description ?? string.Empty))];
+    private static Row[] CommandRows(Command command) =>
+        [.. command.Subcommands.Select(child => new Row(child.Name, child.Description))];
 
-    private static IEnumerable<Argument> VisibleArguments(Command command) =>
-        command.Arguments.Where(argument => !argument.Hidden);
+    private static string ArgumentToken(Argument argument) => $"<{argument.Name}>";
 
-    private static IEnumerable<Command> VisibleCommands(Command command) =>
-        command.Subcommands.Where(child => !child.Hidden);
-
-    private static string ArgumentToken(Argument argument) {
-        string token = argument.Arity.MinimumNumberOfValues == 0 ? $"[{argument.Name}]" : $"<{argument.Name}>";
-        return argument.Arity.MaximumNumberOfValues > 1 ? token + repeatMark : token;
-    }
-
-    private static void WriteSection(TextWriter output, string heading, (string Name, string Description)[] rows) {
+    private static void WriteSection(TextWriter output, string heading, Row[] rows) {
         if (rows.Length == 0) {
             return;
         }
         int width = rows.Max(row => row.Name.Length);
         output.WriteLine();
         output.WriteLine(heading);
-        foreach ((string name, string description) in rows) {
-            output.WriteLine($"{indent}{name.PadRight(width)}{columnGap}{description}");
+        foreach (Row row in rows) {
+            output.WriteLine($"{indent}{row.Name.PadRight(width)}{columnGap}{row.Description}");
         }
     }
 
@@ -93,4 +83,6 @@ internal sealed class HelpAction(IAnsiConsole console, IMessages messages) : Syn
             .Where(name => name.StartsWith(optionPrefix))
             .OrderBy(name => name.Length)
             .ThenBy(name => name, StringComparer.Ordinal));
+
+    private readonly record struct Row(string Name, string? Description);
 }

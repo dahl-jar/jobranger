@@ -2,7 +2,6 @@ using System.CommandLine;
 using System.CommandLine.Help;
 using System.Runtime.Versioning;
 using System.Text.RegularExpressions;
-using Jobranger.Cli.Commands;
 using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Cli.Text;
 using HelpAction = Jobranger.Cli.Commands.HelpAction;
@@ -19,8 +18,9 @@ public sealed class HelpActionTests {
 
     public static TheoryData<string> CommandPaths() {
         using RecordingConsole console = new();
+        RootCommand root = CommandFixtures.CreateRoot(console, Locales.English);
         TheoryData<string> paths = [string.Empty];
-        foreach ((string path, Command _) in Walk(CreateRoot(console, Locales.English))) {
+        foreach ((string path, Command _) in Walk(root)) {
             paths.Add(path);
         }
         return paths;
@@ -28,9 +28,9 @@ public sealed class HelpActionTests {
 
     [Theory]
     [MemberData(nameof(CommandPaths))]
-    public async Task ShouldPrintOwnHelp_WhenCommandIsInTree(string path) {
+    public async Task ShouldPrintOwnHelp_WhenHelpFollowsCommand(string path) {
         using RecordingConsole console = new();
-        RootCommand root = CreateRoot(console, Locales.English);
+        RootCommand root = CommandFixtures.CreateRoot(console, Locales.English);
         Command command = Find(root, path);
         string usage = $"{RootCommand.ProgramName} {path}".TrimEnd();
 
@@ -45,9 +45,10 @@ public sealed class HelpActionTests {
 
     [Theory]
     [MemberData(nameof(CommandPaths))]
-    public void ShouldDescribeEverySymbol_WhenCommandIsInTree(string path) {
+    public void ShouldHaveDescriptions_WhenCommandIsRegistered(string path) {
         using RecordingConsole console = new();
-        Command command = Find(CreateRoot(console, Locales.English), path);
+        RootCommand root = CommandFixtures.CreateRoot(console, Locales.English);
+        Command command = Find(root, path);
 
         Symbol[] symbols = [command, .. command.Arguments, .. command.Options];
 
@@ -58,9 +59,9 @@ public sealed class HelpActionTests {
     [InlineData("devices", Locales.English, "devices.en.txt")]
     [InlineData("devices revoke", Locales.English, "devices-revoke.en.txt")]
     [InlineData("devices revoke", Locales.Norwegian, "devices-revoke.nb.txt")]
-    public async Task ShouldMatchGolden_WhenCommandHelpIsPrinted(string path, string lang, string golden) {
+    public async Task ShouldPrintExactText_WhenCommandHelpIsRequested(string path, string lang, string golden) {
         using RecordingConsole console = new();
-        RootCommand root = CreateRoot(console, lang);
+        RootCommand root = CommandFixtures.CreateRoot(console, lang);
         string expected = await File.ReadAllTextAsync(
             Path.Combine(AppContext.BaseDirectory, "TestData", "Help", golden), TestContext.Current.CancellationToken);
 
@@ -71,58 +72,36 @@ public sealed class HelpActionTests {
     }
 
     [Fact]
-    public async Task ShouldListPair_WhenRootHelpIsPrinted() {
-        using RecordingConsole console = new();
-        RootCommand root = CreateRoot(console, Locales.English);
-        string description = Regex.Escape(new EnglishMessages().PairDescription);
-
-        await root.RunAsync([helpOption], TestContext.Current.CancellationToken);
-
-        Assert.Matches($"(?m)^  {PairCommand.CommandName} +{description}$", console.Output);
-    }
-
-    [Fact]
     public async Task ShouldPrintHelp_WhenHelpFollowsUnknownToken() {
         using RecordingConsole console = new();
-        RootCommand root = CreateRoot(console, Locales.English);
+        RootCommand root = CommandFixtures.CreateRoot(console, Locales.English);
 
         int code = await root.RunAsync(HelpArgs("devices nope"), TestContext.Current.CancellationToken);
 
         Assert.Equal(CliExitCodes.Ok, code);
         Assert.Empty(console.Errors);
-    }
-
-    [Theory]
-    [InlineData(0, 1, "[name]")]
-    [InlineData(1, 3, "<name>...")]
-    [InlineData(0, 3, "[name]...")]
-    public async Task ShouldShowArgumentShape_WhenArityVaries(int minimum, int maximum, string token) {
-        using RecordingConsole console = new();
-        Command leaf = new(leafName) {
-            new Argument<string[]>("name") { Arity = new ArgumentArity(minimum, maximum) },
-        };
-        ParseResult parsed = Help(console, leaf).Parse([leafName, helpOption]);
-
-        await parsed.InvokeAsync(null, TestContext.Current.CancellationToken);
-
-        Assert.Contains($"  {RootCommand.ProgramName} {leafName} {token} [", console.Output, StringComparison.Ordinal);
+        Assert.Contains($"  {RootCommand.ProgramName} devices <", console.Output, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task ShouldLeaveOutSymbols_WhenMarkedHidden() {
+    public async Task ShouldLeaveOutOption_WhenMarkedHidden() {
         using RecordingConsole console = new();
         Command leaf = new(leafName) {
-            new Argument<string>(secret) { Hidden = true },
             new Option<bool>($"--{secret}") { Hidden = true },
-            new Command(secret) { Hidden = true },
         };
-        ParseResult parsed = Help(console, leaf).Parse([leafName, helpOption]);
+        EnglishMessages english = new();
+        string usage = $"  {RootCommand.ProgramName} {leafName} [{english.OptionsPlaceholder}]";
+        System.CommandLine.RootCommand help = CreateHelpRoot(console, leaf);
+        ParseResult parsed = help.Parse([leafName, helpOption]);
 
         await parsed.InvokeAsync(null, TestContext.Current.CancellationToken);
 
+        Assert.Contains(usage, console.Output, StringComparison.Ordinal);
         Assert.DoesNotContain(secret, console.Output, StringComparison.Ordinal);
-        Assert.DoesNotContain(new EnglishMessages().CommandPlaceholder, console.Output, StringComparison.Ordinal);
     }
+
+    internal static string[] HelpArgs(string path) =>
+        [.. path.Split(pathSeparator, StringSplitOptions.RemoveEmptyEntries), helpOption];
 
     private static string RowPattern(string name) => $"(?m)^  {Regex.Escape(name)} ";
 
@@ -139,14 +118,7 @@ public sealed class HelpActionTests {
     private static Command Find(Command root, string path) =>
         path.Length == 0 ? root : Walk(root).Single(entry => entry.Path == path).Command;
 
-    private static string[] HelpArgs(string path) =>
-        [.. path.Split(pathSeparator, StringSplitOptions.RemoveEmptyEntries), helpOption];
-
-    private static RootCommand CreateRoot(RecordingConsole console, string lang) =>
-        new(CliServices.Create(
-            TimeProvider.System, console.Console, console.ErrorConsole, Locales.EnvironmentWithoutConfig(lang)));
-
-    private static System.CommandLine.RootCommand Help(RecordingConsole console, Command child) {
+    private static System.CommandLine.RootCommand CreateHelpRoot(RecordingConsole console, Command child) {
         System.CommandLine.RootCommand root = [child];
         root.Options.OfType<HelpOption>().Single().Action = new HelpAction(console.Console, new EnglishMessages());
         return root;

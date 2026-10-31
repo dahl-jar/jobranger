@@ -199,7 +199,7 @@ internal sealed class EnglishMessages : IMessages {
 
     public string ReportDescription => "Show your open matches.";
 
-    public string ReportNoMatches => "No matches yet. Run one with: jobranger run";
+    public string ReportNoMatches => "No matches yet. Start a run with: jobranger run";
 
     public string ReportNoDate => "no date";
 
