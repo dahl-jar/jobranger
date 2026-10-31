@@ -159,6 +159,8 @@ internal interface IMessages {
 
     string DatabaseUnreadable(string path);
 
+    string DirNotWritable(string path);
+
     string FileUnreadable(string path);
 
     Language Language { get; }

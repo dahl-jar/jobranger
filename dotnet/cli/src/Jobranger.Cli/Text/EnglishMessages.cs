@@ -178,11 +178,14 @@ internal sealed class EnglishMessages : IMessages {
 
     public string UnpairKeysWriteFailed(string path, string reason) =>
         $"New link keys could not be made because jobranger cannot change {path} ({reason}). "
-        + "Make that file and its folder writable, then run jobranger unpair again.";
+        + "Make that file and its folder readable and writable, then run jobranger unpair again.";
 
     public string DatabaseTooNew => "The database was made by a newer jobranger. Update jobranger and try again.";
 
     public string DatabaseUnreadable(string path) => $"Cannot read the jobranger database at {path}.";
+
+    public string DirNotWritable(string path) =>
+        $"Cannot create or use the folder {path}. Make it and the folders above it writable, then try again.";
 
     public string FileUnreadable(string path) => $"Cannot read {path}.";
 

@@ -33,9 +33,14 @@ public sealed class DevicesCommandTests : IDisposable {
     private const string keysWriteOpeningNorwegian =
         "Nye koblingsnøkler kunne ikke lages fordi jobranger ikke kan endre {0} (";
     private const string keysWriteAdvice =
-        "). Make that file and its folder writable, then run jobranger unpair again.";
+        "). Make that file and its folder readable and writable, then run jobranger unpair again.";
     private const string keysWriteAdviceNorwegian =
-        "). Gjør filen og mappen skrivbare, og kjør jobranger unpair på nytt.";
+        "). Gjør filen og mappen lesbare og skrivbare, og kjør jobranger unpair på nytt.";
+    private const string dirNotWritable =
+        "Cannot create or use the folder {0}. Make it and the folders above it writable, then try again.";
+    private const string dirNotWritableNorwegian =
+        "Kan ikke lage eller bruke mappen {0}. Gjør den og mappene over den skrivbare, og prøv igjen.";
+    private const string dirFailure = "dir_not_writable";
     private const string notJsonReason = "not UTF-8 JSON";
     private const string notStringsReason = "not a JSON object of strings";
     private const string savedSecrets = "{\"smtp_password\": \"fake-password\"}";
@@ -296,7 +301,7 @@ public sealed class DevicesCommandTests : IDisposable {
     }
 
     [Fact]
-    public async Task ShouldAdviseRemoval_WhenSecretsFileIsSymlink() {
+    public async Task ShouldNotAdviseRemoval_WhenSecretsFileIsSymlink() {
         string secrets = SecretsPath();
         string target = temp.File("target.json");
         File.WriteAllText(target, savedSecrets);
@@ -306,8 +311,27 @@ public sealed class DevicesCommandTests : IDisposable {
         int exit = await RunAsync("unpair");
 
         Assert.Equal(
-            (CliExitCodes.Failure, WithReason(keysFileFailed, secrets, "symbolic link")),
+            (CliExitCodes.Failure, WithPath(keysWriteOpening, secrets) + "symbolic link" + keysWriteAdvice),
             (exit, console.Output.TrimEnd()));
+    }
+
+    [Theory]
+    [InlineData(Locales.English, keysWriteOpening, keysWriteAdvice, "remove")]
+    [InlineData(Locales.Norwegian, keysWriteOpeningNorwegian, keysWriteAdviceNorwegian, "fjern")]
+    public async Task ShouldNotAdviseRemoval_WhenSecretsFileHasNoReadPermission(
+        string lang, string opening, string advice, string removal) {
+        environment["LANG"] = lang;
+        string secrets = WriteSecrets(savedSecrets);
+        File.SetUnixFileMode(secrets, UnixFileMode.None);
+
+        int exit = await RunAsync("unpair");
+
+        File.SetUnixFileMode(secrets, PrivateFile.OwnerOnlyFileMode);
+        Assert.Equal(CliExitCodes.Failure, exit);
+        Assert.StartsWith(WithPath(opening, secrets), console.Output, StringComparison.Ordinal);
+        Assert.EndsWith(advice, console.Output.TrimEnd(), StringComparison.Ordinal);
+        Assert.DoesNotContain(removal, console.Output, StringComparison.Ordinal);
+        Assert.Equal(savedSecrets, File.ReadAllText(secrets));
     }
 
     [Theory]
@@ -438,6 +462,56 @@ public sealed class DevicesCommandTests : IDisposable {
         Assert.Equal((CliExitCodes.Failure, WithPath(unreadable, DatabasePath())), (exit, console.Output.TrimEnd()));
     }
 
+    [Theory]
+    [InlineData(Locales.English, dirNotWritable)]
+    [InlineData(Locales.Norwegian, dirNotWritableNorwegian)]
+    public async Task ShouldPrintDirNotWritable_WhenDataFolderCannotBeMade(string lang, string line) {
+        environment["LANG"] = lang;
+        string data = FolderUnderReadOnlyParent();
+        environment["JOBRANGER_DATA_DIR"] = data;
+
+        int exit = await RunAsync("devices", "list");
+
+        Assert.Equal((CliExitCodes.Failure, WithPath(line, data)), (exit, console.Output.TrimEnd()));
+        Assert.Contains(dirFailure, LoggedFailures());
+    }
+
+    [Fact]
+    public async Task ShouldPrintDirNotWritable_WhenDataFolderIsFile() {
+        string data = temp.File("data-file");
+        File.WriteAllBytes(data, []);
+        environment["JOBRANGER_DATA_DIR"] = data;
+
+        int exit = await RunAsync("devices", "list");
+
+        Assert.Equal((CliExitCodes.Failure, WithPath(dirNotWritable, data)), (exit, console.Output.TrimEnd()));
+    }
+
+    [Fact]
+    public async Task ShouldKeepBrowsers_WhenStateFolderCannotBeMade() {
+        SeedBrowser();
+        string state = FolderUnderReadOnlyParent();
+        environment["JOBRANGER_STATE_DIR"] = state;
+
+        int exit = await RunAsync("unpair");
+
+        Assert.Equal((CliExitCodes.Failure, WithPath(dirNotWritable, state)), (exit, console.Output.TrimEnd()));
+        Assert.Single(Remaining());
+    }
+
+    [Fact]
+    public async Task ShouldKeepSystemReason_WhenConfigFolderCannotBeMade() {
+        string config = FolderUnderReadOnlyParent();
+        environment["JOBRANGER_CONFIG_DIR"] = config;
+
+        await RunAsync("unpair");
+
+        Assert.Contains(
+            $"{Path.Combine(config, LinkMetadata.FileName)} (Access to the path",
+            console.Output,
+            StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task ShouldPrintBadUrl_WhenRelayUrlIsInvalid() {
         environment["JOBRANGER_RELAY_URL"] = "ftp://relay.example.test";
@@ -528,6 +602,13 @@ public sealed class DevicesCommandTests : IDisposable {
         } finally {
             File.SetUnixFileMode(config, FileModes.OwnerOnlyDir);
         }
+    }
+
+    private string FolderUnderReadOnlyParent() {
+        string parent = temp.File("read-only");
+        Directory.CreateDirectory(parent);
+        File.SetUnixFileMode(parent, readOnlyDir);
+        return Path.Combine(parent, "folder");
     }
 
     private string WriteSecrets(string content) {

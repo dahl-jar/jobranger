@@ -29,7 +29,7 @@ internal sealed class FileSecretStore(string path, ILogger logger) {
     }
 
     public IReadOnlyDictionary<string, string> Load() {
-        using FileStream? stream = OpenExisting();
+        using FileStream? stream = PrivateFile.OpenRead(Path, logger);
         if (stream is null) {
             return new Dictionary<string, string>();
         }
@@ -53,14 +53,6 @@ internal sealed class FileSecretStore(string path, ILogger logger) {
         using MemoryStream content = new();
         stream.CopyTo(content);
         return content.ToArray();
-    }
-
-    private FileStream? OpenExisting() {
-        try {
-            return PrivateFile.OpenRead(Path, logger);
-        } catch (PrivateFileException error) {
-            throw Unreadable(error.Reason);
-        }
     }
 
     private Dictionary<string, string> Parse(byte[] content) {

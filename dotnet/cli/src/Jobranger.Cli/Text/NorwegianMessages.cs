@@ -182,11 +182,14 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string UnpairKeysWriteFailed(string path, string reason) =>
         $"Nye koblingsnøkler kunne ikke lages fordi jobranger ikke kan endre {path} ({reason}). "
-        + "Gjør filen og mappen skrivbare, og kjør jobranger unpair på nytt.";
+        + "Gjør filen og mappen lesbare og skrivbare, og kjør jobranger unpair på nytt.";
 
     public string DatabaseTooNew => "Databasen er laget av en nyere jobranger. Oppdater jobranger og prøv igjen.";
 
     public string DatabaseUnreadable(string path) => $"Kan ikke lese jobranger-databasen i {path}.";
+
+    public string DirNotWritable(string path) =>
+        $"Kan ikke lage eller bruke mappen {path}. Gjør den og mappene over den skrivbare, og prøv igjen.";
 
     public string FileUnreadable(string path) => $"Kan ikke lese {path}.";
 

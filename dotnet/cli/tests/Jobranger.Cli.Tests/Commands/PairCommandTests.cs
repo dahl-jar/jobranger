@@ -19,6 +19,7 @@ namespace Jobranger.Cli.Tests.Commands;
 public sealed class PairCommandTests : IDisposable {
     private const string unreachable = "Cannot reach the jobranger relay. Check your connection and try again.";
     private const int corruptBytes = 4096;
+    private const UnixFileMode readOnlyDir = UnixFileMode.UserRead | UnixFileMode.UserExecute;
 
     private readonly TempDir temp = new();
     private readonly RecordingConsole console = new();
@@ -95,6 +96,26 @@ public sealed class PairCommandTests : IDisposable {
         Assert.Equal(
             (CliExitCodes.Failure, $"Cannot read the jobranger database at {DatabasePath()}."),
             (exit, console.Output.TrimEnd()));
+    }
+
+    [Fact]
+    public async Task ShouldPrintDirNotWritable_WhenDataFolderCannotBeMade() {
+        string parent = temp.File("read-only");
+        Directory.CreateDirectory(parent);
+        File.SetUnixFileMode(parent, readOnlyDir);
+        string data = Path.Combine(parent, "data");
+        environment["JOBRANGER_DATA_DIR"] = data;
+        string logs = Path.Combine(temp.Path, "state", "logs");
+
+        int exit = await RunAsync();
+
+        Assert.Equal(
+            (CliExitCodes.Failure,
+                $"Cannot create or use the folder {data}. Make it and the folders above it writable, then try again."),
+            (exit, console.Output.TrimEnd()));
+        string log = File.ReadAllText(Assert.Single(Directory.GetFiles(logs)));
+        Assert.Contains("pairing.failed", log, StringComparison.Ordinal);
+        Assert.Contains("dir_not_writable", log, StringComparison.Ordinal);
     }
 
     [Fact]
