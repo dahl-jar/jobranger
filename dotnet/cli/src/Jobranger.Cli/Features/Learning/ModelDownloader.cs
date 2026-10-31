@@ -13,11 +13,7 @@ internal sealed class ModelDownloader(
     private static readonly TimeSpan stalePartAge = TimeSpan.FromMinutes(10);
 
     public ModelDownloader(HttpClient http, string modelDir, IReadOnlyList<ModelFile> files)
-        : this(http, modelDir, files, defaultIdleTimeout) {
-    }
-
-    public ModelDownloader(HttpClient http, string modelDir, IReadOnlyList<ModelFile> files, TimeSpan idleTimeout)
-        : this(http, modelDir, files, idleTimeout, TimeProvider.System) {
+        : this(http, modelDir, files, defaultIdleTimeout, TimeProvider.System) {
     }
 
     public async Task EnsureAsync(CancellationToken cancellationToken) {

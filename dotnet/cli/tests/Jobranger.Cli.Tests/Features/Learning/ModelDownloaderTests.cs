@@ -112,7 +112,7 @@ public sealed class ModelDownloaderTests : IDisposable {
     [Fact(Timeout = testTimeoutMs)]
     public async Task ShouldPropagateCancellation_WhenCallerCancels() {
         using HttpClient http = new(new StalledBodyHandler([1, 2]));
-        ModelDownloader downloader = new(http, folder.FullName, [file], longIdleTimeout);
+        ModelDownloader downloader = new(http, folder.FullName, [file], longIdleTimeout, new FakeTimeProvider());
         using CancellationTokenSource caller =
             CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         caller.CancelAfter(cancelAfter);
