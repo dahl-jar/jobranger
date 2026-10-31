@@ -256,6 +256,23 @@ public sealed class NavSourceTests {
     }
 
     [Theory]
+    [InlineData(tokenPath)]
+    [InlineData(entryPath)]
+    public async Task ShouldMarkBatchPartial_WhenCancelledDuringRequest(string path) {
+        using CancellationTokenSource cancel = new();
+        FakeSiteHandler handler = Site(_ => Page([FeedItem(NavUuid)]), DeveloperEntry());
+        handler.OnRequest = url => {
+            if (url.AbsolutePath.StartsWith(path, StringComparison.Ordinal)) {
+                cancel.Cancel();
+            }
+        };
+
+        SourceBatch batch = await source.FetchAsync(Context(handler), cancel.Token);
+
+        Assert.True(batch.Partial);
+    }
+
+    [Theory]
     [InlineData("token", "nav.token.failed")]
     [InlineData("feed", "nav.feed.failed")]
     public async Task ShouldLogFailure_WhenNavStageFails(string stage, string eventName) {

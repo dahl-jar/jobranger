@@ -35,6 +35,7 @@ DRIVERS: tuple[tuple[str, tuple[object, ...], str | None], ...] = (
     ),
     ("budget_estimates.py", ("--out", BUDGET_ESTIMATES), None),
     ("matching.py", ("--inputs", MATCHING_INPUTS, "--out", GOLDEN), None),
+    ("lax_typing.py", ("--inputs", MATCHING_INPUTS, "--out", GOLDEN), None),
 )
 
 log = logging.getLogger("export_goldens")

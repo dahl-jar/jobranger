@@ -69,6 +69,19 @@ public sealed class ContextFileTests : IDisposable {
         Assert.Equal(context.Docs, loaded.Docs);
     }
 
+    [Theory]
+    [InlineData("Senior dev\tOslo")]
+    [InlineData("Built X.\nLed Y.\u2028Shipped Z.")]
+    [InlineData("Built X.\u0085Led Y.")]
+    public void ShouldLoadSavedText_WhenTextHasTabOrLineSeparator(string text) {
+        UserContext context = new() { Docs = [new ContextDoc("doc_notes_md", "notes.md", text, "2026-10-12")] };
+        ProfilesEntry.SaveContext(path, context, NullLogger.Instance);
+
+        UserContext loaded = ProfilesEntry.LoadContext(path);
+
+        Assert.Equal(text, loaded.Docs[0].Text);
+    }
+
     [Fact]
     public void ShouldWriteOwnerOnlyFile_WhenSaving() {
         ProfilesEntry.SaveContext(path, new UserContext { About = "Notes." }, NullLogger.Instance);

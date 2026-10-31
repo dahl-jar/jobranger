@@ -59,7 +59,7 @@ internal sealed partial class NavSource : ISource {
         try {
             options = await AuthorizeAsync(context.Http, cancellationToken).ConfigureAwait(false);
         } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-            return progress.Batch();
+            return progress.Batch() with { Partial = true };
         } catch (Exception error) when (SourceHttp.IsFailure(error, cancellationToken)) {
             LogEvents.NavTokenFailed(context.Logger, error);
             throw new SourceException("nav token failed", null, error);
@@ -67,7 +67,7 @@ internal sealed partial class NavSource : ISource {
         try {
             await ReadFeedAsync(context, options, progress, cancellationToken).ConfigureAwait(false);
         } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-            return progress.Batch();
+            return progress.Batch() with { Partial = true };
         } catch (Exception error) when (SourceHttp.IsFailure(error, cancellationToken)) {
             LogEvents.NavFeedFailed(context.Logger, error);
             throw new SourceException("nav feed failed", progress.Batch(), error);

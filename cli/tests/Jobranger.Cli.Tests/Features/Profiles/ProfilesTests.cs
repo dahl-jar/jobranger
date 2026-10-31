@@ -24,8 +24,29 @@ public sealed class ProfilesTests : IDisposable {
         """;
 
     private const string contextPath = "/config/context.yaml";
+    private const string profileName = "profile.yaml";
+    private const string idSuffix = ".id";
+    private const string crashOutcome = "rejected";
+    private const string jsonNull = "null";
+
+    private static readonly JsonArray profileForms = LaxGolden.Rows("profile.json");
+    private static readonly Dictionary<string, ConfigProblem> pythonProblems = new(StringComparer.Ordinal) {
+        ["string_type"] = ConfigProblem.NotText,
+        ["float_type"] = ConfigProblem.NotNumber,
+        ["float_parsing"] = ConfigProblem.NotNumber,
+        ["bool_type"] = ConfigProblem.NotBoolean,
+        ["bool_parsing"] = ConfigProblem.NotBoolean,
+        ["greater_than_equal"] = ConfigProblem.BelowZero,
+        ["missing"] = ConfigProblem.Required,
+        ["extra_forbidden"] = ConfigProblem.UnknownKey,
+        ["tuple_type"] = ConfigProblem.NotList,
+        ["model_type"] = ConfigProblem.NotSection,
+        ["string_too_long"] = ConfigProblem.TooLong,
+    };
 
     private readonly TempDir temp = new();
+
+    public static TheoryData<int> ProfileFormRows => LaxGolden.Indexes(profileForms);
 
     public void Dispose() => temp.Dispose();
 
@@ -88,15 +109,11 @@ public sealed class ProfilesTests : IDisposable {
     }
 
     [Theory]
-    [InlineData("id: java_project", "id: Java", "projects.0.id", nameof(ConfigProblem.NotEvidenceId))]
-    [InlineData("id: java_project", "id: j", "projects.0.id", nameof(ConfigProblem.NotEvidenceId))]
     [InlineData("    facts: Java.", "    facts: Java.\n    start: 2024-1", "projects.0.start", nameof(ConfigProblem.NotMonth))]
     [InlineData("    facts: Java.", "    facts: Java.\n    end: May 2024", "projects.0.end", nameof(ConfigProblem.NotMonth))]
     [InlineData("id: java_project", "id: education", "projects.0.id", nameof(ConfigProblem.DuplicateKey))]
     [InlineData("id: java_project", "id: about_me", "projects.0.id", nameof(ConfigProblem.ReservedId))]
     [InlineData("id: java_project", "id: doc_cv_pdf", "projects.0.id", nameof(ConfigProblem.ReservedId))]
-    [InlineData("summary: Developer", "has_master: false", "summary", nameof(ConfigProblem.Required))]
-    [InlineData("summary: Developer", "summary: Developer\nskills: []", "skills", nameof(ConfigProblem.UnknownKey))]
     public void ShouldRejectProfile_WhenFieldBreaksRule(
         string field, string replacement, string location, string problem) {
         string path = Write(valid.Replace(field, replacement, StringComparison.Ordinal));
@@ -107,26 +124,6 @@ public sealed class ProfilesTests : IDisposable {
         Assert.Equal(
             (path, location, Enum.Parse<ConfigProblem>(problem)),
             (error.Path, error.Errors[0].Location, error.Errors[0].Problem));
-    }
-
-    [Theory]
-    [InlineData(0, false)]
-    [InlineData(-1, true)]
-    public void ShouldRejectYears_WhenBelowZero(int years, bool rejected) {
-        string path = Write(valid.Replace("professional_years: 1", $"professional_years: {years}", StringComparison.Ordinal));
-
-        Exception? error = Record.Exception(() => ProfilesEntry.Load(path));
-
-        Assert.Equal(rejected, error is ConfigInvalidException { Errors: [{ Problem: ConfigProblem.BelowZero }] });
-    }
-
-    [Fact]
-    public void ShouldRejectProfile_WhenRootIsList() {
-        string path = Write("- a\n");
-
-        ConfigInvalidException error = Assert.Throws<ConfigInvalidException>(() => ProfilesEntry.Load(path));
-
-        Assert.Equal(ConfigProblem.NotSection, error.Errors.Single().Problem);
     }
 
     [Fact]
@@ -141,6 +138,15 @@ public sealed class ProfilesTests : IDisposable {
         Assert.Equal(
             [("projects.0.id", ConfigProblem.Required), ("projects.1.id", ConfigProblem.Required)],
             error.Errors.Select(item => (item.Location, item.Problem)));
+    }
+
+    [Fact]
+    public void ShouldReadNoMaster_WhenHasMasterIsAbsent() {
+        string path = Write(valid);
+
+        Profile profile = ProfilesEntry.Load(path);
+
+        Assert.False(profile.HasMaster);
     }
 
     [Fact]
@@ -175,6 +181,69 @@ public sealed class ProfilesTests : IDisposable {
         Assert.Equal(rejected, error is ConfigInvalidException { Errors: [{ Problem: ConfigProblem.TooLong }] });
     }
 
+    [Theory]
+    [MemberData(nameof(ProfileFormRows))]
+    public void ShouldMatchPython_WhenProfileFieldUsesYamlForm(int row) {
+        JsonNode golden = profileForms[row]!;
+        string id = golden["id"]!.GetValue<string>();
+        string field = golden["field"]!.GetValue<string>();
+        JsonObject expect = golden["expect"]!.AsObject();
+        string path = Write(golden["yaml"]!.GetValue<string>());
+
+        string outcome = Outcome(path, field, expect.ContainsKey("crash"));
+
+        Assert.Equal((id, Expected(id, field, expect)), (id, outcome));
+    }
+
+    [Theory]
+    [InlineData("summary: s\nprofessional_years: 1\nhas_master: !!bool 1\n", "has_master", nameof(ConfigProblem.NotBoolean))]
+    [InlineData("summary: s\nprofessional_years: !!int abc\n", "professional_years", nameof(ConfigProblem.NotNumber))]
+    [InlineData("summary: s\nprofessional_years: 2024-02-30\n", "professional_years", nameof(ConfigProblem.NotNumber))]
+    [InlineData("summary: s\nprofessional_years: !!int ' 5'\n", "professional_years", nameof(ConfigProblem.NotNumber))]
+    [InlineData("summary: !!binary aGk=\nprofessional_years: 1\n", "summary", nameof(ConfigProblem.NotText))]
+    public void ShouldReportFieldTypeError_WhenTagOrDateCannotBuildValue(string yaml, string location, string problem) {
+        string path = Write(yaml);
+
+        ConfigInvalidException error = Assert.Throws<ConfigInvalidException>(() => ProfilesEntry.Load(path));
+
+        Assert.Equal(
+            [(location, Enum.Parse<ConfigProblem>(problem))],
+            error.Errors.Select(item => (item.Location, item.Problem)));
+    }
+
+    [Theory]
+    [InlineData("summary: s\rprofessional_years: 3\t\r", "2")]
+    [InlineData("professional_years: 1\nsummary: \"a\nb\"\n", "2")]
+    [InlineData("summary: s\nprofessional_years: 1\nstack: [a\u0007]\n", "3")]
+    [InlineData("professional_years: 1\nsummary: \"a\\t\u2028b\"\n", "2")]
+    [InlineData("professional_years: 1\nsummary: 'a\u2028#b'\n", "2")]
+    [InlineData("professional_years: 1\nsummary: a\n- x\nstack: [b]\u2028\n", "3")]
+    [InlineData("professional_years: 1\nsummary: a\u2028b\n- x\n", "3")]
+    [InlineData("summary: Line one\n  Built X\u2028#1 team\n  line three\nprofessional_years: 1\n", "2")]
+    [InlineData("summary: a\u2028\n\tb: 1\nprofessional_years: 1\n", "2")]
+    [InlineData(ProfileFixtures.FactsProfile + "Built X.\n      \u0085Led Y.\n", "7")]
+    [InlineData(ProfileFixtures.FactsProfile + "'Built X.\n      \u0085Led Y.'\n", "7")]
+    [InlineData(ProfileFixtures.FactsProfile + "'Built X.\u2028\t\n      Led Y.'\n", "6")]
+    public void ShouldNameLine_WhenProfileIsNotYaml(string yaml, string line) {
+        string path = Write(yaml);
+
+        ConfigInvalidException error = Assert.Throws<ConfigInvalidException>(() => ProfilesEntry.Load(path));
+
+        Assert.Equal(
+            [(profileName, ConfigProblem.NotYaml, line)],
+            error.Errors.Select(item => (item.Location, item.Problem, item.Detail)));
+    }
+
+    [Fact]
+    public void ShouldWriteNullYears_WhenYearsAreInfinite() {
+        string path = Write(valid.Replace("professional_years: 1", "professional_years: .inf", StringComparison.Ordinal));
+        Profile profile = ProfilesEntry.Load(path);
+
+        string text = ProfilesEntry.Text(profile);
+
+        Assert.Contains("\"professional_years\": null", text, StringComparison.Ordinal);
+    }
+
     private static string? MatchStatus(string evidenceId) {
         Profile profile = ProfilesEntry.Load(MatchingFixtures.TestData("profile_user.yaml"));
         UserContext context = ProfilesEntry.WithDoc(
@@ -193,6 +262,65 @@ public sealed class ProfilesTests : IDisposable {
             MatchingFixtures.Version);
         return result?.Match?.Status;
     }
+
+    private static string Expected(string id, string field, JsonObject expect) {
+        if (expect.ContainsKey("crash")) {
+            return crashOutcome;
+        }
+        if (expect["errors"] is JsonArray errors) {
+            return Errors(errors.Select(item => PythonError(
+                id, item!["loc"]!.GetValue<string>(), item["type"]!.GetValue<string>())));
+        }
+        JsonNode? value = expect["value"];
+        return field switch {
+            "document" => string.Empty,
+            "professional_years" => LaxGolden.ReprBits(value!.GetValue<string>()).ToString()!,
+            _ => value?.ToJsonString() ?? jsonNull,
+        };
+    }
+
+    private static (string Location, ConfigProblem Problem) PythonError(string id, string location, string type) {
+        ConfigProblem problem = type switch {
+            "string_pattern_mismatch" when location.EndsWith(idSuffix, StringComparison.Ordinal) =>
+                ConfigProblem.NotEvidenceId,
+            "string_pattern_mismatch" => ConfigProblem.NotMonth,
+            _ when pythonProblems.TryGetValue(type, out ConfigProblem mapped) => mapped,
+            _ => throw new InvalidOperationException(id + ": no C# problem for Python error type " + type),
+        };
+        return (location.Length == 0 ? profileName : location, problem);
+    }
+
+    private static string Outcome(string path, string field, bool rejectedOnly) {
+        Profile profile;
+        try {
+            profile = ProfilesEntry.Load(path);
+        } catch (ConfigInvalidException error) {
+            return rejectedOnly ? crashOutcome : Errors(error.Errors.Select(item => (item.Location, item.Problem)));
+        }
+        Evidence? evidence = profile.Projects.Count > 0 ? profile.Projects[0] : null;
+        return field switch {
+            "document" => string.Empty,
+            "professional_years" => LaxGolden.Bits(profile.ProfessionalYears).ToString()!,
+            "summary" => Json(profile.Summary),
+            "has_master" => JsonValue.Create(profile.HasMaster).ToJsonString(),
+            "languages" => Texts(profile.Languages),
+            "stack" => Texts(profile.Stack),
+            "evidence.id" => Json(evidence?.Id),
+            "evidence.name" => Json(evidence?.Name),
+            "evidence.facts" => Json(evidence?.Facts),
+            "evidence.start" => Json(evidence?.Start),
+            "evidence.end" => Json(evidence?.End),
+            _ => throw new InvalidOperationException("no profile field " + field),
+        };
+    }
+
+    private static string Json(string? text) => JsonValue.Create(text)?.ToJsonString() ?? jsonNull;
+
+    private static string Texts(IReadOnlyList<string> items) =>
+        new JsonArray([.. items.Select(item => (JsonNode?)JsonValue.Create(item))]).ToJsonString();
+
+    private static string Errors(IEnumerable<(string Location, ConfigProblem Problem)> errors) =>
+        string.Join("; ", errors.Select(error => error.Location + " " + error.Problem).Order(StringComparer.Ordinal));
 
     private string Write(string text) {
         string path = temp.File("profile.yaml");

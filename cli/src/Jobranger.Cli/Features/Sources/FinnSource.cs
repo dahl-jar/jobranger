@@ -29,7 +29,7 @@ internal sealed class FinnSource : ISource {
         try {
             return await ScanAsync(context, scan, cancellationToken).ConfigureAwait(false);
         } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-            return Batch(context, scan);
+            return Batch(context, scan) with { Partial = true };
         }
     }
 
