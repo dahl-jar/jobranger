@@ -15,6 +15,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using Spectre.Console;
 using AdsEntry = Jobranger.Cli.Features.Ads.Ads;
+using LinkEntry = Jobranger.Cli.Features.Link.Link;
 using MatchingEntry = Jobranger.Cli.Features.Matching.Matching;
 using RootCommand = Jobranger.Cli.Commands.RootCommand;
 
@@ -49,6 +50,7 @@ public sealed class ReportCommandTests : IDisposable {
     private const string dataDirVariable = "JOBRANGER_DATA_DIR";
     private const int corruptBytes = 4096;
     private const double requiredYears = 5;
+    private const int testTimeoutMs = 10_000;
 
     private static readonly Ad strongAd = AdFixtures.Numbered(1) with {
         Title = "Software Developer",
@@ -360,6 +362,25 @@ public sealed class ReportCommandTests : IDisposable {
             (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
     }
 
+    [Theory(Timeout = testTimeoutMs)]
+    [InlineData("abc", "report.failed", "report")]
+    [InlineData("99999999999999", "report.failed", "report")]
+    [InlineData("-1", "report.failed", "report")]
+    [InlineData("abc", "devices.failed", "devices", "list")]
+    [InlineData("abc", "pairing.failed", "pair")]
+    public async Task ShouldPrintDatabaseUnreadable_WhenSchemaVersionIsNotNumber(
+        string version, string failedEvent, params string[] args) {
+        using (SqliteConnection database = Database.Open(paths.DbPath(), NullLogger.Instance)) {
+            new StateStore(database).Set(StateStore.SchemaVersionKey, version);
+        }
+
+        int exit = await RunCommandAsync(args, TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            (CliExitCodes.Failure, CommandFixtures.WithPath(CommandFixtures.DatabaseUnreadable, paths.DbPath()), $"{failedEvent} database_unreadable"),
+            (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
+    }
+
     [Fact]
     public async Task ShouldPrintDatabaseUnreadable_WhenDatabaseIsSymlink() {
         Directory.CreateDirectory(paths.DataDir());
@@ -463,5 +484,15 @@ public sealed class ReportCommandTests : IDisposable {
         System.CommandLine.RootCommand root = [new ReportCommand(services, environment, clock)];
         InvocationConfiguration configuration = new() { Error = console.ErrorConsole.Profile.Out.Writer };
         return root.Parse([ReportCommand.CommandName]).InvokeAsync(configuration, TestContext.Current.CancellationToken);
+    }
+
+    private Task<int> RunCommandAsync(string[] args, CancellationToken cancellationToken) {
+        CliServices services = CliServices.Create(clock, console.Console, console.ErrorConsole, environment);
+        System.CommandLine.RootCommand root = [
+            new ReportCommand(services, environment, clock),
+            new DevicesCommand(services, environment, clock, LinkEntry.OpenAsync),
+            new PairCommand(services, environment, clock, inputRedirected: true, LinkEntry.OpenAsync),
+        ];
+        return root.Parse(args).InvokeAsync(null, cancellationToken);
     }
 }
