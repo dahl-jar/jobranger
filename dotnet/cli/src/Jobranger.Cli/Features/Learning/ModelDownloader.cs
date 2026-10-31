@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 namespace Jobranger.Cli.Features.Learning;
 
 internal sealed class ModelDownloader(
-    HttpClient http, string modelDir, IReadOnlyList<ModelFile> files, TimeSpan idleTimeout) {
+    HttpClient http, string modelDir, IReadOnlyList<ModelFile> files, TimeSpan idleTimeout, TimeProvider time) {
     private const int bufferSize = 1 << 20;
     private const string partSuffix = ".part";
 
@@ -13,7 +13,7 @@ internal sealed class ModelDownloader(
     private static readonly TimeSpan stalePartAge = TimeSpan.FromMinutes(10);
 
     public ModelDownloader(HttpClient http, string modelDir, IReadOnlyList<ModelFile> files)
-        : this(http, modelDir, files, defaultIdleTimeout) {
+        : this(http, modelDir, files, defaultIdleTimeout, TimeProvider.System) {
     }
 
     public async Task EnsureAsync(CancellationToken cancellationToken) {
@@ -56,11 +56,14 @@ internal sealed class ModelDownloader(
             FileStream output = new(part, FileMode.CreateNew, FileAccess.Write, FileShare.None, unbuffered);
             await using (output.ConfigureAwait(false)) {
                 using IncrementalHash hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-                using CancellationTokenSource idle = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                using CancellationTokenSource idle = new(idleTimeout, time);
+                using CancellationTokenSource reading =
+                    CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, idle.Token);
                 byte[] buffer = new byte[bufferSize];
                 long total = 0;
                 int read;
-                while ((read = await ReadAsync(file, body, buffer, idle, cancellationToken).ConfigureAwait(false)) > 0) {
+                while ((read = await ReadAsync(file, body, buffer, idle, reading.Token, cancellationToken)
+                    .ConfigureAwait(false)) > 0) {
                     total += read;
                     if (total > file.Size) {
                         throw new InvalidDataException($"{file.Name} is larger than the pinned {file.Size} bytes");
@@ -74,10 +77,15 @@ internal sealed class ModelDownloader(
     }
 
     private async Task<int> ReadAsync(
-        ModelFile file, Stream body, byte[] buffer, CancellationTokenSource idle, CancellationToken cancellationToken) {
+        ModelFile file,
+        Stream body,
+        byte[] buffer,
+        CancellationTokenSource idle,
+        CancellationToken reading,
+        CancellationToken cancellationToken) {
         idle.CancelAfter(idleTimeout);
         try {
-            return await body.ReadAsync(buffer, idle.Token).ConfigureAwait(false);
+            return await body.ReadAsync(buffer, reading).ConfigureAwait(false);
         } catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
             throw new ModelDownloadException(file.Name, idleTimeout);
         }
