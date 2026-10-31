@@ -9,7 +9,6 @@ internal sealed class TerminalEdit(string folder) : IDisposable {
     private const string shell = "/bin/sh";
     private const string sessionProgram = "script";
     private const string discardedTranscript = "/dev/null";
-    private const string cliAssembly = "jobranger.dll";
     private const string configVariable = "JOBRANGER_CONFIG_DIR";
     private const string dataVariable = "JOBRANGER_DATA_DIR";
     private const string stateVariable = "JOBRANGER_STATE_DIR";
@@ -45,8 +44,7 @@ internal sealed class TerminalEdit(string folder) : IDisposable {
             + $"stty -a > {settingsFile}\n"
             + $"echo $code > {exitFile}\n");
 
-    public string[] EditFolders() =>
-        Directory.Exists(stateFolder) ? Directory.GetDirectories(stateFolder, editFolderPattern) : [];
+    public string[] EditFolders() => Directory.GetDirectories(stateFolder, editFolderPattern);
 
     public bool IsEchoOn() => Pseudoterminal.HasEcho(File.ReadAllText(settingsFile));
 
@@ -87,7 +85,7 @@ internal sealed class TerminalEdit(string folder) : IDisposable {
             : ["-qfc", $"{shell} {jobFile}", discardedTranscript];
 
     private static string EditCommand() =>
-        $"{RelayProcess.DotnetHost()} {Path.Combine(AppContext.BaseDirectory, cliAssembly)} guidance edit";
+        $"{CvFixtures.Muxer} {CvFixtures.WorkerDll} guidance edit";
 
     private string WriteEditor(string script) {
         string editor = Path.Combine(folder, "editor");

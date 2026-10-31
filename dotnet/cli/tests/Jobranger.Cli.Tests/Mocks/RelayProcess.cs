@@ -77,13 +77,6 @@ internal sealed class RelayProcess : IAsyncDisposable {
 
     public ValueTask DisposeAsync() => new(StopAsync());
 
-    public static string DotnetHost() => Path.GetFullPath(Path.Combine(
-        RuntimeEnvironment.GetRuntimeDirectory(),
-        "..",
-        "..",
-        "..",
-        OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet"));
-
     private async Task WaitHealthyAsync(Process started) {
         using HttpClient http = new() { BaseAddress = Address };
         using CancellationTokenSource deadline =
@@ -121,4 +114,11 @@ internal sealed class RelayProcess : IAsyncDisposable {
         listener.Stop();
         return free;
     }
+
+    private static string DotnetHost() => Path.GetFullPath(Path.Combine(
+        RuntimeEnvironment.GetRuntimeDirectory(),
+        "..",
+        "..",
+        "..",
+        OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet"));
 }
