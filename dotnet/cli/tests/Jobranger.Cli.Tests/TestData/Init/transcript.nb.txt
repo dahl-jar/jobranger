@@ -23,7 +23,7 @@ Kilder
   – FINN             av
   – LinkedIn         av
     Vilkårene til FINN og LinkedIn tillater ikke automatisk innsamling.
-    Slå det bare på til egen, personlig bruk.
+    Slå dem bare på til egen, personlig bruk.
 ? Slå på FINN eller LinkedIn til personlig bruk? (j/N)
 
 jobranger-oppsett · 4 av 4 · levering

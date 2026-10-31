@@ -13,6 +13,7 @@ namespace Jobranger.Cli.Tests.Commands;
 public sealed class InitPtyTests : IDisposable {
     private const string ctrlC = "\x03";
     private const string enter = "\r";
+    private const string space = " ";
     private const string downArrow = "\x1b[B";
     private const string hideCursor = "\x1b[?25l";
     private const string showCursor = "\x1b[?25h";
@@ -36,7 +37,7 @@ public sealed class InitPtyTests : IDisposable {
     [Fact]
     public async Task ShouldExit130_WhenCtrlCArrivesAtConfirm() {
         Directory.CreateDirectory(paths.ConfigDir());
-        File.WriteAllText(paths.ConfigPath(), "version: 1\n");
+        File.WriteAllText(paths.ConfigPath(), InitFixtures.OldConfig);
         byte[] old = File.ReadAllBytes(paths.ConfigPath());
         await using PtyProcess pty = PtyProcess.Start(environment, InitCommand.CommandName);
         await pty.WaitForAsync("A config already");
@@ -84,13 +85,8 @@ public sealed class InitPtyTests : IDisposable {
     [Fact]
     public async Task ShouldExit130_WhenCtrlCArrivesAtCheckbox() {
         await using RawHttpServer ollama = new(TagsReply(InitFixtures.OllamaList));
-        string profile = InitFixtures.WriteProfile(temp);
         await using PtyProcess pty = PtyProcess.Start(environment, InitCommand.CommandName);
-        await ReachModelPromptAsync(pty, ollama);
-        await pty.SendAsync(enter);
-        await pty.WaitForAsync(english.InitProfilePath);
-        await pty.SendAsync(profile + enter);
-        await pty.WaitForAsync(english.InitRoles);
+        await ReachRolesPromptAsync(pty, ollama);
 
         await pty.SendAsync(ctrlC);
         await pty.WaitForExitAsync();
@@ -112,6 +108,45 @@ public sealed class InitPtyTests : IDisposable {
         await pty.SendAsync(ctrlC);
         await pty.WaitForExitAsync();
         Assert.Equal(RunCommandFixtures.Interrupted, pty.ExitCode);
+    }
+
+    [Fact]
+    public async Task ShouldUseDefaultPath_WhenEnterIsPressedAtProfile() {
+        await using RawHttpServer ollama = new(TagsReply(InitFixtures.OllamaList));
+        Directory.CreateDirectory(paths.ConfigDir());
+        File.WriteAllText(paths.ProfilePath(), InitFixtures.ProfileBody);
+        await using PtyProcess pty = PtyProcess.Start(environment, InitCommand.CommandName);
+        await ReachModelPromptAsync(pty, ollama);
+        await pty.SendAsync(enter);
+        await pty.WaitForAsync(english.InitProfilePath);
+
+        await pty.SendAsync(enter);
+        await pty.WaitForAsync(english.InitRoles);
+    }
+
+    [Fact]
+    public async Task ShouldStartOver_WhenNorwegianUserAnswersJ() {
+        NorwegianMessages norwegian = new();
+        environment["LANG"] = Locales.Norwegian;
+        Directory.CreateDirectory(paths.ConfigDir());
+        File.WriteAllText(paths.ConfigPath(), InitFixtures.OldConfig);
+        await using PtyProcess pty = PtyProcess.Start(environment, InitCommand.CommandName);
+        await pty.WaitForAsync("Det finnes allerede");
+
+        await pty.SendAsync("j" + enter);
+        await pty.WaitForAsync(norwegian.InitProvider);
+    }
+
+    [Fact]
+    public async Task ShouldKeepPreChecked_WhenEnterIsPressedAtLevels() {
+        await using RawHttpServer ollama = new(TagsReply(InitFixtures.OllamaList));
+        await using PtyProcess pty = PtyProcess.Start(environment, InitCommand.CommandName);
+        await ReachRolesPromptAsync(pty, ollama);
+        await pty.SendAsync(space + enter);
+        await pty.WaitForAsync(english.InitLevels);
+
+        await pty.SendAsync(enter);
+        await pty.WaitForAsync(english.InitYears);
     }
 
     [Fact]
@@ -147,4 +182,13 @@ public sealed class InitPtyTests : IDisposable {
     private static string TagsReply(string body) => string.Create(
         CultureInfo.InvariantCulture,
         $"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {body.Length}\r\nConnection: close\r\n\r\n{body}");
+
+    private async Task ReachRolesPromptAsync(PtyProcess pty, RawHttpServer ollama) {
+        string profile = InitFixtures.WriteProfile(temp);
+        await ReachModelPromptAsync(pty, ollama);
+        await pty.SendAsync(enter);
+        await pty.WaitForAsync(english.InitProfilePath);
+        await pty.SendAsync(profile + enter);
+        await pty.WaitForAsync(english.InitRoles);
+    }
 }

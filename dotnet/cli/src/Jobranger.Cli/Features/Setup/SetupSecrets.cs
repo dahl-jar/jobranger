@@ -14,16 +14,6 @@ internal sealed class SetupSecrets(SetupContext context) {
     public static bool IsWriteFailure(Exception error) =>
         error is SecretStoreUnavailableException or PrivateFileException or IOException or UnauthorizedAccessException;
 
-    public async Task EnsureReadyAsync(CancellationToken cancellationToken) {
-        if (isReady) {
-            return;
-        }
-        if (await OpenAsync(cancellationToken).ConfigureAwait(false) is ISecretStore opened) {
-            await opened.ReadAsync(Credentials.SmtpPasswordName, cancellationToken).ConfigureAwait(false);
-        }
-        isReady = true;
-    }
-
     public async Task<string> AskAsync(string name, string message, CancellationToken cancellationToken) {
         await EnsureReadyAsync(cancellationToken).ConfigureAwait(false);
         string variable = Credentials.EnvVars[name];
@@ -53,6 +43,16 @@ internal sealed class SetupSecrets(SetupContext context) {
             throw new SetupSaveException(written, error);
         }
         return location;
+    }
+
+    private async Task EnsureReadyAsync(CancellationToken cancellationToken) {
+        if (isReady) {
+            return;
+        }
+        if (await OpenAsync(cancellationToken).ConfigureAwait(false) is ISecretStore opened) {
+            await opened.ReadAsync(Credentials.SmtpPasswordName, cancellationToken).ConfigureAwait(false);
+        }
+        isReady = true;
     }
 
     private async Task<ISecretStore?> OpenAsync(CancellationToken cancellationToken) {

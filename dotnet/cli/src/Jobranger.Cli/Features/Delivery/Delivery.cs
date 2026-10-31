@@ -52,11 +52,13 @@ internal sealed class Delivery(
         IMessages messages,
         TimeProvider time,
         CancellationToken cancellationToken) {
-        if (EmailAddresses.From(email) is not EmailAddresses addresses) {
-            return new SendFailure(SendFailureKind.UnusableAddress, messages.EmailUnusableAddress);
-        }
-        IEmailSender sender = SenderFor(email, rendered, null, transport, messages, time).CreateSender(secret, addresses);
-        return await sender.SendAsync(rendered, addresses, cancellationToken).ConfigureAwait(false);
+        return await SendToAddressesAsync(
+            email,
+            secret,
+            SenderFor(email, rendered, null, transport, messages, time).CreateSender,
+            rendered,
+            messages,
+            cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<DeliveryResult> DeliverAsync(AppConfig config, RunResult result, CancellationToken cancellationToken) {
@@ -114,6 +116,20 @@ internal sealed class Delivery(
             : (string.IsNullOrEmpty(email.SmtpUser) ? null : Credentials.SmtpPasswordName,
                 (password, _) => new SmtpSender(email.SmtpUrl, email.SmtpUser, password, transport, messages, time));
 
+    private static async Task<SendFailure?> SendToAddressesAsync(
+        EmailConfig email,
+        string? secret,
+        Func<string?, EmailAddresses, IEmailSender> createSender,
+        RenderedDigest rendered,
+        IMessages messages,
+        CancellationToken cancellationToken) {
+        if (EmailAddresses.From(email) is not EmailAddresses addresses) {
+            return new SendFailure(SendFailureKind.UnusableAddress, messages.EmailUnusableAddress);
+        }
+        IEmailSender sender = createSender(secret, addresses);
+        return await sender.SendAsync(rendered, addresses, cancellationToken).ConfigureAwait(false);
+    }
+
     private async Task<SendFailure?> SendAsync(
         EmailConfig email, RenderedDigest rendered, long? runId, CancellationToken cancellationToken) {
         (string? secretName, Func<string?, EmailAddresses, IEmailSender> createSender) =
@@ -129,10 +145,6 @@ internal sealed class Delivery(
         if (email.Address is null) {
             return new SendFailure(SendFailureKind.MissingAddress, messages.EmailMissingAddress);
         }
-        if (EmailAddresses.From(email) is not EmailAddresses addresses) {
-            return new SendFailure(SendFailureKind.UnusableAddress, messages.EmailUnusableAddress);
-        }
-        IEmailSender sender = createSender(secret, addresses);
-        return await sender.SendAsync(rendered, addresses, cancellationToken).ConfigureAwait(false);
+        return await SendToAddressesAsync(email, secret, createSender, rendered, messages, cancellationToken).ConfigureAwait(false);
     }
 }

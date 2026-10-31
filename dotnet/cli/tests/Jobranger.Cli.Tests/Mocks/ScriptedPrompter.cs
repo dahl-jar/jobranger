@@ -17,6 +17,8 @@ internal sealed class ScriptedPrompter(TextWriter output, params object[] answer
 
     public List<(string Message, string? Default)> TextDefaults { get; } = [];
 
+    public List<(string Message, bool Default)> ConfirmDefaults { get; } = [];
+
     public Task<string> TextAsync(string message, string? defaultValue, CancellationToken cancellationToken) {
         TextDefaults.Add((message, defaultValue));
         string answer = Next<string>(message, cancellationToken);
@@ -26,8 +28,10 @@ internal sealed class ScriptedPrompter(TextWriter output, params object[] answer
     public Task<string> SecretAsync(string message, CancellationToken cancellationToken) =>
         Task.FromResult(Next<string>(message, cancellationToken));
 
-    public Task<bool> ConfirmAsync(string message, bool defaultValue, CancellationToken cancellationToken) =>
-        Task.FromResult(Next<bool>(message, cancellationToken));
+    public Task<bool> ConfirmAsync(string message, bool defaultValue, CancellationToken cancellationToken) {
+        ConfirmDefaults.Add((message, defaultValue));
+        return Task.FromResult(Next<bool>(message, cancellationToken));
+    }
 
     public Task<string> SelectAsync(string message, IReadOnlyList<PromptChoice> choices, CancellationToken cancellationToken) {
         Choices.Add(choices);

@@ -90,17 +90,18 @@ internal sealed class InitCommand : Command {
         failure.InnerException is SecretStoreUnavailableException ? storeFailure : saveFailure;
 
     private static List<string> SaveLines(SetupSaveException failure, InitContext context) {
-        IMessages messages = context.Messages;
-        List<string> lines = [
-            failure.InnerException is SecretStoreUnavailableException
-                ? messages.InitSecretStoreFailed
-                : messages.InitSaveFailed(FailedPath(failure.InnerException, new Paths(context.Environment))),
-        ];
+        List<string> lines = [FailureLine(failure.InnerException, context)];
         if (failure.SecretsWritten > 0) {
-            lines.Add(messages.InitSecretsKept);
+            lines.Add(context.Messages.InitSecretsKept);
         }
         return lines;
     }
+
+    private static string FailureLine(Exception? cause, InitContext context) => cause switch {
+        SecretStoreUnavailableException => context.Messages.InitSecretStoreFailed,
+        PrivateFileException { IsUnreadable: true } file => context.Messages.FileUnreadable(file.Path),
+        _ => context.Messages.InitSaveFailed(FailedPath(cause, new Paths(context.Environment))),
+    };
 
     private static string FailedPath(Exception? cause, Paths paths) => cause switch {
         PrivateDirException dir => dir.Path,

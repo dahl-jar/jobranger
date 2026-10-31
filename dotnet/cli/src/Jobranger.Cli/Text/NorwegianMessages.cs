@@ -468,7 +468,9 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string InitKeyRejected(string provider) => $"✕ {provider} avviste nøkkelen.";
 
-    public string InitCouldNotReach(string provider, string errorType) => $"✕ Kunne ikke nå {provider}: {errorType}";
+    public string InitCouldNotReach(string provider) => $"✕ Kunne ikke nå {provider}.";
+
+    public string InitOllamaRefused(string url) => $"✕ {url} svarte ikke som Ollama.";
 
     public string InitTryAgain => "Prøve igjen? (J/n)";
 
@@ -526,17 +528,17 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string InitSourceTerms => "    Vilkårene til FINN og LinkedIn tillater ikke automatisk innsamling.";
 
-    public string InitSourcePersonal => "    Slå det bare på til egen, personlig bruk.";
+    public string InitSourcePersonal => "    Slå dem bare på til egen, personlig bruk.";
 
     public string InitOptIn => "Slå på FINN eller LinkedIn til personlig bruk? (j/N)";
 
     public string InitOptInWhich => "Hvilke?";
 
-    public string InitHow => "Hvordan vil du få treffene?";
+    public string InitChannels => "Hvordan vil du få treffene?";
 
     public string InitChannelWebsite => "Nettside   se og endre alt i nettleseren";
 
-    public string InitChannelEmail => "E-post     en kort liste hver morgen";
+    public string InitChannelEmail => "E-post     en kort liste etter hver kjøring";
 
     public string InitAddress => "E-postadresse";
 

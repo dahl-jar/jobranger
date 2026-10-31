@@ -20,20 +20,20 @@ internal sealed class DeliveryStep(SetupContext context, SetupSecrets secrets) :
     public string Title => messages.InitDeliveryTitle;
 
     public async Task<InitState> RunAsync(InitState state, CancellationToken cancellationToken) {
-        IReadOnlyList<string> how = await context.PickAtLeastOneAsync(
-            messages.InitHow,
+        IReadOnlyList<string> channels = await context.PickAtLeastOneAsync(
+            messages.InitChannels,
             [
                 new PromptChoice(ConfigKeys.Website, messages.InitChannelWebsite, true),
                 new PromptChoice(ConfigKeys.Email, messages.InitChannelEmail, true),
             ],
             cancellationToken).ConfigureAwait(false);
-        InitState next = how.Contains(ConfigKeys.Email)
+        InitState next = channels.Contains(ConfigKeys.Email)
             ? await AskEmailAsync(state, cancellationToken).ConfigureAwait(false)
             : state;
         IReadOnlyList<string> times = await AskRunTimesAsync(next.Config, cancellationToken).ConfigureAwait(false);
         return next with {
             Config = next.Config with {
-                Notify = next.Config.Notify with { Website = how.Contains(ConfigKeys.Website) },
+                Notify = next.Config.Notify with { Website = channels.Contains(ConfigKeys.Website) },
                 Schedule = new ScheduleConfig { Times = times },
             },
         };
@@ -60,7 +60,7 @@ internal sealed class DeliveryStep(SetupContext context, SetupSecrets secrets) :
                 server = await AskValidAsync(
                     messages.InitSmtpServer,
                     server,
-                    text => SmtpDefaults.Url(text) is not null,
+                    text => SmtpServer.UrlFor(text) is not null,
                     messages.InitNotSmtpServer,
                     cancellationToken).ConfigureAwait(false);
                 transport = await AskSmtpAsync(address, server, cancellationToken).ConfigureAwait(false);
@@ -85,7 +85,7 @@ internal sealed class DeliveryStep(SetupContext context, SetupSecrets secrets) :
             On = true,
             Address = address,
             Via = EmailVia.Smtp,
-            SmtpUrl = SmtpDefaults.Url(server),
+            SmtpUrl = SmtpServer.UrlFor(server),
             SmtpUser = user,
         };
         return new MailTransport(email, Credentials.SmtpPasswordName, password);

@@ -62,7 +62,7 @@ internal static class ConfigFile {
 
     public static YamlTree ReadTree(string path) => new YamlReader(ReadText(path), Path.GetFileName(path)).Read();
 
-    private static void RequireValid(string path, AppConfig config) {
+    public static void RequireValid(string path, AppConfig config) {
         IReadOnlyList<ConfigError> problems = AppConfigValidator.Validate(config);
         if (problems.Count > 0) {
             throw new ConfigInvalidException(path, problems);

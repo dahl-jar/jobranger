@@ -10,11 +10,7 @@ internal sealed class Setup {
     private readonly IReadOnlyList<ISetupStep> steps;
     private readonly SetupSecrets secrets;
 
-    public Setup(SetupContext context, IReadOnlyList<ISetupStep> steps)
-        : this(context, steps, new SetupSecrets(context)) {
-    }
-
-    private Setup(SetupContext context, IReadOnlyList<ISetupStep> steps, SetupSecrets secrets) {
+    public Setup(SetupContext context, IReadOnlyList<ISetupStep> steps, SetupSecrets secrets) {
         this.context = context;
         this.steps = steps;
         this.secrets = secrets;
@@ -28,19 +24,15 @@ internal sealed class Setup {
             secrets);
     }
 
-    public async Task<AppConfig?> RunInitAsync(CancellationToken cancellationToken) {
+    public async Task RunInitAsync(CancellationToken cancellationToken) {
         string path = context.Paths.ConfigPath();
         if (File.Exists(path) && !await ConfirmStartOverAsync(path, cancellationToken).ConfigureAwait(false)) {
-            return null;
+            return;
         }
         InitState state = await RunStepsAsync(cancellationToken).ConfigureAwait(false);
-        IReadOnlyList<ConfigError> problems = AppConfigValidator.Validate(state.Config);
-        if (problems.Count > 0) {
-            throw new ConfigInvalidException(path, problems);
-        }
+        ConfigFile.RequireValid(path, state.Config);
         SecretLocation? location = await SaveAsync(state, path).ConfigureAwait(false);
         await WriteSavedAsync(path, location).ConfigureAwait(false);
-        return state.Config;
     }
 
     private Task<bool> ConfirmStartOverAsync(string path, CancellationToken cancellationToken) =>

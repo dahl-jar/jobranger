@@ -20,7 +20,7 @@ internal sealed class InitHarness : IDisposable {
     private readonly FakeTimeProvider clock = AdFixtures.Clock();
 
     public InitHarness() {
-        Environment = InitFixtures.Environment(temp, Locales.English);
+        Environment = CommandFixtures.Environment(temp, Locales.English);
         Paths = new Paths(Environment);
         Profile = InitFixtures.WriteProfile(temp);
     }
@@ -55,6 +55,8 @@ internal sealed class InitHarness : IDisposable {
 
     public object[] WebsiteFlow => [.. ModelAnswers, .. AfterModel];
 
+    public object[] OllamaFlow => [InitFixtures.Ollama, string.Empty, InitFixtures.OllamaModel, .. AfterModel];
+
     public AppConfig Saved => ConfigFile.Load(Paths.ConfigPath(), Paths.Home());
 
     public static string Lines(params string[] lines) =>
@@ -63,6 +65,8 @@ internal sealed class InitHarness : IDisposable {
     public static FakeSmtpServer AcceptingServer() => FakeSmtpServer.Accepting(InitFixtures.StartTls, InitFixtures.AuthPlain);
 
     public static FakeApiHandler Listing() => FakeApiHandler.Json(200, InitFixtures.AnthropicList());
+
+    public static FakeApiHandler OllamaListing() => FakeApiHandler.Json(200, InitFixtures.OllamaList);
 
     public static FakeApiHandler RouterListing() => FakeApiHandler.Json(200, InitFixtures.RouterList);
 
@@ -94,6 +98,9 @@ internal sealed class InitHarness : IDisposable {
 
     public InitSeams Seams(IPrompter? prompter, params FakeApiHandler[] handlers) =>
         InitFixtures.Seams(prompter, Store, handlers, SmtpCertificates.Trusting with { CreateResendHandler = () => ResendHandler });
+
+    public Task<int> InvokeAfterRefusalAsync(ScriptedPrompter prompter) =>
+        InvokeAsync(Seams(prompter, FakeApiHandler.Refusing(), RouterListing(), RouterKeyWorks()));
 
     public byte[] WriteOldConfig(string text) {
         Directory.CreateDirectory(Paths.ConfigDir());

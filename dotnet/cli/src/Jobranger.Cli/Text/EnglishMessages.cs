@@ -456,7 +456,9 @@ internal sealed class EnglishMessages : IMessages {
 
     public string InitKeyRejected(string provider) => $"✕ {provider} rejected the key.";
 
-    public string InitCouldNotReach(string provider, string errorType) => $"✕ Could not reach {provider}: {errorType}";
+    public string InitCouldNotReach(string provider) => $"✕ Could not reach {provider}.";
+
+    public string InitOllamaRefused(string url) => $"✕ {url} did not answer as Ollama.";
 
     public string InitTryAgain => "Try again? (Y/n)";
 
@@ -514,17 +516,17 @@ internal sealed class EnglishMessages : IMessages {
 
     public string InitSourceTerms => "    FINN and LinkedIn do not allow automated collection in their terms.";
 
-    public string InitSourcePersonal => "    Turn it on only for your own, personal use.";
+    public string InitSourcePersonal => "    Turn them on only for your own, personal use.";
 
     public string InitOptIn => "Turn on FINN or LinkedIn for personal use? (y/N)";
 
     public string InitOptInWhich => "Which ones?";
 
-    public string InitHow => "How do you want your matches?";
+    public string InitChannels => "How do you want your matches?";
 
     public string InitChannelWebsite => "Website   see and change everything in your browser";
 
-    public string InitChannelEmail => "Email     a short list every morning";
+    public string InitChannelEmail => "Email     a short list after each run";
 
     public string InitAddress => "Email address";
 

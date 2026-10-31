@@ -23,7 +23,7 @@ Sources
   – FINN             off
   – LinkedIn         off
     FINN and LinkedIn do not allow automated collection in their terms.
-    Turn it on only for your own, personal use.
+    Turn them on only for your own, personal use.
 ? Turn on FINN or LinkedIn for personal use? (y/N)
 
 jobranger setup · 4 of 4 · delivery

@@ -9,7 +9,7 @@ public sealed class SpectrePrompterTests {
     [InlineData(AnsiSupport.Yes, InteractionSupport.No, false)]
     [InlineData(AnsiSupport.No, InteractionSupport.Yes, false)]
     [InlineData(AnsiSupport.Yes, InteractionSupport.Yes, true)]
-    public void ShouldOfferPrompter_WhenConsoleCanPrompt(AnsiSupport ansi, InteractionSupport interaction, bool expected) {
+    public void ShouldOfferPrompter_OnlyWhenConsoleCanPrompt(AnsiSupport ansi, InteractionSupport interaction, bool expected) {
         using StringWriter output = new();
         IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings {
             Ansi = ansi,

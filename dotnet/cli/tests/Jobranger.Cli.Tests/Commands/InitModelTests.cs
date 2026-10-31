@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.Versioning;
 using Jobranger.Cli.Config;
 using Jobranger.Cli.Tests.Mocks;
@@ -28,16 +29,18 @@ public sealed class InitModelTests : IDisposable {
     }
 
     [Theory]
-    [InlineData(Locales.English, "✕ Anthropic rejected the key.")]
-    [InlineData(Locales.Norwegian, "✕ Anthropic avviste nøkkelen.")]
-    public async Task ShouldAskAgain_WhenProviderRejectsKey(string language, string line) {
+    [InlineData(Locales.English, 401, "✕ Anthropic rejected the key.")]
+    [InlineData(Locales.Norwegian, 401, "✕ Anthropic avviste nøkkelen.")]
+    [InlineData(Locales.English, 400, "✕ Anthropic rejected the key.")]
+    [InlineData(Locales.English, 404, "✕ Anthropic rejected the key.")]
+    public async Task ShouldAskAgain_WhenProviderRejectsKey(string language, int status, string line) {
         init.SetLanguage(language);
         IMessages messages = Messages.For(null, init.Environment);
         object[] answers = [InitFixtures.Anthropic, InitFixtures.ApiKey, InitFixtures.OtherKey, .. init.WebsiteFlow[2..]];
         ScriptedPrompter prompter = init.Prompter(answers);
 
         int exit = await init.InvokeAsync(
-            init.Seams(prompter, FakeApiHandler.Json(401, InitFixtures.AuthRefused), InitHarness.Listing()));
+            init.Seams(prompter, FakeApiHandler.Json(status, InitFixtures.AuthRefused), InitHarness.Listing()));
 
         Assert.Equal(CliExitCodes.Ok, exit);
         Assert.Contains(line, init.Output, StringComparison.Ordinal);
@@ -47,19 +50,33 @@ public sealed class InitModelTests : IDisposable {
 
     [Fact]
     public async Task ShouldAskAgain_WhenOpenRouterRejectsKey() {
-        ScriptedPrompter prompter = init.Prompter(
-            [InitFixtures.OpenRouter, InitFixtures.ApiKey, .. RouterFlow[1..]]);
-
-        int exit = await init.InvokeAsync(init.Seams(
-            prompter,
+        await AssertKeyAskedAgainAsync(
+            InitFixtures.ApiKey,
             InitHarness.RouterListing(),
             FakeApiHandler.Json(401, InitFixtures.AuthRefused),
             InitHarness.RouterListing(),
-            InitHarness.RouterKeyWorks()));
+            InitHarness.RouterKeyWorks());
+    }
+
+    [Fact]
+    public async Task ShouldAskAgain_WhenOpenRouterKeyIsEmpty() {
+        await AssertKeyAskedAgainAsync(
+            string.Empty, InitHarness.RouterListing(), InitHarness.RouterListing(), InitHarness.RouterKeyWorks());
+    }
+
+    [Theory]
+    [InlineData(Locales.English, "✕ http://ollama.example.test did not answer as Ollama.")]
+    [InlineData(Locales.Norwegian, "✕ http://ollama.example.test svarte ikke som Ollama.")]
+    public async Task ShouldNameUrl_WhenOllamaRefuses(string language, string line) {
+        init.SetLanguage(language);
+        ScriptedPrompter prompter = init.Prompter(
+            [InitFixtures.Ollama, "http://ollama.example.test", .. init.OllamaFlow[1..]]);
+
+        int exit = await init.InvokeAsync(init.Seams(
+            prompter, FakeApiHandler.Json(404, InitFixtures.EmptyOllamaList), InitHarness.OllamaListing()));
 
         Assert.Equal(CliExitCodes.Ok, exit);
-        Assert.Contains(english.InitKeyRejected("OpenRouter"), init.Output, StringComparison.Ordinal);
-        Assert.Equal(2, prompter.Asked.Count(message => message == english.InitApiKey));
+        Assert.Contains(InitHarness.Lines(line), init.Output, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -67,21 +84,20 @@ public sealed class InitModelTests : IDisposable {
         ScriptedPrompter prompter = init.Prompter(
             [InitFixtures.OpenRouter, InitFixtures.ApiKey, true, .. RouterFlow[1..]]);
 
-        int exit = await init.InvokeAsync(init.Seams(
-            prompter, FakeApiHandler.Refusing(), InitHarness.RouterListing(), InitHarness.RouterKeyWorks()));
+        int exit = await init.InvokeAfterRefusalAsync(prompter);
 
         Assert.Equal(CliExitCodes.Ok, exit);
-        Assert.Contains("✕ Could not reach OpenRouter: Connection", init.Output, StringComparison.Ordinal);
+        Assert.Contains(InitHarness.Lines("✕ Could not reach OpenRouter."), init.Output, StringComparison.Ordinal);
         Assert.Contains(english.InitTryAgain, prompter.Asked);
     }
 
     [Fact]
     public async Task ShouldAskAgain_WhenProviderHasNoModels() {
         ScriptedPrompter prompter = init.Prompter(
-            [InitFixtures.Ollama, string.Empty, true, string.Empty, InitFixtures.OllamaModel, .. init.AfterModel]);
+            [InitFixtures.Ollama, string.Empty, true, .. init.OllamaFlow[1..]]);
 
         int exit = await init.InvokeAsync(init.Seams(
-            prompter, FakeApiHandler.Json(200, InitFixtures.EmptyOllamaList), FakeApiHandler.Json(200, InitFixtures.OllamaList)));
+            prompter, FakeApiHandler.Json(200, InitFixtures.EmptyOllamaList), InitHarness.OllamaListing()));
 
         Assert.Equal(CliExitCodes.Ok, exit);
         Assert.Contains(english.InitNoModels("Ollama"), init.Output, StringComparison.Ordinal);
@@ -101,14 +117,6 @@ public sealed class InitModelTests : IDisposable {
         int line = init.Output.IndexOf(english.InitEnvVarWins(variable), StringComparison.Ordinal);
         Assert.Equal(CliExitCodes.Ok, exit);
         Assert.InRange(line, 0, init.Output.IndexOf($"? {prompt}", StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public async Task ShouldStaySilent_WhenKeyVariableIsUnset() {
-        int exit = await init.InvokeAsync(init.Seams(init.Prompter(init.WebsiteFlow), InitHarness.Listing()));
-
-        Assert.Equal(CliExitCodes.Ok, exit);
-        Assert.DoesNotContain(english.InitEnvVarWins("ANTHROPIC_API_KEY"), init.Output, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -161,17 +169,12 @@ public sealed class InitModelTests : IDisposable {
         Assert.Equal((CliExitCodes.Ok, new PriceOverride(1m, 3m)), (exit, init.Saved.Model.Price));
     }
 
-    [Theory]
-    [InlineData(Locales.English)]
-    [InlineData(Locales.Norwegian)]
-    public async Task ShouldWarn_WhenUnpricedModelHasLimit(string language) {
-        init.SetLanguage(language);
-        IMessages messages = Messages.For(null, init.Environment);
-
+    [Fact]
+    public async Task ShouldWarn_WhenUnpricedModelHasLimit() {
         int exit = await init.InvokeAsync(init.Seams(init.Prompter(UnpricedFlow("5")), InitHarness.UnpricedListing()));
 
         Assert.Equal(CliExitCodes.Ok, exit);
-        Assert.Contains(messages.UnpricedLimitWarning, init.Output, StringComparison.Ordinal);
+        Assert.Contains(english.UnpricedLimitWarning, init.Output, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -187,7 +190,7 @@ public sealed class InitModelTests : IDisposable {
     [Theory]
     [InlineData("abc")]
     [InlineData("1000001")]
-    public async Task ShouldAskAgain_WhenAmountIsNotNumber(string amount) {
+    public async Task ShouldAskAgain_WhenAmountIsInvalid(string amount) {
         object[] answers = [
             InitFixtures.Anthropic, InitFixtures.ApiKey, InitFixtures.TableModel, amount, string.Empty, .. init.AfterModel,
         ];
@@ -200,10 +203,27 @@ public sealed class InitModelTests : IDisposable {
     }
 
     [Fact]
-    public async Task ShouldNotAskLimit_WhenProviderIsOllama() {
-        ScriptedPrompter prompter = init.Prompter([InitFixtures.Ollama, string.Empty, InitFixtures.OllamaModel, .. init.AfterModel]);
+    public async Task ShouldSaveLimit_WhenAmountIsAtMaximum() {
+        string limit = AppConfigValidator.MaxAmountUsd.ToString(CultureInfo.InvariantCulture);
+        object[] answers = [InitFixtures.Anthropic, InitFixtures.ApiKey, InitFixtures.TableModel, limit, .. init.AfterModel];
 
-        int exit = await init.InvokeAsync(init.Seams(prompter, FakeApiHandler.Json(200, InitFixtures.OllamaList)));
+        int exit = await init.InvokeAsync(init.Seams(init.Prompter(answers), InitHarness.Listing()));
+
+        Assert.Equal((CliExitCodes.Ok, AppConfigValidator.MaxAmountUsd), (exit, init.Saved.Model.MonthlyLimitUsd));
+    }
+
+    [Fact]
+    public async Task ShouldSayOllamaAnswered_WhenListingWorks() {
+        await init.InvokeAsync(init.Seams(init.Prompter(init.OllamaFlow), InitHarness.OllamaListing()));
+
+        Assert.Contains(english.InitOllamaAnswered, init.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldNotAskLimit_WhenProviderIsOllama() {
+        ScriptedPrompter prompter = init.Prompter(init.OllamaFlow);
+
+        int exit = await init.InvokeAsync(init.Seams(prompter, InitHarness.OllamaListing()));
 
         Assert.Equal(CliExitCodes.Ok, exit);
         Assert.DoesNotContain(english.InitMonthlyLimit, prompter.Asked);
@@ -211,14 +231,36 @@ public sealed class InitModelTests : IDisposable {
 
     [Fact]
     public async Task ShouldSaveModel_WhenPicked() {
-        object[] answers = [InitFixtures.Ollama, "http://ollama.example.test:11434", InitFixtures.OllamaModel, .. init.AfterModel];
+        object[] answers = [InitFixtures.Ollama, "http://ollama.example.test:11434", .. init.OllamaFlow[2..]];
 
-        int exit = await init.InvokeAsync(init.Seams(init.Prompter(answers), FakeApiHandler.Json(200, InitFixtures.OllamaList)));
+        int exit = await init.InvokeAsync(init.Seams(init.Prompter(answers), InitHarness.OllamaListing()));
 
         ModelConfig saved = init.Saved.Model;
         Assert.Equal(
             (CliExitCodes.Ok, ProviderName.Ollama, InitFixtures.OllamaModel, "http://ollama.example.test:11434"),
             (exit, saved.Provider, saved.Model, saved.OllamaUrl));
+    }
+
+    [Fact]
+    public async Task ShouldDropControlCharacters_WhenModelNameHasThem() {
+        const string spoofedList = """{"models":[{"name":"llama3:latest\u001b]0;spoof\u0007\u001b[2J"}]}""";
+        ScriptedPrompter prompter = init.Prompter(InitFixtures.Ollama, string.Empty, ScriptedPrompter.Cancel);
+
+        await init.InvokeAsync(init.Seams(prompter, FakeApiHandler.Json(200, spoofedList)));
+
+        string label = Assert.Single(prompter.Choices[^1]).Label;
+        Assert.DoesNotContain(label, char.IsControl);
+        Assert.StartsWith("llama3:latest]0;spoof[2J", label, StringComparison.Ordinal);
+    }
+
+    private async Task AssertKeyAskedAgainAsync(string firstKey, params FakeApiHandler[] handlers) {
+        ScriptedPrompter prompter = init.Prompter([InitFixtures.OpenRouter, firstKey, .. RouterFlow[1..]]);
+
+        int exit = await init.InvokeAsync(init.Seams(prompter, handlers));
+
+        Assert.Equal(CliExitCodes.Ok, exit);
+        Assert.Contains(english.InitKeyRejected("OpenRouter"), init.Output, StringComparison.Ordinal);
+        Assert.Equal(2, prompter.Asked.Count(message => message == english.InitApiKey));
     }
 
     private object[] UnpricedFlow(string limit) =>

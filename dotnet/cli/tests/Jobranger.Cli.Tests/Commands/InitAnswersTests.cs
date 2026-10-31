@@ -1,6 +1,7 @@
 using System.Runtime.Versioning;
 using System.Text;
 using Jobranger.Cli.Config;
+using Jobranger.Cli.Platform;
 using Jobranger.Cli.Secrets;
 using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Cli.Text;
@@ -52,6 +53,14 @@ public sealed class InitAnswersTests : IDisposable {
         int exit = await init.InvokeAsync(init.Seams(prompter, InitHarness.Listing()));
 
         Assert.Equal((CliExitCodes.Ok, init.Profile), (exit, init.Saved.Profile.Path));
+    }
+
+    [Fact]
+    public async Task ShouldSuggestProfilePathWithTilde() {
+        ScriptedPrompter prompter = init.Prompter(init.WebsiteFlow);
+
+        await init.InvokeAsync(init.Seams(prompter, InitHarness.Listing()));
+
         Assert.Contains((english.InitProfilePath, "~/config/profile.yaml"), prompter.TextDefaults);
     }
 
@@ -143,23 +152,43 @@ public sealed class InitAnswersTests : IDisposable {
         Assert.Equal((CliExitCodes.Ok, finn, linkedIn), (exit, init.Saved.Sources.Finn, init.Saved.Sources.LinkedIn));
     }
 
+    [Theory]
+    [InlineData("A config already", false)]
+    [InlineData("Try again", true)]
+    [InlineData("Hide ads", true)]
+    [InlineData("Open to moving", true)]
+    [InlineData("Turn on FINN", false)]
+    public async Task ShouldOfferDefault_WhenConfirmIsAsked(string prompt, bool expected) {
+        init.WriteOldConfig(InitFixtures.OldConfig);
+        ScriptedPrompter prompter = init.Prompter([
+            true, InitFixtures.OpenRouter, InitFixtures.ApiKey, true, InitFixtures.ApiKey, InitFixtures.RouterModel, string.Empty,
+            .. init.YouAnswers, InitFixtures.DefaultLevels, InitFixtures.DefaultYears, true, "Bergen", true, false,
+            .. InitHarness.WebsiteAnswers,
+        ]);
+
+        int exit = await init.InvokeAfterRefusalAsync(prompter);
+
+        Assert.Equal(CliExitCodes.Ok, exit);
+        Assert.Equal(
+            expected, Assert.Single(prompter.ConfirmDefaults, asked => asked.Message.StartsWith(prompt, StringComparison.Ordinal)).Default);
+    }
+
+    [Fact]
+    public async Task ShouldPreCheckDefaults_WhenListsAreShown() {
+        ScriptedPrompter prompter = init.Prompter(init.WebsiteFlow);
+
+        await init.InvokeAsync(init.Seams(prompter, InitHarness.Listing()));
+
+        Assert.Equal(InitFixtures.DefaultLevels, CheckedValues(prompter.Choices[3]));
+        Assert.Equal(InitFixtures.DefaultYears, CheckedValues(prompter.Choices[4]));
+        Assert.Equal([InitFixtures.Website, InitFixtures.Email], CheckedValues(prompter.Choices[5]));
+    }
+
     [Fact]
     public async Task ShouldNotStoreSecret_WhenTestEmailFails() {
-        await using FakeSmtpServer refusing = new(async session => {
-            await FakeSmtpServer.ReachStartTlsAsync(session);
-            await session.UpgradeAsync();
-            await FakeSmtpServer.HelloAsync(session, InitFixtures.AuthPlain);
-            await session.ReadLineAsync();
-            await session.SendAsync(InitFixtures.LoginRefused);
-            await session.StallAsync();
-        });
+        await using FakeSmtpServer refusing = RefusingServer();
         await using FakeSmtpServer accepting = InitHarness.AcceptingServer();
-        ScriptedPrompter prompter = init.Prompter([
-            .. EmailOnly, DeliveryFixtures.Address,
-            InitFixtures.Smtp, InitHarness.ServerAnswer(refusing), string.Empty, ConfigFixtures.Secret,
-            InitFixtures.Smtp, InitHarness.ServerAnswer(accepting), string.Empty, InitFixtures.OtherPassword,
-            string.Empty,
-        ]);
+        ScriptedPrompter prompter = init.Prompter(RetryAnswers(refusing, accepting));
 
         List<string?> passwords = [];
         init.Store.AfterWrite = () => passwords.Add(init.Store.Values.GetValueOrDefault(Credentials.SmtpPasswordName));
@@ -170,6 +199,16 @@ public sealed class InitAnswersTests : IDisposable {
         Assert.Contains($"✕ SMTP login to 127.0.0.1:{refusing.Port} failed.", init.Output, StringComparison.Ordinal);
         Assert.Equal(2, prompter.Asked.Count(message => message == english.InitSendThrough));
         Assert.Equal([null, InitFixtures.OtherPassword], passwords);
+    }
+
+    [Fact]
+    public async Task ShouldSuggestLastServer_WhenTestEmailFails() {
+        await using FakeSmtpServer refusing = RefusingServer();
+        await using FakeSmtpServer accepting = InitHarness.AcceptingServer();
+        ScriptedPrompter prompter = init.Prompter(RetryAnswers(refusing, accepting));
+
+        await init.InvokeAsync(init.Seams(prompter, InitHarness.Listing()));
+
         Assert.Equal(
             [string.Empty, InitHarness.ServerAnswer(refusing)],
             prompter.TextDefaults.Where(asked => asked.Message == english.InitSmtpServer).Select(asked => asked.Default));
@@ -198,6 +237,14 @@ public sealed class InitAnswersTests : IDisposable {
         Assert.Contains("jobranger test email", Encoding.Latin1.GetString(Assert.Single(server.Messages)), StringComparison.Ordinal);
         Assert.Contains(english.InitTestSent(DeliveryFixtures.Address), init.Output, StringComparison.Ordinal);
         Assert.Equal(ConfigFixtures.Secret, init.Store.Values[Credentials.SmtpPasswordName]);
+    }
+
+    [Fact]
+    public async Task ShouldNameKeyring_WhenSecretsAreStored() {
+        await using FakeSmtpServer server = InitHarness.AcceptingServer();
+
+        await init.InvokeAsync(init.Seams(init.Prompter(init.SmtpFlow(server)), InitHarness.Listing()));
+
         string place = OperatingSystem.IsMacOS() ? english.InitStoreKeychain : english.InitStoreKeyring;
         Assert.Contains(english.InitSecretsStored(place), init.Output, StringComparison.Ordinal);
     }
@@ -208,8 +255,8 @@ public sealed class InitAnswersTests : IDisposable {
 
         EmailConfig saved = init.Saved.Notify.Email;
         Assert.Equal(
-            (CliExitCodes.Ok, $"Bearer {DeliveryFixtures.ResendKey}", MailAddresses.DefaultResendSender, EmailVia.Resend),
-            (exit, Assert.Single(init.ResendHandler.Requests).Headers["Authorization"], saved.Sender, saved.Via));
+            (CliExitCodes.Ok, $"Bearer {DeliveryFixtures.ResendKey}", MailAddresses.DefaultResendSender, EmailVia.Resend, true),
+            (exit, Assert.Single(init.ResendHandler.Requests).Headers["Authorization"], saved.Sender, saved.Via, saved.On));
         Assert.Equal(DeliveryFixtures.ResendKey, init.Store.Values[Credentials.ResendKeyName]);
     }
 
@@ -285,6 +332,26 @@ public sealed class InitAnswersTests : IDisposable {
         Assert.Contains(english.InitRunTimesWrong(english.ConfigRunTimeFormat), init.Output, StringComparison.Ordinal);
         Assert.Equal(["12:00"], init.Saved.Schedule.Times);
     }
+
+    private static FakeSmtpServer RefusingServer() => new(async session => {
+        await FakeSmtpServer.ReachStartTlsAsync(session);
+        await session.UpgradeAsync();
+        await FakeSmtpServer.HelloAsync(session, InitFixtures.AuthPlain);
+        await session.ReadLineAsync();
+        await session.SendAsync(InitFixtures.LoginRefused);
+        await session.StallAsync();
+    });
+
+    private static IEnumerable<string> CheckedValues(IReadOnlyList<PromptChoice> choices) =>
+        choices.Where(choice => choice.Checked).Select(choice => choice.Value);
+
+    private object[] RetryAnswers(FakeSmtpServer refusing, FakeSmtpServer accepting) =>
+        [
+            .. EmailOnly, DeliveryFixtures.Address,
+            InitFixtures.Smtp, InitHarness.ServerAnswer(refusing), string.Empty, ConfigFixtures.Secret,
+            InitFixtures.Smtp, InitHarness.ServerAnswer(accepting), string.Empty, InitFixtures.OtherPassword,
+            string.Empty,
+        ];
 
     private Task<int> RetryProfileAsync(string badPath) {
         object[] answers = [.. InitHarness.ModelAnswers, badPath, .. init.AfterModel];

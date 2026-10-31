@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Runtime.Versioning;
+using System.Text;
 using Jobranger.Cli.Config;
 using Jobranger.Cli.Features.Budget;
 using Jobranger.Cli.Features.Models;
@@ -70,6 +71,14 @@ internal sealed class ModelStep(SetupContext context, SetupSecrets secrets) : IS
             ? amount
             : null;
 
+    private static string Printable(string name) {
+        StringBuilder kept = new(name.Length);
+        foreach (int code in CodePoints.Of(name).Where(PythonUnicode.IsPrintable)) {
+            CodePoints.Append(kept, code);
+        }
+        return kept.ToString();
+    }
+
     private async Task<ProviderName> AskProviderAsync(CancellationToken cancellationToken) {
         PromptChoice[] choices = [
             .. Enum.GetValues<ProviderName>().Select(provider => new PromptChoice(WireNames.Of(provider), provider.ToString())),
@@ -108,7 +117,7 @@ internal sealed class ModelStep(SetupContext context, SetupSecrets secrets) : IS
                 .ListAsync(provider, key, ollamaUrl, cancellationToken).ConfigureAwait(false);
             if (provider == ProviderName.OpenRouter
                 && !await KeyWorksAsync(provider, key, cancellationToken).ConfigureAwait(false)) {
-                await context.Output.WriteLineAsync(messages.InitKeyRejected(label)).ConfigureAwait(false);
+                await WriteRejectionAsync(provider, ollamaUrl).ConfigureAwait(false);
                 return null;
             }
             if (models.Count == 0) {
@@ -119,18 +128,20 @@ internal sealed class ModelStep(SetupContext context, SetupSecrets secrets) : IS
             await context.Output.WriteLineAsync(key is null ? messages.InitOllamaAnswered : messages.InitKeyWorks)
                 .ConfigureAwait(false);
             return models;
-        } catch (ApiException error) when (error.Kind is ApiErrorKind.Auth or ApiErrorKind.BadRequest or ApiErrorKind.NotFound) {
-            await context.Output.WriteLineAsync(messages.InitKeyRejected(label)).ConfigureAwait(false);
+        } catch (Exception error) when (error is ModelSetupException
+            or ApiException { Kind: ApiErrorKind.Auth or ApiErrorKind.BadRequest or ApiErrorKind.NotFound }) {
+            await WriteRejectionAsync(provider, ollamaUrl).ConfigureAwait(false);
             return null;
-        } catch (ModelSetupException) {
-            await context.Output.WriteLineAsync(messages.InitKeyRejected(label)).ConfigureAwait(false);
-            return null;
-        } catch (ApiException error) {
-            await context.Output.WriteLineAsync(messages.InitCouldNotReach(label, error.Kind.ToString())).ConfigureAwait(false);
+        } catch (ApiException) {
+            await context.Output.WriteLineAsync(messages.InitCouldNotReach(label)).ConfigureAwait(false);
             await ConfirmRetryAsync(cancellationToken).ConfigureAwait(false);
             return null;
         }
     }
+
+    private Task WriteRejectionAsync(ProviderName provider, string ollamaUrl) =>
+        context.Output.WriteLineAsync(
+            provider == ProviderName.Ollama ? messages.InitOllamaRefused(ollamaUrl) : messages.InitKeyRejected(provider.ToString()));
 
     private async Task<bool> KeyWorksAsync(ProviderName provider, string? key, CancellationToken cancellationToken) {
         using IModelClient client = await new ProvidersEntry(() => context.Seams.CreateModelHandler(provider), context.Time)
@@ -152,9 +163,10 @@ internal sealed class ModelStep(SetupContext context, SetupSecrets secrets) : IS
     private PromptChoice Row(ProviderName provider, ModelInfo model) {
         ModelPrices? prices = PricesOf(provider, model.Id, Listed(provider, model));
         decimal? estimate = BudgetEntry.EstimateDailyCost(prices, BudgetEntry.DefaultAdsPerDay, model.Batch);
+        string name = Printable(model.Name);
         string label = estimate is decimal usd
-            ? messages.InitModelRow(model.Name, usd)
-            : messages.InitModelRowNoPrice(model.Name);
+            ? messages.InitModelRow(name, usd)
+            : messages.InitModelRowNoPrice(name);
         return new PromptChoice(model.Id, label);
     }
 

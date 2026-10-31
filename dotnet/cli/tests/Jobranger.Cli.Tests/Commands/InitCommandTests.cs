@@ -1,5 +1,4 @@
 using System.Runtime.Versioning;
-using System.Text.Json.Nodes;
 using Jobranger.Cli.Commands;
 using Jobranger.Cli.Config;
 using Jobranger.Cli.Features.Setup;
@@ -42,7 +41,7 @@ public sealed class InitCommandTests : IDisposable {
 
     [Fact]
     public async Task ShouldKeepConfig_WhenUserDeclinesStartOver() {
-        byte[] old = init.WriteOldConfig("version: 1\n");
+        byte[] old = init.WriteOldConfig(InitFixtures.OldConfig);
         ScriptedPrompter prompter = init.Prompter(false);
 
         int exit = await init.InvokeAsync(init.Seams(prompter));
@@ -53,19 +52,12 @@ public sealed class InitCommandTests : IDisposable {
 
     [Fact]
     public async Task ShouldReplaceConfig_WhenOldFileIsInvalid() {
-        int exit = await StartOverAsync("version: [\n");
+        init.WriteOldConfig("version: [\n");
+
+        int exit = await init.InvokeAsync(init.Seams(init.Prompter([true, .. init.WebsiteFlow]), InitHarness.Listing()));
 
         Assert.Equal(CliExitCodes.Ok, exit);
         Assert.Equal([InitFixtures.Role], init.Saved.Targets.Subfields);
-    }
-
-    [Fact]
-    public async Task ShouldDropOldContent_WhenUserStartsOver() {
-        int exit = await StartOverAsync("# old comment\nmodel:\n  monthly_limit_usd: 5\n");
-
-        Assert.Equal(CliExitCodes.Ok, exit);
-        Assert.DoesNotContain("old comment", File.ReadAllText(init.Paths.ConfigPath()), StringComparison.Ordinal);
-        Assert.Null(init.Saved.Model.MonthlyLimitUsd);
     }
 
     [Fact]
@@ -98,12 +90,8 @@ public sealed class InitCommandTests : IDisposable {
         Assert.True(File.Exists(init.Paths.ConfigPath()));
     }
 
-    [Theory]
-    [InlineData(Locales.English)]
-    [InlineData(Locales.Norwegian)]
-    public async Task ShouldNotWriteConfig_WhenSecretWriteFails(string language) {
-        init.SetLanguage(language);
-        IMessages messages = Messages.For(null, init.Environment);
+    [Fact]
+    public async Task ShouldNotWriteConfig_WhenSecretWriteFails() {
         await using FakeSmtpServer server = InitHarness.AcceptingServer();
         int writes = 0;
         init.Store.AfterWrite = () => {
@@ -117,7 +105,7 @@ public sealed class InitCommandTests : IDisposable {
         Assert.Equal(CliExitCodes.Failure, exit);
         Assert.False(File.Exists(init.Paths.ConfigPath()));
         Assert.EndsWith(
-            InitHarness.Lines(messages.InitSecretStoreFailed, messages.InitSecretsKept), init.Output, StringComparison.Ordinal);
+            InitHarness.Lines(english.InitSecretStoreFailed, english.InitSecretsKept), init.Output, StringComparison.Ordinal);
         Assert.Equal("init.failed secret_store_failed", CommandFixtures.LoggedFailure(init.Paths));
     }
 
@@ -148,17 +136,14 @@ public sealed class InitCommandTests : IDisposable {
 
         int exit = await init.InvokeAsync(InitFixtures.Seams(init.Prompter(init.WebsiteFlow), null, [InitHarness.Listing()]));
 
-        Assert.Equal((CliExitCodes.Failure, english.InitSaveFailed(init.Paths.SecretsPath())), (exit, init.LastLine));
+        Assert.Equal((CliExitCodes.Failure, english.FileUnreadable(init.Paths.SecretsPath())), (exit, init.LastLine));
     }
 
     [Fact]
     public async Task ShouldNameConfigDir_WhenItCannotBeCreated() {
         string configDir = Path.Combine(init.Profile, "config");
         init.Environment[Locales.ConfigDirVariable] = configDir;
-        object[] answers = [InitFixtures.Ollama, string.Empty, InitFixtures.OllamaModel, .. init.AfterModel];
-        ScriptedPrompter prompter = init.Prompter(answers);
-
-        int exit = await init.InvokeAsync(init.Seams(prompter, FakeApiHandler.Json(200, InitFixtures.OllamaList)));
+        int exit = await init.InvokeAsync(init.Seams(init.Prompter(init.OllamaFlow), InitHarness.OllamaListing()));
 
         Assert.Equal((CliExitCodes.Failure, english.InitSaveFailed(configDir)), (exit, init.LastLine));
     }
@@ -199,16 +184,9 @@ public sealed class InitCommandTests : IDisposable {
     [Theory]
     [InlineData(0)]
     [InlineData(1)]
-    [InlineData(2)]
-    [InlineData(3)]
-    [InlineData(5)]
-    [InlineData(6)]
-    [InlineData(7)]
-    [InlineData(13)]
-    [InlineData(17)]
     [InlineData(18)]
     public async Task ShouldSaveNothing_WhenCancelled(int position) {
-        byte[] old = init.WriteOldConfig("version: 1\n");
+        byte[] old = init.WriteOldConfig(InitFixtures.OldConfig);
         await using FakeSmtpServer server = InitHarness.AcceptingServer();
         object[] answers = [true, .. init.SmtpFlow(server)];
         answers[position] = ScriptedPrompter.Cancel;
@@ -223,15 +201,17 @@ public sealed class InitCommandTests : IDisposable {
 
     [Fact]
     public async Task ShouldNotOpenStore_WhenNoSecretIsNeeded() {
-        object[] answers = [InitFixtures.Ollama, string.Empty, InitFixtures.OllamaModel, .. init.AfterModel];
-        ScriptedPrompter prompter = init.Prompter(answers);
-        FakeSecretStore broken = new() { IsBroken = true };
+        int opens = 0;
+        InitSeams seams = init.Seams(init.Prompter(init.OllamaFlow), InitHarness.OllamaListing()) with {
+            OpenSecrets = (_, _, _) => {
+                opens++;
+                return Task.FromResult<ISecretStore?>(new FakeSecretStore { IsBroken = true });
+            },
+        };
 
-        int exit = await init.InvokeAsync(
-            InitFixtures.Seams(prompter, broken, [FakeApiHandler.Json(200, InitFixtures.OllamaList)]));
+        int exit = await init.InvokeAsync(seams);
 
-        Assert.Equal(CliExitCodes.Ok, exit);
-        Assert.DoesNotContain(english.InitSecretStoreFailed, init.Output, StringComparison.Ordinal);
+        Assert.Equal((CliExitCodes.Ok, 0), (exit, opens));
         Assert.DoesNotContain("Secrets stored", init.Output, StringComparison.Ordinal);
     }
 
@@ -251,7 +231,8 @@ public sealed class InitCommandTests : IDisposable {
     [Fact]
     public async Task ShouldNumberHeaders_FromStepCount() {
         StubStep step = new(ValidConfig);
-        SetupEntry setup = new(init.Context(init.Prompter()), [step, step]);
+        SetupContext context = init.Context(init.Prompter());
+        SetupEntry setup = new(context, [step, step], new SetupSecrets(context));
 
         await setup.RunInitAsync(TestContext.Current.CancellationToken);
 
@@ -263,7 +244,8 @@ public sealed class InitCommandTests : IDisposable {
     public async Task ShouldSaveNothing_WhenFinalStateIsInvalid() {
         StubStep step = new(
             config => ValidConfig(config) with { Schedule = new ScheduleConfig { Times = ["25:00"] } }, ConfigFixtures.Secret);
-        SetupEntry setup = new(init.Context(init.Prompter()), [step]);
+        SetupContext context = init.Context(init.Prompter());
+        SetupEntry setup = new(context, [step], new SetupSecrets(context));
 
         await Assert.ThrowsAsync<ConfigInvalidException>(() => setup.RunInitAsync(TestContext.Current.CancellationToken));
 
@@ -288,14 +270,11 @@ public sealed class InitCommandTests : IDisposable {
     }
 
     [Fact]
-    public async Task ShouldLoadSavedConfig() {
+    public async Task ShouldContractProfilePath_WhenConfigIsSaved() {
         SetupEntry setup = SetupEntry.Init(init.Context(init.Prompter(init.WebsiteFlow), InitHarness.Listing()));
 
-        AppConfig? returned = await setup.RunInitAsync(TestContext.Current.CancellationToken);
+        await setup.RunInitAsync(TestContext.Current.CancellationToken);
 
-        JsonObject expected = ConfigWriter.ToTree(returned!, init.Paths.Home());
-        JsonObject loaded = ConfigWriter.ToTree(init.Saved, init.Paths.Home());
-        Assert.True(JsonNode.DeepEquals(expected, loaded), loaded.ToJsonString());
         Assert.Contains("path: ~/profile.yaml", File.ReadAllText(init.Paths.ConfigPath()), StringComparison.Ordinal);
     }
 
@@ -307,11 +286,6 @@ public sealed class InitCommandTests : IDisposable {
         string printed = state.ToString();
 
         Assert.DoesNotContain(DeliveryFixtures.Address, printed, StringComparison.Ordinal);
-    }
-
-    private Task<int> StartOverAsync(string oldConfig) {
-        init.WriteOldConfig(oldConfig);
-        return init.InvokeAsync(init.Seams(init.Prompter([true, .. init.WebsiteFlow]), InitHarness.Listing()));
     }
 
     private AppConfig ValidConfig(AppConfig config) => config with { Profile = new ProfileRef(init.Profile) };

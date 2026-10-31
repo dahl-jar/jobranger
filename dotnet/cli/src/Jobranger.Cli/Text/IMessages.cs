@@ -395,7 +395,9 @@ internal interface IMessages {
 
     string InitKeyRejected(string provider);
 
-    string InitCouldNotReach(string provider, string errorType);
+    string InitCouldNotReach(string provider);
+
+    string InitOllamaRefused(string url);
 
     string InitTryAgain { get; }
 
@@ -459,7 +461,7 @@ internal interface IMessages {
 
     string InitOptInWhich { get; }
 
-    string InitHow { get; }
+    string InitChannels { get; }
 
     string InitChannelWebsite { get; }
 

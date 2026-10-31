@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Runtime.Versioning;
 using Jobranger.Cli.Commands;
 using Jobranger.Cli.Features.Delivery;
@@ -29,6 +28,7 @@ internal static class InitFixtures {
     public const string AuthPlain = "AUTH PLAIN";
     public const string StartTls = "STARTTLS";
     public const string LoginRefused = "535 no\r\n";
+    public const string OldConfig = "version: 1\n";
     public const string ProfileBody = "summary: s\nprofessional_years: 1\n";
     public const string EmptyOllamaList = """{"models":[]}""";
     public const string OllamaList = """{"models":[{"name":"llama3"}]}""";
@@ -45,8 +45,6 @@ internal static class InitFixtures {
 
     public static string AnthropicList(string id = TableModel, string name = TableModelName) =>
         $$"""{"data":[{"id":"{{id}}","display_name":"{{name}}"}],"has_more":false}""";
-
-    public static Hashtable Environment(TempDir temp, string language) => CommandFixtures.Environment(temp, language);
 
     public static string WriteProfile(TempDir temp) {
         string path = temp.File(profileFile);
