@@ -11,8 +11,10 @@ namespace Jobranger.Cli.Tests.Features.Link;
 
 public sealed class RelayApiClientTests : IDisposable {
     private const int oversizedBytes = 70_000;
+    private const int partialBodyBytes = 5;
 
     private static readonly DateTimeOffset now = new(2026, 10, 25, 9, 30, 0, TimeSpan.Zero);
+    private static readonly TimeSpan requestDeadline = TimeSpan.FromSeconds(15);
 
     private readonly FakeRelay relay = new(new FakeTimeProvider(now));
     private readonly HttpClient http;
@@ -21,7 +23,7 @@ public sealed class RelayApiClientTests : IDisposable {
 
     public RelayApiClientTests() {
         http = relay.Client();
-        client = new RelayApiClient(http, FakeRelay.Address);
+        client = new RelayApiClient(http, FakeRelay.Address, new FakeTimeProvider());
     }
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
@@ -97,7 +99,7 @@ public sealed class RelayApiClientTests : IDisposable {
     [Fact]
     public async Task ShouldThrowCancelled_WhenCallerCancels() {
         using HttpClient cancelling = new(new ThrowingHandler(new TaskCanceledException("caller cancelled")));
-        RelayApiClient cancelled = new(cancelling, FakeRelay.Address);
+        RelayApiClient cancelled = new(cancelling, FakeRelay.Address, new FakeTimeProvider());
         using CancellationTokenSource stop = new();
         await stop.CancelAsync();
 
@@ -110,7 +112,7 @@ public sealed class RelayApiClientTests : IDisposable {
     public async Task ShouldThrowUnavailable_WhenTransportFails(bool timesOut) {
         using HttpClient broken = new(new ThrowingHandler(
             timesOut ? new TaskCanceledException("request timed out") : new HttpRequestException("connection refused")));
-        RelayApiClient unreachable = new(broken, FakeRelay.Address);
+        RelayApiClient unreachable = new(broken, FakeRelay.Address, new FakeTimeProvider());
 
         await Assert.ThrowsAsync<RelayUnavailableException>(() => unreachable.StartPairingAsync(signing, Token));
     }
@@ -137,7 +139,7 @@ public sealed class RelayApiClientTests : IDisposable {
     [Fact]
     public async Task ShouldThrowUnavailable_WhenOversizedBodyNeverEnds() {
         using HttpClient stalled = new(new StalledOversizedHandler());
-        RelayApiClient capped = new(stalled, FakeRelay.Address);
+        RelayApiClient capped = new(stalled, FakeRelay.Address, new FakeTimeProvider());
 
         Task<PairingStart> started = capped.StartPairingAsync(signing, Token).WaitAsync(TestWaits.Step, Token);
 
@@ -147,9 +149,51 @@ public sealed class RelayApiClientTests : IDisposable {
     [Fact]
     public async Task ShouldThrowUnavailable_WhenBodyReadFails() {
         using HttpClient dropped = new(new DroppedBodyHandler());
-        RelayApiClient failing = new(dropped, FakeRelay.Address);
+        RelayApiClient failing = new(dropped, FakeRelay.Address, new FakeTimeProvider());
 
         await Assert.ThrowsAsync<RelayUnavailableException>(() => failing.StartPairingAsync(signing, Token));
+    }
+
+    [Fact]
+    public async Task ShouldThrowUnavailable_WhenBodyStallsPastDeadline() {
+        FakeTimeProvider time = new();
+        StalledBodyHandler stall = new();
+        using HttpClient stalled = new(stall);
+        RelayApiClient waiting = new(stalled, FakeRelay.Address, time);
+        Task<PairingStart> started = waiting.StartPairingAsync(signing, Token).WaitAsync(TestWaits.Step, Token);
+        await stall.BodyRead.WaitAsync(TestWaits.Step, Token);
+
+        time.Advance(requestDeadline);
+
+        await Assert.ThrowsAsync<RelayUnavailableException>(() => started);
+    }
+
+    [Fact]
+    public async Task ShouldThrowUnavailable_WhenHeadersStallPastDeadline() {
+        FakeTimeProvider time = new();
+        StalledHeadersHandler stall = new();
+        using HttpClient stalled = new(stall);
+        RelayApiClient waiting = new(stalled, FakeRelay.Address, time);
+        Task<PairingStart> started = waiting.StartPairingAsync(signing, Token).WaitAsync(TestWaits.Step, Token);
+        await stall.Reached.WaitAsync(TestWaits.Step, Token);
+
+        time.Advance(requestDeadline);
+
+        await Assert.ThrowsAsync<RelayUnavailableException>(() => started);
+    }
+
+    [Fact]
+    public async Task ShouldThrowCancelled_WhenCallerCancelsDuringBody() {
+        StalledBodyHandler stall = new();
+        using HttpClient stalled = new(stall);
+        RelayApiClient waiting = new(stalled, FakeRelay.Address, new FakeTimeProvider());
+        using CancellationTokenSource stop = new();
+        Task<PairingStart> started = waiting.StartPairingAsync(signing, stop.Token).WaitAsync(TestWaits.Step, Token);
+        await stall.BodyRead.WaitAsync(TestWaits.Step, Token);
+
+        await stop.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => started);
     }
 
     [Theory]
@@ -186,6 +230,34 @@ public sealed class RelayApiClientTests : IDisposable {
             HttpRequestMessage request, CancellationToken cancellationToken) {
             await pipe.Writer.WriteAsync(new byte[oversizedBytes], cancellationToken);
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(pipe.Reader.AsStream()) };
+        }
+    }
+
+    private sealed class StalledBodyHandler : HttpMessageHandler {
+        private readonly Pipe pipe =
+            new(new PipeOptions(pauseWriterThreshold: partialBodyBytes, resumeWriterThreshold: partialBodyBytes));
+
+        public StalledBodyHandler() {
+            BodyRead = pipe.Writer.WriteAsync(new byte[partialBodyBytes]).AsTask();
+        }
+
+        public Task BodyRead { get; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(pipe.Reader.AsStream()) });
+    }
+
+    private sealed class StalledHeadersHandler : HttpMessageHandler {
+        private readonly TaskCompletionSource reached = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task Reached => reached.Task;
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken) {
+            reached.SetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return new HttpResponseMessage(HttpStatusCode.OK);
         }
     }
 }
