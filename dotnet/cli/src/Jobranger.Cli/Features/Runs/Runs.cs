@@ -1,5 +1,6 @@
 using System.Runtime.Versioning;
 using Jobranger.Cli.Config;
+using Jobranger.Cli.Features.Budget;
 using Jobranger.Cli.Features.Models;
 using Jobranger.Cli.Features.Providers;
 using Jobranger.Cli.Features.Sources;
@@ -29,6 +30,8 @@ internal sealed class Runs(
     public static IReadOnlyList<string> Report(
         SqliteConnection connection, AppConfig config, Paths paths, RunRow lastRun, TimeProvider time, IMessages messages) =>
         TerminalReport.Lines(connection, config, paths, lastRun, time, messages);
+
+    public static ModelPrices ToPrices(ModelSpec spec) => RunConversions.ToPrices(spec);
 
     public async Task<RunResult> RunAsync(RunRequest request, CancellationToken cancellationToken) {
         RunModel? model = await CreateModelAsync(request.Config.Model, cancellationToken).ConfigureAwait(false);

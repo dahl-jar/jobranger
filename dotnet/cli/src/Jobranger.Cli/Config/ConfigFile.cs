@@ -18,8 +18,10 @@ internal static class ConfigFile {
     private static readonly UTF8Encoding strictUtf8 =
         new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
-    public static AppConfig Load(string path, string home) {
-        YamlTree tree = ReadTree(path);
+    public static AppConfig Load(string path, string home) => Parse(ReadText(path), path, home);
+
+    public static AppConfig Parse(string text, string path, string home) {
+        YamlTree tree = new YamlReader(text, Path.GetFileName(path)).Read();
         ConfigReader reader = new(home);
         AppConfig? config = tree.Errors.Count == 0 ? reader.Read(tree.Root, Path.GetFileName(path)) : null;
         List<ConfigError> errors = [.. tree.Errors, .. reader.Errors];
@@ -49,6 +51,12 @@ internal static class ConfigFile {
         PrivateFile.Write(path, strictUtf8.GetBytes(YamlEmitter.Emit(model, previous)), logger);
     }
 
+    [UnsupportedOSPlatform("windows")]
+    public static void SaveText(string path, string text, string home, ILogger logger) {
+        Parse(text, path, home);
+        PrivateFile.Write(path, strictUtf8.GetBytes(text), logger);
+    }
+
     public static Language? ReadLanguage(string path) {
         try {
             return ConfigReader.ReadLanguage(ReadTree(path).Root);
@@ -60,7 +68,7 @@ internal static class ConfigFile {
 
     public static YamlTree ReadTree(string path) => new YamlReader(ReadText(path), Path.GetFileName(path)).Read();
 
-    private static string ReadText(string path) {
+    public static string ReadText(string path) {
         byte[] bytes = [];
         try {
             bytes = File.ReadAllBytes(path);

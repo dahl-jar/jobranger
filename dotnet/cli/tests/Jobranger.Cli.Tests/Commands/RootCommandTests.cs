@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.Reflection;
 using System.Runtime.Versioning;
+using Jobranger.Cli.Commands;
 using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Cli.Text;
 using RootCommand = Jobranger.Cli.Commands.RootCommand;
@@ -108,6 +109,34 @@ public sealed class RootCommandTests {
         string written = console.Output + console.Errors;
         Assert.NotEmpty(written);
         Assert.DoesNotContain(EnglishTexts(argument), text => written.Contains(text, StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(ConfigCommand.CommandName)]
+    [InlineData(GuidanceCommand.CommandName)]
+    [InlineData(AboutCommand.CommandName)]
+    [InlineData(ContextCommand.CommandName)]
+    public void ShouldOfferSettingsCommand_WhenRootIsBuilt(string name) {
+        using RecordingConsole console = new();
+
+        RootCommand root = CreateRoot(console, Locales.English);
+
+        Assert.Contains(name, root.Subcommands.Select(command => command.Name));
+    }
+
+    [Theory]
+    [InlineData(ConfigCommand.CommandName)]
+    [InlineData(GuidanceCommand.CommandName)]
+    [InlineData(AboutCommand.CommandName)]
+    [InlineData(ContextCommand.CommandName)]
+    public async Task ShouldReturnUsageCode_WhenGroupHasNoSubcommand(string name) {
+        using RecordingConsole console = new();
+        RootCommand root = CreateRoot(console, Locales.English);
+
+        int code = await root.RunAsync([name], TestContext.Current.CancellationToken);
+
+        Assert.Equal(CliExitCodes.Usage, code);
+        Assert.Contains(new EnglishMessages().InvalidArguments, console.Errors, StringComparison.Ordinal);
     }
 
     private static string[] EnglishTexts(string argument) {
