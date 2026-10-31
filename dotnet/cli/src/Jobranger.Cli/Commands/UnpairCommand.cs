@@ -46,22 +46,22 @@ internal sealed class UnpairCommand : Command {
             return CliExitCodes.Failure;
         }
         using (held) {
-            return await RemoveAndRotateAsync(opened, messages, cancellationToken).ConfigureAwait(false);
+            return await RotateAndRemoveAsync(opened, messages, cancellationToken).ConfigureAwait(false);
         }
     }
 
-    private static async Task<int> RemoveAndRotateAsync(
+    private static async Task<int> RotateAndRemoveAsync(
         LinkCommandRun.OpenedLink opened, IMessages messages, CancellationToken cancellationToken) {
-        int removed = opened.Link.RemoveAllDevices();
-        if (removed > 0) {
-            LogEvents.DevicesUnpaired(opened.Logger, removed);
-        }
         try {
             using LinkKeyPair rotated = await opened.Link.RotateKeysAsync(cancellationToken).ConfigureAwait(false);
         } catch (LinkKeyException error) when (error.InnerException is PrivateFileException file) {
             return await FailAsync(opened, KeysFileFailure(file), KeysFileLine(messages, file)).ConfigureAwait(false);
         } catch (LinkKeyException) {
             return await FailAsync(opened, keysFailure, messages.UnpairKeysFailed).ConfigureAwait(false);
+        }
+        int removed = opened.Link.RemoveAllDevices();
+        if (removed > 0) {
+            LogEvents.DevicesUnpaired(opened.Logger, removed);
         }
         string line = removed == 0 ? messages.UnpairNone : messages.Unpaired(removed);
         await opened.Output.WriteLineAsync(line).ConfigureAwait(false);

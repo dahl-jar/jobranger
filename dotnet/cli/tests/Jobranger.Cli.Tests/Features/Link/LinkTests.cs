@@ -124,6 +124,21 @@ public sealed class LinkTests : IDisposable {
     }
 
     [Theory]
+    [InlineData("{}", UnixFileMode.None)]
+    [InlineData("not json", PrivateFile.OwnerOnlyFileMode)]
+    public async Task ShouldKeepMetadata_WhenSecretsFileCannotBeRead(string content, UnixFileMode mode) {
+        using (await Build(null).LoadOrCreateKeysAsync(Token)) {
+        }
+        string recorded = File.ReadAllText(temp.File(metadataName));
+        File.WriteAllText(file.Path, content);
+        File.SetUnixFileMode(file.Path, mode);
+
+        await Assert.ThrowsAsync<LinkKeyException>(() => Build(null).RotateKeysAsync(Token));
+
+        Assert.Equal(recorded, File.ReadAllText(temp.File(metadataName)));
+    }
+
+    [Theory]
     [InlineData("load")]
     [InlineData("rotate")]
     public async Task ShouldWriteKeysWithoutWaitingOnItself_WhenCredentialsTakeTheSecretsLock(string operation) {

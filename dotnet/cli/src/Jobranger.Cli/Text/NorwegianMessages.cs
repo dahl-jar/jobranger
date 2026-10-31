@@ -117,6 +117,10 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string PairKeysBroken => "Koblingsnøklene kan ikke brukes. Kjør jobranger unpair for å lage nye.";
 
+    public string PairKeysBlocked(string path, string reason) =>
+        $"Tilkoblingen kan ikke starte fordi jobranger ikke kan åpne eller endre {path} ({reason}). "
+        + "Gjør filen og mappen lesbare og skrivbare, og kjør jobranger pair på nytt.";
+
     public string PairOpenPage => "Åpne denne siden i nettleseren:";
 
     public string PairEnterCode => "og skriv inn denne koden:";

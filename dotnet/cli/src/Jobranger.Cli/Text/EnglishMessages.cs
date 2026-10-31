@@ -113,6 +113,10 @@ internal sealed class EnglishMessages : IMessages {
 
     public string PairKeysBroken => "The link keys cannot be used. Run jobranger unpair to make new ones.";
 
+    public string PairKeysBlocked(string path, string reason) =>
+        $"Pairing cannot start because jobranger cannot open or change {path} ({reason}). "
+        + "Make that file and its folder readable and writable, then run jobranger pair again.";
+
     public string PairOpenPage => "Open this page in your browser:";
 
     public string PairEnterCode => "and enter this code:";

@@ -97,6 +97,8 @@ internal interface IMessages {
 
     string PairKeysBroken { get; }
 
+    string PairKeysBlocked(string path, string reason);
+
     string PairOpenPage { get; }
 
     string PairEnterCode { get; }
