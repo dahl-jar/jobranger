@@ -1,0 +1,517 @@
+[
+  {
+    "id": "'2'",
+    "text": "2",
+    "years": "2.0"
+  },
+  {
+    "id": "' 2 '",
+    "text": " 2 ",
+    "years": "2.0"
+  },
+  {
+    "id": "'\\t2\\n'",
+    "text": "\t2\n",
+    "years": "2.0"
+  },
+  {
+    "id": "'\\xa02'",
+    "text": "\u00a02",
+    "years": "2.0"
+  },
+  {
+    "id": "'\\u20032'",
+    "text": "\u20032",
+    "years": "2.0"
+  },
+  {
+    "id": "'\\u30002'",
+    "text": "\u30002",
+    "years": "2.0"
+  },
+  {
+    "id": "'\\x1c2'",
+    "text": "\u001c2",
+    "years": null
+  },
+  {
+    "id": "'\\x1f2'",
+    "text": "\u001f2",
+    "years": null
+  },
+  {
+    "id": "'\\x1f'",
+    "text": "\u001f",
+    "years": null
+  },
+  {
+    "id": "'\\x852'",
+    "text": "\u00852",
+    "years": "2.0"
+  },
+  {
+    "id": "'\\u200b2'",
+    "text": "\u200b2",
+    "years": null
+  },
+  {
+    "id": "'2\\x00'",
+    "text": "2\u0000",
+    "years": null
+  },
+  {
+    "id": "'\\x002'",
+    "text": "\u00002",
+    "years": null
+  },
+  {
+    "id": "'2\\x0b'",
+    "text": "2\u000b",
+    "years": "2.0"
+  },
+  {
+    "id": "'2\\x0c'",
+    "text": "2\f",
+    "years": "2.0"
+  },
+  {
+    "id": "'2\\r'",
+    "text": "2\r",
+    "years": "2.0"
+  },
+  {
+    "id": "'1_000'",
+    "text": "1_000",
+    "years": "1000.0"
+  },
+  {
+    "id": "'1_0'",
+    "text": "1_0",
+    "years": "10.0"
+  },
+  {
+    "id": "'1.5_0'",
+    "text": "1.5_0",
+    "years": "1.5"
+  },
+  {
+    "id": "'1e5_0'",
+    "text": "1e5_0",
+    "years": "1e+50"
+  },
+  {
+    "id": "'_1'",
+    "text": "_1",
+    "years": null
+  },
+  {
+    "id": "'1_'",
+    "text": "1_",
+    "years": null
+  },
+  {
+    "id": "'1__0'",
+    "text": "1__0",
+    "years": null
+  },
+  {
+    "id": "'1_.5'",
+    "text": "1_.5",
+    "years": "1.5"
+  },
+  {
+    "id": "'1._5'",
+    "text": "1._5",
+    "years": "1.5"
+  },
+  {
+    "id": "'1e_5'",
+    "text": "1e_5",
+    "years": "100000.0"
+  },
+  {
+    "id": "'1e5'",
+    "text": "1e5",
+    "years": "100000.0"
+  },
+  {
+    "id": "'1E5'",
+    "text": "1E5",
+    "years": "100000.0"
+  },
+  {
+    "id": "'1e+5'",
+    "text": "1e+5",
+    "years": "100000.0"
+  },
+  {
+    "id": "'.5'",
+    "text": ".5",
+    "years": "0.5"
+  },
+  {
+    "id": "'5.'",
+    "text": "5.",
+    "years": "5.0"
+  },
+  {
+    "id": "'+2'",
+    "text": "+2",
+    "years": "2.0"
+  },
+  {
+    "id": "'-2'",
+    "text": "-2",
+    "years": "-2.0"
+  },
+  {
+    "id": "'--2'",
+    "text": "--2",
+    "years": null
+  },
+  {
+    "id": "'+'",
+    "text": "+",
+    "years": null
+  },
+  {
+    "id": "''",
+    "text": "",
+    "years": null
+  },
+  {
+    "id": "'  '",
+    "text": "  ",
+    "years": null
+  },
+  {
+    "id": "'inf'",
+    "text": "inf",
+    "years": "inf"
+  },
+  {
+    "id": "'Inf'",
+    "text": "Inf",
+    "years": "inf"
+  },
+  {
+    "id": "'INF'",
+    "text": "INF",
+    "years": "inf"
+  },
+  {
+    "id": "'+inf'",
+    "text": "+inf",
+    "years": "inf"
+  },
+  {
+    "id": "'-inf'",
+    "text": "-inf",
+    "years": "-inf"
+  },
+  {
+    "id": "'infinity'",
+    "text": "infinity",
+    "years": "inf"
+  },
+  {
+    "id": "'Infinity'",
+    "text": "Infinity",
+    "years": "inf"
+  },
+  {
+    "id": "'-Infinity'",
+    "text": "-Infinity",
+    "years": "-inf"
+  },
+  {
+    "id": "'+INFINITY'",
+    "text": "+INFINITY",
+    "years": "inf"
+  },
+  {
+    "id": "'nan'",
+    "text": "nan",
+    "years": "nan"
+  },
+  {
+    "id": "'NaN'",
+    "text": "NaN",
+    "years": "nan"
+  },
+  {
+    "id": "'-nan'",
+    "text": "-nan",
+    "years": "nan"
+  },
+  {
+    "id": "'+nan'",
+    "text": "+nan",
+    "years": "nan"
+  },
+  {
+    "id": "'nan_'",
+    "text": "nan_",
+    "years": null
+  },
+  {
+    "id": "'in_f'",
+    "text": "in_f",
+    "years": "inf"
+  },
+  {
+    "id": "'infin'",
+    "text": "infin",
+    "years": null
+  },
+  {
+    "id": "'0x10'",
+    "text": "0x10",
+    "years": null
+  },
+  {
+    "id": "'0o17'",
+    "text": "0o17",
+    "years": null
+  },
+  {
+    "id": "'0b1'",
+    "text": "0b1",
+    "years": null
+  },
+  {
+    "id": "'1e400'",
+    "text": "1e400",
+    "years": "inf"
+  },
+  {
+    "id": "'-1e400'",
+    "text": "-1e400",
+    "years": "-inf"
+  },
+  {
+    "id": "'1,5'",
+    "text": "1,5",
+    "years": null
+  },
+  {
+    "id": "'\\uff11\\uff12'",
+    "text": "１２",
+    "years": null
+  },
+  {
+    "id": "'\\u0663'",
+    "text": "٣",
+    "years": null
+  },
+  {
+    "id": "'2 3'",
+    "text": "2 3",
+    "years": null
+  },
+  {
+    "id": "'2f'",
+    "text": "2f",
+    "years": null
+  },
+  {
+    "id": "'2d'",
+    "text": "2d",
+    "years": null
+  },
+  {
+    "id": "'1e5\\x00'",
+    "text": "1e5\u0000",
+    "years": null
+  },
+  {
+    "id": "'true'",
+    "text": "true",
+    "years": null
+  },
+  {
+    "id": "'false'",
+    "text": "false",
+    "years": null
+  },
+  {
+    "id": "'None'",
+    "text": "None",
+    "years": null
+  },
+  {
+    "id": "'null'",
+    "text": "null",
+    "years": null
+  },
+  {
+    "id": "'0.1e-2'",
+    "text": "0.1e-2",
+    "years": "0.001"
+  },
+  {
+    "id": "'1_000.5'",
+    "text": "1_000.5",
+    "years": "1000.5"
+  },
+  {
+    "id": "'1e1_0'",
+    "text": "1e1_0",
+    "years": "10000000000.0"
+  },
+  {
+    "id": "'\\u0661\\u0662'",
+    "text": "١٢",
+    "years": null
+  },
+  {
+    "id": "'2\\u2028'",
+    "text": "2\u2028",
+    "years": "2.0"
+  },
+  {
+    "id": "'2\\u2029'",
+    "text": "2\u2029",
+    "years": "2.0"
+  },
+  {
+    "id": "'\\u2028 2'",
+    "text": "\u2028 2",
+    "years": "2.0"
+  },
+  {
+    "id": "'\\x1d2'",
+    "text": "\u001d2",
+    "years": null
+  },
+  {
+    "id": "'\\x1e2'",
+    "text": "\u001e2",
+    "years": null
+  },
+  {
+    "id": "'\\x1c'",
+    "text": "\u001c",
+    "years": null
+  },
+  {
+    "id": "' 1_0 '",
+    "text": " 1_0 ",
+    "years": null
+  },
+  {
+    "id": "'\\t1_0'",
+    "text": "\t1_0",
+    "years": null
+  },
+  {
+    "id": "'1_0\\n'",
+    "text": "1_0\n",
+    "years": null
+  },
+  {
+    "id": "'\\xa01_0'",
+    "text": "\u00a01_0",
+    "years": null
+  },
+  {
+    "id": "'2\\x00\\x00'",
+    "text": "2\u0000\u0000",
+    "years": null
+  },
+  {
+    "id": "'\\u200b'",
+    "text": "\u200b",
+    "years": null
+  },
+  {
+    "id": "'2\\xa0'",
+    "text": "2\u00a0",
+    "years": "2.0"
+  },
+  {
+    "id": "'\\ufeff2'",
+    "text": "\ufeff2",
+    "years": null
+  },
+  {
+    "id": "'\\u180e2'",
+    "text": "\u180e2",
+    "years": null
+  },
+  {
+    "id": "'2\\x1f'",
+    "text": "2\u001f",
+    "years": null
+  },
+  {
+    "id": "'1e5\\x1c'",
+    "text": "1e5\u001c",
+    "years": null
+  },
+  {
+    "id": "'\\t\\x0b2'",
+    "text": "\t\u000b2",
+    "years": "2.0"
+  },
+  {
+    "id": "'nan '",
+    "text": "nan ",
+    "years": "nan"
+  },
+  {
+    "id": "'\\u2003inf\\u2003'",
+    "text": "\u2003inf\u2003",
+    "years": "inf"
+  },
+  {
+    "id": "'- inf'",
+    "text": "- inf",
+    "years": null
+  },
+  {
+    "id": "'i_nf'",
+    "text": "i_nf",
+    "years": "inf"
+  },
+  {
+    "id": "'na_n'",
+    "text": "na_n",
+    "years": "nan"
+  },
+  {
+    "id": "'1e'",
+    "text": "1e",
+    "years": null
+  },
+  {
+    "id": "'e5'",
+    "text": "e5",
+    "years": null
+  },
+  {
+    "id": "'1.2.3'",
+    "text": "1.2.3",
+    "years": null
+  },
+  {
+    "id": "'0_0'",
+    "text": "0_0",
+    "years": "0.0"
+  },
+  {
+    "id": "'00_1'",
+    "text": "00_1",
+    "years": "1.0"
+  },
+  {
+    "id": "'1_e5'",
+    "text": "1_e5",
+    "years": "100000.0"
+  },
+  {
+    "id": "'\\ud7ff'",
+    "text": "\ud7ff",
+    "years": null
+  }
+]

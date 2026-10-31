@@ -27,6 +27,26 @@ public sealed class FileLockTests : IDisposable {
     }
 
     [Fact]
+    public void ShouldBlockPythonLock_WhenDotnetHoldsLock() {
+        string path = Path.Combine(temp.Path, "state", "run.lock");
+        using FileLock? held = FileLock.TryAcquire(path, logger);
+
+        using PythonLock python = PythonLock.TryAcquire(path);
+
+        Assert.Equal(PythonLock.Blocked, python.State);
+    }
+
+    [Fact]
+    public void ShouldReturnNull_WhenPythonHoldsLock() {
+        string path = temp.File("run.lock");
+        using PythonLock python = PythonLock.TryAcquire(path);
+
+        using FileLock? refused = FileLock.TryAcquire(path, logger);
+
+        Assert.Equal((PythonLock.Held, true), (python.State, refused is null));
+    }
+
+    [Fact]
     public void ShouldCreatePrivateLockFile_WhenDirIsMissing() {
         string path = Path.Combine(temp.Path, "state", "run.lock");
 

@@ -214,7 +214,7 @@ public sealed class LinkedInSourceTests {
 
         SourceBatch batch = await source.FetchAsync(Context(handler), cancel.Token);
 
-        Assert.Equal(("linkedin:4000000001", 0), (Ids(batch.Listings), batch.Cursors.Count));
+        Assert.Equal(("linkedin:4000000001", 0, true), (Ids(batch.Listings), batch.Cursors.Count, batch.Partial));
     }
 
     private static string FirstPageOnly(string keyword, int start) => start == 0 ? searchHtml : emptyPage;

@@ -70,6 +70,8 @@ internal sealed class Budget(SqliteConnection connection) {
             AdsChecked: adsPerCall));
     }
 
+    public void RecordRead(DateOnly day, int adsRead) => store.Add(day, new UsageCounts(AdsRead: adsRead));
+
     public bool Allowed(AppConfig config, ModelPrices? prices, DateOnly today, decimal reservedUsd) {
         RequireAmount(reservedName, reservedUsd);
         if (config.Model.MonthlyLimitUsd is not decimal limit) {

@@ -1,5 +1,7 @@
+using System.Collections.Frozen;
 using System.Globalization;
 using System.Text.Json.Nodes;
+using Jobranger.Cli.Config.Yaml;
 using Jobranger.Cli.Text;
 
 namespace Jobranger.Cli.Config;
@@ -10,11 +12,22 @@ internal sealed class ConfigSection {
     private readonly JsonObject values;
     private readonly string path;
     private readonly List<ConfigError> errors;
+    private readonly IReadOnlyDictionary<string, YamlScalar> scalars;
 
-    public ConfigSection(JsonObject values, string path, IReadOnlyList<string> known, List<ConfigError> errors) {
+    public ConfigSection(JsonObject values, string path, IReadOnlyList<string> known, List<ConfigError> errors)
+        : this(values, path, known, errors, FrozenDictionary<string, YamlScalar>.Empty) {
+    }
+
+    public ConfigSection(
+        JsonObject values,
+        string path,
+        IReadOnlyList<string> known,
+        List<ConfigError> errors,
+        IReadOnlyDictionary<string, YamlScalar> scalars) {
         this.values = values;
         this.path = path;
         this.errors = errors;
+        this.scalars = scalars;
         foreach (string key in values.Select(entry => entry.Key).Where(key => !known.Contains(key))) {
             Fail(key, ConfigProblem.UnknownKey);
         }
@@ -27,7 +40,7 @@ internal sealed class ConfigSection {
             }
             return null;
         }
-        return Of(values[key], Location(key), known, errors);
+        return Of(values[key], Location(key), known, errors, scalars);
     }
 
     public List<ConfigSection>? Sections(string key, IReadOnlyList<string> known) {
@@ -36,7 +49,7 @@ internal sealed class ConfigSection {
         }
         List<ConfigSection> sections = [];
         for (int index = 0; index < items.Count; index++) {
-            if (Of(items[index], ItemLocation(key, index), known, errors) is ConfigSection section) {
+            if (Of(items[index], ItemLocation(key, index), known, errors, scalars) is ConfigSection section) {
                 sections.Add(section);
             }
         }
@@ -129,20 +142,8 @@ internal sealed class ConfigSection {
         return null;
     }
 
-    public List<string>? TextList(string key) {
-        if (List(key) is not JsonArray items) {
-            return null;
-        }
-        List<string> texts = [];
-        for (int index = 0; index < items.Count; index++) {
-            if (items[index] is JsonValue value && value.TryGetValue(out string? text)) {
-                texts.Add(text);
-            } else {
-                errors.Add(new ConfigError(ItemLocation(key, index), ConfigProblem.NotText));
-            }
-        }
-        return texts;
-    }
+    public List<string>? TextList(string key) =>
+        Texts(key, (item, _) => item is JsonValue value && value.TryGetValue(out string? text) ? text : null);
 
     public List<string>? ChoiceList(string key, IReadOnlyList<string> allowed) {
         if (TextList(key) is not List<string> texts) {
@@ -157,14 +158,103 @@ internal sealed class ConfigSection {
         return [.. texts.Where(allowed.Contains)];
     }
 
+    public string? RequiredStrictText(string key) {
+        if (!values.ContainsKey(key)) {
+            Fail(key, ConfigProblem.Required);
+            return null;
+        }
+        YamlValue value = ValueAt(Location(key));
+        if (value.Kind == YamlKind.Text) {
+            return value.Text;
+        }
+        Fail(key, ConfigProblem.NotText);
+        return null;
+    }
+
+    public string? StrictText(string key) {
+        if (!values.ContainsKey(key)) {
+            return null;
+        }
+        YamlValue value = ValueAt(Location(key));
+        if (value.Kind == YamlKind.Text) {
+            return value.Text;
+        }
+        if (value.Kind != YamlKind.Null) {
+            Fail(key, ConfigProblem.NotText);
+        }
+        return null;
+    }
+
+    public bool? LaxFlag(string key) {
+        if (!values.ContainsKey(key)) {
+            return null;
+        }
+        bool? flag = LaxFlagOf(ValueAt(Location(key)));
+        if (flag is null) {
+            Fail(key, ConfigProblem.NotBoolean);
+        }
+        return flag;
+    }
+
+    public double? RequiredLaxNumber(string key) {
+        if (!values.ContainsKey(key)) {
+            Fail(key, ConfigProblem.Required);
+            return null;
+        }
+        double? number = LaxNumberOf(ValueAt(Location(key)));
+        if (number is null) {
+            Fail(key, ConfigProblem.NotNumber);
+        }
+        return number;
+    }
+
+    public List<string>? StrictTextList(string key) =>
+        Texts(key, (_, index) => ValueAt(ItemLocation(key, index)) is { Kind: YamlKind.Text } value ? value.Text : null);
+
     private static ConfigSection? Of(
-        JsonNode? node, string location, IReadOnlyList<string> known, List<ConfigError> errors) {
+        JsonNode? node,
+        string location,
+        IReadOnlyList<string> known,
+        List<ConfigError> errors,
+        IReadOnlyDictionary<string, YamlScalar> scalars) {
         if (node is JsonObject values) {
-            return new ConfigSection(values, location, known, errors);
+            return new ConfigSection(values, location, known, errors, scalars);
         }
         errors.Add(new ConfigError(location, ConfigProblem.NotSection));
         return null;
     }
+
+    private List<string>? Texts(string key, Func<JsonNode?, int, string?> read) {
+        if (List(key) is not JsonArray items) {
+            return null;
+        }
+        List<string> texts = [];
+        for (int index = 0; index < items.Count; index++) {
+            if (read(items[index], index) is string text) {
+                texts.Add(text);
+            } else {
+                errors.Add(new ConfigError(ItemLocation(key, index), ConfigProblem.NotText));
+            }
+        }
+        return texts;
+    }
+
+    private YamlValue ValueAt(string location) =>
+        scalars.TryGetValue(location, out YamlScalar? scalar) ? YamlTypes.Resolve(scalar) : new YamlValue(YamlKind.Other);
+
+    private static bool? LaxFlagOf(YamlValue value) => value.Kind switch {
+        YamlKind.Bool => value.Number == 1,
+        YamlKind.Int or YamlKind.Float => PydanticLax.Bool(value.Number),
+        YamlKind.Text => PydanticLax.Bool(value.Text),
+        _ => null,
+    };
+
+    private static double? LaxNumberOf(YamlValue value) => value.Kind switch {
+        YamlKind.Int when double.IsFinite(value.Number) => value.Number,
+        YamlKind.Float or YamlKind.Bool => value.Number,
+        YamlKind.Text => PydanticLax.Float(value.Text),
+        _ => null,
+    };
 
     private string ItemLocation(string key, int index) => ConfigLocation.Item(Location(key), index);
 

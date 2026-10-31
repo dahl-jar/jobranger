@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:tt="https://teamtailor.com">
+  <channel>
+    <title>Example Tech careers</title>
+    <item>
+      <title>Python-utvikler</title>
+      <description><![CDATA[<p>Bygg Django-tjenester for kunder i Oslo.</p>]]></description>
+      <pubDate>Thu, 01 Oct 2026 08:00:00 +0200</pubDate>
+      <link>https://careers.example.test/jobs/200-python-utvikler</link>
+      <guid isPermaLink="false">200</guid>
+      <tt:locations>
+        <tt:location>
+          <tt:name>Oslo office</tt:name>
+          <tt:city>Oslo</tt:city>
+          <tt:country>Norway</tt:country>
+        </tt:location>
+      </tt:locations>
+    </item>
+    <item>
+      <title>Plattformutvikler</title>
+      <description><![CDATA[<p>Drift Azure-plattformen med Terraform.</p>]]></description>
+      <pubDate>Fri, 02 Oct 2026 09:30:00 +0200</pubDate>
+      <link>https://careers.example.test/jobs/201-plattformutvikler</link>
+      <guid isPermaLink="false">201</guid>
+      <tt:locations>
+        <tt:location>
+          <tt:name>Oslo office</tt:name>
+          <tt:city>Oslo</tt:city>
+          <tt:country>Norway</tt:country>
+        </tt:location>
+      </tt:locations>
+    </item>
+  </channel>
+</rss>

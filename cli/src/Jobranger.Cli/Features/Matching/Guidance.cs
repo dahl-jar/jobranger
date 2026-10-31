@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Runtime.Versioning;
 using System.Text;
 using Jobranger.Cli.Config;
@@ -63,11 +62,10 @@ internal static class Guidance {
             .Replace(byteOrderMark, string.Empty, StringComparison.Ordinal)
             .Replace(windowsNewLine, newLine, StringComparison.Ordinal)
             .Replace(carriageReturn, newLine, StringComparison.Ordinal));
-        if (CodePoints.Count(normalized) > limit) {
-            throw new ConfigInvalidException(path, [
-                new ConfigError(
-                    Path.GetFileName(path), ConfigProblem.TooLong, limit.ToString(CultureInfo.InvariantCulture)),
-            ]);
+        List<ConfigError> errors = [];
+        ConfigSection.CheckLength(normalized, Path.GetFileName(path), limit, errors);
+        if (errors.Count > 0) {
+            throw new ConfigInvalidException(path, errors);
         }
         return normalized;
     }
