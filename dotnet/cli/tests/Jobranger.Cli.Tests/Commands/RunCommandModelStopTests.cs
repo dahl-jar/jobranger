@@ -13,10 +13,11 @@ namespace Jobranger.Cli.Tests.Commands;
 public sealed class RunCommandModelStopTests : IDisposable {
     private const string keyRefusedEnglish =
         "AI checks stopped: the provider refused the API key. 1 ad waits. Set a new key with: jobranger init";
-    private const string providerDownEnglish = "AI checks stopped: the provider did not answer. 1 ad waits for the next run.";
+    private const string providerDownEnglish = "AI checks stopped: the provider call failed. 1 ad waits for the next run.";
+    private const string pausedEnglish = "AI checks are paused until next month: 1 ad waits.";
     private const string keyRefusedNorwegian =
         "AI-sjekkene stoppet: leverandøren avviste nøkkelen. 1 annonse venter. Sett en ny nøkkel med: jobranger init";
-    private const string providerDownNorwegian = "AI-sjekkene stoppet: leverandøren svarte ikke. 1 annonse venter på neste kjøring.";
+    private const string providerDownNorwegian = "AI-sjekkene stoppet: kallet til leverandøren feilet. 1 annonse venter på neste kjøring.";
 
     private readonly TempDir temp = new();
     private readonly RecordingConsole console = new();
@@ -56,6 +57,19 @@ public sealed class RunCommandModelStopTests : IDisposable {
         Assert.Equal(
             (CliExitCodes.Ok, RunCommandFixtures.Lines(
                 RunCommandFixtures.CountsEnglish, RunCommandFixtures.SkipLine, RunCommandFixtures.SavedEnglish)),
+            (exit, console.Output.TrimEnd()));
+    }
+
+    [Fact]
+    public async Task ShouldPrintPausedNote_WhenMonthlyLimitStopsChecks() {
+        AppConfig config = RunCommandFixtures.Config();
+        RunCommandFixtures.Save(environment, config with { Model = config.Model with { MonthlyLimitUsd = 0m } });
+
+        int exit = await InvokeAsync(ApiErrorKind.Auth);
+
+        Assert.Equal(
+            (CliExitCodes.Ok, RunCommandFixtures.Lines(
+                RunCommandFixtures.CountsEnglish, pausedEnglish, RunCommandFixtures.SavedEnglish)),
             (exit, console.Output.TrimEnd()));
     }
 

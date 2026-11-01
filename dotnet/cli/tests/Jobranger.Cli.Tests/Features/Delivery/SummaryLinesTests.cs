@@ -65,23 +65,35 @@ public sealed class SummaryLinesTests {
     }
 
     [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void ShouldPrintNoStopNote_WhenNoAdsWait(bool keyRefused) {
-        RunResult result = completed with { ModelStopped = keyRefused ? StopReason.Auth : StopReason.ProviderDown, Pending = 0 };
+    [InlineData(nameof(StopReason.Auth))]
+    [InlineData(nameof(StopReason.ProviderDown))]
+    [InlineData(nameof(StopReason.Budget))]
+    public void ShouldPrintNoStopNote_WhenNoAdsWait(string stop) {
+        RunResult result = completed with { ModelStopped = Enum.Parse<StopReason>(stop), Pending = 0 };
 
         IReadOnlyList<string> lines = DeliveryEntry.SummaryLines(result, new EnglishMessages());
 
         Assert.Empty(lines);
     }
 
+    [Theory]
+    [InlineData(false, "AI checks are paused until next month: 2 ads wait.")]
+    [InlineData(true, "AI-sjekkene er satt på pause til neste måned: 2 annonser venter.")]
+    public void ShouldPrintPausedNote_WhenMonthlyLimitStopsChecks(bool norwegian, string line) {
+        RunResult result = completed with { ModelStopped = StopReason.Budget, Pending = 2 };
+
+        IReadOnlyList<string> lines = DeliveryEntry.SummaryLines(result, Messages(norwegian));
+
+        Assert.Equal([line], lines);
+    }
+
     [Fact]
-    public void ShouldPrintNoStopNote_WhenBudgetPausedChecks() {
-        RunResult result = completed with { ModelStopped = StopReason.Budget, Pending = 1 };
+    public void ShouldPrintOnlyPriceWarning_WhenUnpricedLimitStopsChecks() {
+        RunResult result = completed with { ModelStopped = StopReason.Budget, Pending = 1, UnpricedLimit = true };
 
         IReadOnlyList<string> lines = DeliveryEntry.SummaryLines(result, new EnglishMessages());
 
-        Assert.Empty(lines);
+        Assert.Equal([englishPriceWarning], lines);
     }
 
     private static IMessages Messages(bool norwegian) => norwegian ? new NorwegianMessages() : new EnglishMessages();

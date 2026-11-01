@@ -309,7 +309,7 @@ internal sealed class EnglishMessages : IMessages {
         + "Set a new key with: jobranger init";
 
     public string DigestProviderDownNote(int pending) =>
-        $"AI checks stopped: the provider did not answer. {pending} {AdsWait(pending)} for the next run.";
+        $"AI checks stopped: the provider call failed. {pending} {AdsWait(pending)} for the next run.";
 
     public string DigestMoreOnWebsite => "more on the website";
 
