@@ -41,6 +41,8 @@ internal sealed class InitHarness : IDisposable {
 
     public string Output => console.Output;
 
+    public string Errors => console.Errors;
+
     public string LastLine => console.Output.TrimEnd().Split(System.Environment.NewLine)[^1];
 
     public CancellationTokenSource Cancel { get; } = new();

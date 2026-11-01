@@ -44,22 +44,21 @@ internal sealed class Delivery(
         return lines;
     }
 
-    public static async Task<SendFailure?> SendTestAsync(
+    public static Task<SendFailure?> SendTestAsync(
         EmailConfig email,
         string? secret,
         RenderedDigest rendered,
         DeliveryTransport transport,
         IMessages messages,
         TimeProvider time,
-        CancellationToken cancellationToken) {
-        return await SendToAddressesAsync(
+        CancellationToken cancellationToken) =>
+        SendToAddressesAsync(
             email,
             secret,
             SenderFor(email, rendered, null, transport, messages, time).CreateSender,
             rendered,
             messages,
-            cancellationToken).ConfigureAwait(false);
-    }
+            cancellationToken);
 
     public async Task<DeliveryResult> DeliverAsync(AppConfig config, RunResult result, CancellationToken cancellationToken) {
         if (result.Status is not (RunStatus.Completed or RunStatus.Failed)) {

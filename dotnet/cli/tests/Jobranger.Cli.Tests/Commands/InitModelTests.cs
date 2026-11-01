@@ -80,6 +80,71 @@ public sealed class InitModelTests : IDisposable {
     }
 
     [Fact]
+    public async Task ShouldHidePassword_WhenOllamaRefusesUrlWithPassword() {
+        ScriptedPrompter prompter = init.Prompter(
+            [InitFixtures.Ollama, "http://user:Secret42@ollama.example.test", .. init.OllamaFlow[1..]]);
+
+        int exit = await init.InvokeAsync(init.Seams(
+            prompter, FakeApiHandler.Json(401, InitFixtures.EmptyOllamaList), InitHarness.OllamaListing()));
+
+        Assert.Equal(CliExitCodes.Ok, exit);
+        Assert.Contains(
+            InitHarness.Lines("✕ http://ollama.example.test did not answer as Ollama."), init.Output, StringComparison.Ordinal);
+        Assert.DoesNotContain("Secret42", init.Output, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(Locales.English, "localhost:11434", "✕ localhost:11434 is not an http:// or https:// address.")]
+    [InlineData(Locales.Norwegian, "localhost:11434", "✕ localhost:11434 er ikke en http://- eller https://-adresse.")]
+    [InlineData(Locales.English, "ftp://user:Secret42@ollama.example.test", "✕ ftp://ollama.example.test is not an http:// or https:// address.")]
+    public async Task ShouldAskUrlAgain_WhenUrlIsNotHttp(string language, string url, string line) {
+        init.SetLanguage(language);
+        IMessages messages = Messages.For(null, init.Environment);
+        ScriptedPrompter prompter = init.Prompter([InitFixtures.Ollama, url, .. init.OllamaFlow[1..]]);
+
+        int exit = await init.InvokeAsync(init.Seams(prompter, InitHarness.OllamaListing()));
+
+        Assert.Equal(CliExitCodes.Ok, exit);
+        Assert.Contains(InitHarness.Lines(line), init.Output, StringComparison.Ordinal);
+        Assert.Equal(2, prompter.Asked.Count(message => message == messages.InitOllamaUrl));
+        Assert.DoesNotContain(messages.InitTryAgain, prompter.Asked);
+        Assert.DoesNotContain("Secret42", init.Output, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(Locales.English, "Checking Anthropic...")]
+    [InlineData(Locales.Norwegian, "Sjekker Anthropic...")]
+    public async Task ShouldSayChecking_BeforeFirstRequest(string language, string line) {
+        init.SetLanguage(language);
+        string? shownAtRequest = null;
+        FakeApiHandler listing = new((_, _) => {
+            shownAtRequest = init.Output;
+            return Task.FromResult(FakeApiHandler.Response(200, InitFixtures.AnthropicList()));
+        });
+
+        int exit = await init.InvokeAsync(init.Seams(init.Prompter(init.WebsiteFlow), listing));
+
+        Assert.Equal(CliExitCodes.Ok, exit);
+        Assert.Contains(InitHarness.Lines(line), shownAtRequest, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("7e22")]
+    [InlineData("2")]
+    public async Task ShouldAskPrices_WhenListedPriceIsOutOfRange(string perToken) {
+        string list = InitFixtures.RouterList
+            .Replace("0.00001", perToken, StringComparison.Ordinal)
+            .Replace("0.00002", perToken, StringComparison.Ordinal);
+        ScriptedPrompter prompter = init.Prompter(
+            [InitFixtures.OpenRouter, InitFixtures.ApiKey, InitFixtures.RouterModel, "1", "3", string.Empty, .. init.AfterModel]);
+
+        int exit = await init.InvokeAsync(init.Seams(prompter, FakeApiHandler.Json(200, list), InitHarness.RouterKeyWorks()));
+
+        Assert.Equal((CliExitCodes.Ok, new PriceOverride(1m, 3m)), (exit, init.Saved.Model.Price));
+        Assert.Equal("Model One   no price", prompter.Choices[1][0].Label);
+    }
+
+    [Fact]
     public async Task ShouldOfferRetry_WhenProviderIsUnreachable() {
         ScriptedPrompter prompter = init.Prompter(
             [InitFixtures.OpenRouter, InitFixtures.ApiKey, true, .. RouterFlow[1..]]);

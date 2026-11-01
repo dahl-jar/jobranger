@@ -168,7 +168,15 @@ public sealed class InitPtyTests : IDisposable {
         await pty.WaitForExitAsync();
 
         Assert.Equal(CliExitCodes.Failure, pty.ExitCode);
-        Assert.Equal(InitHarness.Lines(english.InitNeedsTerminal), File.ReadAllText(outputFile));
+        Assert.Contains(english.InitNeedsTerminal, pty.Transcript, StringComparison.Ordinal);
+        Assert.Empty(File.ReadAllText(outputFile));
+    }
+
+    [Fact]
+    public async Task ShouldReachFirstPrompt_WhenErrorOutputGoesToFile() {
+        await using PtyProcess pty = PtyProcess.StartWithErrorFile(environment, temp.File("errors.txt"), InitCommand.CommandName);
+
+        await pty.WaitForAsync(english.InitProvider);
     }
 
     private static async Task ReachModelPromptAsync(PtyProcess pty, RawHttpServer ollama) {

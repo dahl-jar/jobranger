@@ -39,6 +39,9 @@ internal sealed class PtyProcess : IAsyncDisposable {
     public static PtyProcess StartWithOutputFile(Hashtable environment, string outputFile, params string[] arguments) =>
         StartCommand(environment, $"{Command(arguments)} > {Quoted(outputFile)}");
 
+    public static PtyProcess StartWithErrorFile(Hashtable environment, string errorFile, params string[] arguments) =>
+        StartCommand(environment, $"{Command(arguments)} 2> {Quoted(errorFile)}");
+
     public async Task WaitForAsync(string text) {
         try {
             await TestWaits.UntilAsync(() => Transcript.Contains(text, StringComparison.Ordinal));

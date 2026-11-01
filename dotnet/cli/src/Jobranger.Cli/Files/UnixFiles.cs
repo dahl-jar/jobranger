@@ -29,6 +29,8 @@ internal static partial class UnixFiles {
     private const int linuxNoFollow = 0x20000;
     private const int linuxArmNoFollow = 0x8000;
     private const int linuxCloseOnExec = 0x80000;
+    private const int runtimeSearchAccess = 1;
+    private const int runtimeWriteAccess = 2;
     private const int noEntry = 2;
     private const int alreadyExists = 17;
     private const int macLinkLoop = 62;
@@ -88,6 +90,8 @@ internal static partial class UnixFiles {
     }
 
     public static uint EffectiveUserId() => GetEffectiveUserId();
+
+    public static bool CanWriteInto(string dir) => Access(dir, runtimeWriteAccess | runtimeSearchAccess) != failed;
 
     public static bool IsOwnDirectory(string path, uint userId) {
         Span<byte> status = stackalloc byte[fileStatusSize];
@@ -149,6 +153,9 @@ internal static partial class UnixFiles {
 
     [LibraryImport(runtimeNative, EntryPoint = "SystemNative_LStat", StringMarshalling = StringMarshalling.Utf8)]
     private static partial int LinkStatus(string path, Span<byte> status);
+
+    [LibraryImport(runtimeNative, EntryPoint = "SystemNative_Access", StringMarshalling = StringMarshalling.Utf8)]
+    private static partial int Access(string path, int mode);
 
     [LibraryImport(runtimeNative, EntryPoint = "SystemNative_GetEUid")]
     private static partial uint GetEffectiveUserId();

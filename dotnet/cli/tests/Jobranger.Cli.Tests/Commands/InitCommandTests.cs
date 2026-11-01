@@ -12,6 +12,7 @@ namespace Jobranger.Cli.Tests.Commands;
 [UnsupportedOSPlatform("windows")]
 public sealed class InitCommandTests : IDisposable {
     private const string homeMark = "{home}";
+    private const string corruptSecrets = "{not json";
 
     private static readonly EnglishMessages english = new();
 
@@ -28,7 +29,8 @@ public sealed class InitCommandTests : IDisposable {
 
         int exit = await init.InvokeAsync(init.Seams(prompter), inputRedirected: true);
 
-        Assert.Equal((CliExitCodes.Failure, InitHarness.Lines(line), 0), (exit, init.Output, prompter.Asked.Count));
+        Assert.Equal((CliExitCodes.Failure, InitHarness.Lines(line), 0), (exit, init.Errors, prompter.Asked.Count));
+        Assert.Empty(init.Output);
         Assert.Equal("init.failed not_a_terminal", CommandFixtures.LoggedFailure(init.Paths));
     }
 
@@ -36,7 +38,7 @@ public sealed class InitCommandTests : IDisposable {
     public async Task ShouldPrintOneLine_WhenPrompterIsUnavailable() {
         int exit = await init.InvokeAsync(init.Seams(null));
 
-        Assert.Equal((CliExitCodes.Failure, InitHarness.Lines(english.InitNeedsTerminal)), (exit, init.Output));
+        Assert.Equal((CliExitCodes.Failure, InitHarness.Lines(english.InitNeedsTerminal)), (exit, init.Errors));
     }
 
     [Fact]
@@ -129,23 +131,124 @@ public sealed class InitCommandTests : IDisposable {
         Assert.Equal("init.failed save_failed", CommandFixtures.LoggedFailure(init.Paths));
     }
 
-    [Fact]
-    public async Task ShouldNameSecretsFile_WhenItIsCorrupt() {
+    [Theory]
+    [InlineData(Locales.English, false, "Cannot read {0}. Fix or remove the file, then run jobranger init again.")]
+    [InlineData(Locales.Norwegian, false, "Kan ikke lese {0}. Rett eller fjern filen, og kjør jobranger init på nytt.")]
+    [InlineData(Locales.English, true, "Cannot read {0}. Fix or remove the file, then run jobranger init again.")]
+    public async Task ShouldStopBeforeSecretPrompt_WhenSecretsFileIsCorrupt(string language, bool hasStore, string line) {
+        init.SetLanguage(language);
         Directory.CreateDirectory(init.Paths.ConfigDir());
-        File.WriteAllText(init.Paths.SecretsPath(), "not json");
+        File.WriteAllText(init.Paths.SecretsPath(), corruptSecrets);
+        ScriptedPrompter prompter = init.Prompter(InitFixtures.Anthropic);
 
-        int exit = await init.InvokeAsync(InitFixtures.Seams(init.Prompter(init.WebsiteFlow), null, [InitHarness.Listing()]));
+        int exit = await init.InvokeAsync(InitFixtures.Seams(prompter, hasStore ? init.Store : null));
 
-        Assert.Equal((CliExitCodes.Failure, english.FileUnreadable(init.Paths.SecretsPath())), (exit, init.LastLine));
+        Assert.Equal((CliExitCodes.Failure, Located(line, init.Paths.SecretsPath())), (exit, init.LastLine));
+        Assert.Single(prompter.Asked);
     }
 
     [Fact]
-    public async Task ShouldNameConfigDir_WhenItCannotBeCreated() {
-        string configDir = Path.Combine(init.Profile, "config");
-        init.Environment[Locales.ConfigDirVariable] = configDir;
+    public async Task ShouldSkipSecretsFile_WhenNoSecretIsNeeded() {
+        Directory.CreateDirectory(init.Paths.ConfigDir());
+        File.WriteAllText(init.Paths.SecretsPath(), corruptSecrets);
+
         int exit = await init.InvokeAsync(init.Seams(init.Prompter(init.OllamaFlow), InitHarness.OllamaListing()));
 
-        Assert.Equal((CliExitCodes.Failure, english.InitSaveFailed(configDir)), (exit, init.LastLine));
+        Assert.Equal(CliExitCodes.Ok, exit);
+    }
+
+    [Theory]
+    [InlineData(UnixFileMode.UserRead | UnixFileMode.UserExecute)]
+    [InlineData(UnixFileMode.None)]
+    [InlineData(UnixFileMode.UserWrite)]
+    public async Task ShouldStopBeforeFirstPrompt_WhenConfigDirIsLocked(UnixFileMode mode) {
+        string configDir = init.Paths.ConfigDir();
+        Directory.CreateDirectory(configDir);
+        ScriptedPrompter prompter = init.Prompter();
+
+        int exit = await InvokeWithModeAsync(configDir, mode, prompter);
+
+        Assert.Equal(
+            (CliExitCodes.Failure, InitHarness.Lines(english.InitSaveFailed(configDir)), 0),
+            (exit, init.Output, prompter.Asked.Count));
+    }
+
+    [Fact]
+    public async Task ShouldNameParent_WhenMissingConfigDirCannotBeCreated() {
+        string parent = init.TempFile("parent");
+        string configDir = Path.Combine(parent, "jobranger");
+        Directory.CreateDirectory(parent);
+        init.Environment[Locales.ConfigDirVariable] = configDir;
+        ScriptedPrompter prompter = init.Prompter();
+
+        int exit = await InvokeWithModeAsync(parent, UnixFileMode.UserRead | UnixFileMode.UserExecute, prompter);
+
+        Assert.Equal(
+            (CliExitCodes.Failure, InitHarness.Lines(english.InitSaveFailed(parent)), 0),
+            (exit, init.Output, prompter.Asked.Count));
+    }
+
+    [Fact]
+    public async Task ShouldAskStartOverFirst_WhenConfigDirIsLocked() {
+        byte[] old = init.WriteOldConfig(InitFixtures.OldConfig);
+        ScriptedPrompter prompter = init.Prompter(false);
+
+        int exit = await InvokeWithModeAsync(
+            init.Paths.ConfigDir(), UnixFileMode.UserRead | UnixFileMode.UserExecute, prompter);
+
+        Assert.Equal(CliExitCodes.Ok, exit);
+        Assert.Equal(old, File.ReadAllBytes(init.Paths.ConfigPath()));
+    }
+
+    [Fact]
+    public async Task ShouldLeaveConfigDirMissing_WhenCancelledAtFirstPrompt() {
+        ScriptedPrompter prompter = init.Prompter(ScriptedPrompter.Cancel);
+
+        int exit = await init.InvokeAsync(init.Seams(prompter));
+
+        Assert.Equal(RunCommandFixtures.Interrupted, exit);
+        Assert.False(Directory.Exists(init.Paths.ConfigDir()));
+    }
+
+    [Theory]
+    [InlineData(Locales.English, "✕ {0} is a file. jobranger needs a folder at that path. Move the file, then run jobranger init again.")]
+    [InlineData(Locales.Norwegian, "✕ {0} er en fil. jobranger trenger en mappe på den stien. Flytt filen, og kjør jobranger init på nytt.")]
+    public async Task ShouldNameFile_WhenFileIsAtConfigDir(string language, string line) {
+        init.SetLanguage(language);
+        string configDir = init.TempFile("taken");
+        File.WriteAllText(configDir, string.Empty);
+        init.Environment[Locales.ConfigDirVariable] = configDir;
+        ScriptedPrompter prompter = init.Prompter();
+
+        int exit = await init.InvokeAsync(init.Seams(prompter));
+
+        Assert.Equal(
+            (CliExitCodes.Failure, InitHarness.Lines(Located(line, configDir)), 0),
+            (exit, init.Output, prompter.Asked.Count));
+    }
+
+    [Fact]
+    public async Task ShouldNameFile_WhenFileIsAboveConfigDir() {
+        init.Environment[Locales.ConfigDirVariable] = Path.Combine(init.Profile, "config");
+        ScriptedPrompter prompter = init.Prompter();
+
+        int exit = await init.InvokeAsync(init.Seams(prompter));
+
+        Assert.Equal((CliExitCodes.Failure, 0), (exit, prompter.Asked.Count));
+        Assert.StartsWith($"✕ {init.Profile} is a file.", init.LastLine, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(Locales.English, "Another jobranger process is using {0}. Try again when it ends.")]
+    [InlineData(Locales.Norwegian, "En annen jobranger-prosess bruker {0}. Prøv igjen når den er ferdig.")]
+    public async Task ShouldSayFileIsBusy_WhenSecretsLockIsHeld(string language, string line) {
+        init.SetLanguage(language);
+        init.Store.AfterWrite = () => throw new TimeoutException("lock still held");
+
+        int exit = await init.InvokeAsync(init.Seams(init.Prompter(init.WebsiteFlow), InitHarness.Listing()));
+
+        Assert.Equal((CliExitCodes.Failure, Located(line, init.Paths.SecretsPath())), (exit, init.LastLine));
+        Assert.Equal("init.failed save_failed", CommandFixtures.LoggedFailure(init.Paths));
     }
 
     [Fact]
@@ -286,6 +389,17 @@ public sealed class InitCommandTests : IDisposable {
         string printed = state.ToString();
 
         Assert.DoesNotContain(DeliveryFixtures.Address, printed, StringComparison.Ordinal);
+    }
+
+    private static string Located(string line, string path) => line.Replace("{0}", path, StringComparison.Ordinal);
+
+    private async Task<int> InvokeWithModeAsync(string dir, UnixFileMode mode, ScriptedPrompter prompter) {
+        File.SetUnixFileMode(dir, mode);
+        try {
+            return await init.InvokeAsync(init.Seams(prompter));
+        } finally {
+            File.SetUnixFileMode(dir, FileModes.OwnerOnlyDir);
+        }
     }
 
     private AppConfig ValidConfig(AppConfig config) => config with { Profile = new ProfileRef(init.Profile) };

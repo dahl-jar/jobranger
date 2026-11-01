@@ -2,6 +2,7 @@
 jobranger setup · 1 of 4 · model
 ? Which AI provider should read the ads?
 ? API key
+Checking Anthropic...
 ✓ Key works.
 Cost estimates assume 9 ads a day.
 ? Which model?

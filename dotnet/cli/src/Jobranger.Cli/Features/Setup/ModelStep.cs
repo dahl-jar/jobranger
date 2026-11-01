@@ -105,13 +105,24 @@ internal sealed class ModelStep(SetupContext context, SetupSecrets secrets) : IS
         if (ProvidersEntry.SecretName(provider) is string name) {
             return (await secrets.AskAsync(name, messages.InitApiKey, cancellationToken).ConfigureAwait(false), defaultUrl);
         }
-        return (null, await context.Prompter.TextAsync(messages.InitOllamaUrl, defaultUrl, cancellationToken)
-            .ConfigureAwait(false));
+        return (null, await AskOllamaUrlAsync(defaultUrl, cancellationToken).ConfigureAwait(false));
+    }
+
+    private async Task<string> AskOllamaUrlAsync(string defaultUrl, CancellationToken cancellationToken) {
+        while (true) {
+            string url = await context.Prompter.TextAsync(messages.InitOllamaUrl, defaultUrl, cancellationToken)
+                .ConfigureAwait(false);
+            if (OllamaUrls.IsHttp(url)) {
+                return url;
+            }
+            await context.Output.WriteLineAsync(messages.InitNotHttpUrl(OllamaUrls.WithoutUserinfo(url))).ConfigureAwait(false);
+        }
     }
 
     private async Task<IReadOnlyList<ModelInfo>?> TryListAsync(
         ProviderName provider, string? key, string ollamaUrl, CancellationToken cancellationToken) {
         string label = provider.ToString();
+        await context.Output.WriteLineAsync(messages.InitChecking(label)).ConfigureAwait(false);
         try {
             IReadOnlyList<ModelInfo> models = await new ModelsEntry(() => context.Seams.CreateModelHandler(provider), context.Time)
                 .ListAsync(provider, key, ollamaUrl, cancellationToken).ConfigureAwait(false);
@@ -141,7 +152,9 @@ internal sealed class ModelStep(SetupContext context, SetupSecrets secrets) : IS
 
     private Task WriteRejectionAsync(ProviderName provider, string ollamaUrl) =>
         context.Output.WriteLineAsync(
-            provider == ProviderName.Ollama ? messages.InitOllamaRefused(ollamaUrl) : messages.InitKeyRejected(provider.ToString()));
+            provider == ProviderName.Ollama
+                ? messages.InitOllamaRefused(OllamaUrls.WithoutUserinfo(ollamaUrl))
+                : messages.InitKeyRejected(provider.ToString()));
 
     private async Task<bool> KeyWorksAsync(ProviderName provider, string? key, CancellationToken cancellationToken) {
         using IModelClient client = await new ProvidersEntry(() => context.Seams.CreateModelHandler(provider), context.Time)

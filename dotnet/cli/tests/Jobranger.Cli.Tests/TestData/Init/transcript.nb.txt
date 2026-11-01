@@ -2,6 +2,7 @@
 jobranger-oppsett · 1 av 4 · modell
 ? Hvilken AI-leverandør skal lese annonsene?
 ? API-nøkkel
+Sjekker Anthropic...
 ✓ Nøkkelen virker.
 Kostnadsanslagene regner med 9 annonser om dagen.
 ? Hvilken modell?

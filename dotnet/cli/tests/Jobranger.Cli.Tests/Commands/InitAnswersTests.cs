@@ -310,16 +310,51 @@ public sealed class InitAnswersTests : IDisposable {
         Assert.Contains(english.InitNotSender, init.Output, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public async Task ShouldAskAgain_WhenRunTimesAreTooClose() {
-        object[] answers = [.. init.WebsiteFlow[..^1], "23:00, 00:30", "3:00, 15:00"];
+    [Theory]
+    [InlineData(Locales.English, "23:00, 00:30", "✕ are less than 2 hours apart")]
+    [InlineData(Locales.Norwegian, "23:00, 00:30", "✕ ligger mindre enn 2 timer fra hverandre")]
+    [InlineData(Locales.English, "25:00", "✕ is not a time in HH:MM form")]
+    [InlineData(Locales.Norwegian, "25:00", "✕ er ikke et klokkeslett på formen TT:MM")]
+    public async Task ShouldAskAgain_WhenRunTimesAreWrong(string language, string answer, string line) {
+        init.SetLanguage(language);
+        await AssertFlowPrintsAsync([.. init.WebsiteFlow[..^1], answer, "3:00, 15:00"], line);
 
-        int exit = await init.InvokeAsync(init.Seams(init.Prompter(answers), InitHarness.Listing()));
-
-        Assert.Equal(CliExitCodes.Ok, exit);
-        Assert.Contains(
-            english.InitRunTimesWrong($"schedule.times: {english.ConfigRunTimesTooClose(2)}"), init.Output, StringComparison.Ordinal);
         Assert.Equal(["03:00", "15:00"], init.Saved.Schedule.Times);
+    }
+
+    [Fact]
+    public async Task ShouldPrintReasonOnce_WhenTwoRunTimesAreWrong() {
+        object[] answers = [.. init.WebsiteFlow[..^1], "25:00, 26:00", "12:00"];
+
+        await init.InvokeAsync(init.Seams(init.Prompter(answers), InitHarness.Listing()));
+
+        Assert.Single(init.Output.Split(System.Environment.NewLine), line => line == "✕ is not a time in HH:MM form");
+    }
+
+    [Theory]
+    [InlineData(Locales.English, "✕ Enter the SMTP password.")]
+    [InlineData(Locales.Norwegian, "✕ Skriv inn SMTP-passordet.")]
+    public async Task ShouldAskPasswordAgain_WhenPasswordIsEmpty(string language, string line) {
+        init.SetLanguage(language);
+        await using FakeSmtpServer server = InitHarness.AcceptingServer();
+        object[] flow = init.SmtpFlow(server);
+
+        await AssertFlowPrintsAsync([.. flow[..^2], string.Empty, .. flow[^2..]], line);
+
+        Assert.Equal(ConfigFixtures.Secret, init.Store.Values[Credentials.SmtpPasswordName]);
+        Assert.Single(server.Messages);
+    }
+
+    [Theory]
+    [InlineData(Locales.English, "✕ Enter the Resend API key.")]
+    [InlineData(Locales.Norwegian, "✕ Skriv inn Resend API-nøkkelen.")]
+    public async Task ShouldAskResendKeyAgain_WhenKeyIsEmpty(string language, string line) {
+        init.SetLanguage(language);
+        object[] flow = init.ResendFlow();
+
+        await AssertFlowPrintsAsync([.. flow[..^3], string.Empty, .. flow[^3..]], line);
+
+        Assert.Equal(DeliveryFixtures.ResendKey, init.Store.Values[Credentials.ResendKeyName]);
     }
 
     [Fact]
@@ -352,6 +387,13 @@ public sealed class InitAnswersTests : IDisposable {
             InitFixtures.Smtp, InitHarness.ServerAnswer(accepting), string.Empty, InitFixtures.OtherPassword,
             string.Empty,
         ];
+
+    private async Task AssertFlowPrintsAsync(object[] answers, string line) {
+        int exit = await init.InvokeAsync(init.Seams(init.Prompter(answers), InitHarness.Listing()));
+
+        Assert.Equal(CliExitCodes.Ok, exit);
+        Assert.Contains(InitHarness.Lines(line), init.Output, StringComparison.Ordinal);
+    }
 
     private Task<int> RetryProfileAsync(string badPath) {
         object[] answers = [.. InitHarness.ModelAnswers, badPath, .. init.AfterModel];

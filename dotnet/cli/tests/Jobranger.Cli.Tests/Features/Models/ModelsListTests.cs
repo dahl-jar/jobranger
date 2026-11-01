@@ -194,10 +194,31 @@ public sealed class ModelsListTests {
     [InlineData("0.000001", "inf")]
     [InlineData("-1", "0.000001")]
     [InlineData("1e25", "0.000001")]
+    [InlineData("7e22", "7e22")]
+    [InlineData("2", "2")]
+    [InlineData("0.000001", "1.000001")]
     public async Task ShouldLeavePriceUnknown_WhenOpenRouterPriceIsUnusable(string prompt, string completion) {
         IReadOnlyList<ModelInfo> models = await ListRouterAsync(Entry(pricing: Pricing(prompt, completion)));
 
         Assert.Equal([new ModelInfo(RouterModel, routerName, null, null, Batch: false)], models);
+    }
+
+    [Fact]
+    public async Task ShouldListPrice_WhenOpenRouterPriceIsAtMaximum() {
+        IReadOnlyList<ModelInfo> models = await ListRouterAsync(Entry(pricing: Pricing("1", "1")));
+
+        Assert.Equal((AppConfigValidator.MaxAmountUsd, AppConfigValidator.MaxAmountUsd), (models[0].PriceIn, models[0].PriceOut));
+    }
+
+    [Theory]
+    [InlineData("Anthropic")]
+    [InlineData("OpenAI")]
+    public async Task ShouldCallOnce_WhenKeyedListFailsOnServer(string providerName) {
+        using FakeApiHandler handler = FakeApiHandler.Json(500, "{}");
+
+        await Assert.ThrowsAsync<ApiException>(() => ListAsync(handler, Enum.Parse<ProviderName>(providerName), AnthropicKey));
+
+        Assert.Single(handler.Requests);
     }
 
     [Fact]

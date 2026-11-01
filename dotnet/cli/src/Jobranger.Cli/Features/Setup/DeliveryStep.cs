@@ -79,7 +79,8 @@ internal sealed class DeliveryStep(SetupContext context, SetupSecrets secrets) :
 
     private async Task<MailTransport> AskSmtpAsync(string address, string server, CancellationToken cancellationToken) {
         string user = await context.Prompter.TextAsync(messages.InitSmtpUser, address, cancellationToken).ConfigureAwait(false);
-        string password = await secrets.AskAsync(Credentials.SmtpPasswordName, messages.InitSmtpPassword, cancellationToken)
+        string password = await AskSecretAsync(
+            Credentials.SmtpPasswordName, messages.InitSmtpPassword, messages.InitEnterSmtpPassword, cancellationToken)
             .ConfigureAwait(false);
         EmailConfig email = new() {
             On = true,
@@ -92,7 +93,8 @@ internal sealed class DeliveryStep(SetupContext context, SetupSecrets secrets) :
     }
 
     private async Task<MailTransport> AskResendAsync(string address, CancellationToken cancellationToken) {
-        string key = await secrets.AskAsync(Credentials.ResendKeyName, messages.InitResendKey, cancellationToken)
+        string key = await AskSecretAsync(
+            Credentials.ResendKeyName, messages.InitResendKey, messages.InitEnterResendKey, cancellationToken)
             .ConfigureAwait(false);
         string sender = await AskValidAsync(
             messages.InitSendFrom,
@@ -102,6 +104,16 @@ internal sealed class DeliveryStep(SetupContext context, SetupSecrets secrets) :
             cancellationToken).ConfigureAwait(false);
         EmailConfig email = new() { On = true, Address = address, Via = EmailVia.Resend, Sender = sender };
         return new MailTransport(email, Credentials.ResendKeyName, key);
+    }
+
+    private async Task<string> AskSecretAsync(string name, string message, string refusal, CancellationToken cancellationToken) {
+        while (true) {
+            string answer = await secrets.AskAsync(name, message, cancellationToken).ConfigureAwait(false);
+            if (answer.Length > 0) {
+                return answer;
+            }
+            await context.Output.WriteLineAsync(refusal).ConfigureAwait(false);
+        }
     }
 
     private async Task<string> AskValidAsync(
@@ -126,15 +138,17 @@ internal sealed class DeliveryStep(SetupContext context, SetupSecrets secrets) :
                     .ConfigureAwait(false);
                 continue;
             }
-            ConfigError[] problems = [
+            string[] problems = [
                 .. AppConfigValidator.Validate(config with { Schedule = new ScheduleConfig { Times = times } })
-                    .Where(error => error.Problem is ConfigProblem.RunTimeFormat or ConfigProblem.RunTimesTooClose),
+                    .Where(error => error.Problem is ConfigProblem.RunTimeFormat or ConfigProblem.RunTimesTooClose)
+                    .Select(error => error.Text(messages))
+                    .Distinct(),
             ];
             if (problems.Length == 0) {
                 return times;
             }
-            foreach (ConfigError problem in problems) {
-                await context.Output.WriteLineAsync(messages.InitRunTimesWrong(problem.Describe(messages))).ConfigureAwait(false);
+            foreach (string problem in problems) {
+                await context.Output.WriteLineAsync(messages.InitRunTimesWrong(problem)).ConfigureAwait(false);
             }
         }
     }

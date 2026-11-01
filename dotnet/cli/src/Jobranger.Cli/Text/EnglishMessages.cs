@@ -456,6 +456,10 @@ internal sealed class EnglishMessages : IMessages {
 
     public string InitKeyRejected(string provider) => $"✕ {provider} rejected the key.";
 
+    public string InitChecking(string provider) => $"Checking {provider}...";
+
+    public string InitNotHttpUrl(string url) => $"✕ {url} is not an http:// or https:// address.";
+
     public string InitCouldNotReach(string provider) => $"✕ Could not reach {provider}.";
 
     public string InitOllamaRefused(string url) => $"✕ {url} did not answer as Ollama.";
@@ -552,6 +556,10 @@ internal sealed class EnglishMessages : IMessages {
 
     public string InitNotSender => "✕ Write the sender as name <address> or address.";
 
+    public string InitEnterSmtpPassword => "✕ Enter the SMTP password.";
+
+    public string InitEnterResendKey => "✕ Enter the Resend API key.";
+
     public string InitTestSent(string address) => $"✓ Test email sent to {address}";
 
     public string InitTestFailed(string reason) => $"✕ {reason}";
@@ -575,6 +583,12 @@ internal sealed class EnglishMessages : IMessages {
     public string InitNext => "Next: jobranger run";
 
     public string InitSaveFailed(string path) => $"✕ Could not write {path}. Check the folder permissions.";
+
+    public string InitConfigDirIsFile(string path) => $"✕ {path} is a file. jobranger needs a folder at that path. Move the file, then run jobranger init again.";
+
+    public string InitSecretsUnreadable(string path) => $"Cannot read {path}. Fix or remove the file, then run jobranger init again.";
+
+    public string InitSecretsBusy(string path) => $"Another jobranger process is using {path}. Try again when it ends.";
 
     public string InitSecretsKept => "The config was not saved. Secrets already written stay in the store until the next jobranger init.";
 

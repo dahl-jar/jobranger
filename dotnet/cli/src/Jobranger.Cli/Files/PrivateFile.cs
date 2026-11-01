@@ -15,6 +15,8 @@ internal static partial class PrivateFile {
     private const string anyName = "*";
     private const string symlinkReason = "symbolic link";
     private const string notRegularReason = "not a regular file";
+    private const string notDirReason = "a file is at the folder path";
+    private const string notWritableReason = "folder is not writable";
     private const string openFailedReason = "open failed errno=";
     private const UnixFileMode openToOthers =
         UnixFileMode.GroupRead | UnixFileMode.GroupWrite | UnixFileMode.GroupExecute
@@ -51,6 +53,19 @@ internal static partial class PrivateFile {
             throw new PrivateDirException(dir, error);
         }
         return dir;
+    }
+
+    public static void RequireWritableDir(string dir) {
+        string? current = Path.GetFullPath(dir);
+        while (current is not null && !Directory.Exists(current)) {
+            if (File.Exists(current)) {
+                throw new PrivateDirException(current, new IOException(notDirReason)) { IsFile = true };
+            }
+            current = Path.GetDirectoryName(current);
+        }
+        if (current is not null && !UnixFiles.CanWriteInto(current)) {
+            throw new PrivateDirException(current, new UnauthorizedAccessException(notWritableReason));
+        }
     }
 
     public static void RemoveStaleTemps(string path) {

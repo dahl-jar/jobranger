@@ -48,7 +48,9 @@ internal sealed class InitCommand : Command {
             ? null
             : context.Seams.CreatePrompter(context.Services.Console, context.Messages);
         if (prompter is null) {
-            return await FailAsync(context, logger, notTerminal, [context.Messages.InitNeedsTerminal]).ConfigureAwait(false);
+            LogEvents.InitFailed(logger, notTerminal);
+            await context.Errors.WriteLineAsync(context.Messages.InitNeedsTerminal).ConfigureAwait(false);
+            return CliExitCodes.Failure;
         }
         using PosixSignals signals = new(cancellationToken);
         SetupEntry setup = SetupEntry.Init(new SetupContext(
@@ -99,7 +101,9 @@ internal sealed class InitCommand : Command {
 
     private static string FailureLine(Exception? cause, InitContext context) => cause switch {
         SecretStoreUnavailableException => context.Messages.InitSecretStoreFailed,
-        PrivateFileException { IsUnreadable: true } file => context.Messages.FileUnreadable(file.Path),
+        PrivateDirException { IsFile: true } dir => context.Messages.InitConfigDirIsFile(dir.Path),
+        PrivateFileException { IsUnreadable: true } file => context.Messages.InitSecretsUnreadable(file.Path),
+        TimeoutException => context.Messages.InitSecretsBusy(new Paths(context.Environment).SecretsPath()),
         _ => context.Messages.InitSaveFailed(FailedPath(cause, new Paths(context.Environment))),
     };
 
@@ -135,6 +139,8 @@ internal sealed class InitCommand : Command {
     private sealed record InitContext(
         CliServices Services, IDictionary Environment, TimeProvider Time, bool InputRedirected, InitSeams Seams) {
         public TextWriter Output => Services.Console.Profile.Out.Writer;
+
+        public TextWriter Errors => Services.ErrorConsole.Profile.Out.Writer;
 
         public IMessages Messages => Services.Messages;
     }

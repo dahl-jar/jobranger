@@ -395,6 +395,10 @@ internal interface IMessages {
 
     string InitKeyRejected(string provider);
 
+    string InitChecking(string provider);
+
+    string InitNotHttpUrl(string url);
+
     string InitCouldNotReach(string provider);
 
     string InitOllamaRefused(string url);
@@ -491,6 +495,10 @@ internal interface IMessages {
 
     string InitNotSender { get; }
 
+    string InitEnterSmtpPassword { get; }
+
+    string InitEnterResendKey { get; }
+
     string InitTestSent(string address);
 
     string InitTestFailed(string reason);
@@ -514,6 +522,12 @@ internal interface IMessages {
     string InitNext { get; }
 
     string InitSaveFailed(string path);
+
+    string InitConfigDirIsFile(string path);
+
+    string InitSecretsUnreadable(string path);
+
+    string InitSecretsBusy(string path);
 
     string InitSecretsKept { get; }
 

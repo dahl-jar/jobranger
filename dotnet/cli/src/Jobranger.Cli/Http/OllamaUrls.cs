@@ -41,16 +41,17 @@ internal static partial class OllamaUrls {
 
     public static string WithoutUserinfo(string url) => Userinfo().Replace(url, schemePart);
 
-    public static string CheckedRoot(string url) {
-        string root = Root(url);
-        return Uri.TryCreate(root, UriKind.Absolute, out Uri? parsed)
-            && schemes.Contains(parsed.Scheme)
-            && parsed.Host.Length > 0
-            ? root
+    public static bool IsHttp(string url) =>
+        Uri.TryCreate(Root(url), UriKind.Absolute, out Uri? parsed)
+        && schemes.Contains(parsed.Scheme)
+        && parsed.Host.Length > 0;
+
+    public static string CheckedRoot(string url) =>
+        IsHttp(url)
+            ? Root(url)
             : throw new ApiException(
                 ApiErrorKind.Connection,
                 $"ollama_url '{WithoutUserinfo(url)}' is not an http or https URL with a host");
-    }
 
     [GeneratedRegex(@"^(?<scheme>[A-Za-z][A-Za-z0-9+.-]*:/*).*@", RegexOptions.Singleline)]
     private static partial Regex Userinfo();

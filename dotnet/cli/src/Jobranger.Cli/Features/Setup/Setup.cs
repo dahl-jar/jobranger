@@ -1,5 +1,6 @@
 using System.Runtime.Versioning;
 using Jobranger.Cli.Config;
+using Jobranger.Cli.Files;
 using Jobranger.Cli.Secrets;
 
 namespace Jobranger.Cli.Features.Setup;
@@ -29,6 +30,7 @@ internal sealed class Setup {
         if (File.Exists(path) && !await ConfirmStartOverAsync(path, cancellationToken).ConfigureAwait(false)) {
             return;
         }
+        RequireConfigDir();
         InitState state = await RunStepsAsync(cancellationToken).ConfigureAwait(false);
         ConfigFile.RequireValid(path, state.Config);
         SecretLocation? location = await SaveAsync(state, path).ConfigureAwait(false);
@@ -37,6 +39,14 @@ internal sealed class Setup {
 
     private Task<bool> ConfirmStartOverAsync(string path, CancellationToken cancellationToken) =>
         context.Prompter.ConfirmAsync(context.Messages.InitStartOver(path), false, cancellationToken);
+
+    private void RequireConfigDir() {
+        try {
+            PrivateFile.RequireWritableDir(context.Paths.ConfigDir());
+        } catch (PrivateDirException error) {
+            throw new SetupSaveException(0, error);
+        }
+    }
 
     private async Task<InitState> RunStepsAsync(CancellationToken cancellationToken) {
         InitState state = InitState.Empty;
