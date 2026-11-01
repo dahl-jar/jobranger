@@ -97,6 +97,7 @@ public sealed class InitModelTests : IDisposable {
     [InlineData(Locales.English, "localhost:11434", "✕ localhost:11434 is not an http:// or https:// address.")]
     [InlineData(Locales.Norwegian, "localhost:11434", "✕ localhost:11434 er ikke en http://- eller https://-adresse.")]
     [InlineData(Locales.English, "ftp://user:Secret42@ollama.example.test", "✕ ftp://ollama.example.test is not an http:// or https:// address.")]
+    [InlineData(Locales.English, "user_name:Secret42@box:11434", "✕ box:11434 is not an http:// or https:// address.")]
     public async Task ShouldAskUrlAgain_WhenUrlIsNotHttp(string language, string url, string line) {
         init.SetLanguage(language);
         IMessages messages = Messages.For(null, init.Environment);

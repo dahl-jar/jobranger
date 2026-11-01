@@ -30,6 +30,7 @@ public sealed class OllamaUrlsTests {
     [InlineData("http://user:pass@[::1", invalidUrl)]
     [InlineData(ollamaUrl, ollamaUrl)]
     [InlineData("box:11434", "box:11434")]
+    [InlineData("user_name:Secret42@box:11434", "box:11434")]
     public void ShouldHideUserinfo_WhenShowingUrl(string url, string shown) {
         Assert.Equal(shown, OllamaUrls.WithoutUserinfo(url));
     }

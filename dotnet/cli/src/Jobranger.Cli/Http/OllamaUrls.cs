@@ -53,6 +53,6 @@ internal static partial class OllamaUrls {
                 ApiErrorKind.Connection,
                 $"ollama_url '{WithoutUserinfo(url)}' is not an http or https URL with a host");
 
-    [GeneratedRegex(@"^(?<scheme>[A-Za-z][A-Za-z0-9+.-]*:/*).*@", RegexOptions.Singleline)]
+    [GeneratedRegex(@"^(?<scheme>[A-Za-z][A-Za-z0-9+.-]*:/+)?.*@", RegexOptions.Singleline)]
     private static partial Regex Userinfo();
 }

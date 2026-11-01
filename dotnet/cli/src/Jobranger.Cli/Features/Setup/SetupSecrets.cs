@@ -60,6 +60,8 @@ internal sealed class SetupSecrets(SetupContext context) {
     private void RequireReadableFile() {
         try {
             new FileSecretStore(context.Paths.SecretsPath(), context.Logger).Load();
+        } catch (PrivateFileException error) {
+            throw new SetupSaveException(0, new PrivateFileException(error.Path, error.Reason) { IsUnreadable = true });
         } catch (Exception error) when (IsWriteFailure(error)) {
             throw new SetupSaveException(0, error);
         }

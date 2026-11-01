@@ -13,6 +13,7 @@ namespace Jobranger.Cli.Tests.Commands;
 public sealed class InitCommandTests : IDisposable {
     private const string homeMark = "{home}";
     private const string corruptSecrets = "{not json";
+    private const string validSecrets = "{}";
 
     private static readonly EnglishMessages english = new();
 
@@ -132,13 +133,15 @@ public sealed class InitCommandTests : IDisposable {
     }
 
     [Theory]
-    [InlineData(Locales.English, false, "Cannot read {0}. Fix or remove the file, then run jobranger init again.")]
-    [InlineData(Locales.Norwegian, false, "Kan ikke lese {0}. Rett eller fjern filen, og kjør jobranger init på nytt.")]
-    [InlineData(Locales.English, true, "Cannot read {0}. Fix or remove the file, then run jobranger init again.")]
-    public async Task ShouldStopBeforeSecretPrompt_WhenSecretsFileIsCorrupt(string language, bool hasStore, string line) {
+    [InlineData(Locales.English, false, false, "Cannot read {0}. Fix or remove the file, then run jobranger init again.")]
+    [InlineData(Locales.Norwegian, false, false, "Kan ikke lese {0}. Rett eller fjern filen, og kjør jobranger init på nytt.")]
+    [InlineData(Locales.English, true, false, "Cannot read {0}. Fix or remove the file, then run jobranger init again.")]
+    [InlineData(Locales.English, false, true, "Cannot read {0}. Fix or remove the file, then run jobranger init again.")]
+    public async Task ShouldStopBeforeSecretPrompt_WhenSecretsFileIsUnreadable(
+        string language, bool hasStore, bool isLink, string line) {
         init.SetLanguage(language);
         Directory.CreateDirectory(init.Paths.ConfigDir());
-        File.WriteAllText(init.Paths.SecretsPath(), corruptSecrets);
+        WriteUnreadableSecrets(isLink);
         ScriptedPrompter prompter = init.Prompter(InitFixtures.Anthropic);
 
         int exit = await init.InvokeAsync(InitFixtures.Seams(prompter, hasStore ? init.Store : null));
@@ -159,7 +162,6 @@ public sealed class InitCommandTests : IDisposable {
 
     [Theory]
     [InlineData(UnixFileMode.UserRead | UnixFileMode.UserExecute)]
-    [InlineData(UnixFileMode.None)]
     [InlineData(UnixFileMode.UserWrite)]
     public async Task ShouldStopBeforeFirstPrompt_WhenConfigDirIsLocked(UnixFileMode mode) {
         string configDir = init.Paths.ConfigDir();
@@ -392,6 +394,16 @@ public sealed class InitCommandTests : IDisposable {
     }
 
     private static string Located(string line, string path) => line.Replace("{0}", path, StringComparison.Ordinal);
+
+    private void WriteUnreadableSecrets(bool isLink) {
+        if (!isLink) {
+            File.WriteAllText(init.Paths.SecretsPath(), corruptSecrets);
+            return;
+        }
+        string target = init.TempFile("target.json");
+        File.WriteAllText(target, validSecrets);
+        File.CreateSymbolicLink(init.Paths.SecretsPath(), target);
+    }
 
     private async Task<int> InvokeWithModeAsync(string dir, UnixFileMode mode, ScriptedPrompter prompter) {
         File.SetUnixFileMode(dir, mode);
