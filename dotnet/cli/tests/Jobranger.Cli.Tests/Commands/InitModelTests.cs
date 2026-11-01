@@ -9,6 +9,7 @@ namespace Jobranger.Cli.Tests.Commands;
 [UnsupportedOSPlatform("windows")]
 public sealed class InitModelTests : IDisposable {
     private const string anthropicSecret = "anthropic_api_key";
+    private const string routerSecret = "openrouter_api_key";
 
     private static readonly EnglishMessages english = new();
 
@@ -50,18 +51,47 @@ public sealed class InitModelTests : IDisposable {
 
     [Fact]
     public async Task ShouldAskAgain_WhenOpenRouterRejectsKey() {
-        await AssertKeyAskedAgainAsync(
-            InitFixtures.ApiKey,
+        ScriptedPrompter prompter = init.Prompter([InitFixtures.OpenRouter, InitFixtures.ApiKey, .. RouterFlow[1..]]);
+
+        int exit = await init.InvokeAsync(init.Seams(
+            prompter,
             InitHarness.RouterListing(),
             FakeApiHandler.Json(401, InitFixtures.AuthRefused),
             InitHarness.RouterListing(),
-            InitHarness.RouterKeyWorks());
+            InitHarness.RouterKeyWorks()));
+
+        Assert.Equal(CliExitCodes.Ok, exit);
+        Assert.Contains(english.InitKeyRejected("OpenRouter"), init.Output, StringComparison.Ordinal);
+        Assert.Equal(2, prompter.Asked.Count(message => message == english.InitApiKey));
+    }
+
+    [Theory]
+    [InlineData(Locales.English, "✕ Enter the API key.")]
+    [InlineData(Locales.Norwegian, "✕ Skriv inn API-nøkkelen.")]
+    public async Task ShouldAskAgain_WhenOpenRouterKeyIsEmpty(string language, string line) {
+        init.SetLanguage(language);
+        IMessages messages = Messages.For(null, init.Environment);
+        ScriptedPrompter prompter = init.Prompter([InitFixtures.OpenRouter, string.Empty, .. RouterFlow[1..]]);
+
+        int exit = await init.InvokeAsync(init.Seams(prompter, InitHarness.RouterListing(), InitHarness.RouterKeyWorks()));
+
+        Assert.Equal(CliExitCodes.Ok, exit);
+        Assert.Contains(InitHarness.Lines(line), init.Output, StringComparison.Ordinal);
+        Assert.Equal(2, prompter.Asked.Count(message => message == messages.InitApiKey));
+        Assert.Equal(InitFixtures.ApiKey, init.Store.Values[routerSecret]);
     }
 
     [Fact]
-    public async Task ShouldAskAgain_WhenOpenRouterKeyIsEmpty() {
-        await AssertKeyAskedAgainAsync(
-            string.Empty, InitHarness.RouterListing(), InitHarness.RouterListing(), InitHarness.RouterKeyWorks());
+    public async Task ShouldCheckOpenRouterKeyOnce_WhenKeyCheckFailsOnServer() {
+        using FakeApiHandler keyCheck = FakeApiHandler.Json(500, "{}");
+        ScriptedPrompter prompter = init.Prompter(InitFixtures.OpenRouter, InitFixtures.ApiKey, false);
+
+        int exit = await ApiClock.RunAsync(
+            init.Clock, init.InvokeAsync(init.Seams(prompter, InitHarness.RouterListing(), keyCheck)));
+
+        Assert.Equal(RunCommandFixtures.Interrupted, exit);
+        Assert.Single(keyCheck.Requests);
+        Assert.Contains(InitHarness.Lines("✕ Could not reach OpenRouter."), init.Output, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -98,6 +128,8 @@ public sealed class InitModelTests : IDisposable {
     [InlineData(Locales.Norwegian, "localhost:11434", "✕ localhost:11434 er ikke en http://- eller https://-adresse.")]
     [InlineData(Locales.English, "ftp://user:Secret42@ollama.example.test", "✕ ftp://ollama.example.test is not an http:// or https:// address.")]
     [InlineData(Locales.English, "user_name:Secret42@box:11434", "✕ box:11434 is not an http:// or https:// address.")]
+    [InlineData(Locales.English, "http://user:Secret42@ss@ollama.example.test:11434", "✕ Write @ in a password as %40.")]
+    [InlineData(Locales.Norwegian, "http://user:Secret42@ss@ollama.example.test:11434", "✕ Skriv @ i et passord som %40.")]
     public async Task ShouldAskUrlAgain_WhenUrlIsNotHttp(string language, string url, string line) {
         init.SetLanguage(language);
         IMessages messages = Messages.For(null, init.Environment);
@@ -317,16 +349,6 @@ public sealed class InitModelTests : IDisposable {
         string label = Assert.Single(prompter.Choices[^1]).Label;
         Assert.DoesNotContain(label, char.IsControl);
         Assert.StartsWith("llama3:latest]0;spoof[2J", label, StringComparison.Ordinal);
-    }
-
-    private async Task AssertKeyAskedAgainAsync(string firstKey, params FakeApiHandler[] handlers) {
-        ScriptedPrompter prompter = init.Prompter([InitFixtures.OpenRouter, firstKey, .. RouterFlow[1..]]);
-
-        int exit = await init.InvokeAsync(init.Seams(prompter, handlers));
-
-        Assert.Equal(CliExitCodes.Ok, exit);
-        Assert.Contains(english.InitKeyRejected("OpenRouter"), init.Output, StringComparison.Ordinal);
-        Assert.Equal(2, prompter.Asked.Count(message => message == english.InitApiKey));
     }
 
     private object[] UnpricedFlow(string limit) =>

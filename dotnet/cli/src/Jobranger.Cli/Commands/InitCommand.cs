@@ -102,6 +102,7 @@ internal sealed class InitCommand : Command {
     private static string FailureLine(Exception? cause, InitContext context) => cause switch {
         SecretStoreUnavailableException => context.Messages.InitSecretStoreFailed,
         PrivateDirException { IsFile: true } dir => context.Messages.InitConfigDirIsFile(dir.Path),
+        PrivateFileException { IsFolder: true } file => context.Messages.InitConfigIsFolder(file.Path),
         PrivateFileException { IsUnreadable: true } file => context.Messages.InitSecretsUnreadable(file.Path),
         TimeoutException => context.Messages.InitSecretsBusy(new Paths(context.Environment).SecretsPath()),
         _ => context.Messages.InitSaveFailed(FailedPath(cause, new Paths(context.Environment))),

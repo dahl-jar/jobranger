@@ -241,6 +241,21 @@ public sealed class InitCommandTests : IDisposable {
     }
 
     [Theory]
+    [InlineData(Locales.English, "✕ {0} is a folder. Remove it, then run jobranger init again.")]
+    [InlineData(Locales.Norwegian, "✕ {0} er en mappe. Fjern den, og kjør jobranger init på nytt.")]
+    public async Task ShouldStopBeforeFirstPrompt_WhenFolderIsAtConfigFile(string language, string line) {
+        init.SetLanguage(language);
+        Directory.CreateDirectory(init.Paths.ConfigPath());
+        ScriptedPrompter prompter = init.Prompter();
+
+        int exit = await init.InvokeAsync(init.Seams(prompter));
+
+        Assert.Equal(
+            (CliExitCodes.Failure, InitHarness.Lines(Located(line, init.Paths.ConfigPath())), 0),
+            (exit, init.Output, prompter.Asked.Count));
+    }
+
+    [Theory]
     [InlineData(Locales.English, "Another jobranger process is using {0}. Try again when it ends.")]
     [InlineData(Locales.Norwegian, "En annen jobranger-prosess bruker {0}. Prøv igjen når den er ferdig.")]
     public async Task ShouldSayFileIsBusy_WhenSecretsLockIsHeld(string language, string line) {

@@ -30,7 +30,7 @@ internal sealed class Setup {
         if (File.Exists(path) && !await ConfirmStartOverAsync(path, cancellationToken).ConfigureAwait(false)) {
             return;
         }
-        RequireConfigDir();
+        RequireWritableConfig(path);
         InitState state = await RunStepsAsync(cancellationToken).ConfigureAwait(false);
         ConfigFile.RequireValid(path, state.Config);
         SecretLocation? location = await SaveAsync(state, path).ConfigureAwait(false);
@@ -40,10 +40,11 @@ internal sealed class Setup {
     private Task<bool> ConfirmStartOverAsync(string path, CancellationToken cancellationToken) =>
         context.Prompter.ConfirmAsync(context.Messages.InitStartOver(path), false, cancellationToken);
 
-    private void RequireConfigDir() {
+    private void RequireWritableConfig(string path) {
         try {
             PrivateFile.RequireWritableDir(context.Paths.ConfigDir());
-        } catch (PrivateDirException error) {
+            PrivateFile.RequireNoFolderAt(path);
+        } catch (Exception error) when (error is PrivateDirException or PrivateFileException) {
             throw new SetupSaveException(0, error);
         }
     }

@@ -460,6 +460,8 @@ internal sealed class EnglishMessages : IMessages {
 
     public string InitNotHttpUrl(string url) => $"✕ {url} is not an http:// or https:// address.";
 
+    public string InitEncodeAtSign => "✕ Write @ in a password as %40.";
+
     public string InitCouldNotReach(string provider) => $"✕ Could not reach {provider}.";
 
     public string InitOllamaRefused(string url) => $"✕ {url} did not answer as Ollama.";
@@ -556,6 +558,8 @@ internal sealed class EnglishMessages : IMessages {
 
     public string InitNotSender => "✕ Write the sender as name <address> or address.";
 
+    public string InitEnterApiKey => "✕ Enter the API key.";
+
     public string InitEnterSmtpPassword => "✕ Enter the SMTP password.";
 
     public string InitEnterResendKey => "✕ Enter the Resend API key.";
@@ -570,7 +574,9 @@ internal sealed class EnglishMessages : IMessages {
 
     public string InitRunTimes => "Run times (24h, comma separated)";
 
-    public string InitRunTimesWrong(string reason) => $"✕ {reason}";
+    public string InitNotRunTime(string time) => $"✕ {time} is not a time in HH:MM form";
+
+    public string InitRunTimesTooClose(int hours) => $"✕ Run times must be at least {hours} hours apart";
 
     public string InitSaved(string path) => $"✓ Saved {path}";
 
@@ -585,6 +591,8 @@ internal sealed class EnglishMessages : IMessages {
     public string InitSaveFailed(string path) => $"✕ Could not write {path}. Check the folder permissions.";
 
     public string InitConfigDirIsFile(string path) => $"✕ {path} is a file. jobranger needs a folder at that path. Move the file, then run jobranger init again.";
+
+    public string InitConfigIsFolder(string path) => $"✕ {path} is a folder. Remove it, then run jobranger init again.";
 
     public string InitSecretsUnreadable(string path) => $"Cannot read {path}. Fix or remove the file, then run jobranger init again.";
 

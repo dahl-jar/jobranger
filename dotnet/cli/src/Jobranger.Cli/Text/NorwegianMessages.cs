@@ -472,6 +472,8 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string InitNotHttpUrl(string url) => $"✕ {url} er ikke en http://- eller https://-adresse.";
 
+    public string InitEncodeAtSign => "✕ Skriv @ i et passord som %40.";
+
     public string InitCouldNotReach(string provider) => $"✕ Kunne ikke nå {provider}.";
 
     public string InitOllamaRefused(string url) => $"✕ {url} svarte ikke som Ollama.";
@@ -568,6 +570,8 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string InitNotSender => "✕ Skriv avsenderen som navn <adresse> eller adresse.";
 
+    public string InitEnterApiKey => "✕ Skriv inn API-nøkkelen.";
+
     public string InitEnterSmtpPassword => "✕ Skriv inn SMTP-passordet.";
 
     public string InitEnterResendKey => "✕ Skriv inn Resend API-nøkkelen.";
@@ -582,7 +586,9 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string InitRunTimes => "Kjøretider (24 t, skilt med komma)";
 
-    public string InitRunTimesWrong(string reason) => $"✕ {reason}";
+    public string InitNotRunTime(string time) => $"✕ {time} er ikke et klokkeslett på formen TT:MM";
+
+    public string InitRunTimesTooClose(int hours) => $"✕ Kjøretidene må ligge minst {hours} timer fra hverandre";
 
     public string InitSaved(string path) => $"✓ Lagret {path}";
 
@@ -597,6 +603,8 @@ internal sealed class NorwegianMessages : IMessages {
     public string InitSaveFailed(string path) => $"✕ Kunne ikke skrive {path}. Sjekk tillatelsene på mappen.";
 
     public string InitConfigDirIsFile(string path) => $"✕ {path} er en fil. jobranger trenger en mappe på den stien. Flytt filen, og kjør jobranger init på nytt.";
+
+    public string InitConfigIsFolder(string path) => $"✕ {path} er en mappe. Fjern den, og kjør jobranger init på nytt.";
 
     public string InitSecretsUnreadable(string path) => $"Kan ikke lese {path}. Rett eller fjern filen, og kjør jobranger init på nytt.";
 

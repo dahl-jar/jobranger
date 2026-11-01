@@ -8,7 +8,7 @@ internal sealed record ConfigError(string Location, ConfigProblem Problem, strin
 
     public string Describe(IMessages messages) => Location + separator + Text(messages);
 
-    public string Text(IMessages messages) => Problem switch {
+    private string Text(IMessages messages) => Problem switch {
         ConfigProblem.UnknownKey => messages.ConfigUnknownKey,
         ConfigProblem.Required => messages.ConfigRequired,
         ConfigProblem.NotBoolean => messages.ConfigNotBoolean,

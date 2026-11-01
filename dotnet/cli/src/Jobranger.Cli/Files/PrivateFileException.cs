@@ -7,4 +7,6 @@ internal sealed class PrivateFileException(string path, string reason)
     public string Reason { get; } = reason;
 
     public bool IsUnreadable { get; init; }
+
+    public bool IsFolder { get; init; }
 }

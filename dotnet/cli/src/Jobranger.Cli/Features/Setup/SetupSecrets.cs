@@ -15,13 +15,14 @@ internal sealed class SetupSecrets(SetupContext context) {
         error is SecretStoreUnavailableException or PrivateFileException or IOException or UnauthorizedAccessException
             or TimeoutException;
 
-    public async Task<string> AskAsync(string name, string message, CancellationToken cancellationToken) {
-        await EnsureReadyAsync(cancellationToken).ConfigureAwait(false);
-        string variable = Credentials.EnvVars[name];
-        if (EnvironmentVariables.Read(context.Environment, variable) is not null) {
-            await context.Output.WriteLineAsync(context.Messages.InitEnvVarWins(variable)).ConfigureAwait(false);
+    public async Task<string> AskRequiredAsync(string name, string message, string refusal, CancellationToken cancellationToken) {
+        while (true) {
+            string answer = await AskAsync(name, message, cancellationToken).ConfigureAwait(false);
+            if (answer.Length > 0) {
+                return answer;
+            }
+            await context.Output.WriteLineAsync(refusal).ConfigureAwait(false);
         }
-        return await context.Prompter.SecretAsync(message, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<SecretLocation?> SaveAsync(IReadOnlyList<KeyValuePair<string, string>> secrets) {
@@ -44,6 +45,15 @@ internal sealed class SetupSecrets(SetupContext context) {
             throw new SetupSaveException(written, error);
         }
         return location;
+    }
+
+    private async Task<string> AskAsync(string name, string message, CancellationToken cancellationToken) {
+        await EnsureReadyAsync(cancellationToken).ConfigureAwait(false);
+        string variable = Credentials.EnvVars[name];
+        if (EnvironmentVariables.Read(context.Environment, variable) is not null) {
+            await context.Output.WriteLineAsync(context.Messages.InitEnvVarWins(variable)).ConfigureAwait(false);
+        }
+        return await context.Prompter.SecretAsync(message, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task EnsureReadyAsync(CancellationToken cancellationToken) {

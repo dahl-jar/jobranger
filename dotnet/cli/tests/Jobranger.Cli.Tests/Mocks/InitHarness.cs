@@ -39,6 +39,8 @@ internal sealed class InitHarness : IDisposable {
 
     public string TempPath => temp.Path;
 
+    public FakeTimeProvider Clock => clock;
+
     public string Output => console.Output;
 
     public string Errors => console.Errors;

@@ -311,10 +311,12 @@ public sealed class InitAnswersTests : IDisposable {
     }
 
     [Theory]
-    [InlineData(Locales.English, "23:00, 00:30", "✕ are less than 2 hours apart")]
-    [InlineData(Locales.Norwegian, "23:00, 00:30", "✕ ligger mindre enn 2 timer fra hverandre")]
-    [InlineData(Locales.English, "25:00", "✕ is not a time in HH:MM form")]
-    [InlineData(Locales.Norwegian, "25:00", "✕ er ikke et klokkeslett på formen TT:MM")]
+    [InlineData(Locales.English, "23:00, 00:30", "✕ Run times must be at least 2 hours apart")]
+    [InlineData(Locales.Norwegian, "23:00, 00:30", "✕ Kjøretidene må ligge minst 2 timer fra hverandre")]
+    [InlineData(Locales.English, "25:00", "✕ 25:00 is not a time in HH:MM form")]
+    [InlineData(Locales.Norwegian, "25:00", "✕ 25:00 er ikke et klokkeslett på formen TT:MM")]
+    [InlineData(Locales.English, ", ,", "✕ , , is not a time in HH:MM form")]
+    [InlineData(Locales.Norwegian, ", ,", "✕ , , er ikke et klokkeslett på formen TT:MM")]
     public async Task ShouldAskAgain_WhenRunTimesAreWrong(string language, string answer, string line) {
         init.SetLanguage(language);
         await AssertFlowPrintsAsync([.. init.WebsiteFlow[..^1], answer, "3:00, 15:00"], line);
@@ -323,12 +325,28 @@ public sealed class InitAnswersTests : IDisposable {
     }
 
     [Fact]
-    public async Task ShouldPrintReasonOnce_WhenTwoRunTimesAreWrong() {
-        object[] answers = [.. init.WebsiteFlow[..^1], "25:00, 26:00", "12:00"];
+    public async Task ShouldPrintReasonOnce_WhenSameRunTimeIsWrongTwice() {
+        object[] answers = [.. init.WebsiteFlow[..^1], "25:00, 25:00", "12:00"];
 
         await init.InvokeAsync(init.Seams(init.Prompter(answers), InitHarness.Listing()));
 
-        Assert.Single(init.Output.Split(System.Environment.NewLine), line => line == "✕ is not a time in HH:MM form");
+        Assert.Single(init.Output.Split(System.Environment.NewLine), line => line == "✕ 25:00 is not a time in HH:MM form");
+    }
+
+    [Fact]
+    public async Task ShouldPrintEveryReason_WhenRunTimesHaveSeveralProblems() {
+        object[] answers = [.. init.WebsiteFlow[..^1], "25:00, 26:00, 03:00, 03:30", "12:00"];
+
+        int exit = await init.InvokeAsync(init.Seams(init.Prompter(answers), InitHarness.Listing()));
+
+        Assert.Equal(CliExitCodes.Ok, exit);
+        Assert.Contains(
+            InitHarness.Lines(
+                "✕ 25:00 is not a time in HH:MM form",
+                "✕ 26:00 is not a time in HH:MM form",
+                "✕ Run times must be at least 2 hours apart"),
+            init.Output,
+            StringComparison.Ordinal);
     }
 
     [Theory]
@@ -355,17 +373,6 @@ public sealed class InitAnswersTests : IDisposable {
         await AssertFlowPrintsAsync([.. flow[..^3], string.Empty, .. flow[^3..]], line);
 
         Assert.Equal(DeliveryFixtures.ResendKey, init.Store.Values[Credentials.ResendKeyName]);
-    }
-
-    [Fact]
-    public async Task ShouldAskAgain_WhenRunTimesAreEmpty() {
-        object[] answers = [.. init.WebsiteFlow[..^1], ", ,", "12:00"];
-
-        int exit = await init.InvokeAsync(init.Seams(init.Prompter(answers), InitHarness.Listing()));
-
-        Assert.Equal(CliExitCodes.Ok, exit);
-        Assert.Contains(english.InitRunTimesWrong(english.ConfigRunTimeFormat), init.Output, StringComparison.Ordinal);
-        Assert.Equal(["12:00"], init.Saved.Schedule.Times);
     }
 
     private static FakeSmtpServer RefusingServer() => new(async session => {

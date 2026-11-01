@@ -17,6 +17,7 @@ internal static partial class PrivateFile {
     private const string notRegularReason = "not a regular file";
     private const string notDirReason = "a file is at the folder path";
     private const string notWritableReason = "folder is not writable";
+    private const string folderReason = "a folder is at the file path";
     private const string openFailedReason = "open failed errno=";
     private const UnixFileMode openToOthers =
         UnixFileMode.GroupRead | UnixFileMode.GroupWrite | UnixFileMode.GroupExecute
@@ -65,6 +66,12 @@ internal static partial class PrivateFile {
         }
         if (current is not null && !UnixFiles.CanWriteInto(current)) {
             throw new PrivateDirException(current, new UnauthorizedAccessException(notWritableReason));
+        }
+    }
+
+    public static void RequireNoFolderAt(string path) {
+        if (Directory.Exists(path)) {
+            throw new PrivateFileException(path, folderReason) { IsFolder = true };
         }
     }
 

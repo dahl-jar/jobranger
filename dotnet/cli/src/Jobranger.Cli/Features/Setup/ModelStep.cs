@@ -20,6 +20,8 @@ internal sealed class ModelStep(SetupContext context, SetupSecrets secrets) : IS
     private const string keyCheckModel = "key-check";
     private const char decimalComma = ',';
     private const char decimalPoint = '.';
+    private const char userinfoEnd = '@';
+    private const int keyCheckRetries = 0;
 
     private readonly IMessages messages = context.Messages;
 
@@ -103,7 +105,9 @@ internal sealed class ModelStep(SetupContext context, SetupSecrets secrets) : IS
         ProviderName provider, CancellationToken cancellationToken) {
         string defaultUrl = new ModelConfig().OllamaUrl;
         if (ProvidersEntry.SecretName(provider) is string name) {
-            return (await secrets.AskAsync(name, messages.InitApiKey, cancellationToken).ConfigureAwait(false), defaultUrl);
+            string key = await secrets.AskRequiredAsync(name, messages.InitApiKey, messages.InitEnterApiKey, cancellationToken)
+                .ConfigureAwait(false);
+            return (key, defaultUrl);
         }
         return (null, await AskOllamaUrlAsync(defaultUrl, cancellationToken).ConfigureAwait(false));
     }
@@ -115,9 +119,14 @@ internal sealed class ModelStep(SetupContext context, SetupSecrets secrets) : IS
             if (OllamaUrls.IsHttp(url)) {
                 return url;
             }
-            await context.Output.WriteLineAsync(messages.InitNotHttpUrl(OllamaUrls.WithoutUserinfo(url))).ConfigureAwait(false);
+            await context.Output.WriteLineAsync(UrlRefusal(url)).ConfigureAwait(false);
         }
     }
+
+    private string UrlRefusal(string url) =>
+        url.Count(letter => letter == userinfoEnd) > 1
+            ? messages.InitEncodeAtSign
+            : messages.InitNotHttpUrl(OllamaUrls.WithoutUserinfo(url));
 
     private async Task<IReadOnlyList<ModelInfo>?> TryListAsync(
         ProviderName provider, string? key, string ollamaUrl, CancellationToken cancellationToken) {
@@ -157,7 +166,8 @@ internal sealed class ModelStep(SetupContext context, SetupSecrets secrets) : IS
                 : messages.InitKeyRejected(provider.ToString()));
 
     private async Task<bool> KeyWorksAsync(ProviderName provider, string? key, CancellationToken cancellationToken) {
-        using IModelClient client = await new ProvidersEntry(() => context.Seams.CreateModelHandler(provider), context.Time)
+        using IModelClient client = await new ProvidersEntry(
+            () => context.Seams.CreateModelHandler(provider), context.Time, keyCheckRetries)
             .CreateAsync(
                 new ModelConfig { Provider = provider, Model = keyCheckModel },
                 (_, _) => Task.FromResult(key),
