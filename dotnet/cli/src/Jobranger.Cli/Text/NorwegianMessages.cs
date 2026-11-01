@@ -336,7 +336,7 @@ internal sealed class NorwegianMessages : IMessages {
         + "Sett en ny nøkkel med: jobranger init";
 
     public string DigestProviderDownNote(int pending) =>
-        $"AI-sjekkene stoppet: leverandøren svarte ikke. {pending} {AdsWait(pending)} på neste kjøring.";
+        $"AI-sjekkene stoppet: kallet til leverandøren feilet. {pending} {AdsWait(pending)} på neste kjøring.";
 
     public string DigestMoreOnWebsite => "til på nettsiden";
 

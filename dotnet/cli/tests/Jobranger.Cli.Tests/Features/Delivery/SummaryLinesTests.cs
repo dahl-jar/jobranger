@@ -1,5 +1,6 @@
 using System.Runtime.Versioning;
 using Jobranger.Cli.Features.Runs;
+using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Cli.Text;
 using DeliveryEntry = Jobranger.Cli.Features.Delivery.Delivery;
 
@@ -39,7 +40,7 @@ public sealed class SummaryLinesTests {
     }
 
     [Theory]
-    [InlineData(false, "AI checks skipped: no model or key. Set one with: jobranger init")]
+    [InlineData(false, RunCommandFixtures.SkipLine)]
     [InlineData(true, "AI-sjekkene ble hoppet over: ingen modell eller nøkkel. Sett en med: jobranger init")]
     public void ShouldPrintSkipLine_WhenModelWasSkipped(bool norwegian, string line) {
         IReadOnlyList<string> lines = DeliveryEntry.SummaryLines(completed with { ModelSkipped = true }, Messages(norwegian));
@@ -61,6 +62,38 @@ public sealed class SummaryLinesTests {
         IReadOnlyList<string> lines = DeliveryEntry.SummaryLines(completed with { UnknownEvidenceDropped = 0 }, new EnglishMessages());
 
         Assert.Empty(lines);
+    }
+
+    [Theory]
+    [InlineData(nameof(StopReason.Auth))]
+    [InlineData(nameof(StopReason.ProviderDown))]
+    [InlineData(nameof(StopReason.Budget))]
+    public void ShouldPrintNoStopNote_WhenNoAdsWait(string stop) {
+        RunResult result = completed with { ModelStopped = Enum.Parse<StopReason>(stop), Pending = 0 };
+
+        IReadOnlyList<string> lines = DeliveryEntry.SummaryLines(result, new EnglishMessages());
+
+        Assert.Empty(lines);
+    }
+
+    [Theory]
+    [InlineData(false, "AI checks are paused until next month: 2 ads wait.")]
+    [InlineData(true, "AI-sjekkene er satt på pause til neste måned: 2 annonser venter.")]
+    public void ShouldPrintPausedNote_WhenMonthlyLimitStopsChecks(bool norwegian, string line) {
+        RunResult result = completed with { ModelStopped = StopReason.Budget, Pending = 2 };
+
+        IReadOnlyList<string> lines = DeliveryEntry.SummaryLines(result, Messages(norwegian));
+
+        Assert.Equal([line], lines);
+    }
+
+    [Fact]
+    public void ShouldPrintOnlyPriceWarning_WhenUnpricedLimitStopsChecks() {
+        RunResult result = completed with { ModelStopped = StopReason.Budget, Pending = 1, UnpricedLimit = true };
+
+        IReadOnlyList<string> lines = DeliveryEntry.SummaryLines(result, new EnglishMessages());
+
+        Assert.Equal([englishPriceWarning], lines);
     }
 
     private static IMessages Messages(bool norwegian) => norwegian ? new NorwegianMessages() : new EnglishMessages();

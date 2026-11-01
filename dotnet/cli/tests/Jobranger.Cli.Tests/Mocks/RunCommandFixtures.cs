@@ -1,12 +1,14 @@
 using System.Collections;
 using System.Runtime.Versioning;
 using System.Text.Json.Nodes;
+using Jobranger.Cli.Commands;
 using Jobranger.Cli.Config;
 using Jobranger.Cli.Files;
 using Jobranger.Cli.Logging;
 using Jobranger.Cli.Storage;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging.Abstractions;
+using Spectre.Console;
 using AdsEntry = Jobranger.Cli.Features.Ads.Ads;
 
 namespace Jobranger.Cli.Tests.Mocks;
@@ -15,10 +17,33 @@ namespace Jobranger.Cli.Tests.Mocks;
 internal static class RunCommandFixtures {
     public const string CancelledRow = "cancelled|1";
     public const int Interrupted = 130;
+    public const string CountsEnglish = "0 ads read, 0 new, 0 matches.";
+    public const string CountsNorwegian = "0 annonser lest, 0 nye, 0 treff.";
+    public const string SavedEnglish = "✓ Saved for the website";
+    public const string SavedNorwegian = "✓ Lagret for nettsiden";
+    public const string SkipLine = "AI checks skipped: no model or key. Set one with: jobranger init";
+
+    public static readonly TimeSpan InvokeLimit = TimeSpan.FromSeconds(30);
 
     private const string ollamaModel = "llama3";
     private const string profileFile = "profile_user.yaml";
     private const string resendVariable = "RESEND_API_KEY";
+
+    public static string Lines(params string[] lines) => string.Join(System.Environment.NewLine, lines);
+
+    public static Task<int> InvokeAsync(
+        Hashtable environment,
+        RecordingConsole console,
+        RunSeams seams,
+        TimeProvider time,
+        CancellationToken cancellationToken,
+        bool inputRedirected = true,
+        IAnsiConsole? output = null) {
+        CliServices services = CliServices.Create(time, output ?? console.Console, console.ErrorConsole, environment);
+        System.CommandLine.RootCommand root = [new RunCommand(services, environment, time, inputRedirected, seams)];
+        return root.Parse([RunCommand.CommandName]).InvokeAsync(null, cancellationToken)
+            .WaitAsync(InvokeLimit, TestContext.Current.CancellationToken);
+    }
 
     public static Hashtable Environment(TempDir temp, string language) {
         Hashtable environment = CommandFixtures.Environment(temp, language);

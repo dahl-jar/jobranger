@@ -93,6 +93,7 @@ internal sealed class Delivery(
     private static string? StopNote(RunResult result, IMessages messages) => result switch {
         { ModelSkipped: false, Pending: > 0, ModelStopped: StopReason.Auth } => messages.DigestKeyRefusedNote(result.Pending),
         { Pending: > 0, ModelStopped: StopReason.ProviderDown } => messages.DigestProviderDownNote(result.Pending),
+        { UnpricedLimit: false, Pending: > 0, ModelStopped: StopReason.Budget } => messages.DigestPausedNote(result.Pending),
         _ => null,
     };
 

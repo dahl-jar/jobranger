@@ -45,14 +45,17 @@ internal static class CommandFixtures {
         File.WriteAllBytes(paths.DbPath(), Encoding.ASCII.GetBytes(new string('x', corruptBytes)));
     }
 
-    public static IAnsiConsole BrokenConsole(Type failure) =>
+    public static IAnsiConsole ConsoleOn(IAnsiConsoleOutput output) =>
         AnsiConsole.Create(new AnsiConsoleSettings {
             Ansi = AnsiSupport.No,
             ColorSystem = ColorSystemSupport.NoColors,
             Interactive = InteractionSupport.No,
-            Out = new AnsiConsoleOutput(new BrokenWriter((Exception)Activator.CreateInstance(failure)!)),
+            Out = output,
             EnvironmentVariables = [],
         });
+
+    public static IAnsiConsole BrokenConsole(Type failure) =>
+        ConsoleOn(new AnsiConsoleOutput(new BrokenWriter((Exception)Activator.CreateInstance(failure)!)));
 
     private sealed class BrokenWriter(Exception failure) : TextWriter {
         public override Encoding Encoding => Encoding.UTF8;
