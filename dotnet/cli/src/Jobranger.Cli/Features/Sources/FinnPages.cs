@@ -8,7 +8,6 @@ namespace Jobranger.Cli.Features.Sources;
 internal static partial class FinnPages {
     public const string IdPrefix = "finn:";
 
-    private const int matchTimeoutMs = 2000;
     private const string queriesKey = "queries";
     private const string stateKey = "state";
     private const string dataKey = "data";
@@ -166,16 +165,18 @@ internal static partial class FinnPages {
             ? number
             : throw new InvalidDataException($"search state {key} is not a whole number");
 
-    [GeneratedRegex("<script[^>]*data-react-query-state[^>]*>([^<]+)</script>", RegexOptions.Singleline, matchTimeoutMs)]
+    [GeneratedRegex("<script[^>]*data-react-query-state[^>]*>([^<]+)</script>", RegexOptions.Singleline,
+        RegexLimits.MatchTimeoutMs)]
     private static partial Regex StateTag();
 
-    [GeneratedRegex("""<script type="application/ld\+json">(.*?)</script>""", RegexOptions.Singleline, matchTimeoutMs)]
+    [GeneratedRegex("""<script type="application/ld\+json">(.*?)</script>""", RegexOptions.Singleline,
+        RegexLimits.MatchTimeoutMs)]
     private static partial Regex LdJsonBlock();
 
     [GeneratedRegex("""<div[^>]*class="[^"]*import-decoration[^"]*"[^>]*>(.*?)</section>""", RegexOptions.Singleline,
-        matchTimeoutMs)]
+        RegexLimits.MatchTimeoutMs)]
     private static partial Regex ImportDecoration();
 
-    [GeneratedRegex("""\\"applicationUrl\\",\\"(https?://[^\\"]+)""", RegexOptions.None, matchTimeoutMs)]
+    [GeneratedRegex("""\\"applicationUrl\\",\\"(https?://[^\\"]+)""", RegexOptions.None, RegexLimits.MatchTimeoutMs)]
     private static partial Regex ApplyUrl();
 }
