@@ -1,14 +1,19 @@
 using System.Globalization;
 using System.Net.WebSockets;
+using System.Threading.Channels;
 using Jobranger.Messaging;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.Http.Connections.Client;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.AspNetCore.SignalR.Protocol;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace Jobranger.Cli.Features.Link;
 
-internal sealed class HubConnector(Uri relay, TimeProvider time, TimeSpan connectTimeout) : IRelayConnector {
+internal sealed class HubConnector(Uri relay, TimeProvider time, TimeSpan connectTimeout, Action<HubConnection> onBuilt)
+    : IRelayConnector {
     private const string hubRoute = "hub";
     private const string tokenQuery = "access_token";
     private const string retryAfterHeader = "Retry-After";
@@ -16,13 +21,19 @@ internal sealed class HubConnector(Uri relay, TimeProvider time, TimeSpan connec
     private const char slash = '/';
 
     private static readonly TimeSpan defaultConnectTimeout = TimeSpan.FromSeconds(15);
+    private static readonly Action<HubConnection> ignoreBuilt = _ => { };
 
     public HubConnector(Uri relay, TimeProvider time)
         : this(relay, time, defaultConnectTimeout) {
     }
 
+    public HubConnector(Uri relay, TimeProvider time, TimeSpan connectTimeout)
+        : this(relay, time, connectTimeout, ignoreBuilt) {
+    }
+
     public async Task<IRelayConnection> ConnectAsync(string handle, CancellationToken cancellationToken) {
-        HubConnection connection = new HubConnectionBuilder()
+        Channel<RelayEvent> events = Channel.CreateUnbounded<RelayEvent>();
+        IHubConnectionBuilder builder = new HubConnectionBuilder()
             .WithUrl(HubUrl(handle), HttpTransportType.WebSockets, options => {
                 options.SkipNegotiation = true;
                 options.WebSocketFactory = OpenSocketAsync;
@@ -30,10 +41,14 @@ internal sealed class HubConnector(Uri relay, TimeProvider time, TimeSpan connec
             .AddJsonProtocol(json => {
                 json.PayloadSerializerOptions.TypeInfoResolverChain.Insert(0, MessagesJsonContext.Default);
                 json.PayloadSerializerOptions.TypeInfoResolverChain.Insert(0, LinkJsonContext.Default);
-            })
-            .Build();
+            });
+        builder.Services.AddSingleton<IHubProtocol>(services => new ReplacedFrameWatch(
+            new JsonHubProtocol(services.GetRequiredService<IOptions<JsonHubProtocolOptions>>()),
+            events.Writer));
+        HubConnection connection = builder.Build();
         connection.HandshakeTimeout = connectTimeout;
-        HubRelayConnection hub = new(connection, new SendPacer(time, sendBytesPerSecond), time);
+        onBuilt(connection);
+        HubRelayConnection hub = new(connection, events, new SendPacer(time, sendBytesPerSecond), time);
         using CancellationTokenSource deadline = new(connectTimeout, time);
         using CancellationTokenSource connecting =
             CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);

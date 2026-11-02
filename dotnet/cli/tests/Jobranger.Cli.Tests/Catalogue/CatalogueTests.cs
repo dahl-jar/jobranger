@@ -93,6 +93,13 @@ public sealed class CatalogueTests {
     }
 
     [Fact]
+    public void ShouldNotMatchTitle_WhenTitleIsOverLimit() {
+        SourcePlan plan = CatalogueEntry.Load().PlanFor(new Targets());
+
+        Assert.False(plan.TitleMatches("Systemutvikler " + new string('x', 1000)));
+    }
+
+    [Fact]
     public void ShouldMatchTitle_WhenGenericWordHasDeveloperWordBeside() {
         SourcePlan plan = CatalogueEntry.Load().PlanFor(new Targets());
 
