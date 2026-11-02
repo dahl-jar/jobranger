@@ -55,6 +55,7 @@ WORK_LIMIT_MESSAGES = (
     "Limit reached while decompressing",
     "Stream decoding exceeded the maximum accumulated",
     "Array-based stream has",
+    "Maximum page tree page entry limit",
 )
 
 

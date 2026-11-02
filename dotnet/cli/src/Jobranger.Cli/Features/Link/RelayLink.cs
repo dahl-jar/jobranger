@@ -61,17 +61,15 @@ internal sealed partial class RelayLink(
     }
 
     private async Task<bool> PumpAsync(IRelayConnection connection, CancellationToken stop) {
-        bool replaced = false;
         while (true) {
             RelayEvent next = await connection.ReceiveAsync(stop).ConfigureAwait(false);
             if (next is RelayEvent.Disconnected) {
-                return replaced;
+                return false;
             }
             if (next is RelayEvent.Replaced) {
-                replaced = true;
-            } else {
-                events.Writer.TryWrite(next);
+                return true;
             }
+            events.Writer.TryWrite(next);
         }
     }
 
