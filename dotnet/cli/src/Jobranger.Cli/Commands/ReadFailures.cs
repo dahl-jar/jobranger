@@ -4,7 +4,7 @@ using Jobranger.Cli.Text;
 namespace Jobranger.Cli.Commands;
 
 internal static class ReadFailures {
-    private const string outputFailed = "output_failed";
+    public const string OutputFailed = "output_failed";
 
     public static int PrintLines(
         Func<IReadOnlyList<string>> read,
@@ -26,7 +26,7 @@ internal static class ReadFailures {
                 output.WriteLine(line);
             }
         } catch (Exception error) when (error is IOException or UnauthorizedAccessException) {
-            logFailure(outputFailed);
+            logFailure(OutputFailed);
             return CliExitCodes.Failure;
         }
         return exit;

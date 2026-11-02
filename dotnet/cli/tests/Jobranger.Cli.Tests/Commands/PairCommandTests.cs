@@ -1,4 +1,5 @@
 using System.Collections;
+using System.CommandLine;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.Versioning;
@@ -7,6 +8,7 @@ using Jobranger.Cli.Commands;
 using Jobranger.Cli.Features.Link;
 using Jobranger.Cli.Files;
 using Jobranger.Cli.Secrets;
+using Jobranger.Cli.Storage;
 using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Cli.Text;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -170,6 +172,31 @@ public sealed class PairCommandTests : IDisposable {
     }
 
     [Fact]
+    public async Task ShouldExitWithoutTrace_WhenRelayFailureLineCannotBeWritten() {
+        int exit = await RunBrokenAsync(typeof(IOException), Link.OpenAsync);
+
+        Assert.Equal(
+            (CliExitCodes.Failure, "", "pairing.failed relay_unreachable, pairing.failed output_failed"),
+            (exit, console.Errors, CommandFixtures.LoggedFailures(LogDir())));
+    }
+
+    [Theory]
+    [InlineData(typeof(IOException))]
+    [InlineData(typeof(UnauthorizedAccessException))]
+    public async Task ShouldExitWithoutTrace_WhenPairCodeCannotBeWritten(Type failure) {
+        using TestDatabase db = new();
+        using FakeRelay relay = new(TimeProvider.System);
+        using HttpClient http = relay.Client();
+        Link link = RelayLink(db, relay, http);
+
+        int exit = await RunBrokenAsync(failure, (_, _, _, _, _, _) => Task.FromResult(link));
+
+        Assert.Equal(
+            (CliExitCodes.Failure, "", "pairing.failed output_failed", 0),
+            (exit, console.Errors, CommandFixtures.LoggedFailures(LogDir()), relay.Handles.Count));
+    }
+
+    [Fact]
     public void ShouldOfferPairCommand_WhenRootIsBuilt() {
         RootCommand root = new(CliServices.Create(TimeProvider.System, console.Console, console.ErrorConsole, environment));
 
@@ -225,6 +252,26 @@ public sealed class PairCommandTests : IDisposable {
         return root.Parse([PairCommand.CommandName]).InvokeAsync(null, TestContext.Current.CancellationToken);
     }
 
+    private Task<int> RunBrokenAsync(Type failure, LinkCommandRun.LinkOpener openLink) {
+        CliServices services = CliServices.Create(
+            TimeProvider.System, CommandFixtures.BrokenConsole(failure), console.ErrorConsole, environment);
+        System.CommandLine.RootCommand root =
+            [new PairCommand(services, environment, TimeProvider.System, inputRedirected: true, openLink)];
+        InvocationConfiguration configuration = new() { Error = console.ErrorConsole.Profile.Out.Writer };
+        return root.Parse([PairCommand.CommandName])
+            .InvokeAsync(configuration, TestContext.Current.CancellationToken)
+            .WaitAsync(TestWaits.Step, TestContext.Current.CancellationToken);
+    }
+
+    private Link RelayLink(TestDatabase db, FakeRelay relay, HttpClient http) {
+        Credentials credentials = new(
+            new Hashtable(), null, new FileSecretStore(temp.File(SecretFixtures.FileName), NullLogger.Instance));
+        LinkParts parts = new(new DeviceStore(db.Connection), new RelayApiClient(http, FakeRelay.Address, TimeProvider.System), relay);
+        return new Link(credentials, temp.Path, NullLogger.Instance, parts);
+    }
+
+    private string LogDir() => Path.Combine(temp.Path, "state", "logs");
+
     private string WriteConfigFile(string name, string content) {
         string configDir = new Paths(environment).ConfigDir();
         Directory.CreateDirectory(configDir);
@@ -234,7 +281,7 @@ public sealed class PairCommandTests : IDisposable {
     }
 
     private string LogText() =>
-        File.ReadAllText(Assert.Single(Directory.GetFiles(Path.Combine(temp.Path, "state", "logs"))));
+        File.ReadAllText(Assert.Single(Directory.GetFiles(LogDir())));
 
     private string DatabasePath() {
         string dataDir = Path.Combine(temp.Path, "data");
