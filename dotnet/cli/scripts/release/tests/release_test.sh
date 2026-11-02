@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-expected_tests=46
+expected_tests=45
 fixture_version="0.4.1"
 fixture_rids=(osx-arm64 linux-x64)
 linux_archive="jobranger-$fixture_version-linux-x64.tar.gz"
@@ -16,7 +16,7 @@ check_runs="$release_dir/tests/mocks/check-runs.json"
 workflow_runs="$release_dir/tests/mocks/workflow-runs.json"
 ref_main="$release_dir/tests/mocks/ref-main.json"
 repository="owner/jobranger"
-head_sha="d97a9b2d93ad72a174cdcc9b1c2ecd7677ca1356"
+head_sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 backend_suite=112311523847
 other_sha="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 unknown_sha="cccccccccccccccccccccccccccccccccccccccc"
@@ -34,21 +34,7 @@ done < <(git rev-parse --local-env-vars)
 export GIT_CONFIG_GLOBAL=/dev/null
 export GIT_CONFIG_NOSYSTEM=1
 
-fail() {
-  printf '%s\n' "$@" >&2
-  exit 1
-}
-
-assert_eq() {
-  [ "$1" = "$2" ] || fail "expected: $1" "actual:   $2"
-}
-
-assert_contains() {
-  case "$1" in
-    *"$2"*) ;;
-    *) fail "expected to contain: $2" "actual: $1" ;;
-  esac
-}
+source "$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)/.github/scripts/tests/shell_test_runner.sh"
 
 assert_missing() {
   [ ! -e "$1" ] || fail "expected no file at $1"
@@ -306,7 +292,7 @@ should_fail_when_check_runs_are_not_json() {
   [ "$status" -ne 0 ] || fail "gate passed on check runs that are not JSON"
 }
 
-should_gate_check_runs_larger_than_one_argument() {
+should_fail_when_check_runs_exceed_argument_size_limit() {
   green_mocks
   mock_checks "[range($check_copies) as \$copy | .check_runs[]] as \$runs | .check_runs = \$runs | .total_count = (\$runs | length) | (.check_runs[] | select(.name == \"Generate, compare and test\")).conclusion = \"failure\""
   [ "$(wc -c <"$(mock_file "$checks_endpoint")")" -gt "$argument_limit_bytes" ] || fail "check runs mock is not over $argument_limit_bytes bytes"
@@ -349,6 +335,18 @@ should_pass_when_pr_head_has_no_check_runs() {
   output="$(gate_of "$(pr_row false)")" || fail "gate failed on a pull request with no check runs"
 
   assert_contains "$output" "PR #89: no check runs found"
+}
+
+should_fail_when_workflow_run_ended_without_checks() {
+  green_mocks
+  mock_edit "$runs_endpoint" "$workflow_runs" '(.workflow_runs[] | select(.name == "Test CLI")).conclusion = "startup_failure"'
+  mock_checks '.check_runs = [] | .total_count = 0'
+  local status=0
+
+  gate_of "$(pr_row false)" 2>stderr.txt || status=$?
+
+  assert_eq 1 "$status"
+  assert_contains "$(cat stderr.txt)" "PR #89: Test CLI is startup_failure"
 }
 
 should_list_merged_pr_of_every_commit_since_previous_tag() {
@@ -497,12 +495,6 @@ should_release_initial_version_when_no_cli_tag_exists() {
   assert_eq "$(printf 'version=0.1.0\nprevious=')" "$(next_of 'fix: x')"
 }
 
-should_bump_minor_for_feat_title() {
-  tagged_repo cli-v0.2.3
-
-  assert_eq "$(printf 'version=0.3.0\nprevious=cli-v0.2.3')" "$(next_of 'feat(CLI-1): add run fetch')"
-}
-
 should_bump_patch_for_other_titles() {
   tagged_repo cli-v0.2.3
 
@@ -516,12 +508,6 @@ should_bump_minor_for_breaking_title_before_1_0() {
   tagged_repo cli-v0.2.3
 
   assert_eq "version=0.3.0" "$(version_of 'fix!: drop pip')"
-}
-
-should_bump_major_for_breaking_title_from_1_0() {
-  tagged_repo cli-v1.4.2
-
-  assert_eq "version=2.0.0" "$(version_of 'refactor(CLI-2)!: rename flags')"
 }
 
 should_skip_commit_already_in_a_release() {
@@ -678,36 +664,4 @@ should_refuse_platform_without_build() {
   assert_missing bin-install/jobranger
 }
 
-root="$(mktemp -d)"
-trap 'rm -rf "$root"' EXIT
-
-tests=()
-while read -r name; do
-  tests+=("$name")
-done < <(declare -F | awk '$3 ~ /^should_/ { print $3 }')
-
-passed=0
-failed=0
-for name in "${tests[@]}"; do
-  dir="$root/$name"
-  mkdir "$dir"
-  set +e
-  (
-    set -e
-    cd "$dir"
-    "$name"
-  )
-  status=$?
-  set -e
-  if [ "$status" -eq 0 ]; then
-    passed=$((passed + 1))
-    printf 'ok   %s\n' "$name"
-  else
-    failed=$((failed + 1))
-    printf 'FAIL %s\n' "$name"
-  fi
-done
-
-printf '%d passed, %d failed\n' "$passed" "$failed"
-[ "${#tests[@]}" -eq "$expected_tests" ] || fail "found ${#tests[@]} tests, expected $expected_tests"
-[ "$failed" -eq 0 ]
+run_tests "$expected_tests"

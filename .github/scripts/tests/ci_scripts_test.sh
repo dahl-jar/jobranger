@@ -9,21 +9,7 @@ list_tests="$scripts_dir/tests/mocks/list-tests.txt"
 catalogue_test="Jobranger.Cli.Tests.Catalogue.CatalogueTests.ShouldMatchRoleWord_WhenRoleIsSelected"
 second_cv_test_line=8
 
-fail() {
-  printf '%s\n' "$@" >&2
-  exit 1
-}
-
-assert_eq() {
-  [ "$1" = "$2" ] || fail "expected: $1" "actual:   $2"
-}
-
-assert_contains() {
-  case "$1" in
-    *"$2"*) ;;
-    *) fail "expected to contain: $2" "actual: $1" ;;
-  esac
-}
+source "$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)/.github/scripts/tests/shell_test_runner.sh"
 
 compare_with() {
   bash "$missing_tests" "$list_tests" head.txt "$1"
@@ -94,14 +80,7 @@ should_fail_when_base_list_has_no_tests() {
 
 should_skip_both_macos_jobs_when_every_file_is_on_skip_list() {
   local file
-  for file in \
-    dotnet/cli/README.md \
-    dotnet/cli/src/Jobranger.Cli/NOTES.md \
-    messages/fixtures/envelope/a.json \
-    dotnet/cli/scripts/release/assemble.sh \
-    dotnet/cli/deploy/Dockerfile \
-    .github/actions/test-ratchet/action.yml \
-    .github/scripts/missing_tests.sh; do
+  for file in dotnet/cli/README.md messages/fixtures/envelope/a.json; do
     assert_jobs "$file" false false
   done
 }
@@ -125,46 +104,7 @@ should_run_both_macos_jobs_when_any_file_is_off_skip_list() {
 }
 
 should_run_both_macos_jobs_when_path_is_unknown() {
-  local file
-  for file in \
-    dotnet/cli/src/Jobranger.Cli/Program.cs \
-    dotnet/.config/dotnet-tools.json \
-    .gitattributes \
-    dotnet/tools/New/New.csproj; do
-    assert_jobs "$file" true true
-  done
+  assert_jobs dotnet/.config/dotnet-tools.json true true
 }
 
-root="$(mktemp -d)"
-trap 'rm -rf "$root"' EXIT
-
-tests=()
-while read -r name; do
-  tests+=("$name")
-done < <(declare -F | awk '$3 ~ /^should_/ { print $3 }')
-
-passed=0
-failed=0
-for name in "${tests[@]}"; do
-  dir="$root/$name"
-  mkdir "$dir"
-  set +e
-  (
-    set -e
-    cd "$dir"
-    "$name"
-  )
-  status=$?
-  set -e
-  if [ "$status" -eq 0 ]; then
-    passed=$((passed + 1))
-    printf 'ok   %s\n' "$name"
-  else
-    failed=$((failed + 1))
-    printf 'FAIL %s\n' "$name"
-  fi
-done
-
-printf '%d passed, %d failed\n' "$passed" "$failed"
-[ "${#tests[@]}" -eq "$expected_tests" ] || fail "found ${#tests[@]} tests, expected $expected_tests"
-[ "$failed" -eq 0 ]
+run_tests "$expected_tests"

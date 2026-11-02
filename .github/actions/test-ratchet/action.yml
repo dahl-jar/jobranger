@@ -27,22 +27,17 @@ runs:
         global-json-file: dotnet/global.json
 
     - shell: bash
-      working-directory: dotnet
       env:
         PROJECT: ${{ inputs.project }}
       run: |
-        dotnet restore "$PROJECT" --locked-mode
-        dotnet build "$PROJECT" -c Release --no-restore
-        dotnet test --project "$PROJECT" -c Release --no-build --list-tests >"$RUNNER_TEMP/head-tests.txt"
-
-    - shell: bash
-      working-directory: .test-ratchet/base/dotnet
-      env:
-        PROJECT: ${{ inputs.project }}
-      run: |
-        dotnet restore "$PROJECT" --locked-mode
-        dotnet build "$PROJECT" -c Release --no-restore
-        dotnet test --project "$PROJECT" -c Release --no-build --list-tests >"$RUNNER_TEMP/base-tests.txt"
+        for row in head:dotnet base:.test-ratchet/base/dotnet; do
+          (
+            cd "${row#*:}"
+            dotnet restore "$PROJECT" --locked-mode
+            dotnet build "$PROJECT" -c Release --no-restore
+            dotnet test --project "$PROJECT" -c Release --no-build --list-tests >"$RUNNER_TEMP/${row%%:*}-tests.txt"
+          )
+        done
 
     - id: label
       shell: bash

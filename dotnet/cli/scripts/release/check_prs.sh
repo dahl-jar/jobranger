@@ -20,7 +20,7 @@ list_count() {
   jq -r --arg list "$2" '"\(.[$list] | length) \(.total_count)"' "$1"
 }
 
-partial() {
+fail_on_partial_list() {
   echo "PR #$1: GitHub returned $2 of $3 $4, and the gate reads at most $page_size" >&2
   failed=1
 }
@@ -37,18 +37,18 @@ while IFS=$'\t' read -r number head waived _title; do
   read -r checks_returned checks_total <<<"$checks_count"
   read -r runs_returned runs_total <<<"$runs_count"
   if [ "$checks_total" -gt "$checks_returned" ]; then
-    partial "$number" "$checks_returned" "$checks_total" "check runs"
+    fail_on_partial_list "$number" "$checks_returned" "$checks_total" "check runs"
     continue
   fi
   if [ "$runs_total" -gt "$runs_returned" ]; then
-    partial "$number" "$runs_returned" "$runs_total" "workflow runs"
-    continue
-  fi
-  if [ "$checks_returned" -eq 0 ]; then
-    echo "PR #$number: no check runs found"
+    fail_on_partial_list "$number" "$runs_returned" "$runs_total" "workflow runs"
     continue
   fi
   lines="$(jq -rn --slurpfile runs "$tmp/runs.json" --slurpfile checks "$tmp/checks.json" -f "$script_dir/not_green.jq")"
+  if [ -z "$lines" ] && [ "$checks_returned" -eq 0 ]; then
+    echo "PR #$number: no check runs found"
+    continue
+  fi
   while IFS= read -r line; do
     [ -n "$line" ] || continue
     echo "PR #$number: $line" >&2

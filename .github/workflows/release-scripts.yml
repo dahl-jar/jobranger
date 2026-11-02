@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - dotnet/cli/scripts/release/**
+      - .github/scripts/tests/shell_test_runner.sh
       - .github/workflows/release-scripts.yml
   workflow_dispatch:
 
@@ -37,5 +38,5 @@ jobs:
             "https://github.com/koalaman/shellcheck/releases/download/$SHELLCHECK_VERSION/shellcheck-$SHELLCHECK_VERSION.linux.x86_64.tar.xz"
           echo "$SHELLCHECK_SHA256  $archive" | sha256sum -c -
           tar -xJf "$archive" -C "$RUNNER_TEMP"
-          "$RUNNER_TEMP/shellcheck-$SHELLCHECK_VERSION/shellcheck" dotnet/cli/scripts/release/*.sh dotnet/cli/scripts/release/tests/*.sh
+          "$RUNNER_TEMP/shellcheck-$SHELLCHECK_VERSION/shellcheck" dotnet/cli/scripts/release/*.sh dotnet/cli/scripts/release/tests/*.sh .github/scripts/tests/shell_test_runner.sh
       - run: bash dotnet/cli/scripts/release/tests/release_test.sh
