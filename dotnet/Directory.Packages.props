@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageVersion Include="Ace4896.DBus.Services.Secrets" Version="1.6.0" />
     <PackageVersion Include="JsonSchema.Net" Version="9.4.1" />
+    <PackageVersion Include="MailKit" Version="4.18.2" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.13" />
     <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.13" />
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.13" />
