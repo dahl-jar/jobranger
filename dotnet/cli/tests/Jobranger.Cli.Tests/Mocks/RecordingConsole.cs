@@ -24,12 +24,5 @@ internal sealed class RecordingConsole : IDisposable {
         errors.Dispose();
     }
 
-    private static IAnsiConsole Create(StringWriter writer) =>
-        AnsiConsole.Create(new AnsiConsoleSettings {
-            Ansi = AnsiSupport.No,
-            ColorSystem = ColorSystemSupport.NoColors,
-            Interactive = InteractionSupport.No,
-            Out = new AnsiConsoleOutput(writer),
-            EnvironmentVariables = [],
-        });
+    private static IAnsiConsole Create(StringWriter writer) => CommandFixtures.ConsoleOn(new AnsiConsoleOutput(writer));
 }
