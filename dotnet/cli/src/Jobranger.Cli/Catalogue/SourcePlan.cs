@@ -3,6 +3,8 @@ using System.Text.RegularExpressions;
 namespace Jobranger.Cli.Catalogue;
 
 internal sealed class SourcePlan(Regex planWords, Regex generic, Regex developer) {
+    private const int maxTitleChars = 1000;
+
     public required IReadOnlyList<string> LinkedInKeywords { get; init; }
 
     public required IReadOnlyList<string> NavStyrk { get; init; }
@@ -14,5 +16,6 @@ internal sealed class SourcePlan(Regex planWords, Regex generic, Regex developer
     public required IReadOnlySet<string> SkipTitleLevels { get; init; }
 
     public bool TitleMatches(string jobTitle) =>
-        planWords.IsMatch(jobTitle) || (generic.IsMatch(jobTitle) && developer.IsMatch(jobTitle));
+        jobTitle.Length <= maxTitleChars
+        && (planWords.IsMatch(jobTitle) || (generic.IsMatch(jobTitle) && developer.IsMatch(jobTitle)));
 }

@@ -46,7 +46,7 @@ internal sealed class Catalogue {
     private const char alternative = '|';
     private const string otherRoleLabel = "Other";
 
-    private static readonly TimeSpan matchTimeout = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan matchTimeout = TimeSpan.FromMilliseconds(RegexLimits.MatchTimeoutMs);
     private static readonly Lazy<Catalogue> loaded = new(Read);
 
     private readonly RoleEntry baseEntry;

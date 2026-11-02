@@ -90,7 +90,7 @@ internal sealed partial class RelayApiClient(HttpClient client, Uri relay) {
                     CultureInfo.InvariantCulture, $"relay failed route={route} status={status}"));
             }
             return Parse(body);
-        } catch (Exception error) when (error is HttpRequestException or BodyTooLargeException
+        } catch (Exception error) when (error is HttpRequestException or BodyTooLargeException or IOException
                                             || error is TaskCanceledException && !cancellationToken.IsCancellationRequested) {
             throw new RelayUnavailableException($"relay request failed route={route}", error);
         }
