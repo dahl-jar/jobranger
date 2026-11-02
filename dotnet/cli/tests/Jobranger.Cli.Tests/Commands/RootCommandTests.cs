@@ -150,7 +150,7 @@ public sealed class RootCommandTests {
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Where(property => property.PropertyType == typeof(string))
             .Select(property => (English: (string)property.GetValue(english)!, Norwegian: (string)property.GetValue(norwegian)!))
-            .Where(pair => !pair.Norwegian.Contains(pair.English, StringComparison.Ordinal))
+            .Where(pair => pair.Norwegian == pair.English || !pair.Norwegian.Contains(pair.English, StringComparison.Ordinal))
             .Select(pair => pair.English);
         return [
             .. properties,
