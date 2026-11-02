@@ -1,0 +1,12 @@
+Description:
+  Show or remove paired browsers.
+
+Usage:
+  jobranger devices <command> [options]
+
+Options:
+  -?, -h, --help  Show help and usage
+
+Commands:
+  list    List paired browsers.
+  revoke  Remove one paired browser.

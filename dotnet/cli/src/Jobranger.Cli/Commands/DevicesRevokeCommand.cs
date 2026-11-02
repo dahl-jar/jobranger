@@ -16,7 +16,7 @@ internal sealed class DevicesRevokeCommand : Command {
 
     public DevicesRevokeCommand(CliServices services, IDictionary environment, LinkCommandRun.LinkOpener openLink)
         : base(CommandName, services.Messages.DevicesRevokeDescription) {
-        Argument<string> id = new(idArgument);
+        Argument<string> id = new(idArgument) { Description = services.Messages.DevicesRevokeIdDescription };
         Arguments.Add(id);
         SetAction((parseResult, cancellationToken) => LinkCommandRun.RunAsync(
             services,

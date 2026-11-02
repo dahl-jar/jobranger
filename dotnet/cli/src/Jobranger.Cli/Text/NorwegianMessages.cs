@@ -24,6 +24,12 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string OptionsPlaceholder => "valg";
 
+    public string ArgumentsHeading => "Argumenter:";
+
+    public string CommandsHeading => "Kommandoer:";
+
+    public string CommandPlaceholder => "kommando";
+
     public string HelpOptionDescription => "Vis hjelp og bruk";
 
     public string VersionOptionDescription => "Vis versjonen";
@@ -149,6 +155,8 @@ internal sealed class NorwegianMessages : IMessages {
     public string DevicesListDescription => "Vis tilkoblede nettlesere.";
 
     public string DevicesRevokeDescription => "Fjern én tilkoblet nettleser.";
+
+    public string DevicesRevokeIdDescription => "Nettleserens id, eller starten av den.";
 
     public string UnpairDescription => "Fjern alle tilkoblede nettlesere.";
 

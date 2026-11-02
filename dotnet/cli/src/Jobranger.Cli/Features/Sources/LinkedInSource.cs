@@ -2,7 +2,9 @@ using System.Collections.Frozen;
 using System.Globalization;
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 using Jobranger.Cli.Http;
+using Jobranger.Cli.Logging;
 using Jobranger.Cli.Text;
 using static Jobranger.Cli.Features.Sources.LinkedInPages;
 
@@ -17,6 +19,8 @@ internal sealed class LinkedInSource : ISource {
     private const string viewUrl = "https://www.linkedin.com/jobs/view/";
     private const string norwayGeoId = "103819153";
     private const string idPrefix = "linkedin:";
+    private const string searchFailed = "linkedin search failed";
+    private const string postingFailed = "linkedin posting failed";
     private const int pageSize = 10;
     private const int maxPages = 10;
 
@@ -29,11 +33,11 @@ internal sealed class LinkedInSource : ISource {
     public async Task<SourceBatch> FetchAsync(FetchContext context, CancellationToken cancellationToken) {
         long windowSeconds = (long)(context.RunStarted - SourceCursors.Start(context, SinceKey)).TotalSeconds;
         List<SourceListing> listings = [];
+        IReadOnlyList<Card>? cards = null;
         try {
-            IReadOnlyList<Card> cards = await SearchAllAsync(context, windowSeconds, cancellationToken)
-                .ConfigureAwait(false);
+            cards = await SearchAllAsync(context, windowSeconds, cancellationToken).ConfigureAwait(false);
             foreach (Card card in cards.Where(card => IsWanted(context, card))) {
-                Posting? posting = await PostingAsync(context.Http, card.JobId, cancellationToken).ConfigureAwait(false);
+                Posting? posting = await PostingAsync(context, card.JobId, cancellationToken).ConfigureAwait(false);
                 if (posting is not null && IsKept(posting)) {
                     listings.Add(ToListing(card, posting));
                 }
@@ -41,7 +45,7 @@ internal sealed class LinkedInSource : ISource {
         } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
             return Batch(listings, null) with { Partial = true };
         } catch (Exception error) when (SourceHttp.IsFailure(error, cancellationToken)) {
-            throw new SourceException("linkedin search failed", Batch(listings, null), error);
+            throw new SourceException(cards is null ? searchFailed : postingFailed, Batch(listings, null), error);
         }
         return Batch(listings, SourceCursors.Advanced(context.RunStarted));
     }
@@ -72,18 +76,22 @@ internal sealed class LinkedInSource : ISource {
         return LinkedInPages.ParseSearch(Encoding.UTF8.GetString(body));
     }
 
-    private static async Task<Posting?> PostingAsync(HttpClient client, string jobId, CancellationToken cancellationToken) {
+    private static async Task<Posting?> PostingAsync(FetchContext context, string jobId, CancellationToken cancellationToken) {
         try {
-            byte[] body = await SourceHttp.GetAsync(client, new Uri(postingUrl + jobId), options, cancellationToken)
+            byte[] body = await SourceHttp.GetAsync(context.Http, new Uri(postingUrl + jobId), options, cancellationToken)
                 .ConfigureAwait(false);
             return LinkedInPages.ParsePosting(Encoding.UTF8.GetString(body));
-        } catch (Exception error) when (SourceHttp.IsFailure(error, cancellationToken) && !IsRateLimited(error)) {
+        } catch (Exception error) when (SourceHttp.IsFailure(error, cancellationToken)) {
+            if (FailsRun(error)) {
+                LogEvents.LinkedInPostingFailed(context.Logger, idPrefix + jobId, error);
+                throw;
+            }
             return null;
         }
     }
 
-    private static bool IsRateLimited(Exception error) =>
-        error is HttpRequestException { StatusCode: HttpStatusCode.TooManyRequests };
+    private static bool FailsRun(Exception error) =>
+        error is RegexMatchTimeoutException or HttpRequestException { StatusCode: HttpStatusCode.TooManyRequests };
 
     private static bool IsWanted(FetchContext context, Card card) =>
         !context.KnownIds.Contains(idPrefix + card.JobId)

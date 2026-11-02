@@ -45,6 +45,12 @@ internal static partial class LogEvents {
     [LoggerMessage(EventName = "finn.ad_text.failed", Level = LogLevel.Warning, Message = "ad page read failed ad_id={AdId}")]
     public static partial void FinnAdTextFailed(ILogger logger, string adId, Exception error);
 
+    [LoggerMessage(
+        EventName = "linkedin.posting.failed",
+        Level = LogLevel.Warning,
+        Message = "posting page read failed ad_id={AdId}")]
+    public static partial void LinkedInPostingFailed(ILogger logger, string adId, Exception error);
+
     [LoggerMessage(EventName = "pairing.started", Level = LogLevel.Information, Message = "started pairing")]
     public static partial void PairingStarted(ILogger logger);
 
