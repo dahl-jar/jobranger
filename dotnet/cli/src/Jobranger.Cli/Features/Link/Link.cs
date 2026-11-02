@@ -12,8 +12,6 @@ namespace Jobranger.Cli.Features.Link;
 
 [UnsupportedOSPlatform("windows")]
 internal sealed partial class Link : IAsyncDisposable {
-    private static readonly TimeSpan relayRequestTimeout = TimeSpan.FromSeconds(15);
-
     private readonly Credentials credentials;
     private readonly ILogger logger;
     private readonly FileSecretStore metadataFile;
@@ -44,11 +42,11 @@ internal sealed partial class Link : IAsyncDisposable {
         Credentials credentials = new(environment, store, new FileSecretStore(paths.SecretsPath(), logger));
         SqliteConnection database = Database.Open(paths.DbPath(), logger);
         HttpClient http = new(new SocketsHttpHandler { AllowAutoRedirect = false, UseCookies = false }) {
-            Timeout = relayRequestTimeout,
+            Timeout = RelayApiClient.RequestTimeout,
         };
         LinkParts parts = new(
             new DeviceStore(database),
-            new RelayApiClient(http, urls.Relay),
+            new RelayApiClient(http, urls.Relay, TimeProvider.System),
             new HubConnector(urls.Relay, TimeProvider.System));
         return new Link(credentials, paths.ConfigDir(), logger, parts, [http, database]);
     }

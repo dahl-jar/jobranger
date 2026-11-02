@@ -53,7 +53,7 @@ public sealed class PairingTests : IAsyncDisposable {
         http = relay.Client();
         Credentials credentials = new(
             new Hashtable(), null, new FileSecretStore(temp.File(SecretFixtures.FileName), NullLogger.Instance));
-        LinkParts parts = new(new DeviceStore(db.Connection), new RelayApiClient(http, FakeRelay.Address), relay);
+        LinkParts parts = new(new DeviceStore(db.Connection), new RelayApiClient(http, FakeRelay.Address, new FakeTimeProvider()), relay);
         link = new LinkEntry(credentials, temp.Path, NullLogger.Instance, parts);
         paths = new Paths(new Hashtable { [stateDirVariable] = temp.Path });
     }
