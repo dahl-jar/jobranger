@@ -1,0 +1,10 @@
+Discovering tests from /home/runner/work/jobranger/jobranger/dotnet/cli/tests/Jobranger.Cli.Tests/bin/Release/net10.0/Jobranger.Cli.Tests.dll (net10.0|x64)
+
+Discovered 5 tests in assembly - /home/runner/work/jobranger/jobranger/dotnet/cli/tests/Jobranger.Cli.Tests/bin/Release/net10.0/Jobranger.Cli.Tests.dll (net10.0|x64)
+  Jobranger.Cli.Tests.ArchitectureTests.ShouldSeeCliTypes_WhenRulesLoadAssembly
+  Jobranger.Cli.Tests.ArchitectureTests.ShouldSeeAllowedEdge_WhenSoundSeedUsesIt(origin: "Features.Runs.Runs", target: "Features.Ads.Ads")
+  Jobranger.Cli.Tests.Catalogue.CatalogueTests.ShouldMatchRoleWord_WhenRoleIsSelected
+  Jobranger.Cli.Tests.Features.Cv.CvTextTests.ShouldDecodeTextFile_WhenEncodingIsKnown(data: [85, 116, 118, 105, 107, ···], expected: "Utvikler i Bergen og Ålesund. Ærlig, øvet og våken"···)
+  Jobranger.Cli.Tests.Features.Cv.CvTextTests.ShouldDecodeTextFile_WhenEncodingIsKnown(data: [85, 116, 118, 105, 107, ···], expected: "Utvikler i Bergen og Ålesund. Ærlig, øvet og våken"···)
+
+Discovered 5 tests.

@@ -2,24 +2,17 @@
 set -euo pipefail
 
 tag_prefix="cli-v"
-version_pattern='[0-9]+\.[0-9]+\.[0-9]+'
 initial_version="0.1.0"
 feat_pattern='^feat(\([^)]*\))?:'
 breaking_pattern='^[a-z]+(\([^)]*\))?!:'
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [ "$#" -ne 2 ]; then
-  echo "usage: next_version.sh <commit> <title>" >&2
+  echo "usage: next_version.sh <commit> <titles>" >&2
   exit 2
 fi
 commit="$1"
-title="$2"
-
-latest_version() {
-  git tag --list "${tag_prefix}*" \
-    | sed -n -E "s/^${tag_prefix}(${version_pattern})\$/\\1/p" \
-    | sort -t. -k1,1n -k2,2n -k3,3n \
-    | tail -n 1
-}
+titles="$2"
 
 bump_for() {
   if [[ "$1" =~ $breaking_pattern ]]; then
@@ -29,6 +22,20 @@ bump_for() {
   else
     echo patch
   fi
+}
+
+bump_for_titles() {
+  local bump=patch line
+  while IFS= read -r line; do
+    case "$(bump_for "$line")" in
+      breaking)
+        echo breaking
+        return
+        ;;
+      minor) bump=minor ;;
+    esac
+  done <<<"$1"
+  echo "$bump"
 }
 
 next() {
@@ -47,18 +54,18 @@ next() {
   esac
 }
 
-latest="$(latest_version)"
-if [ -z "$latest" ]; then
+latest_tag="$(bash "$script_dir/latest_tag.sh")"
+if [ -z "$latest_tag" ]; then
   printf 'version=%s\nprevious=\n' "$initial_version"
   exit 0
 fi
+latest="${latest_tag#"$tag_prefix"}"
 
-latest_tag="$tag_prefix$latest"
 if git merge-base --is-ancestor "$commit" "$latest_tag"; then
   echo "commit $commit is already in $latest_tag" >&2
   printf 'version=\nprevious=\n'
   exit 0
 fi
 
-version="$(next "$latest" "$(bump_for "$title")")"
+version="$(next "$latest" "$(bump_for_titles "$titles")")"
 printf 'version=%s\nprevious=%s\n' "$version" "$latest_tag"

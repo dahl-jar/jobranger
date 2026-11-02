@@ -26,11 +26,16 @@ on:
       - .gitattributes
       - cli-python/.gitattributes
       - frontend/.gitattributes
-  workflow_call:
+      - .github/actions/test-ratchet/**
+      - .github/scripts/missing_tests.sh
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:
@@ -74,5 +79,24 @@ jobs:
       - name: Check payload records cover the schema
         working-directory: dotnet
         run: dotnet test --project messages/tests/Jobranger.Messaging.Tests -c Release --no-restore --filter-method "*.ShouldCoverEverySchemaProperty_WhenPayloadRecordsAreChecked" --minimum-expected-tests 1
-      - run: dotnet test --project messages/tests/Jobranger.Messaging.Tests -c Release --no-restore --minimum-expected-tests 569
+      - run: dotnet test --project messages/tests/Jobranger.Messaging.Tests -c Release --no-restore
         working-directory: dotnet
+
+  ratchet:
+    name: Compare tests with base
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 2
+
+      - uses: ./.github/actions/test-ratchet
+        with:
+          project: messages/tests/Jobranger.Messaging.Tests/Jobranger.Messaging.Tests.csproj
+          pull-request: ${{ github.event.pull_request.number }}
+          token: ${{ github.token }}
