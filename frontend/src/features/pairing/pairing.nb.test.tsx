@@ -108,7 +108,7 @@ describe('pairing in bokmål', () => {
     relay.presence(true)
 
     expect(await screen.findByRole('heading', { name: 'Stemmer disse ordene med terminalen?' })).toBeInTheDocument()
-    expect(document.title).toBe('Sjekk ordene · jobranger')
+    await waitFor(() => expect(document.title).toBe('Sjekk ordene · jobranger'))
     expectNoEnglish(peer.cli.words)
   })
 
