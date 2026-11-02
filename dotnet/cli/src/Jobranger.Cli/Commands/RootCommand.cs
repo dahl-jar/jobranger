@@ -33,7 +33,7 @@ internal sealed class RootCommand : System.CommandLine.RootCommand {
 
     public async Task<int> RunAsync(IReadOnlyList<string> args, CancellationToken cancellationToken) {
         ParseResult parsed = Parse(args, parserConfiguration);
-        if (parsed.Errors.Count > 0) {
+        if (parsed.Errors.Count > 0 && parsed.Action is not HelpAction) {
             TextWriter errors = services.ErrorConsole.Profile.Out.Writer;
             foreach (string line in ParseErrorLines(parsed, services.Messages)) {
                 await errors.WriteLineAsync(line).ConfigureAwait(false);
