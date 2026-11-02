@@ -1,11 +1,11 @@
 using System.Collections.Frozen;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using Jobranger.Cli.Text;
 
 namespace Jobranger.Cli.Features.Sources;
 
 internal static partial class MailDates {
-    private const int matchTimeoutMs = 1000;
     private const int centuryPivot = 68;
     private const int twentiethCentury = 1900;
     private const int twentyFirstCentury = 2000;
@@ -74,9 +74,9 @@ internal static partial class MailDates {
     [GeneratedRegex(
         @"^\s*(?:[A-Za-z]+,?\s*)?(?<day>[0-9]{1,2})\s+(?<month>[A-Za-z]{3})[A-Za-z]*\s+(?<year>[0-9]{2,4})\s+"
         + @"(?<hour>[0-9]{1,2}):(?<minute>[0-9]{2})(?::(?<second>[0-9]{2}))?(?:\s+(?<zone>\S+))?\s*$",
-        RegexOptions.None, matchTimeoutMs)]
+        RegexOptions.None, RegexLimits.MatchTimeoutMs)]
     private static partial Regex DatePattern();
 
-    [GeneratedRegex("^[+-][0-9]{4}$", RegexOptions.None, matchTimeoutMs)]
+    [GeneratedRegex("^[+-][0-9]{4}$", RegexOptions.None, RegexLimits.MatchTimeoutMs)]
     private static partial Regex NumericZone();
 }
