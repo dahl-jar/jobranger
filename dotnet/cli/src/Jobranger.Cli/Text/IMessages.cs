@@ -11,6 +11,12 @@ internal interface IMessages {
 
     string OptionsPlaceholder { get; }
 
+    string ArgumentsHeading { get; }
+
+    string CommandsHeading { get; }
+
+    string CommandPlaceholder { get; }
+
     string HelpOptionDescription { get; }
 
     string VersionOptionDescription { get; }
@@ -150,6 +156,8 @@ internal interface IMessages {
     string DevicesListDescription { get; }
 
     string DevicesRevokeDescription { get; }
+
+    string DevicesRevokeIdDescription { get; }
 
     string UnpairDescription { get; }
 

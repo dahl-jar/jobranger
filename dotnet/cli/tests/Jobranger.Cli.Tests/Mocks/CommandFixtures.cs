@@ -2,6 +2,7 @@ using System.Collections;
 using System.Runtime.Versioning;
 using System.Text;
 using System.Text.Json.Nodes;
+using Jobranger.Cli.Commands;
 using Jobranger.Cli.Files;
 using Jobranger.Cli.Logging;
 using Jobranger.Cli.Storage;
@@ -13,9 +14,13 @@ namespace Jobranger.Cli.Tests.Mocks;
 
 internal static class CommandFixtures {
     public const string FileAccessFailed = "Cannot read a jobranger file. Check the folder permissions.\n";
+    public const string DatabaseUnreadable = "Cannot read the jobranger database at {0}.\n";
+    public const string DirNotWritable =
+        "Cannot create or use the folder {0}. Make it and the folders above it writable, then try again.\n";
 
     private const string logFileName = "2026-10-09.jsonl";
-    private const string newerSchema = "99";
+    private const string schemaBeforeDevices = "3";
+    private const string schemaTooNew = "99";
     private const int corruptBytes = 4096;
 
     public static Hashtable Environment(TempDir temp, string language) => new() {
@@ -27,6 +32,11 @@ internal static class CommandFixtures {
         ["JOBRANGER_SECRET_STORE"] = "file",
     };
 
+    [UnsupportedOSPlatform("windows")]
+    public static RootCommand CreateRoot(RecordingConsole console, string lang) =>
+        new(CliServices.Create(
+            TimeProvider.System, console.Console, console.ErrorConsole, Locales.EnvironmentWithoutConfig(lang)));
+
     public static string LogPath(Paths paths) => Path.Combine(paths.LogDir(), logFileName);
 
     public static string LoggedFailure(Paths paths) {
@@ -35,15 +45,20 @@ internal static class CommandFixtures {
     }
 
     [UnsupportedOSPlatform("windows")]
-    public static void MakeSchemaNewer(Paths paths) {
-        using SqliteConnection database = Database.Open(paths.DbPath(), NullLogger.Instance);
-        new StateStore(database).Set(StateStore.SchemaVersionKey, newerSchema);
-    }
+    public static void RewindSchema(string dbPath) => SetSchema(dbPath, schemaBeforeDevices);
+
+    [UnsupportedOSPlatform("windows")]
+    public static void MarkSchemaTooNew(string dbPath) => SetSchema(dbPath, schemaTooNew);
+
+    [UnsupportedOSPlatform("windows")]
+    public static void MakeSchemaNewer(Paths paths) => MarkSchemaTooNew(paths.DbPath());
 
     public static void CorruptDatabase(Paths paths) {
         Directory.CreateDirectory(paths.DataDir());
         File.WriteAllBytes(paths.DbPath(), Encoding.ASCII.GetBytes(new string('x', corruptBytes)));
     }
+
+    public static string WithPath(string line, string path) => string.Format(line, path);
 
     public static IAnsiConsole ConsoleOn(IAnsiConsoleOutput output) =>
         AnsiConsole.Create(new AnsiConsoleSettings {
@@ -56,6 +71,12 @@ internal static class CommandFixtures {
 
     public static IAnsiConsole BrokenConsole(Type failure) =>
         ConsoleOn(new AnsiConsoleOutput(new BrokenWriter((Exception)Activator.CreateInstance(failure)!)));
+
+    [UnsupportedOSPlatform("windows")]
+    private static void SetSchema(string dbPath, string version) {
+        using SqliteConnection database = Database.Open(dbPath, NullLogger.Instance);
+        new StateStore(database).Set(StateStore.SchemaVersionKey, version);
+    }
 
     private sealed class BrokenWriter(Exception failure) : TextWriter {
         public override Encoding Encoding => Encoding.UTF8;

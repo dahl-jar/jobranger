@@ -13,7 +13,6 @@ internal sealed partial class NavSource : ISource {
 
     private const string positionKey = "nav_position";
     private const int maxPages = 200;
-    private const int matchTimeoutMs = 1000;
     private const string idPrefix = "nav:";
     private const string activeStatus = "ACTIVE";
     private const string styrkType = "STYRK08";
@@ -227,7 +226,7 @@ internal sealed partial class NavSource : ISource {
     private static IEnumerable<string?> Places(JsonElement place) =>
         [JsonFields.Text(place, cityKey), JsonFields.Text(place, municipalKey)];
 
-    [GeneratedRegex("eyJ[A-Za-z0-9_.-]+", RegexOptions.None, matchTimeoutMs)]
+    [GeneratedRegex("eyJ[A-Za-z0-9_.-]+", RegexOptions.None, RegexLimits.MatchTimeoutMs)]
     private static partial Regex JwtPattern();
 
     private sealed record FeedPage(Uri FeedUrl, Uri? NextUrl, IReadOnlyList<(string Uuid, bool Active)> Entries, int Skipped);
