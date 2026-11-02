@@ -40,6 +40,10 @@ internal static partial class UnixFiles {
     private const int runtimeCreate = 0x20;
     private const int runtimeExclusive = 0x40;
     private const int runtimeNoFollow = 0x200;
+    private const int runtimeExecuteAccess = 0x1;
+    private const int terminateSignal = 15;
+    private const int terminalSettingsSize = 256;
+    private const int applyNow = 0;
     private const int createNewFlags =
         runtimeWriteOnly | runtimeCreate | runtimeExclusive | runtimeNoFollow | runtimeCloseOnExec;
 
@@ -87,6 +91,8 @@ internal static partial class UnixFiles {
         return LinkStatus(path, status) != failed && IsRegular(status);
     }
 
+    public static bool CanExecute(string path) => NativeAccess(path, runtimeExecuteAccess) != failed;
+
     public static uint EffectiveUserId() => GetEffectiveUserId();
 
     public static bool IsOwnDirectory(string path, uint userId) {
@@ -94,6 +100,25 @@ internal static partial class UnixFiles {
         return LinkStatus(path, status) != failed
             && (MemoryMarshal.Read<int>(status[modeOffset..]) & fileTypeMask) == directoryFile
             && MemoryMarshal.Read<uint>(status[ownerOffset..]) == userId;
+    }
+
+    public static void Terminate(int processId) =>
+        _ = OperatingSystem.IsMacOS() ? MacKill(processId, terminateSignal) : LinuxKill(processId, terminateSignal);
+
+    public static byte[]? ReadTerminalSettings(int descriptor) {
+        byte[] settings = new byte[terminalSettingsSize];
+        int result = OperatingSystem.IsMacOS() ? MacGetTerminal(descriptor, settings) : LinuxGetTerminal(descriptor, settings);
+        return result == failed ? null : settings;
+    }
+
+    public static void WriteTerminalSettings(int descriptor, byte[] settings) =>
+        _ = OperatingSystem.IsMacOS()
+            ? MacSetTerminal(descriptor, applyNow, settings)
+            : LinuxSetTerminal(descriptor, applyNow, settings);
+
+    public static bool IsBackground(int descriptor) {
+        int foreground = OperatingSystem.IsMacOS() ? MacForegroundGroup(descriptor) : LinuxForegroundGroup(descriptor);
+        return foreground != failed && foreground != (OperatingSystem.IsMacOS() ? MacProcessGroup() : LinuxProcessGroup());
     }
 
     public static bool TryLockExclusive(SafeFileHandle handle, out int error) {
@@ -150,6 +175,9 @@ internal static partial class UnixFiles {
     [LibraryImport(runtimeNative, EntryPoint = "SystemNative_LStat", StringMarshalling = StringMarshalling.Utf8)]
     private static partial int LinkStatus(string path, Span<byte> status);
 
+    [LibraryImport(runtimeNative, EntryPoint = "SystemNative_Access", StringMarshalling = StringMarshalling.Utf8)]
+    private static partial int NativeAccess(string path, int mode);
+
     [LibraryImport(runtimeNative, EntryPoint = "SystemNative_GetEUid")]
     private static partial uint GetEffectiveUserId();
 
@@ -161,4 +189,34 @@ internal static partial class UnixFiles {
 
     [LibraryImport(linuxLibc, EntryPoint = "flock", SetLastError = true)]
     private static partial int LinuxLock(SafeFileHandle handle, int operation);
+
+    [LibraryImport(macLibc, EntryPoint = "kill")]
+    private static partial int MacKill(int processId, int signal);
+
+    [LibraryImport(linuxLibc, EntryPoint = "kill")]
+    private static partial int LinuxKill(int processId, int signal);
+
+    [LibraryImport(macLibc, EntryPoint = "tcgetpgrp")]
+    private static partial int MacForegroundGroup(int descriptor);
+
+    [LibraryImport(linuxLibc, EntryPoint = "tcgetpgrp")]
+    private static partial int LinuxForegroundGroup(int descriptor);
+
+    [LibraryImport(macLibc, EntryPoint = "getpgrp")]
+    private static partial int MacProcessGroup();
+
+    [LibraryImport(linuxLibc, EntryPoint = "getpgrp")]
+    private static partial int LinuxProcessGroup();
+
+    [LibraryImport(macLibc, EntryPoint = "tcgetattr")]
+    private static partial int MacGetTerminal(int descriptor, [Out] byte[] settings);
+
+    [LibraryImport(linuxLibc, EntryPoint = "tcgetattr")]
+    private static partial int LinuxGetTerminal(int descriptor, [Out] byte[] settings);
+
+    [LibraryImport(macLibc, EntryPoint = "tcsetattr")]
+    private static partial int MacSetTerminal(int descriptor, int action, [In] byte[] settings);
+
+    [LibraryImport(linuxLibc, EntryPoint = "tcsetattr")]
+    private static partial int LinuxSetTerminal(int descriptor, int action, [In] byte[] settings);
 }

@@ -1,6 +1,7 @@
 using Jobranger.Cli.Features.Link;
 using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Messaging.Limits;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Jobranger.Cli.Tests.Features.Link;
 
@@ -79,7 +80,7 @@ public sealed class HubConnectorTests : IAsyncLifetime {
     }
 
     private async Task<IRelayConnection> ConnectAsync() {
-        RelayApiClient api = new(http, relay.Address);
+        RelayApiClient api = new(http, relay.Address, new FakeTimeProvider());
         return await connector.ConnectAsync(await api.CliHandleAsync(keys.Signing, Token), Token);
     }
 }
