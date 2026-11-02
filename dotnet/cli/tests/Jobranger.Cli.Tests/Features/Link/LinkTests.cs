@@ -11,6 +11,7 @@ using Jobranger.Messaging.Proofs;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
+using Microsoft.Extensions.Time.Testing;
 using NSec.Cryptography;
 using LinkEntry = Jobranger.Cli.Features.Link.Link;
 
@@ -43,7 +44,7 @@ public sealed class LinkTests : IDisposable {
     public LinkTests() {
         file = new FileSecretStore(temp.File(SecretFixtures.FileName), NullLogger.Instance);
         http = relay.Client();
-        parts = new LinkParts(new DeviceStore(db.Connection), new RelayApiClient(http, FakeRelay.Address), relay);
+        parts = new LinkParts(new DeviceStore(db.Connection), new RelayApiClient(http, FakeRelay.Address, new FakeTimeProvider()), relay);
     }
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
@@ -120,6 +121,21 @@ public sealed class LinkTests : IDisposable {
         LinkKeyException refused = await Assert.ThrowsAsync<LinkKeyException>(() => Build(store).RotateKeysAsync(Token));
 
         Assert.Contains(metadataName, refused.Message, StringComparison.Ordinal);
+        Assert.Equal(recorded, File.ReadAllText(temp.File(metadataName)));
+    }
+
+    [Theory]
+    [InlineData("{}", UnixFileMode.None)]
+    [InlineData("not json", PrivateFile.OwnerOnlyFileMode)]
+    public async Task ShouldKeepMetadata_WhenSecretsFileCannotBeRead(string content, UnixFileMode mode) {
+        using (await Build(null).LoadOrCreateKeysAsync(Token)) {
+        }
+        string recorded = File.ReadAllText(temp.File(metadataName));
+        File.WriteAllText(file.Path, content);
+        File.SetUnixFileMode(file.Path, mode);
+
+        await Assert.ThrowsAsync<LinkKeyException>(() => Build(null).RotateKeysAsync(Token));
+
         Assert.Equal(recorded, File.ReadAllText(temp.File(metadataName)));
     }
 

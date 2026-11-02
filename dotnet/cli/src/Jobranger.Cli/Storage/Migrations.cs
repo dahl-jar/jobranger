@@ -5,6 +5,8 @@ namespace Jobranger.Cli.Storage;
 
 internal static class Migrations {
     private const int noSchema = 0;
+    private const int sqliteCorrupt = 11;
+    private const string versionNotNumber = "schema version is not a number";
     private const string hasStateSql = "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'state'";
 
     private static readonly Migration baseline = new(1, [
@@ -196,7 +198,13 @@ internal static class Migrations {
             return noSchema;
         }
         string? version = StateStore.Get(connection, transaction, StateStore.SchemaVersionKey);
-        return version is null ? noSchema : int.Parse(version, CultureInfo.InvariantCulture);
+        if (version is null) {
+            return noSchema;
+        }
+        if (!int.TryParse(version, NumberStyles.None, CultureInfo.InvariantCulture, out int current)) {
+            throw new SqliteException(versionNotNumber, sqliteCorrupt);
+        }
+        return current;
     }
 
     private static void Apply(SqliteConnection connection, Migration migration) {
