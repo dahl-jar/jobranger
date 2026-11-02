@@ -9,6 +9,7 @@ using Jobranger.Cli.Files;
 using Jobranger.Cli.Secrets;
 using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Cli.Text;
+using Microsoft.Extensions.Logging.Abstractions;
 using RootCommand = Jobranger.Cli.Commands.RootCommand;
 
 namespace Jobranger.Cli.Tests.Commands;
@@ -16,8 +17,16 @@ namespace Jobranger.Cli.Tests.Commands;
 [UnsupportedOSPlatform("windows")]
 public sealed class PairCommandTests : IDisposable {
     private const string unreachable = "Cannot reach the jobranger relay. Check your connection and try again.";
+    private const string keysBlocked =
+        "Pairing cannot start because jobranger cannot open or change {0} (open failed errno=13). "
+        + "Make that file and its folder readable and writable, then run jobranger pair again.";
+    private const string keysBlockedNorwegian =
+        "Tilkoblingen kan ikke starte fordi jobranger ikke kan åpne eller endre {0} (open failed errno=13). "
+        + "Gjør filen og mappen lesbare og skrivbare, og kjør jobranger pair på nytt.";
     private const int corruptBytes = 4096;
     private const UnixFileMode readOnlyDir = UnixFileMode.UserRead | UnixFileMode.UserExecute;
+
+    private static readonly TimeSpan busyLimit = TimeSpan.FromSeconds(30);
 
     private readonly TempDir temp = new();
     private readonly RecordingConsole console = new();
@@ -167,6 +176,46 @@ public sealed class PairCommandTests : IDisposable {
         Assert.Contains(PairCommand.CommandName, root.Subcommands.Select(command => command.Name));
     }
 
+    [Theory]
+    [InlineData(Locales.English, SecretFixtures.FileName, keysBlocked)]
+    [InlineData(Locales.Norwegian, SecretFixtures.FileName, keysBlockedNorwegian)]
+    [InlineData(Locales.English, LinkMetadata.FileName, keysBlocked)]
+    public async Task ShouldPrintPermissionFix_WhenKeysFileHasNoPermissions(string lang, string name, string line) {
+        environment["LANG"] = lang;
+        string keysFile = WriteConfigFile(name, "{}");
+        File.SetUnixFileMode(keysFile, UnixFileMode.None);
+
+        int exit = await RunAsync();
+
+        Assert.Equal((CliExitCodes.Failure, CommandFixtures.WithPath(line, keysFile)), (exit, console.Output.TrimEnd()));
+        Assert.Contains("keys_blocked", LogText(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(SecretFixtures.FileName)]
+    [InlineData(LinkMetadata.FileName)]
+    public async Task ShouldAdviseUnpair_WhenKeysFileIsNotJson(string name) {
+        WriteConfigFile(name, "not json");
+
+        int exit = await RunAsync();
+
+        Assert.Equal(
+            (CliExitCodes.Failure, "The link keys cannot be used. Run jobranger unpair to make new ones."),
+            (exit, console.Output.TrimEnd()));
+    }
+
+    [Fact]
+    public async Task ShouldPrintRetry_WhenLinkKeysAreBusy() {
+        string lockPath = Path.Combine(new Paths(environment).ConfigDir(), LinkMetadata.FileName + ".lock");
+        using FileLock held = FileLock.TryAcquire(lockPath, NullLogger.Instance)!;
+
+        int exit = await Task.Run(() => RunAsync(), TestContext.Current.CancellationToken)
+            .WaitAsync(busyLimit, TestContext.Current.CancellationToken);
+
+        Assert.Equal((CliExitCodes.Failure, "Pairing failed. Run jobranger pair again."), (exit, console.Output.TrimEnd()));
+        Assert.Contains("keys_busy", LogText(), StringComparison.Ordinal);
+    }
+
     private Task<int> RunAsync() => RunAsync(inputRedirected: true, Link.OpenAsync);
 
     private Task<int> RunAsync(bool inputRedirected, LinkCommandRun.LinkOpener openLink) {
@@ -174,6 +223,14 @@ public sealed class PairCommandTests : IDisposable {
         System.CommandLine.RootCommand root =
             [new PairCommand(services, environment, TimeProvider.System, inputRedirected, openLink)];
         return root.Parse([PairCommand.CommandName]).InvokeAsync(null, TestContext.Current.CancellationToken);
+    }
+
+    private string WriteConfigFile(string name, string content) {
+        string configDir = new Paths(environment).ConfigDir();
+        Directory.CreateDirectory(configDir);
+        string written = Path.Combine(configDir, name);
+        File.WriteAllText(written, content);
+        return written;
     }
 
     private string LogText() =>

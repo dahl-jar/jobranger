@@ -270,7 +270,7 @@ public sealed class DevicesCommandTests : IDisposable {
         Assert.Equal(CliExitCodes.Failure, exit);
         Assert.StartsWith(CommandFixtures.WithPath(opening, MetadataPath()), console.Output, StringComparison.Ordinal);
         Assert.EndsWith(advice, console.Output.TrimEnd(), StringComparison.Ordinal);
-        Assert.Empty(Remaining());
+        Assert.Single(Remaining());
     }
 
     [Theory]
@@ -382,13 +382,13 @@ public sealed class DevicesCommandTests : IDisposable {
     }
 
     [Fact]
-    public async Task ShouldLogRemoval_WhenRotationFails() {
+    public async Task ShouldNotLogRemoval_WhenRotationFails() {
         SeedBrowser();
         Directory.CreateDirectory(MetadataPath());
 
         await RunAsync("unpair");
 
-        Assert.Contains("devices.unpaired", LoggedEvents());
+        Assert.DoesNotContain("devices.unpaired", LoggedEvents());
     }
 
     [Fact]
@@ -592,6 +592,70 @@ public sealed class DevicesCommandTests : IDisposable {
 
         Assert.Equal(CliExitCodes.Ok, exit);
         Assert.Contains(new EnglishMessages().UnpairDescription, console.Output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ShouldKeepBrowsers_WhenSecretsFileHasNoPermissions() {
+        await LoadChannelAsync();
+        SeedBrowser();
+        File.SetUnixFileMode(SecretsPath(), UnixFileMode.None);
+
+        int exit = await RunAsync("unpair");
+
+        Assert.Equal(CliExitCodes.Failure, exit);
+        Assert.Single(Remaining());
+    }
+
+    [Fact]
+    public async Task ShouldKeepBrowsers_WhenConfigDirIsReadOnly() {
+        SeedBrowser();
+
+        await UnpairWithReadOnlyConfigAsync();
+
+        Assert.Single(Remaining());
+    }
+
+    [Fact]
+    public async Task ShouldKeepBrowsers_WhenSecretsContentIsInvalid() {
+        await LoadChannelAsync();
+        SeedBrowser();
+        WriteSecrets("not json");
+
+        int exit = await RunAsync("unpair");
+
+        Assert.Equal(CliExitCodes.Failure, exit);
+        Assert.Single(Remaining());
+    }
+
+    [Fact]
+    public async Task ShouldMakeNewKeys_WhenSecretsFileWasRemoved() {
+        string before = await LoadChannelAsync();
+        SeedBrowser();
+        File.Delete(SecretsPath());
+
+        int exit = await RunAsync("unpair");
+
+        Assert.Equal(CliExitCodes.Ok, exit);
+        Assert.NotEqual(before, RecordedChannel());
+        Assert.Empty(Remaining());
+    }
+
+    [Fact]
+    public async Task ShouldKeepNewKeys_WhenBrowserRemovalFails() {
+        string before = await LoadChannelAsync();
+        SeedBrowser();
+        using (SqliteConnection database = OpenDatabase()) {
+            SqlCommands.Execute(
+                database, null, "CREATE TRIGGER keep_devices BEFORE DELETE ON devices BEGIN SELECT RAISE(ABORT, 'kept'); END");
+        }
+
+        int exit = await RunAsync("unpair");
+
+        Assert.Equal(
+            (CliExitCodes.Failure, CommandFixtures.WithPath(CommandFixtures.DatabaseUnreadable, DatabasePath())),
+            (exit, console.Output));
+        Assert.NotEqual(before, RecordedChannel());
+        Assert.Single(Remaining());
     }
 
     private static string WithReason(string line, string path, string reason) => string.Format(line, path, reason);
