@@ -5,11 +5,11 @@ namespace Jobranger.Cli.Config;
 
 internal static partial class AppConfigValidator {
     public const decimal MaxAmountUsd = 1_000_000m;
+    public const int MinRunGapHours = 2;
 
     private const int minutesPerHour = 60;
     private const int minutesPerDay = 24 * minutesPerHour;
-    private const int minRunGapHours = 2;
-    private const int minRunGapMinutes = minRunGapHours * minutesPerHour;
+    private const int minRunGapMinutes = MinRunGapHours * minutesPerHour;
     private const string hourGroup = "hour";
     private const string minuteGroup = "minute";
 
@@ -40,6 +40,8 @@ internal static partial class AppConfigValidator {
         return errors;
     }
 
+    public static bool IsRunTime(string time) => RunTime().IsMatch(time);
+
     private static bool IsOllamaUrl(string url) =>
         Uri.TryCreate(url, UriKind.Absolute, out Uri? parsed)
         && ollamaSchemes.Contains(parsed.Scheme);
@@ -62,7 +64,7 @@ internal static partial class AppConfigValidator {
         }
         if (gaps.Any(gap => gap < minRunGapMinutes)) {
             errors.Add(new ConfigError(
-                timesLocation, ConfigProblem.RunTimesTooClose, minRunGapHours.ToString(CultureInfo.InvariantCulture)));
+                timesLocation, ConfigProblem.RunTimesTooClose, MinRunGapHours.ToString(CultureInfo.InvariantCulture)));
         }
     }
 

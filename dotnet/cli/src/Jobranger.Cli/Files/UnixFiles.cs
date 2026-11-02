@@ -29,6 +29,7 @@ internal static partial class UnixFiles {
     private const int linuxNoFollow = 0x20000;
     private const int linuxArmNoFollow = 0x8000;
     private const int linuxCloseOnExec = 0x80000;
+    private const int runtimeWriteAccess = 2;
     private const int noEntry = 2;
     private const int alreadyExists = 17;
     private const int macLinkLoop = 62;
@@ -94,6 +95,8 @@ internal static partial class UnixFiles {
     public static bool CanExecute(string path) => NativeAccess(path, runtimeExecuteAccess) != failed;
 
     public static uint EffectiveUserId() => GetEffectiveUserId();
+
+    public static bool CanWriteInto(string dir) => NativeAccess(dir, runtimeWriteAccess | runtimeExecuteAccess) != failed;
 
     public static bool IsOwnDirectory(string path, uint userId) {
         Span<byte> status = stackalloc byte[fileStatusSize];

@@ -14,8 +14,12 @@ internal static class Program {
             Interactive = Console.IsErrorRedirected ? InteractionSupport.No : InteractionSupport.Detect,
             Out = new AnsiConsoleOutput(Console.Error),
         });
+        IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings {
+            Interactive = Console.IsInputRedirected || Console.IsOutputRedirected ? InteractionSupport.No : InteractionSupport.Yes,
+            Out = new AnsiConsoleOutput(Console.Out),
+        });
         CliServices services = CliServices.Create(
-            TimeProvider.System, AnsiConsole.Console, errorConsole, Environment.GetEnvironmentVariables());
+            TimeProvider.System, console, errorConsole, Environment.GetEnvironmentVariables());
         return new RootCommand(services).RunAsync(args, CancellationToken.None);
     }
 }

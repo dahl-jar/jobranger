@@ -28,6 +28,13 @@ internal sealed record SmtpServer(string Host, int Port, bool ImplicitTls) {
             ? Build(host, portText, implicitTls)
             : null;
 
+    public static string? UrlFor(string server) {
+        if (Parse(plainScheme + schemeSeparator + server) is not SmtpServer parsed) {
+            return null;
+        }
+        return (parsed.Port == implicitTlsPort ? implicitTlsScheme : plainScheme) + schemeSeparator + server;
+    }
+
     private static SmtpServer? Build(string host, string? portText, bool implicitTls) {
         string? ascii = host.StartsWith(ipv6Open) ? Ipv6Host(host[1..^1]) : AsciiHost(host);
         int? port = portText is null ? DefaultPort(implicitTls) : ReadPort(portText);

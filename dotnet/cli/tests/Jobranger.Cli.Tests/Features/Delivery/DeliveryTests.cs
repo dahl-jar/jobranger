@@ -32,6 +32,24 @@ public sealed class DeliveryTests : IDisposable {
     public void Dispose() => db.Dispose();
 
     [Fact]
+    public async Task ShouldReportUnusableAddress_WhenTestAddressIsBad() {
+        EmailConfig email = DeliveryFixtures.ResendEmail with { Address = "not-an-address" };
+        using FakeApiHandler handler = FakeApiHandler.Json(200, DeliveryFixtures.EmptyJson);
+
+        SendFailure? failure = await DeliveryEntry.SendTestAsync(
+            email,
+            DeliveryFixtures.ResendKey,
+            DeliveryFixtures.Rendered,
+            DeliveryFixtures.TransportFor(() => handler),
+            new EnglishMessages(),
+            time,
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(SendFailureKind.UnusableAddress, failure?.Kind);
+        Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
     public async Task ShouldMarkAdsReported_WhenEmailIsSent() {
         Ad ad = StoredAd(1);
 

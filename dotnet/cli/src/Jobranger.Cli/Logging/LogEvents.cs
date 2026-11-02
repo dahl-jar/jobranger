@@ -206,4 +206,7 @@ internal static partial class LogEvents {
         Level = LogLevel.Warning,
         Message = "secret store failed, the run goes on without it")]
     public static partial void RunSecretStoreFailed(ILogger logger, Exception error);
+
+    [LoggerMessage(EventName = "init.failed", Level = LogLevel.Warning, Message = "init failed failure={Failure}")]
+    public static partial void InitFailed(ILogger logger, string failure);
 }

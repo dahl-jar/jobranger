@@ -46,4 +46,21 @@ public sealed class SmtpServerTests {
 
         Assert.Null(server);
     }
+
+    [Theory]
+    [InlineData("smtp.gmail.com:465", "smtps://smtp.gmail.com:465")]
+    [InlineData("mail.example.test:587", "smtp://mail.example.test:587")]
+    [InlineData("mail.example.test", "smtp://mail.example.test")]
+    public void ShouldPickScheme_WhenServerIsValid(string server, string url) {
+        string? result = SmtpServer.UrlFor(server);
+
+        Assert.Equal(url, result);
+    }
+
+    [Fact]
+    public void ShouldReturnNull_WhenServerIsInvalid() {
+        string? result = SmtpServer.UrlFor("mail example");
+
+        Assert.Null(result);
+    }
 }

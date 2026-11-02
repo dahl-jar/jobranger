@@ -26,6 +26,31 @@ public sealed class ConfigFileTests : IDisposable {
     public void Dispose() => temp.Dispose();
 
     [Fact]
+    public void ShouldIgnoreOldFile_WhenSavedFresh() {
+        File.WriteAllText(path, sample);
+        AppConfig config = ConfigFile.Load(path, Home);
+        File.WriteAllText(path, "# old comment\nunknown_key: 1\n");
+
+        ConfigFile.SaveFresh(path, config, Home, NullLogger.Instance);
+
+        string saved = File.ReadAllText(path);
+        Assert.DoesNotContain("unknown_key", saved, StringComparison.Ordinal);
+        Assert.DoesNotContain("old comment", saved, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ShouldRefuseInvalidConfig_WhenSavedFresh() {
+        File.WriteAllText(path, sample);
+        AppConfig config = ConfigFile.Load(path, Home);
+        File.Delete(path);
+        AppConfig invalid = config with { Schedule = new ScheduleConfig { Times = ["25:00"] } };
+
+        Assert.Throws<ConfigInvalidException>(() => ConfigFile.SaveFresh(path, invalid, Home, NullLogger.Instance));
+
+        Assert.False(File.Exists(path));
+    }
+
+    [Fact]
     public void ShouldKeepBlockComments_WhenSavingConfig() {
         File.WriteAllText(path, sample.Replace("# what to look for", "\n#what to look for", StringComparison.Ordinal));
         AppConfig config = ConfigFile.Load(path, Home);

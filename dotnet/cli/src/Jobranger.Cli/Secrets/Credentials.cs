@@ -8,12 +8,15 @@ namespace Jobranger.Cli.Secrets;
 
 [UnsupportedOSPlatform("windows")]
 internal sealed class Credentials(IDictionary environment, ISecretStore? store, FileSecretStore file) {
+    public const string SmtpPasswordName = "smtp_password";
+    public const string ResendKeyName = "resend_api_key";
+
     public static readonly FrozenDictionary<string, string> EnvVars = new Dictionary<string, string> {
         ["anthropic_api_key"] = "ANTHROPIC_API_KEY",
         ["openai_api_key"] = "OPENAI_API_KEY",
         ["openrouter_api_key"] = "OPENROUTER_API_KEY",
-        ["smtp_password"] = "SMTP_PASSWORD",
-        ["resend_api_key"] = "RESEND_API_KEY",
+        [SmtpPasswordName] = "SMTP_PASSWORD",
+        [ResendKeyName] = "RESEND_API_KEY",
     }.ToFrozenDictionary(StringComparer.Ordinal);
 
     private const char maskChar = '•';

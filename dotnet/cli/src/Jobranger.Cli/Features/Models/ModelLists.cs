@@ -17,7 +17,7 @@ internal static class ModelLists {
     private const decimal tokensPerMtok = 1_000_000m;
     private const int priceDecimals = 6;
 
-    private static readonly decimal largestPerToken = decimal.MaxValue / tokensPerMtok;
+    private static readonly decimal largestPerToken = AppConfigValidator.MaxAmountUsd / tokensPerMtok;
 
     private static readonly string[] excludedParts = ["audio", "realtime", "transcribe", "tts", "image", "search"];
 

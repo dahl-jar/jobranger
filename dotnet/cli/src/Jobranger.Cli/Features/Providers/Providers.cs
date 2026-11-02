@@ -4,7 +4,8 @@ using Jobranger.Cli.Secrets;
 
 namespace Jobranger.Cli.Features.Providers;
 
-internal sealed class Providers(Func<HttpMessageHandler> createHandler, TimeProvider time) {
+internal sealed class Providers(
+    Func<HttpMessageHandler> createHandler, TimeProvider time, int retries = ApiSender.DefaultRetries) {
     private const string noModel = "no model chosen, run init to pick a provider and model";
 
     private static readonly Dictionary<ProviderName, string> secretNames = new() {
@@ -12,6 +13,8 @@ internal sealed class Providers(Func<HttpMessageHandler> createHandler, TimeProv
         [ProviderName.OpenAI] = "openai_api_key",
         [ProviderName.OpenRouter] = "openrouter_api_key",
     };
+
+    public static string? SecretName(ProviderName provider) => secretNames.GetValueOrDefault(provider);
 
     public async Task<IModelClient> CreateAsync(
         ModelConfig model,
@@ -24,7 +27,7 @@ internal sealed class Providers(Func<HttpMessageHandler> createHandler, TimeProv
         string key = await KeyAsync(provider, secrets, cancellationToken).ConfigureAwait(false);
         string ollamaRoot = provider == ProviderName.Ollama ? OllamaRoot(model.OllamaUrl) : string.Empty;
         SdkRules rules = provider == ProviderName.Anthropic ? SdkRules.Anthropic : SdkRules.OpenAI;
-        ApiSender sender = new(createHandler(), time, ApiSender.DefaultRetries, rules, Random.Shared);
+        ApiSender sender = new(createHandler(), time, retries, rules, Random.Shared);
         return ModelClientFactory.Create(provider, modelId, key, ollamaRoot, supportsEffort, sender);
     }
 

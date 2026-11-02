@@ -23,8 +23,6 @@ internal sealed class Delivery(
     DeliveryTransport transport,
     TimeProvider time,
     ILogger logger) {
-    private const string smtpSecret = "smtp_password";
-    private const string resendSecret = "resend_api_key";
     private const int recentRuns = 2;
 
     private static readonly IMessages digestMessages = new EnglishMessages();
@@ -45,6 +43,22 @@ internal sealed class Delivery(
         }
         return lines;
     }
+
+    public static Task<SendFailure?> SendTestAsync(
+        EmailConfig email,
+        string? secret,
+        RenderedDigest rendered,
+        DeliveryTransport transport,
+        IMessages messages,
+        TimeProvider time,
+        CancellationToken cancellationToken) =>
+        SendToAddressesAsync(
+            email,
+            secret,
+            SenderFor(email, rendered, null, transport, messages, time).CreateSender,
+            rendered,
+            messages,
+            cancellationToken);
 
     public async Task<DeliveryResult> DeliverAsync(AppConfig config, RunResult result, CancellationToken cancellationToken) {
         if (result.Status is not (RunStatus.Completed or RunStatus.Failed)) {
@@ -90,9 +104,36 @@ internal sealed class Delivery(
         || data.BudgetPaused
         || data.ModelStopped is not null;
 
+    private static (string? SecretName, Func<string?, EmailAddresses, IEmailSender> CreateSender) SenderFor(
+        EmailConfig email,
+        RenderedDigest rendered,
+        long? runId,
+        DeliveryTransport transport,
+        IMessages messages,
+        TimeProvider time) => email.Via == EmailVia.Resend
+            ? (Credentials.ResendKeyName, (apiKey, addresses) =>
+                new ResendSender(apiKey, IdempotencyKey.For(runId, rendered, addresses), transport, messages, time))
+            : (string.IsNullOrEmpty(email.SmtpUser) ? null : Credentials.SmtpPasswordName,
+                (password, _) => new SmtpSender(email.SmtpUrl, email.SmtpUser, password, transport, messages, time));
+
+    private static async Task<SendFailure?> SendToAddressesAsync(
+        EmailConfig email,
+        string? secret,
+        Func<string?, EmailAddresses, IEmailSender> createSender,
+        RenderedDigest rendered,
+        IMessages messages,
+        CancellationToken cancellationToken) {
+        if (EmailAddresses.From(email) is not EmailAddresses addresses) {
+            return new SendFailure(SendFailureKind.UnusableAddress, messages.EmailUnusableAddress);
+        }
+        IEmailSender sender = createSender(secret, addresses);
+        return await sender.SendAsync(rendered, addresses, cancellationToken).ConfigureAwait(false);
+    }
+
     private async Task<SendFailure?> SendAsync(
         EmailConfig email, RenderedDigest rendered, long? runId, CancellationToken cancellationToken) {
-        (string? secretName, Func<string?, EmailAddresses, IEmailSender> createSender) = SenderFor(email, rendered, runId);
+        (string? secretName, Func<string?, EmailAddresses, IEmailSender> createSender) =
+            SenderFor(email, rendered, runId, transport, messages, time);
         string? secret;
         try {
             secret = secretName is null
@@ -104,17 +145,6 @@ internal sealed class Delivery(
         if (email.Address is null) {
             return new SendFailure(SendFailureKind.MissingAddress, messages.EmailMissingAddress);
         }
-        if (EmailAddresses.From(email) is not EmailAddresses addresses) {
-            return new SendFailure(SendFailureKind.UnusableAddress, messages.EmailUnusableAddress);
-        }
-        IEmailSender sender = createSender(secret, addresses);
-        return await sender.SendAsync(rendered, addresses, cancellationToken).ConfigureAwait(false);
+        return await SendToAddressesAsync(email, secret, createSender, rendered, messages, cancellationToken).ConfigureAwait(false);
     }
-
-    private (string? SecretName, Func<string?, EmailAddresses, IEmailSender> CreateSender) SenderFor(
-        EmailConfig email, RenderedDigest rendered, long? runId) => email.Via == EmailVia.Resend
-            ? (resendSecret, (apiKey, addresses) =>
-                new ResendSender(apiKey, IdempotencyKey.For(runId, rendered, addresses), transport, messages, time))
-            : (string.IsNullOrEmpty(email.SmtpUser) ? null : smtpSecret,
-                (password, _) => new SmtpSender(email.SmtpUrl, email.SmtpUser, password, transport, messages, time));
 }

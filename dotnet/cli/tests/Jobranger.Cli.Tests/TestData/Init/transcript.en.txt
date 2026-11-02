@@ -1,0 +1,41 @@
+
+jobranger setup · 1 of 4 · model
+? Which AI provider should read the ads?
+? API key
+Checking Anthropic...
+✓ Key works.
+Cost estimates assume 9 ads a day.
+? Which model?
+? Monthly limit in USD (empty = no limit)
+
+jobranger setup · 2 of 4 · you
+? Path to your profile
+? Which roles?
+
+jobranger setup · 3 of 4 · limits and sources
+? Level
+? Experience the ad asks for
+? Hide ads that require a master's? (Y/n)
+? Places (empty = anywhere)
+  Anywhere in Norway, open to moving
+Sources
+  ✓ NAV              public job feed
+  ✓ Employer feeds   Teamtailor and Ashby career pages
+  – FINN             off
+  – LinkedIn         off
+    FINN and LinkedIn do not allow automated collection in their terms.
+    Turn them on only for your own, personal use.
+? Turn on FINN or LinkedIn for personal use? (y/N)
+
+jobranger setup · 4 of 4 · delivery
+? How do you want your matches?
+? Email address
+? Send through
+? SMTP server
+? SMTP username
+? SMTP password (Gmail: app password)
+✓ Test email sent to user@example.test
+? Run times (24h, comma separated)
+✓ Saved {home}/config/config.yaml
+✓ Secrets stored in {home}/config/secrets.json on this machine only.
+Next: jobranger run

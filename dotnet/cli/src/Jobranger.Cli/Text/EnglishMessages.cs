@@ -9,6 +9,21 @@ internal sealed class EnglishMessages : IMessages {
     private static readonly string[] numberWords =
         ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
 
+    private static readonly Dictionary<string, string> initLevelLabels = new() {
+        ["junior"] = "Junior",
+        ["mid"] = "Mid-level",
+        ["senior"] = "Senior",
+        ["lead"] = "Tech lead",
+        ["none"] = "No level stated",
+    };
+
+    private static readonly Dictionary<string, string> initYearsLabels = new() {
+        ["0-1"] = "0–1 years",
+        ["1-3"] = "1–3 years",
+        ["3-6"] = "3–6 years",
+        ["6+"] = "6+ years",
+    };
+
     public string RootDescription =>
         "Finds job ads on FINN, NAV, LinkedIn and employer job boards that fit your profile.";
 
@@ -485,6 +500,199 @@ internal sealed class EnglishMessages : IMessages {
     public string EmailResendTooSlow(int seconds) => $"Resend took longer than {seconds} s, so the send was stopped.";
 
     public string EmailSecretStore => "The email password or key could not be read from the secret store.";
+
+    public string InitDescription => "Set up jobranger: model, profile, limits and delivery.";
+
+    public string InitNeedsTerminal => "jobranger init needs a terminal. Run it in a terminal window.";
+
+    public string InitStartOver(string path) => $"A config already exists at {path}. Start over? (y/N)";
+
+    public string InitCancelled => "Setup cancelled. Nothing was saved.";
+
+    public string InitModelTitle => "model";
+
+    public string InitYouTitle => "you";
+
+    public string InitLimitsTitle => "limits and sources";
+
+    public string InitDeliveryTitle => "delivery";
+
+    public string PromptYesOrNo => "Answer y or n.";
+
+    public string PromptMoreChoices => "(Move up and down to see more)";
+
+    public string PromptCheckboxHelp => "(space to pick, enter to go on)";
+
+    public string InitProvider => "Which AI provider should read the ads?";
+
+    public string InitApiKey => "API key";
+
+    public string InitOllamaUrl => "Ollama URL";
+
+    public string InitEnvVarWins(string variable) => $"{variable} is set, so jobranger uses that value when it runs and ignores what you type here.";
+
+    public string InitKeyRejected(string provider) => $"✕ {provider} rejected the key.";
+
+    public string InitChecking(string provider) => $"Checking {provider}...";
+
+    public string InitNotHttpUrl(string url) => $"✕ {url} is not an http:// or https:// address.";
+
+    public string InitEncodeAtSign => "✕ Write @ in a password as %40.";
+
+    public string InitCouldNotReach(string provider) => $"✕ Could not reach {provider}.";
+
+    public string InitOllamaRefused(string url) => $"✕ {url} did not answer as Ollama.";
+
+    public string InitTryAgain => "Try again? (Y/n)";
+
+    public string InitKeyWorks => "✓ Key works.";
+
+    public string InitOllamaAnswered => "✓ Ollama answered.";
+
+    public string InitNoModels(string provider) => $"✕ {provider} has no models to pick from.";
+
+    public string InitModel => "Which model?";
+
+    public string InitModelRowNoPrice(string name) => $"{name}   no price";
+
+    public string InitPriceInput => "Input price, USD per 1M tokens (empty = no price)";
+
+    public string InitPriceOutput => "Output price, USD per 1M tokens";
+
+    public string InitNotAmount => "✕ Write a number such as 1.50.";
+
+    public string InitMonthlyLimit => "Monthly limit in USD (empty = no limit)";
+
+    public string InitSecretStoreFailed => "✕ The secret store did not answer. Unlock it, or keep secrets in a file with: export JOBRANGER_SECRET_STORE=file";
+
+    public string InitProfilePath => "Path to your profile";
+
+    public string InitProfileMissing(string path) => $"✕ No profile file at {path}. A profile file needs at least summary and professional_years.";
+
+    public string InitRoles => "Which roles?";
+
+    public string InitPickOne => "✕ Pick at least one.";
+
+    public string InitLevels => "Level";
+
+    public string InitYears => "Experience the ad asks for";
+
+    public string InitHideMasters => "Hide ads that require a master's? (Y/n)";
+
+    public string InitPlaces => "Places (empty = anywhere)";
+
+    public string InitRelocate => "Open to moving? (Y/n)";
+
+    public string InitAnywhere => "  Anywhere in Norway, open to moving";
+
+    public string InitPlacesMoving(string places) => $"  {places}, open to moving";
+
+    public string InitSourcesHeading => "Sources";
+
+    public string InitSourceNav => "  ✓ NAV              public job feed";
+
+    public string InitSourceEmployers => "  ✓ Employer feeds   Teamtailor and Ashby career pages";
+
+    public string InitSourceFinn => "  – FINN             off";
+
+    public string InitSourceLinkedIn => "  – LinkedIn         off";
+
+    public string InitSourceTerms => "    FINN and LinkedIn do not allow automated collection in their terms.";
+
+    public string InitSourcePersonal => "    Turn them on only for your own, personal use.";
+
+    public string InitOptIn => "Turn on FINN or LinkedIn for personal use? (y/N)";
+
+    public string InitOptInWhich => "Which ones?";
+
+    public string InitChannels => "How do you want your matches?";
+
+    public string InitChannelWebsite => "Website   see and change everything in your browser";
+
+    public string InitChannelEmail => "Email     a short list after each run";
+
+    public string InitAddress => "Email address";
+
+    public string InitNotAddress => "✕ That is not an email address.";
+
+    public string InitSendThrough => "Send through";
+
+    public string InitViaSmtp => "your mail account (SMTP)";
+
+    public string InitViaResend => "Resend";
+
+    public string InitSmtpServer => "SMTP server";
+
+    public string InitNotSmtpServer => "✕ Write the server as host or host:port.";
+
+    public string InitSmtpUser => "SMTP username";
+
+    public string InitSmtpPassword => "SMTP password (Gmail: app password)";
+
+    public string InitResendKey => "Resend API key";
+
+    public string InitSendFrom => "Send from";
+
+    public string InitNotSender => "✕ Write the sender as name <address> or address.";
+
+    public string InitEnterApiKey => "✕ Enter the API key.";
+
+    public string InitEnterSmtpPassword => "✕ Enter the SMTP password.";
+
+    public string InitEnterResendKey => "✕ Enter the Resend API key.";
+
+    public string InitTestSent(string address) => $"✓ Test email sent to {address}";
+
+    public string InitTestFailed(string reason) => $"✕ {reason}";
+
+    public string InitTestSubject => "jobranger test email";
+
+    public string InitTestBody(string stamp) => $"This is a test email from jobranger init. Sent {stamp}.";
+
+    public string InitRunTimes => "Run times (24h, comma separated)";
+
+    public string InitNotRunTime(string time) => $"✕ {time} is not a time in HH:MM form";
+
+    public string InitRunTimesTooClose(int hours) => $"✕ Run times must be at least {hours} hours apart";
+
+    public string InitSaved(string path) => $"✓ Saved {path}";
+
+    public string InitSecretsStored(string place) => $"✓ Secrets stored in {place} on this machine only.";
+
+    public string InitStoreKeychain => "the macOS Keychain";
+
+    public string InitStoreKeyring => "the system keyring";
+
+    public string InitNext => "Next: jobranger run";
+
+    public string InitSaveFailed(string path) => $"✕ Could not write {path}. Check the folder permissions.";
+
+    public string InitConfigDirIsFile(string path) => $"✕ {path} is a file. jobranger needs a folder at that path. Move the file, then run jobranger init again.";
+
+    public string InitConfigIsFolder(string path) => $"✕ {path} is a folder. Remove it, then run jobranger init again.";
+
+    public string InitSecretsUnreadable(string path) => $"Cannot read {path}. Fix or remove the file, then run jobranger init again.";
+
+    public string InitSecretsBusy(string path) => $"Another jobranger process is using {path}. Try again when it ends.";
+
+    public string InitSecretsKept => "The config was not saved. Secrets already written stay in the store until the next jobranger init.";
+
+    public char PromptYesKey => 'y';
+
+    public char PromptNoKey => 'n';
+
+    public string InitStepHeader(int number, int count, string title) => $"jobranger setup · {number} of {count} · {title}";
+
+    public string InitCostBasis(int ads) => $"Cost estimates assume {ads} ads a day.";
+
+    public string InitModelRow(string name, decimal usd) =>
+        string.Create(CultureInfo.InvariantCulture, $"{name}   about ${usd:F2} a day");
+
+    public string InitRoleLabel(string id, string label) => label;
+
+    public string InitLevelLabel(string level) => initLevelLabels[level];
+
+    public string InitYearsLabel(string band) => initYearsLabels[band];
 
     private static string Number(int count) => count < numberWords.Length ? numberWords[count] : $"{count}";
 

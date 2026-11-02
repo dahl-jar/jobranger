@@ -3,6 +3,8 @@ using System.Globalization;
 namespace Jobranger.Cli.Config;
 
 internal static class MailAddresses {
+    public const string DefaultResendSender = "jobranger <onboarding@resend.dev>";
+
     private const char at = '@';
     private const char dot = '.';
     private const char quote = '"';

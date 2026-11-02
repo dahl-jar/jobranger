@@ -5,6 +5,8 @@ using Jobranger.Cli.Secrets;
 namespace Jobranger.Cli.Features.Models;
 
 internal sealed class Models(Func<HttpMessageHandler> createHandler, TimeProvider time) {
+    private const int listRetries = 0;
+
     public static ModelSpec? SpecFor(ProviderName provider, string modelId, PriceOverride? price) =>
         Prices.SpecFor(ModelCatalog.Embedded, provider, modelId, price);
 
@@ -25,20 +27,20 @@ internal sealed class Models(Func<HttpMessageHandler> createHandler, TimeProvide
         string checkedKey = ApiKeys.RequireSaved(
             provider.ToString(), key, message => new ApiException(ApiErrorKind.Auth, message));
         SdkRules rules = provider == ProviderName.Anthropic ? SdkRules.Anthropic : SdkRules.OpenAI;
-        using ApiSender sender = new(createHandler(), time, ApiSender.DefaultRetries, rules, Random.Shared);
+        using ApiSender sender = new(createHandler(), time, listRetries, rules, Random.Shared);
         return provider == ProviderName.Anthropic
             ? await ModelLists.AnthropicAsync(sender, checkedKey, cancellationToken).ConfigureAwait(false)
             : await ModelLists.OpenAIAsync(sender, checkedKey, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<List<ModelInfo>> ListOpenRouterAsync(CancellationToken cancellationToken) {
-        using ApiSender sender = new(createHandler(), time, 0, SdkRules.OpenAI, Random.Shared);
+        using ApiSender sender = new(createHandler(), time, listRetries, SdkRules.OpenAI, Random.Shared);
         return await ModelLists.OpenRouterAsync(sender, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<List<ModelInfo>> ListOllamaAsync(string ollamaUrl, CancellationToken cancellationToken) {
         string root = OllamaUrls.CheckedRoot(ollamaUrl);
-        using ApiSender sender = new(createHandler(), time, 0, SdkRules.OpenAI, Random.Shared);
+        using ApiSender sender = new(createHandler(), time, listRetries, SdkRules.OpenAI, Random.Shared);
         return await ModelLists.OllamaAsync(sender, root, cancellationToken).ConfigureAwait(false);
     }
 }

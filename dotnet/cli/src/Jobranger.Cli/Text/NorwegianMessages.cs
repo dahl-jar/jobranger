@@ -13,6 +13,29 @@ internal sealed class NorwegianMessages : IMessages {
     private static readonly string[] shortMonths =
         ["jan", "feb", "mar", "apr", "mai", "jun", "jul", "aug", "sep", "okt", "nov", "des"];
 
+    private static readonly Dictionary<string, string> initRoleLabels = new() {
+        ["mobile"] = "Mobil",
+        ["devops_platform"] = "DevOps og plattform",
+        ["ml_ai"] = "ML og AI",
+        ["embedded"] = "Innebygd",
+        ["game"] = "Spill",
+    };
+
+    private static readonly Dictionary<string, string> initLevelLabels = new() {
+        ["junior"] = "Junior",
+        ["mid"] = "Middels",
+        ["senior"] = "Senior",
+        ["lead"] = "Tech lead",
+        ["none"] = "Nivå ikke oppgitt",
+    };
+
+    private static readonly Dictionary<string, string> initYearsLabels = new() {
+        ["0-1"] = "0–1 år",
+        ["1-3"] = "1–3 år",
+        ["3-6"] = "3–6 år",
+        ["6+"] = "6+ år",
+    };
+
     public string RootDescription =>
         "Finner stillingsannonser på FINN, NAV, LinkedIn og arbeidsgiveres jobbsider som passer profilen din.";
 
@@ -490,6 +513,199 @@ internal sealed class NorwegianMessages : IMessages {
     public string EmailResendTooSlow(int seconds) => $"Resend brukte mer enn {seconds} s, så sendingen ble stoppet.";
 
     public string EmailSecretStore => "E-postpassordet eller -nøkkelen kunne ikke leses fra hemmelighetslageret.";
+
+    public string InitDescription => "Sett opp jobranger: modell, profil, grenser og levering.";
+
+    public string InitNeedsTerminal => "jobranger init trenger en terminal. Kjør kommandoen i et terminalvindu.";
+
+    public string InitStartOver(string path) => $"Det finnes allerede et oppsett på {path}. Vil du starte på nytt? (j/N)";
+
+    public string InitCancelled => "Oppsettet ble avbrutt. Ingenting ble lagret.";
+
+    public string InitModelTitle => "modell";
+
+    public string InitYouTitle => "om deg";
+
+    public string InitLimitsTitle => "grenser og kilder";
+
+    public string InitDeliveryTitle => "levering";
+
+    public string PromptYesOrNo => "Svar j eller n.";
+
+    public string PromptMoreChoices => "(Bruk opp og ned for å se flere)";
+
+    public string PromptCheckboxHelp => "(mellomrom for å velge, enter for å gå videre)";
+
+    public string InitProvider => "Hvilken AI-leverandør skal lese annonsene?";
+
+    public string InitApiKey => "API-nøkkel";
+
+    public string InitOllamaUrl => "Ollama-adresse";
+
+    public string InitEnvVarWins(string variable) => $"{variable} er satt, så jobranger bruker den verdien når den kjører og ser bort fra det du skriver her.";
+
+    public string InitKeyRejected(string provider) => $"✕ {provider} avviste nøkkelen.";
+
+    public string InitChecking(string provider) => $"Sjekker {provider}...";
+
+    public string InitNotHttpUrl(string url) => $"✕ {url} er ikke en http://- eller https://-adresse.";
+
+    public string InitEncodeAtSign => "✕ Skriv @ i et passord som %40.";
+
+    public string InitCouldNotReach(string provider) => $"✕ Kunne ikke nå {provider}.";
+
+    public string InitOllamaRefused(string url) => $"✕ {url} svarte ikke som Ollama.";
+
+    public string InitTryAgain => "Prøve igjen? (J/n)";
+
+    public string InitKeyWorks => "✓ Nøkkelen virker.";
+
+    public string InitOllamaAnswered => "✓ Ollama svarte.";
+
+    public string InitNoModels(string provider) => $"✕ {provider} har ingen modeller å velge mellom.";
+
+    public string InitModel => "Hvilken modell?";
+
+    public string InitModelRowNoPrice(string name) => $"{name}   ingen pris";
+
+    public string InitPriceInput => "Inndatapris, USD per 1M tokens (tomt = ingen pris)";
+
+    public string InitPriceOutput => "Utdatapris, USD per 1M tokens";
+
+    public string InitNotAmount => "✕ Skriv et tall, for eksempel 1.50.";
+
+    public string InitMonthlyLimit => "Månedsgrense i USD (tomt = ingen grense)";
+
+    public string InitSecretStoreFailed => "✕ Hemmelighetslageret svarte ikke. Lås det opp, eller ha hemmeligheter i en fil med: export JOBRANGER_SECRET_STORE=file";
+
+    public string InitProfilePath => "Sti til profilen din";
+
+    public string InitProfileMissing(string path) => $"✕ Ingen profilfil på {path}. En profilfil må minst ha summary og professional_years.";
+
+    public string InitRoles => "Hvilke roller?";
+
+    public string InitPickOne => "✕ Velg minst én.";
+
+    public string InitLevels => "Nivå";
+
+    public string InitYears => "Erfaring annonsen ber om";
+
+    public string InitHideMasters => "Skjul annonser som krever master? (J/n)";
+
+    public string InitPlaces => "Steder (tomt = hvor som helst)";
+
+    public string InitRelocate => "Kan du flytte? (J/n)";
+
+    public string InitAnywhere => "  Hvor som helst i Norge, kan flytte";
+
+    public string InitPlacesMoving(string places) => $"  {places}, kan flytte";
+
+    public string InitSourcesHeading => "Kilder";
+
+    public string InitSourceNav => "  ✓ NAV              åpen stillingsfeed";
+
+    public string InitSourceEmployers => "  ✓ Karrieresider    Teamtailor og Ashby";
+
+    public string InitSourceFinn => "  – FINN             av";
+
+    public string InitSourceLinkedIn => "  – LinkedIn         av";
+
+    public string InitSourceTerms => "    Vilkårene til FINN og LinkedIn tillater ikke automatisk innsamling.";
+
+    public string InitSourcePersonal => "    Slå dem bare på til egen, personlig bruk.";
+
+    public string InitOptIn => "Slå på FINN eller LinkedIn til personlig bruk? (j/N)";
+
+    public string InitOptInWhich => "Hvilke?";
+
+    public string InitChannels => "Hvordan vil du få treffene?";
+
+    public string InitChannelWebsite => "Nettside   se og endre alt i nettleseren";
+
+    public string InitChannelEmail => "E-post     en kort liste etter hver kjøring";
+
+    public string InitAddress => "E-postadresse";
+
+    public string InitNotAddress => "✕ Det er ikke en e-postadresse.";
+
+    public string InitSendThrough => "Send via";
+
+    public string InitViaSmtp => "e-postkontoen din (SMTP)";
+
+    public string InitViaResend => "Resend";
+
+    public string InitSmtpServer => "SMTP-server";
+
+    public string InitNotSmtpServer => "✕ Skriv serveren som vert eller vert:port.";
+
+    public string InitSmtpUser => "SMTP-brukernavn";
+
+    public string InitSmtpPassword => "SMTP-passord (Gmail: app-passord)";
+
+    public string InitResendKey => "Resend API-nøkkel";
+
+    public string InitSendFrom => "Send fra";
+
+    public string InitNotSender => "✕ Skriv avsenderen som navn <adresse> eller adresse.";
+
+    public string InitEnterApiKey => "✕ Skriv inn API-nøkkelen.";
+
+    public string InitEnterSmtpPassword => "✕ Skriv inn SMTP-passordet.";
+
+    public string InitEnterResendKey => "✕ Skriv inn Resend API-nøkkelen.";
+
+    public string InitTestSent(string address) => $"✓ Test-e-post sendt til {address}";
+
+    public string InitTestFailed(string reason) => $"✕ {reason}";
+
+    public string InitTestSubject => "jobranger test-e-post";
+
+    public string InitTestBody(string stamp) => $"Dette er en test-e-post fra jobranger init. Sendt {stamp}.";
+
+    public string InitRunTimes => "Kjøretider (24 t, skilt med komma)";
+
+    public string InitNotRunTime(string time) => $"✕ {time} er ikke et klokkeslett på formen TT:MM";
+
+    public string InitRunTimesTooClose(int hours) => $"✕ Kjøretidene må ligge minst {hours} timer fra hverandre";
+
+    public string InitSaved(string path) => $"✓ Lagret {path}";
+
+    public string InitSecretsStored(string place) => $"✓ Hemmeligheter lagret i {place}, bare på denne maskinen.";
+
+    public string InitStoreKeychain => "macOS-nøkkelringen";
+
+    public string InitStoreKeyring => "systemets nøkkelring";
+
+    public string InitNext => "Neste: jobranger run";
+
+    public string InitSaveFailed(string path) => $"✕ Kunne ikke skrive {path}. Sjekk tillatelsene på mappen.";
+
+    public string InitConfigDirIsFile(string path) => $"✕ {path} er en fil. jobranger trenger en mappe på den stien. Flytt filen, og kjør jobranger init på nytt.";
+
+    public string InitConfigIsFolder(string path) => $"✕ {path} er en mappe. Fjern den, og kjør jobranger init på nytt.";
+
+    public string InitSecretsUnreadable(string path) => $"Kan ikke lese {path}. Rett eller fjern filen, og kjør jobranger init på nytt.";
+
+    public string InitSecretsBusy(string path) => $"En annen jobranger-prosess bruker {path}. Prøv igjen når den er ferdig.";
+
+    public string InitSecretsKept => "Oppsettet ble ikke lagret. Hemmeligheter som alt er skrevet, blir i lageret til neste jobranger init.";
+
+    public char PromptYesKey => 'j';
+
+    public char PromptNoKey => 'n';
+
+    public string InitStepHeader(int number, int count, string title) => $"jobranger-oppsett · {number} av {count} · {title}";
+
+    public string InitCostBasis(int ads) => $"Kostnadsanslagene regner med {ads} annonser om dagen.";
+
+    public string InitModelRow(string name, decimal usd) =>
+        string.Create(CultureInfo.InvariantCulture, $"{name}   omtrent ${usd:F2} om dagen");
+
+    public string InitRoleLabel(string id, string label) => initRoleLabels.GetValueOrDefault(id, label);
+
+    public string InitLevelLabel(string level) => initLevelLabels[level];
+
+    public string InitYearsLabel(string band) => initYearsLabels[band];
 
     private static string AdsWait(int pending) => pending == 1 ? "annonse venter" : "annonser venter";
 }
