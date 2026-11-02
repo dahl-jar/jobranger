@@ -12,7 +12,7 @@ using NSec.Cryptography;
 
 namespace Jobranger.Cli.Features.Link;
 
-internal sealed partial class RelayApiClient(HttpClient client, Uri relay) {
+internal sealed partial class RelayApiClient(HttpClient client, Uri relay, TimeProvider time) {
     private const string nonceRoute = "pair/nonce";
     private const string startRoute = "pair/start";
     private const string sessionRoute = "session/cli";
@@ -30,6 +30,8 @@ internal sealed partial class RelayApiClient(HttpClient client, Uri relay) {
     private const int maxBodyBytes = 64 * 1024;
     private const int clientErrorStart = 400;
     private const int serverErrorStart = 500;
+
+    public static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(15);
 
     public async Task<PairingStart> StartPairingAsync(Key signing, CancellationToken cancellationToken) {
         using JsonDocument started =
@@ -75,12 +77,15 @@ internal sealed partial class RelayApiClient(HttpClient client, Uri relay) {
         using HttpRequestMessage request = new(HttpMethod.Post, ServiceUrls.Join(relay, route)) {
             Content = content,
         };
+        using CancellationTokenSource deadline = new(RequestTimeout, time);
+        using CancellationTokenSource limited =
+            CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, deadline.Token);
         try {
             using HttpResponseMessage response = await client
-                .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+                .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, limited.Token)
                 .ConfigureAwait(false);
-            await using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-            byte[] body = await CappedReader.ReadAsync(stream, maxBodyBytes, cancellationToken).ConfigureAwait(false);
+            await using Stream stream = await response.Content.ReadAsStreamAsync(limited.Token).ConfigureAwait(false);
+            byte[] body = await CappedReader.ReadAsync(stream, maxBodyBytes, limited.Token).ConfigureAwait(false);
             int status = (int)response.StatusCode;
             if (status >= clientErrorStart && status < serverErrorStart) {
                 throw new RelayRejectedException(status, ProblemCode(body));
@@ -91,7 +96,7 @@ internal sealed partial class RelayApiClient(HttpClient client, Uri relay) {
             }
             return Parse(body);
         } catch (Exception error) when (error is HttpRequestException or BodyTooLargeException or IOException
-                                            || error is TaskCanceledException && !cancellationToken.IsCancellationRequested) {
+                                            || error is OperationCanceledException && !cancellationToken.IsCancellationRequested) {
             throw new RelayUnavailableException($"relay request failed route={route}", error);
         }
     }
