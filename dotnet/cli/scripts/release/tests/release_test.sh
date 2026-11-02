@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-expected_tests=46
+expected_tests=47
 fixture_version="0.4.1"
 fixture_rids=(osx-arm64 linux-x64)
 linux_archive="jobranger-$fixture_version-linux-x64.tar.gz"
@@ -363,6 +363,17 @@ should_print_one_line_when_failed_run_has_failed_check() {
 
   assert_eq 1 "$status"
   assert_eq "PR #89: Test backend / Format, build and test is failure" "$(grep '^PR #89:' stderr.txt)"
+}
+
+should_fail_when_run_failed_with_green_checks() {
+  green_mocks
+  mock_run_conclusion "Test CLI" failure
+  local status=0
+
+  gate_of "$(pr_row false)" 2>stderr.txt || status=$?
+
+  assert_eq 1 "$status"
+  assert_eq "PR #89: Test CLI is failure" "$(grep '^PR #89:' stderr.txt)"
 }
 
 should_list_merged_pr_of_every_commit_since_previous_tag() {
