@@ -1,0 +1,52 @@
+name: Compare tests with base
+description: Lists the tests of one project in the merge commit and in its first parent, and fails when a test of the parent is missing. Needs a checkout with fetch-depth 2.
+
+inputs:
+  project:
+    description: Test project file, relative to dotnet/
+    required: true
+  pull-request:
+    description: Number of the pull request whose tests-removed label allows a removal
+    required: true
+  token:
+    description: Token that can read the pull request
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: git worktree add --detach .test-ratchet/base HEAD^1
+
+    - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+      with:
+        global-json-file: .test-ratchet/base/dotnet/global.json
+
+    - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68
+      with:
+        global-json-file: dotnet/global.json
+
+    - shell: bash
+      env:
+        PROJECT: ${{ inputs.project }}
+      run: |
+        for row in head:dotnet base:.test-ratchet/base/dotnet; do
+          (
+            cd "${row#*:}"
+            dotnet restore "$PROJECT" --locked-mode
+            dotnet build "$PROJECT" -c Release --no-restore
+            dotnet test --project "$PROJECT" -c Release --no-build --list-tests >"$RUNNER_TEMP/${row%%:*}-tests.txt"
+          )
+        done
+
+    - id: label
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        PR: ${{ inputs.pull-request }}
+      run: echo "allow=$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR" --jq '[.labels[].name] | index("tests-removed") != null')" >>"$GITHUB_OUTPUT"
+
+    - shell: bash
+      env:
+        ALLOW: ${{ steps.label.outputs.allow }}
+      run: bash .github/scripts/missing_tests.sh "$RUNNER_TEMP/base-tests.txt" "$RUNNER_TEMP/head-tests.txt" "$ALLOW"

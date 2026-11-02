@@ -13,12 +13,17 @@ on:
       - dotnet/.config/dotnet-tools.json
       - .editorconfig
       - .github/actions/dotnet-setup/**
+      - .github/scripts/tests/shell_test_runner.sh
       - .github/workflows/relay.yml
   workflow_call:
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:

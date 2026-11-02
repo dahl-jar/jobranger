@@ -40,8 +40,7 @@ CLI_CONTRACT = ROOT / "cli-python" / "src" / "jobranger" / "contract"
 WORKFLOWS = ROOT / ".github" / "workflows"
 RELEASE_WORKFLOW = "release-cli.yml"
 RELAY_RELEASE_WORKFLOW = "release-relay.yml"
-RELEASE_GATE_JOB = "version"
-COMPONENT_WORKFLOWS = sorted(
+PULL_REQUEST_WORKFLOWS = sorted(
     path.name
     for path in WORKFLOWS.glob("*.yml")
     if path.name not in {RELEASE_WORKFLOW, RELAY_RELEASE_WORKFLOW}
@@ -1245,6 +1244,7 @@ def test_should_not_mark_hand_written_code_as_generated(path: Path) -> None:
         ("messages.yml", "dotnet/Directory.*.props"),
         ("messages.yml", "dotnet/global.json"),
         ("messages.yml", "dotnet/nuget.config"),
+        ("cli-python.yml", ".github/workflows/**"),
     ],
 )
 def test_should_run_workflow_on_contract_change(workflow: str, path: str) -> None:
@@ -1253,22 +1253,8 @@ def test_should_run_workflow_on_contract_change(workflow: str, path: str) -> Non
     assert path in paths
 
 
-@pytest.mark.parametrize("workflow", COMPONENT_WORKFLOWS)
-def test_should_gate_release_on_component_workflow(workflow: str) -> None:
-    jobs = load_workflow(RELEASE_WORKFLOW)["jobs"]
-
-    callers = [
-        name
-        for name, job in jobs.items()
-        if job.get("uses") == f"./.github/workflows/{workflow}"
-    ]
-
-    assert callers
-    assert set(callers) <= set(jobs[RELEASE_GATE_JOB]["needs"])
-
-
-@pytest.mark.parametrize("workflow", COMPONENT_WORKFLOWS)
-def test_should_let_release_call_component_workflow(workflow: str) -> None:
+@pytest.mark.parametrize("workflow", PULL_REQUEST_WORKFLOWS)
+def test_should_run_workflow_on_pull_request(workflow: str) -> None:
     triggers = load_workflow(workflow)["on"]
 
-    assert "workflow_call" in triggers
+    assert "pull_request" in triggers

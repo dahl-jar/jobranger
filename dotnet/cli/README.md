@@ -27,9 +27,11 @@ The `Files/` tests and `ConfigFileTests` use real files, so they need macOS or L
 
 ## release
 
-Every push to `main` runs `.github/workflows/release-cli.yml`. It calls every component workflow, and when all of them pass it builds the CLI for osx-arm64 and linux-x64 and publishes a GitHub release tagged `cli-vX.Y.Z` with the archives, `SHA256SUMS` and `install.sh`. The version comes from the tag, passed to `dotnet publish -p:Version=`, and the csproj keeps `0.1.0` for local builds.
+A release starts when someone runs `.github/workflows/release-cli.yml` on `main`, from the Actions tab or with `gh workflow run release-cli.yml --ref main`. The run first checks that every pull request merged since the last `cli-v*` tag passed its checks. It then builds the CLI for osx-arm64 and linux-x64 and publishes a GitHub release tagged `cli-vX.Y.Z` with the archives, `SHA256SUMS` and `install.sh`. The version comes from the tag, passed to `dotnet publish -p:Version=`, and the csproj keeps `0.1.0` for local builds. To run every step except the publish, add `-f dry-run=true`. To release past a commit on `main` that has no pull request, add `-f accepted-commits="<full sha> ..."`.
 
-The PR title picks the bump: `feat:` raises the minor version, a `!` before the colon raises the minor version before 1.0 and the major version after it, and any other title raises the patch version. A push without a PR uses the commit subject. A commit that is already in a release gets no new one, so a re-run is safe.
+The titles of the pull requests since the last tag pick the bump. A `feat:` title raises the minor version, a `!` before the colon raises the minor version before 1.0 and the major version after it, and with neither the patch version goes up. A run whose commit is already in a release publishes nothing.
+
+A run stops before it publishes when `main` has a newer commit than the run, and the message says to start a new run. A run also stops when a merged pull request has a check that did not pass, and it names the pull request and the check. Re-run that check, or add the `release-checks-waived` label to the pull request, then start a new run.
 
 ```bash
 bash cli/scripts/release/tests/release_test.sh

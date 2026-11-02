@@ -13,12 +13,19 @@ on:
       - dotnet/.config/dotnet-tools.json
       - .editorconfig
       - .github/actions/dotnet-setup/**
+      - .github/actions/cli-publish/**
+      - .github/actions/test-ratchet/**
+      - .github/scripts/cli_macos_jobs.sh
+      - .github/scripts/missing_tests.sh
       - .github/workflows/cli.yml
-  workflow_call:
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:
@@ -32,10 +39,54 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - uses: ./.github/actions/dotnet-setup
-      - run: dotnet test --project cli/tests/Jobranger.Cli.Tests -c Release --no-build --minimum-expected-tests 4816
+      - run: dotnet test --project cli/tests/Jobranger.Cli.Tests -c Release --no-build
+
+  ratchet:
+    name: Compare tests with base
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 2
+
+      - uses: ./.github/actions/test-ratchet
+        with:
+          project: cli/tests/Jobranger.Cli.Tests/Jobranger.Cli.Tests.csproj
+          pull-request: ${{ github.event.pull_request.number }}
+          token: ${{ github.token }}
+
+  changes:
+    name: Find macOS inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      publish: ${{ steps.inputs.outputs.publish }}
+      secrets: ${{ steps.inputs.outputs.secrets }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 2
+
+      - id: inputs
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            git diff --name-only --no-renames HEAD^1 HEAD | bash .github/scripts/cli_macos_jobs.sh >>"$GITHUB_OUTPUT"
+          else
+            printf 'publish=true\nsecrets=true\n' >>"$GITHUB_OUTPUT"
+          fi
 
   secrets-macos:
     name: Secret store on macOS
+    needs: changes
+    if: needs.changes.outputs.secrets == 'true'
     runs-on: macos-15
     timeout-minutes: 15
     defaults:
@@ -88,18 +139,10 @@ jobs:
         env:
           JOBRANGER_SECRET_STORE_LIVE: "1"
 
-  publish:
-    name: Publish ${{ matrix.rid }}
-    runs-on: ${{ matrix.os }}
+  publish-linux:
+    name: Publish linux-x64
+    runs-on: ubuntu-latest
     timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            rid: linux-x64
-          - os: macos-15
-            rid: osx-arm64
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
@@ -109,7 +152,25 @@ jobs:
 
       - uses: ./.github/actions/cli-publish
         with:
-          rid: ${{ matrix.rid }}
+          rid: linux-x64
+          output: ${{ runner.temp }}/publish
+
+  publish-macos:
+    name: Publish osx-arm64
+    needs: changes
+    if: needs.changes.outputs.publish == 'true'
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - uses: ./.github/actions/dotnet-setup
+        with:
+          build: "false"
+
+      - uses: ./.github/actions/cli-publish
+        with:
+          rid: osx-arm64
           output: ${{ runner.temp }}/publish
 
   image:
