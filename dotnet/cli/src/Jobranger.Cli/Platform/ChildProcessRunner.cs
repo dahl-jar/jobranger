@@ -37,6 +37,14 @@ internal sealed class ChildProcessRunner : IChildProcessRunner {
         return new ChildExit(exitCode, timedOut ? [] : output, timedOut, tooLarge);
     }
 
+    public static void KillTree(Process process) {
+        try {
+            process.Kill(entireProcessTree: true);
+        } catch (Exception error) when (error is InvalidOperationException or Win32Exception) {
+            return;
+        }
+    }
+
     private static ProcessStartInfo StartInfo(ChildRequest request) {
         ProcessStartInfo start = new(request.Program) {
             RedirectStandardInput = true,
@@ -78,14 +86,6 @@ internal sealed class ChildProcessRunner : IChildProcessRunner {
             output.Write(buffer, 0, read);
         }
         return (output.ToArray(), false);
-    }
-
-    private static void KillTree(Process process) {
-        try {
-            process.Kill(entireProcessTree: true);
-        } catch (Exception error) when (error is InvalidOperationException or Win32Exception) {
-            return;
-        }
     }
 
     private static async Task SettleAsync(Task pending) {
