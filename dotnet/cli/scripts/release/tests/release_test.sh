@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-expected_tests=45
+expected_tests=46
 fixture_version="0.4.1"
 fixture_rids=(osx-arm64 linux-x64)
 linux_archive="jobranger-$fixture_version-linux-x64.tar.gz"
@@ -17,7 +17,7 @@ workflow_runs="$release_dir/tests/mocks/workflow-runs.json"
 ref_main="$release_dir/tests/mocks/ref-main.json"
 repository="owner/jobranger"
 head_sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-backend_suite=112311523847
+backend_suite=400000000002
 other_sha="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 unknown_sha="cccccccccccccccccccccccccccccccccccccccc"
 endpoint_chars='/?=&'
@@ -204,6 +204,10 @@ mock_failed_backend_check() {
   mock_checks "(.check_runs[] | select(.check_suite.id == $backend_suite)).conclusion = \"failure\""
 }
 
+mock_run_conclusion() {
+  mock_edit "$runs_endpoint" "$workflow_runs" "(.workflow_runs[] | select(.name == \"$1\")).conclusion = \"$2\""
+}
+
 add_test_cli_run() {
   mock_edit "$runs_endpoint" "$workflow_runs" ".workflow_runs += [.workflow_runs[] | select(.name == \"Test CLI\") | $1] | .total_count = 4"
 }
@@ -339,7 +343,7 @@ should_pass_when_pr_head_has_no_check_runs() {
 
 should_fail_when_workflow_run_ended_without_checks() {
   green_mocks
-  mock_edit "$runs_endpoint" "$workflow_runs" '(.workflow_runs[] | select(.name == "Test CLI")).conclusion = "startup_failure"'
+  mock_run_conclusion "Test CLI" startup_failure
   mock_checks '.check_runs = [] | .total_count = 0'
   local status=0
 
@@ -347,6 +351,18 @@ should_fail_when_workflow_run_ended_without_checks() {
 
   assert_eq 1 "$status"
   assert_contains "$(cat stderr.txt)" "PR #89: Test CLI is startup_failure"
+}
+
+should_print_one_line_when_failed_run_has_failed_check() {
+  green_mocks
+  mock_run_conclusion "Test backend" failure
+  mock_failed_backend_check
+  local status=0
+
+  gate_of "$(pr_row false)" 2>stderr.txt || status=$?
+
+  assert_eq 1 "$status"
+  assert_eq "PR #89: Test backend / Format, build and test is failure" "$(grep '^PR #89:' stderr.txt)"
 }
 
 should_list_merged_pr_of_every_commit_since_previous_tag() {

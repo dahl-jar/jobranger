@@ -80,7 +80,13 @@ should_fail_when_base_list_has_no_tests() {
 
 should_skip_both_macos_jobs_when_every_file_is_on_skip_list() {
   local file
-  for file in dotnet/cli/README.md messages/fixtures/envelope/a.json; do
+  for file in \
+    dotnet/cli/README.md \
+    dotnet/cli/scripts/release/check_prs.sh \
+    dotnet/cli/deploy/Dockerfile \
+    .github/actions/test-ratchet/action.yml \
+    .github/scripts/missing_tests.sh \
+    messages/fixtures/envelope/a.json; do
     assert_jobs "$file" false false
   done
 }
@@ -89,6 +95,7 @@ should_run_one_macos_job_when_file_skips_the_other() {
   local row file publish secrets
   for row in \
     "dotnet/cli/tests/Jobranger.Cli.Tests/ConfigFileTests.cs false true" \
+    "dotnet/messages/tests/Jobranger.Messaging.Tests.csproj false true" \
     "messages/fixtures/crypto/a.json false true" \
     "messages/fixtures/matching/a.json false true" \
     "dotnet/relay/src/Jobranger.Relay/Program.cs false true" \
