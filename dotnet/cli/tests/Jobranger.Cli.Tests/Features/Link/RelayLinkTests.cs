@@ -4,6 +4,7 @@ using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Messaging.Envelopes;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging.Testing;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Jobranger.Cli.Tests.Features.Link;
 
@@ -28,7 +29,7 @@ public sealed class RelayLinkTests : IAsyncLifetime {
 
     public async ValueTask InitializeAsync() {
         await relay.StartAsync();
-        api = new RelayApiClient(http, relay.Address);
+        api = new RelayApiClient(http, relay.Address, new FakeTimeProvider());
         link = new RelayLink(
             new HubConnector(relay.Address, TimeProvider.System), NextHandleAsync, TimeProvider.System, () => jitter, logger);
     }

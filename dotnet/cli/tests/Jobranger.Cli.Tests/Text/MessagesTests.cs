@@ -69,4 +69,30 @@ public sealed class MessagesTests {
 
         Assert.Contains("jobranger --help", hint, StringComparison.Ordinal);
     }
+
+    [Theory]
+    [InlineData(Locales.English, 1, 1.5, "  Rechecks 1 ad on the next run, up to about $1.50.")]
+    [InlineData(Locales.English, 2, 0.126, "  Rechecks 2 ads on the next run, up to about $0.13.")]
+    [InlineData(Locales.Norwegian, 1, 1.5, "  Sjekker 1 annonse på nytt ved neste kjøring, opptil omtrent $1.50.")]
+    [InlineData(Locales.Norwegian, 2, 0.126, "  Sjekker 2 annonser på nytt ved neste kjøring, opptil omtrent $0.13.")]
+    public void ShouldFormatRecheckLine_WhenCostIsKnown(string lang, int ads, double cost, string line) {
+        IMessages messages = Messages.For(null, Locales.EnvironmentWithoutConfig(lang));
+
+        string text = messages.RecheckAdsCost(ads, (decimal)cost);
+
+        Assert.Equal(line, text);
+    }
+
+    [Theory]
+    [InlineData(Locales.English, 1, "  Rechecks 1 ad on the next run.")]
+    [InlineData(Locales.English, 2, "  Rechecks 2 ads on the next run.")]
+    [InlineData(Locales.Norwegian, 1, "  Sjekker 1 annonse på nytt ved neste kjøring.")]
+    [InlineData(Locales.Norwegian, 2, "  Sjekker 2 annonser på nytt ved neste kjøring.")]
+    public void ShouldFormatRecheckLine_WhenCostIsUnknown(string lang, int ads, string line) {
+        IMessages messages = Messages.For(null, Locales.EnvironmentWithoutConfig(lang));
+
+        string text = messages.RecheckAds(ads);
+
+        Assert.Equal(line, text);
+    }
 }

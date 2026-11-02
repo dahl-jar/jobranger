@@ -119,6 +119,10 @@ internal sealed class EnglishMessages : IMessages {
 
     public string PairKeysBroken => "The link keys cannot be used. Run jobranger unpair to make new ones.";
 
+    public string PairKeysBlocked(string path, string reason) =>
+        $"Pairing cannot start because jobranger cannot open or change {path} ({reason}). "
+        + "Make that file and its folder readable and writable, then run jobranger pair again.";
+
     public string PairOpenPage => "Open this page in your browser:";
 
     public string PairEnterCode => "and enter this code:";
@@ -214,6 +218,71 @@ internal sealed class EnglishMessages : IMessages {
     public string ProfileMissing(string path) => $"No profile file at {path}. Set up with: jobranger init";
 
     public string FileAccessFailed => "Cannot read a jobranger file. Check the folder permissions.";
+
+    public string ConfigDescription => "Show or edit the config file.";
+
+    public string ConfigShowDescription => "Print the config file.";
+
+    public string ConfigEditDescription => "Open the config file in your editor.";
+
+    public string GuidanceDescription => "Show, edit or reset the matching guidance.";
+
+    public string GuidanceShowDescription => "Print the matching guidance.";
+
+    public string GuidanceEditDescription => "Open the matching guidance in your editor.";
+
+    public string GuidanceResetDescription => "Go back to the default guidance.";
+
+    public string AboutDescription => "Edit the text about you.";
+
+    public string AboutEditDescription => "Open the text about you in your editor.";
+
+    public string ContextDescription => "Show your context documents.";
+
+    public string ContextListDescription => "List your context documents.";
+
+    public string Saved(string path) => $"✓ Saved {path}";
+
+    public string SaveFailed(string path) => $"✕ Could not write {path}.";
+
+    public string EditAgain => "Edit again? (Y/n) ";
+
+    public IReadOnlyList<string> EditNoAnswers { get; } = ["n", "no"];
+
+    public IReadOnlyList<string> EditYesAnswers => PairYesAnswers;
+
+    public string NoChanges => "No changes.";
+
+    public string SaveAfterFailure => "The editor exited with an error. Save your changes? (y/N) ";
+
+    public string EditorFailedExit => "✕ The editor exited with an error. Nothing was saved.";
+
+    public string EditorNotStarted(string program) => $"✕ Could not start the editor {program}. Set $VISUAL or $EDITOR.";
+
+    public string EditorTempFile => "✕ Could not read or write the temporary edit file. Nothing was saved.";
+
+    public string RecheckAds(int ads) => $"  Rechecks {ads} {(ads == 1 ? "ad" : "ads")} on the next run.";
+
+    public string RecheckAdsCost(int ads, decimal costUsd) => string.Create(
+        CultureInfo.InvariantCulture,
+        $"  Rechecks {ads} {(ads == 1 ? "ad" : "ads")} on the next run, up to about ${costUsd:F2}.");
+
+    public string ConfigKept => "Kept the previous config.";
+
+    public string GuidanceShowDefault => "# Matching guidance: default";
+
+    public string GuidanceShowEdited(string path) => $"# Matching guidance: edited ({path})";
+
+    public string GuidanceBackToDefault => "✓ Back to the default guidance.";
+
+    public string GuidanceKept => "Kept the previous guidance.";
+
+    public string AboutKept => "Kept the previous text.";
+
+    public string ContextListLine(string id, string name, int chars, string addedAt) =>
+        $"{id}  {name}  {chars} chars  added {addedAt}";
+
+    public string ContextListEmpty => "No context documents. Add one with: jobranger context add <file>";
 
     public Language Language => Language.En;
 
