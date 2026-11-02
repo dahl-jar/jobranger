@@ -21,6 +21,7 @@ public sealed class MailAddressesTests {
     [InlineData("user..name@example.com")]
     [InlineData("user@example..com")]
     [InlineData("user@a,b.example")]
+    [InlineData("user@a b.example")]
     public void ShouldRejectAddress_WhenItIsNotOneAddress(string address) {
         bool valid = MailAddresses.IsAddress(address);
 
@@ -54,5 +55,19 @@ public sealed class MailAddressesTests {
         bool valid = MailAddresses.IsMailbox(sender);
 
         Assert.False(valid);
+    }
+
+    [Fact]
+    public void ShouldConvertDomainToAscii_WhenAddressIsInternational() {
+        string? ascii = MailAddresses.AsciiAddress("user@bücher.example");
+
+        Assert.Equal("user@xn--bcher-kva.example", ascii);
+    }
+
+    [Fact]
+    public void ShouldKeepDisplayName_WhenMailboxDomainIsConverted() {
+        string? ascii = MailAddresses.MailboxWithAsciiDomain("Job Ranger <user@bücher.example>");
+
+        Assert.Equal("Job Ranger <user@xn--bcher-kva.example>", ascii);
     }
 }

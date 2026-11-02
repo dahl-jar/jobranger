@@ -2,6 +2,7 @@ using System.Collections;
 using System.Runtime.Versioning;
 using System.Text;
 using System.Text.Json.Nodes;
+using Jobranger.Cli.Commands;
 using Jobranger.Cli.Files;
 using Jobranger.Cli.Logging;
 using Jobranger.Cli.Storage;
@@ -30,6 +31,11 @@ internal static class CommandFixtures {
         ["JOBRANGER_STATE_DIR"] = Path.Combine(temp.Path, "state"),
         ["JOBRANGER_SECRET_STORE"] = "file",
     };
+
+    [UnsupportedOSPlatform("windows")]
+    public static RootCommand CreateRoot(RecordingConsole console, string lang) =>
+        new(CliServices.Create(
+            TimeProvider.System, console.Console, console.ErrorConsole, Locales.EnvironmentWithoutConfig(lang)));
 
     public static string LogPath(Paths paths) => Path.Combine(paths.LogDir(), logFileName);
 
