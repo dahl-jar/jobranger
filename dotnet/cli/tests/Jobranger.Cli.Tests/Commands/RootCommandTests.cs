@@ -135,7 +135,7 @@ public sealed class RootCommandTests {
     [InlineData(ContextCommand.CommandName)]
     public async Task ShouldReturnUsageCode_WhenGroupHasNoSubcommand(string name) {
         using RecordingConsole console = new();
-        RootCommand root = CreateRoot(console, Locales.English);
+        RootCommand root = CommandFixtures.CreateRoot(console, Locales.English);
 
         int code = await root.RunAsync([name], TestContext.Current.CancellationToken);
 
