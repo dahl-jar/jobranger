@@ -1,9 +1,11 @@
 using System.Collections.Specialized;
 using System.Globalization;
 using System.Net;
+using System.Text.RegularExpressions;
 using System.Web;
 using Jobranger.Cli.Features.Sources;
 using Jobranger.Cli.Tests.Mocks;
+using Microsoft.Extensions.Logging.Testing;
 using static Jobranger.Cli.Tests.Mocks.FakeSiteHandler;
 using static Jobranger.Cli.Tests.Mocks.SourceFixtures;
 
@@ -123,12 +125,15 @@ public sealed class LinkedInSourceTests {
         FakeSiteHandler handler = Site(FirstPageOnly,
             id => id == "4000000003" ? Status(HttpStatusCode.TooManyRequests) : Body(postingHtml));
 
-        SourceException error = await Assert.ThrowsAsync<SourceException>(
-            () => source.FetchAsync(Context(handler), CancellationToken.None));
+        await AssertFailsWithoutCursor<HttpRequestException>(handler);
+    }
 
-        Assert.Equal(
-            ("linkedin:4000000001", 0, "linkedin search failed"),
-            (Ids(error.Partial?.Listings), error.Partial?.Cursors.Count, error.Message));
+    [Fact]
+    public async Task ShouldFailWithoutCursor_WhenPostingMatchTimesOut() {
+        FakeSiteHandler handler = Site(FirstPageOnly,
+            id => id == "4000000003" ? throw new RegexMatchTimeoutException() : Body(postingHtml));
+
+        await AssertFailsWithoutCursor<RegexMatchTimeoutException>(handler);
     }
 
     [Fact]
@@ -215,6 +220,21 @@ public sealed class LinkedInSourceTests {
         SourceBatch batch = await source.FetchAsync(Context(handler), cancel.Token);
 
         Assert.Equal(("linkedin:4000000001", 0, true), (Ids(batch.Listings), batch.Cursors.Count, batch.Partial));
+    }
+
+    private static async Task AssertFailsWithoutCursor<TCause>(FakeSiteHandler handler) where TCause : Exception {
+        FakeLogger logger = new();
+
+        SourceException error = await Assert.ThrowsAsync<SourceException>(
+            () => source.FetchAsync(Context(handler, logger: logger), CancellationToken.None));
+
+        Assert.Equal(
+            ("linkedin:4000000001", 0, "linkedin posting failed"),
+            (Ids(error.Partial?.Listings), error.Partial?.Cursors.Count, error.Message));
+        FakeLogRecord record = Assert.Single(logger.Collector.GetSnapshot());
+        Assert.Equal(
+            ("linkedin.posting.failed", "linkedin:4000000003", typeof(TCause)),
+            (record.Id.Name, record.GetStructuredStateValue("AdId"), record.Exception?.GetType()));
     }
 
     private static string FirstPageOnly(string keyword, int start) => start == 0 ? searchHtml : emptyPage;

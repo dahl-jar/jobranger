@@ -29,7 +29,7 @@ internal sealed class FileSecretStore(string path, ILogger logger) {
     }
 
     public IReadOnlyDictionary<string, string> Load() {
-        using FileStream? stream = PrivateFile.OpenRead(Path, logger);
+        using FileStream? stream = Guard(() => PrivateFile.OpenRead(Path, logger));
         if (stream is null) {
             return new Dictionary<string, string>();
         }

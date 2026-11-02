@@ -7,11 +7,8 @@ using Jobranger.Cli.Commands;
 using Jobranger.Cli.Features.Link;
 using Jobranger.Cli.Files;
 using Jobranger.Cli.Secrets;
-using Jobranger.Cli.Storage;
 using Jobranger.Cli.Tests.Mocks;
 using Jobranger.Cli.Text;
-using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.Logging.Abstractions;
 using RootCommand = Jobranger.Cli.Commands.RootCommand;
 
 namespace Jobranger.Cli.Tests.Commands;
@@ -56,9 +53,7 @@ public sealed class PairCommandTests : IDisposable {
 
     [Fact]
     public async Task ShouldPrintDatabaseTooNew_WhenSchemaIsNewer() {
-        using (SqliteConnection database = Database.Open(DatabasePath(), NullLogger.Instance)) {
-            new StateStore(database).Set(StateStore.SchemaVersionKey, "99");
-        }
+        CommandFixtures.MarkSchemaTooNew(DatabasePath());
 
         int exit = await RunAsync();
 
@@ -68,15 +63,29 @@ public sealed class PairCommandTests : IDisposable {
     }
 
     [Theory]
-    [InlineData(Locales.English, "Cannot read the jobranger database at {0}.")]
-    [InlineData(Locales.Norwegian, "Kan ikke lese jobranger-databasen i {0}.")]
+    [InlineData(Locales.English, CommandFixtures.DatabaseUnreadable)]
+    [InlineData(Locales.Norwegian, "Kan ikke lese jobranger-databasen i {0}.\n")]
     public async Task ShouldPrintDatabaseUnreadable_WhenDatabaseIsCorrupt(string lang, string line) {
         environment["LANG"] = lang;
         File.WriteAllBytes(DatabasePath(), Encoding.ASCII.GetBytes(new string('x', corruptBytes)));
 
         int exit = await RunAsync();
 
-        Assert.Equal((CliExitCodes.Failure, string.Format(line, DatabasePath())), (exit, console.Output.TrimEnd()));
+        Assert.Equal((CliExitCodes.Failure, CommandFixtures.WithPath(line, DatabasePath())), (exit, console.Output));
+    }
+
+    [Fact]
+    public async Task ShouldPrintDatabaseUnreadable_WhenMigrationFails() {
+        CommandFixtures.RewindSchema(DatabasePath());
+
+        int exit = await RunAsync();
+
+        Assert.Equal(
+            (CliExitCodes.Failure, CommandFixtures.WithPath(CommandFixtures.DatabaseUnreadable, DatabasePath())),
+            (exit, console.Output));
+        string log = LogText();
+        Assert.Contains("pairing.failed", log, StringComparison.Ordinal);
+        Assert.Contains("migration_failed", log, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -88,8 +97,8 @@ public sealed class PairCommandTests : IDisposable {
         int exit = await RunAsync();
 
         Assert.Equal(
-            (CliExitCodes.Failure, $"Cannot read the jobranger database at {DatabasePath()}."),
-            (exit, console.Output.TrimEnd()));
+            (CliExitCodes.Failure, CommandFixtures.WithPath(CommandFixtures.DatabaseUnreadable, DatabasePath())),
+            (exit, console.Output));
     }
 
     [Fact]
@@ -118,9 +127,8 @@ public sealed class PairCommandTests : IDisposable {
         int exit = await RunAsync();
 
         Assert.Equal(
-            (CliExitCodes.Failure,
-                $"Cannot create or use the folder {data}. Make it and the folders above it writable, then try again."),
-            (exit, console.Output.TrimEnd()));
+            (CliExitCodes.Failure, CommandFixtures.WithPath(CommandFixtures.DirNotWritable, data)),
+            (exit, console.Output));
         string log = LogText();
         Assert.Contains("pairing.failed", log, StringComparison.Ordinal);
         Assert.Contains("dir_not_writable", log, StringComparison.Ordinal);
