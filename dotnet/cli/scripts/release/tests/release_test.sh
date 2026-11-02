@@ -328,6 +328,7 @@ should_fail_when_github_returns_part_of_a_list() {
 
     assert_eq 1 "$status"
     assert_contains "$(cat stderr.txt)" "PR #89: GitHub returned $returned of 120 $kind, and the gate reads at most 100"
+    assert_eq "The release gate failed for the pull requests above. Wait for running checks to finish, re-run failed checks, or add the release-checks-waived label to the pull request. Then start a new Release CLI run." "$(tail -n 1 stderr.txt)"
   done
 }
 

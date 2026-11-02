@@ -57,6 +57,6 @@ while IFS=$'\t' read -r number head waived _title; do
 done
 
 if [ "$failed" -ne 0 ]; then
-  echo "The checks above did not pass. Wait for running checks to finish, re-run failed checks, or add the $waiver_label label to the pull request. Then start a new Release CLI run." >&2
+  echo "The release gate failed for the pull requests above. Wait for running checks to finish, re-run failed checks, or add the $waiver_label label to the pull request. Then start a new Release CLI run." >&2
   exit 1
 fi
