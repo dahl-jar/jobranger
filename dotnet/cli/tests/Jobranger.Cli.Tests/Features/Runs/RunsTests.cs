@@ -6,6 +6,7 @@ using Jobranger.Cli.Features.Providers;
 using Jobranger.Cli.Features.Runs;
 using Jobranger.Cli.Features.Sources;
 using Jobranger.Cli.Files;
+using Jobranger.Cli.Http;
 using Jobranger.Cli.Tests.Mocks;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
@@ -19,8 +20,6 @@ namespace Jobranger.Cli.Tests.Features.Runs;
 
 [UnsupportedOSPlatform("windows")]
 public sealed class RunsTests : IDisposable {
-    private const string runsQuery = "SELECT status, finished_at IS NOT NULL FROM runs";
-
     private static readonly string profilePath = MatchingFixtures.TestData("profile_user.yaml");
 
     private readonly TestDatabase db = new();
@@ -80,7 +79,7 @@ public sealed class RunsTests : IDisposable {
         RunResult result = await RunAsync(client, [source], null, null, run.Token);
 
         Assert.Equal(
-            (RunStatus.Cancelled, 0, "cancelled|1", "junior"),
+            (RunStatus.Cancelled, 0, RunCommandFixtures.CancelledRow, "junior"),
             (result.Status, client.Calls, string.Join(',', RunRows()), (string?)db.Scalar("SELECT label FROM ads WHERE id = 'finn:1'")));
     }
 
@@ -113,7 +112,7 @@ public sealed class RunsTests : IDisposable {
 
         RunResult result = await RunAsync(FakeModelClient.Answering(JavaReply), [], null, site, run.Token);
 
-        Assert.Equal((RunStatus.Cancelled, "cancelled|1"), (result.Status, string.Join(',', RunRows())));
+        Assert.Equal((RunStatus.Cancelled, RunCommandFixtures.CancelledRow), (result.Status, string.Join(',', RunRows())));
     }
 
     [Fact]
@@ -207,12 +206,26 @@ public sealed class RunsTests : IDisposable {
         Assert.Equal(1, result.UnknownEvidenceDropped);
     }
 
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task ShouldFlagSkippedModel_WhenNoClientOpens(bool clientOpens, bool skipped) {
+        ads.Upsert(Pending(1, "Utvikler", "Org One AS"));
+        FakeModelClient? refused = clientOpens
+            ? new FakeModelClient((_, _) => throw new ApiException(ApiErrorKind.Auth, "refused"))
+            : null;
+
+        RunResult result = await RunAsync(refused, [], null, null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(((StopReason?)StopReason.Auth, skipped), (result.ModelStopped, result.ModelSkipped));
+    }
+
     private static AppConfig Limited(decimal limit) {
         AppConfig config = RunFixtures.Config(profilePath);
         return config with { Model = config.Model with { MonthlyLimitUsd = limit } };
     }
 
-    private List<string> RunRows() => TestDatabase.Rows(db.Connection, runsQuery);
+    private List<string> RunRows() => TestDatabase.Rows(db.Connection, RunFixtures.RunRowsQuery);
 
     private async Task<RunResult> RunAsync(
         IModelClient? client,

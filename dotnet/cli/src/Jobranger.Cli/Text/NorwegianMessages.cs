@@ -113,6 +113,33 @@ internal sealed class NorwegianMessages : IMessages {
     public string UpdateAvailable(string latest, string current, string command) =>
         $"jobranger {latest} er ute (du har {current}). Oppgrader: {command}";
 
+    public string RunDescription => "Les jobbkildene, sjekk nye annonser og send resultatene.";
+
+    public string RunReading(string sources) => $"Leser {sources}...";
+
+    public string RunCounts(int adsRead, int newAds, int matches) =>
+        $"{adsRead} {(adsRead == 1 ? "annonse" : "annonser")} lest, {newAds} {(newAds == 1 ? "ny" : "nye")}, {matches} treff.";
+
+    public string RunSentBoth(string email) => $"\u2713 Sendt til nettsiden og til {email}";
+
+    public string RunSentEmail(string email) => $"\u2713 Sendt til {email}";
+
+    public string RunSavedForWebsite => "\u2713 Lagret for nettsiden";
+
+    public string RunEmailFailed(string reason) => $"\u2715 E-post ikke sendt: {reason}";
+
+    public string RunLocked => "En annen kjøring pågår allerede.";
+
+    public string AiChecksSkipped => "AI-sjekkene ble hoppet over: ingen modell eller nøkkel. Sett en med: jobranger init";
+
+    public string UnpricedLimitWarning =>
+        "Modellen din har ingen pris, så månedsgrensen kan ikke sjekkes. "
+        + "AI-sjekkene står på pause til du setter en pris på modellen eller fjerner grensen.";
+
+    public string UnknownEvidenceDropped(int count) =>
+        $"{count} {(count == 1 ? "annonse" : "annonser")} ble forkastet fordi AI-en viste til noe som ikke står i profilen din. "
+        + "Sjekk veiledningen din.";
+
     public string PairDescription => "Koble nettsiden til denne maskinen.";
 
     public string PairAlreadyRunning => "Tilkobling kjører allerede i en annen terminal.";
@@ -364,7 +391,7 @@ internal sealed class NorwegianMessages : IMessages {
         + "Sett en ny nøkkel med: jobranger init";
 
     public string DigestProviderDownNote(int pending) =>
-        $"AI-sjekkene stoppet: leverandøren svarte ikke. {pending} {AdsWait(pending)} på neste kjøring.";
+        $"AI-sjekkene stoppet: kallet til leverandøren feilet. {pending} {AdsWait(pending)} på neste kjøring.";
 
     public string DigestMoreOnWebsite => "til på nettsiden";
 

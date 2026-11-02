@@ -33,7 +33,7 @@ internal static class AssessmentReader {
         try {
             using JsonDocument document = JsonDocument.Parse(json);
             return Assessment(document.RootElement);
-        } catch (JsonException) {
+        } catch (Exception error) when (error is JsonException or InvalidOperationException) {
             return null;
         }
     }

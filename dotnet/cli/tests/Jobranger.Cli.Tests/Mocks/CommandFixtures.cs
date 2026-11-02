@@ -22,6 +22,7 @@ internal static class CommandFixtures {
     private const string failureField = "failure";
     private const string schemaBeforeDevices = "3";
     private const string schemaTooNew = "99";
+    private const int corruptBytes = 4096;
 
     public static Hashtable Environment(TempDir temp, string language) => new() {
         ["HOME"] = temp.Path,
@@ -57,16 +58,27 @@ internal static class CommandFixtures {
     [UnsupportedOSPlatform("windows")]
     public static void MarkSchemaTooNew(string dbPath) => SetSchema(dbPath, schemaTooNew);
 
+    [UnsupportedOSPlatform("windows")]
+    public static void MakeSchemaNewer(Paths paths) => MarkSchemaTooNew(paths.DbPath());
+
+    public static void CorruptDatabase(Paths paths) {
+        Directory.CreateDirectory(paths.DataDir());
+        File.WriteAllBytes(paths.DbPath(), Encoding.ASCII.GetBytes(new string('x', corruptBytes)));
+    }
+
     public static string WithPath(string line, string path) => string.Format(line, path);
 
-    public static IAnsiConsole BrokenConsole(Type failure, AnsiSupport ansi = AnsiSupport.No) =>
+    public static IAnsiConsole ConsoleOn(IAnsiConsoleOutput output, AnsiSupport ansi = AnsiSupport.No) =>
         AnsiConsole.Create(new AnsiConsoleSettings {
             Ansi = ansi,
             ColorSystem = ColorSystemSupport.NoColors,
             Interactive = InteractionSupport.No,
-            Out = new AnsiConsoleOutput(new BrokenWriter((Exception)Activator.CreateInstance(failure)!)),
+            Out = output,
             EnvironmentVariables = [],
         });
+
+    public static IAnsiConsole BrokenConsole(Type failure, AnsiSupport ansi = AnsiSupport.No) =>
+        ConsoleOn(new AnsiConsoleOutput(new BrokenWriter((Exception)Activator.CreateInstance(failure)!)), ansi);
 
     private static string FailureText(JsonObject entry) => $"{entry[LogFields.Event]} {entry[failureField]}";
 

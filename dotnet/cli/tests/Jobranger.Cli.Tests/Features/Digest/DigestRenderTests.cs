@@ -117,8 +117,8 @@ public sealed class DigestRenderTests {
     }
 
     [Theory]
-    [InlineData(Locales.English, "AI checks stopped: the provider did not answer. 5 ads wait for the next run.")]
-    [InlineData(Locales.Norwegian, "AI-sjekkene stoppet: leverandøren svarte ikke. 5 annonser venter på neste kjøring.")]
+    [InlineData(Locales.English, "AI checks stopped: the provider call failed. 5 ads wait for the next run.")]
+    [InlineData(Locales.Norwegian, "AI-sjekkene stoppet: kallet til leverandøren feilet. 5 annonser venter på neste kjøring.")]
     public void ShouldWriteProviderDownNote_WhenProviderStops(string lang, string note) {
         DigestData stopped = data with { ModelStopped = DigestStop.ProviderDown, Pending = 5 };
 
