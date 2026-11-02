@@ -14,6 +14,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using Spectre.Console;
 using AdsEntry = Jobranger.Cli.Features.Ads.Ads;
+using LinkEntry = Jobranger.Cli.Features.Link.Link;
 using MatchingEntry = Jobranger.Cli.Features.Matching.Matching;
 using RootCommand = Jobranger.Cli.Commands.RootCommand;
 
@@ -23,13 +24,12 @@ namespace Jobranger.Cli.Tests.Commands;
 public sealed class ReportCommandTests : IDisposable {
     private const string juniorLabel = "junior";
     private const string seniorLabel = "senior";
-    private const string noMatches = "No matches yet. Run one with: jobranger run\n";
+    private const string noMatches = "No matches yet. Start a run with: jobranger run\n";
     private const string noMatchesNorwegian = "Ingen treff ennå. Start en kjøring med: jobranger run\n";
     private const string strongLine = "  Strong fit    Software Developer     Org One AS        Bergen      12 Oct";
     private const string applySoonTitle = "Apply this week";
     private const string partialReport =
         "New today\n  Partial fit   Backend Developer      Org Two AS        Oslo        no date\n";
-    private const string accessFailedNorwegian = "Kan ikke lese en jobranger-fil. Sjekk tilgangene til mappen.\n";
     private const string englishReport =
         "Apply this week\n"
         + "  Strong fit    Software Developer     Org One AS        Bergen      12 Oct\n"
@@ -48,6 +48,7 @@ public sealed class ReportCommandTests : IDisposable {
         + "1 skjult: 1 senior\n";
     private const string dataDirVariable = "JOBRANGER_DATA_DIR";
     private const double requiredYears = 5;
+    private const int testTimeoutMs = 10_000;
 
     private static readonly Ad strongAd = AdFixtures.Numbered(1) with {
         Title = "Software Developer",
@@ -309,7 +310,7 @@ public sealed class ReportCommandTests : IDisposable {
         int exit = await RunAsync();
 
         Assert.Equal(
-            (CliExitCodes.Failure, string.Format(line, profile), "report.failed profile_missing"),
+            (CliExitCodes.Failure, CommandFixtures.WithPath(line, profile), "report.failed profile_missing"),
             (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
     }
 
@@ -327,7 +328,7 @@ public sealed class ReportCommandTests : IDisposable {
 
     [Fact]
     public async Task ShouldPrintDatabaseTooNew_WhenSchemaIsNewer() {
-        CommandFixtures.MakeSchemaNewer(paths);
+        CommandFixtures.MarkSchemaTooNew(paths.DbPath());
 
         int exit = await RunAsync();
 
@@ -343,52 +344,78 @@ public sealed class ReportCommandTests : IDisposable {
         int exit = await RunAsync();
 
         Assert.Equal(
-            (CliExitCodes.Failure, $"Cannot read the jobranger database at {paths.DbPath()}.\n", "report.failed database_unreadable"),
+            (CliExitCodes.Failure, CommandFixtures.WithPath(CommandFixtures.DatabaseUnreadable, paths.DbPath()), "report.failed database_unreadable"),
             (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
     }
 
-    [Theory]
-    [InlineData(Locales.English, "Cannot read {0}.\n")]
-    [InlineData(Locales.Norwegian, "Kan ikke lese {0}.\n")]
-    public async Task ShouldPrintFileUnreadable_WhenDatabaseIsSymlink(string lang, string line) {
-        environment["LANG"] = lang;
+    [Fact]
+    public async Task ShouldPrintDatabaseUnreadable_WhenMigrationFails() {
+        CommandFixtures.RewindSchema(paths.DbPath());
+
+        int exit = await RunAsync();
+
+        Assert.Equal(
+            (CliExitCodes.Failure, CommandFixtures.WithPath(CommandFixtures.DatabaseUnreadable, paths.DbPath()), "report.failed migration_failed"),
+            (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
+    }
+
+    [Theory(Timeout = testTimeoutMs)]
+    [InlineData("abc", "report.failed", "report")]
+    [InlineData("99999999999999", "report.failed", "report")]
+    [InlineData("-1", "report.failed", "report")]
+    [InlineData("abc", "devices.failed", "devices", "list")]
+    [InlineData("abc", "pairing.failed", "pair")]
+    public async Task ShouldPrintDatabaseUnreadable_WhenSchemaVersionIsNotNumber(
+        string version, string failedEvent, params string[] args) {
+        using (SqliteConnection database = Database.Open(paths.DbPath(), NullLogger.Instance)) {
+            new StateStore(database).Set(StateStore.SchemaVersionKey, version);
+        }
+
+        int exit = await RunCommandAsync(args, TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            (CliExitCodes.Failure, CommandFixtures.WithPath(CommandFixtures.DatabaseUnreadable, paths.DbPath()), $"{failedEvent} database_unreadable"),
+            (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
+    }
+
+    [Fact]
+    public async Task ShouldPrintDatabaseUnreadable_WhenDatabaseIsSymlink() {
         Directory.CreateDirectory(paths.DataDir());
         File.CreateSymbolicLink(paths.DbPath(), temp.File("elsewhere.db"));
 
         int exit = await RunAsync();
 
         Assert.Equal(
-            (CliExitCodes.Failure, string.Format(line, paths.DbPath()), "report.failed file_unreadable"),
-            (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
-    }
-
-    [Theory]
-    [InlineData(Locales.English, CommandFixtures.FileAccessFailed)]
-    [InlineData(Locales.Norwegian, accessFailedNorwegian)]
-    public async Task ShouldPrintFileAccessFailed_WhenDataParentIsReadOnly(string lang, string line) {
-        environment["LANG"] = lang;
-        string parent = temp.File("locked");
-        Directory.CreateDirectory(parent);
-        File.SetUnixFileMode(parent, UnixFileMode.UserRead | UnixFileMode.UserExecute);
-        environment[dataDirVariable] = Path.Combine(parent, "data");
-
-        int exit = await RunAsync();
-
-        Assert.Equal(
-            (CliExitCodes.Failure, line, "report.failed file_unreadable"),
+            (CliExitCodes.Failure, CommandFixtures.WithPath(CommandFixtures.DatabaseUnreadable, paths.DbPath()), "report.failed database_unreadable"),
             (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
     }
 
     [Fact]
-    public async Task ShouldPrintFileAccessFailed_WhenDataParentIsFile() {
-        string parent = temp.File("taken");
-        File.WriteAllText(parent, string.Empty);
-        environment[dataDirVariable] = Path.Combine(parent, "data");
+    public async Task ShouldPrintDirNotWritable_WhenDataParentIsReadOnly() {
+        string parent = temp.File("locked");
+        Directory.CreateDirectory(parent);
+        File.SetUnixFileMode(parent, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+        string data = Path.Combine(parent, "data");
+        environment[dataDirVariable] = data;
 
         int exit = await RunAsync();
 
         Assert.Equal(
-            (CliExitCodes.Failure, CommandFixtures.FileAccessFailed, "report.failed file_unreadable"),
+            (CliExitCodes.Failure, CommandFixtures.WithPath(CommandFixtures.DirNotWritable, data), "report.failed dir_not_writable"),
+            (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
+    }
+
+    [Fact]
+    public async Task ShouldPrintDirNotWritable_WhenDataParentIsFile() {
+        string parent = temp.File("taken");
+        File.WriteAllText(parent, string.Empty);
+        string data = Path.Combine(parent, "data");
+        environment[dataDirVariable] = data;
+
+        int exit = await RunAsync();
+
+        Assert.Equal(
+            (CliExitCodes.Failure, CommandFixtures.WithPath(CommandFixtures.DirNotWritable, data), "report.failed dir_not_writable"),
             (exit, console.Output, CommandFixtures.LoggedFailure(paths)));
     }
 
@@ -454,5 +481,15 @@ public sealed class ReportCommandTests : IDisposable {
         System.CommandLine.RootCommand root = [new ReportCommand(services, environment, clock)];
         InvocationConfiguration configuration = new() { Error = console.ErrorConsole.Profile.Out.Writer };
         return root.Parse([ReportCommand.CommandName]).InvokeAsync(configuration, TestContext.Current.CancellationToken);
+    }
+
+    private Task<int> RunCommandAsync(string[] args, CancellationToken cancellationToken) {
+        CliServices services = CliServices.Create(clock, console.Console, console.ErrorConsole, environment);
+        System.CommandLine.RootCommand root = [
+            new ReportCommand(services, environment, clock),
+            new DevicesCommand(services, environment, clock, LinkEntry.OpenAsync),
+            new PairCommand(services, environment, clock, inputRedirected: true, LinkEntry.OpenAsync),
+        ];
+        return root.Parse(args).InvokeAsync(null, cancellationToken);
     }
 }

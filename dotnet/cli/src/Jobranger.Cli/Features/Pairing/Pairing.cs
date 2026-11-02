@@ -19,6 +19,8 @@ internal sealed class Pairing(
     private const double secondsPerMinute = 60;
     private const int fewestMinutes = 1;
     private const string keysFailure = "keys";
+    private const string keysBlockedFailure = "keys_blocked";
+    private const string keysBusyFailure = "keys_busy";
     private const string relayFailure = "relay_unreachable";
     private const string unknownReason = "unknown";
 
@@ -41,6 +43,11 @@ internal sealed class Pairing(
             using SessionTable sessions = new(keys.Agreement, keys.Channel, time);
             PairingRun run = new(link, sessions, messages, keys.Channel, start, machine, time, logger);
             return await run.RunAsync(output, ask, cancellationToken).ConfigureAwait(false);
+        } catch (LinkKeyException error) when (error.InnerException is TimeoutException) {
+            return await FailAsync(output, messages.PairFailed, keysBusyFailure).ConfigureAwait(false);
+        } catch (LinkKeyException error) when (error.InnerException is PrivateFileException { IsUnreadable: false } file) {
+            return await FailAsync(output, messages.PairKeysBlocked(file.Path, file.Reason), keysBlockedFailure)
+                .ConfigureAwait(false);
         } catch (LinkKeyException) {
             return await FailAsync(output, messages.PairKeysBroken, keysFailure).ConfigureAwait(false);
         } catch (RelayRejectedException rejected) {

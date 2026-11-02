@@ -27,7 +27,7 @@ internal static partial class LogFields {
         "skipped", "attempt", "delay_s", "host", "status", "error_type", "calls", "input_tokens", "output_tokens",
         "cache_read", "cache_write", "cost_usd", "duration_ms", "pages", "window_hours", "provider", "model", "size",
         "returned", "expected", "removed", "keep_days", "messages", "ad_id", "requests", "reused", "batch_id",
-        "guidance_default", "about_chars", "doc_count", "file", "failure", "blocked");
+        "guidance_default", "about_chars", "doc_count", "file", "dir", "failure", "blocked");
 
     public static string EventName(string? name) =>
         name is { Length: <= maxStringChars } && EventPattern().IsMatch(name) ? name : invalidEvent;

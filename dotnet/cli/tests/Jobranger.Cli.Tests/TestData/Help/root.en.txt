@@ -2,8 +2,10 @@ Description:
   Finds job ads on FINN, NAV, LinkedIn and employer job boards that fit your profile.
 
 Usage:
-  jobranger [options]
+  jobranger [command] [options]
 
 Options:
   -?, -h, --help  Show help and usage
   --version       Show the version
+
+Commands:

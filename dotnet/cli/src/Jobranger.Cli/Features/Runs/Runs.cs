@@ -30,8 +30,6 @@ internal sealed class Runs(
     ILogger logger) {
     public static AdView ToAdView(Ad ad) => RunConversions.ToAdView(ad);
 
-    public static ModelPrices ToPrices(ModelSpec spec) => RunConversions.ToPrices(spec);
-
     public static DigestCard ToDigestCard(AdView view, string url, Targets targets) =>
         RunConversions.ToDigestCard(view, url, targets);
 
@@ -45,6 +43,8 @@ internal sealed class Runs(
     public static IReadOnlyList<string> Report(
         SqliteConnection connection, AppConfig config, Paths paths, RunRow lastRun, TimeProvider time, IMessages messages) =>
         TerminalReport.Lines(connection, config, paths, lastRun, time, messages);
+
+    public static ModelPrices ToPrices(ModelSpec spec) => RunConversions.ToPrices(spec);
 
     public async Task<RunResult> RunAsync(RunRequest request, CancellationToken cancellationToken) {
         RunModel? model = await CreateModelAsync(request.Config.Model, cancellationToken).ConfigureAwait(false);

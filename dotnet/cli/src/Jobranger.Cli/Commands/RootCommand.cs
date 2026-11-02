@@ -30,12 +30,16 @@ internal sealed class RootCommand : System.CommandLine.RootCommand {
             Subcommands.Add(new UnpairCommand(services));
             Subcommands.Add(new ReportCommand(services));
             Subcommands.Add(new LogsCommand(services));
+            Subcommands.Add(new ConfigCommand(services));
+            Subcommands.Add(new GuidanceCommand(services));
+            Subcommands.Add(new AboutCommand(services));
+            Subcommands.Add(new ContextCommand(services));
         }
     }
 
     public async Task<int> RunAsync(IReadOnlyList<string> args, CancellationToken cancellationToken) {
         ParseResult parsed = Parse(args, parserConfiguration);
-        if (parsed.Errors.Count > 0) {
+        if (parsed.Errors.Count > 0 && parsed.Action is not HelpAction) {
             TextWriter errors = services.ErrorConsole.Profile.Out.Writer;
             foreach (string line in ParseErrorLines(parsed, services.Messages)) {
                 await errors.WriteLineAsync(line).ConfigureAwait(false);
