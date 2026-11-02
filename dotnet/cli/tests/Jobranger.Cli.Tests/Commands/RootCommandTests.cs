@@ -145,10 +145,13 @@ public sealed class RootCommandTests {
 
     private static string[] EnglishTexts(string argument) {
         EnglishMessages english = new();
-        IEnumerable<string> properties = typeof(EnglishMessages)
+        NorwegianMessages norwegian = new();
+        IEnumerable<string> properties = typeof(IMessages)
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Where(property => property.PropertyType == typeof(string))
-            .Select(property => (string)property.GetValue(english)!);
+            .Select(property => (English: (string)property.GetValue(english)!, Norwegian: (string)property.GetValue(norwegian)!))
+            .Where(pair => !pair.Norwegian.Contains(pair.English, StringComparison.Ordinal))
+            .Select(pair => pair.English);
         return [
             .. properties,
             .. libraryWords,
