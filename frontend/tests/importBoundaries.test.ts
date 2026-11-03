@@ -56,6 +56,16 @@ const FAILING_PROBES: Probe[] = [
     source: "import { nextMenuItem } from '../StatusMenu/nextMenuItem'",
   },
   {
+    name: "should fail when a feature imports another feature's helper through the components folder",
+    path: `${LANDING_FOLDER}/componentsPathHelper.ts`,
+    source: "import { nextMenuItem } from '../../components/StatusMenu/nextMenuItem'",
+  },
+  {
+    name: "should fail when a feature imports another feature's helper by a path that starts with ./",
+    path: `${LANDING_FOLDER}/dotPathHelper.ts`,
+    source: "import { nextMenuItem } from './../StatusMenu/nextMenuItem'",
+  },
+  {
     name: 'should fail when a helper imports a router value',
     path: 'src/helpers/routerValue.ts',
     source: "import { Link } from 'react-router'",
@@ -65,6 +75,11 @@ const FAILING_PROBES: Probe[] = [
 
 const PASSING_PROBES: Probe[] = [
   { name: "should allow another feature's component", path: `${LANDING_FOLDER}/otherComponent.ts`, source: ICON_IMPORT },
+  {
+    name: "should allow another feature's component through the components folder",
+    path: `${LANDING_FOLDER}/componentsPathComponent.ts`,
+    source: "import { StatusMenu } from '../../components/StatusMenu/StatusMenu'",
+  },
   {
     name: "should allow another feature's CSS module",
     path: `${LANDING_FOLDER}/otherStyles.ts`,

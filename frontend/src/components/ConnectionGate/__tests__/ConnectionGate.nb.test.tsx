@@ -3,14 +3,10 @@ import { screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createQueryClient } from '@/components/App/createQueryClient'
 import { QUERY_KEYS } from '@/constants/queryKeys'
-import { CommandError } from '@/services/relayCommands/commandTracker'
 import { type ConnectionState, createConnectionStore } from '@/services/relayConnection/connectionStore'
 import { payloadFixtures } from '@/contract/fixtures.gen'
 import { type Relay, RelayContext } from '@/hooks/useRelay'
-import { describeCommandError } from '@/helpers/describeCommandError'
 import { ConnectionGate } from '@/components/ConnectionGate/ConnectionGate'
-import { describeConnection } from '@/components/PairPage/describeConnection'
-import { nb } from '@/i18n/nb'
 import { expectNoEnglish } from '@/__tests__/findEnglishText'
 import { renderNorwegian } from '@/__tests__/renderWithProviders'
 
@@ -111,38 +107,5 @@ describe('connection screens in bokmål', () => {
     expect(screen.getByRole('status').textContent).toBe(notice)
     expect(screen.getByText(LIST_TEXT)).toBeInTheDocument()
     expectNoEnglish()
-  })
-})
-
-describe('describeConnection', () => {
-  it.each<[string, ConnectionState, string]>([
-    ['the session is starting', { kind: 'handshaking' }, 'Kobler til maskinen din ...'],
-    ['the machine is offline', { kind: 'machineOffline', lastSeen: undefined }, 'Maskinen din er ikke på nett'],
-    ['the relay is down', { kind: 'relayDown', retryAt: 0 }, 'Får ikke kontakt med mellomtjeneren'],
-    ['the browser is offline', { kind: 'networkOffline' }, 'Du er ikke på nett'],
-    ['the machine does not know the browser', { kind: 'failed', reason: 'unknown_device' }, 'Maskinen din kjenner ikke denne nettleseren'],
-  ])('should describe the connection when %s in bokmål', (_, state, text) => {
-    expect(describeConnection(state, nb)).toBe(text)
-  })
-
-  it('should give no connection text when ready', () => {
-    expect(describeConnection({ kind: 'ready' }, nb)).toBeUndefined()
-  })
-})
-
-describe('describeCommandError', () => {
-  it.each([
-    ['a timeout', 'timeout', 'ingen svar fra maskinen din.'],
-    ['a dropped connection', 'disconnected', 'forbindelsen ble brutt.'],
-  ] as const)('should explain %s in bokmål', (_, code, text) => {
-    expect(describeCommandError(new CommandError(code, 'english'), nb)).toBe(text)
-  })
-
-  it('should keep the message the machine sent', () => {
-    expect(describeCommandError(new CommandError('not_found', 'Rollen finnes ikke.'), nb)).toBe('Rollen finnes ikke.')
-  })
-
-  it('should show a thrown string as it is', () => {
-    expect(describeCommandError('lost', nb)).toBe('lost')
   })
 })

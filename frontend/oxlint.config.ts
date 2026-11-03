@@ -5,9 +5,14 @@ const REACT_PACKAGES = ['react', 'react/*', 'react-dom', 'react-dom/*', '@tansta
 const ROUTER_PACKAGES = ['react-router']
 const COMPONENT_IMPORTS = ['@/components/**', '**/components/**']
 const HOOK_IMPORTS = ['@/hooks/**', '**/hooks/**']
-const OTHER_FEATURE_FILES = ['@/components/*/[a-z]*', '../*/[a-z]*']
+const PARENT_FOLDERS = ['..', './..']
+const OTHER_FEATURE_FILES = ['@/components/*/[a-z]*', ...PARENT_FOLDERS.map((parent) => `${parent}/**`)]
 const QUERY_CLIENT = '!@/components/App/createQueryClient'
-const ALLOWED_FEATURE_FILES = ['!@/components/*/*.module.css', '!../*/*.module.css', QUERY_CLIENT]
+const ALLOWED_FEATURE_FILES = [
+  '!@/components/*/*.module.css',
+  ...PARENT_FOLDERS.flatMap((parent) => [`!${parent}/**/*.module.css`, `!${parent}/**/[A-Z]*`]),
+  QUERY_CLIENT,
+]
 const GENERATED_FILES = ['src/**/*.gen.*']
 const PLAIN_LAYERS = ['src/helpers/**', 'src/constants/**', 'src/i18n/**', 'src/contract/**', 'src/services/**']
 const FEATURE_TESTS = ['src/components/*/__tests__/**']
