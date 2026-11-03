@@ -35,7 +35,7 @@ afterEach(async () => {
   await clearPairing()
 })
 
-describe('keyStore', () => {
+describe('pairingStorage', () => {
   it('should generate the web private key as non-extractable', async () => {
     const keys = await generateWebKeys()
 

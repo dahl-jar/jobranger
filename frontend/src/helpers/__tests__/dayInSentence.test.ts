@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { dayInSentence } from '@/helpers/dayInSentence'
-import { TODAY } from '@/__tests__/settings.samples'
+import { TODAY } from '@/__tests__/testClock'
 
 describe('dayInSentence', () => {
   it.each([

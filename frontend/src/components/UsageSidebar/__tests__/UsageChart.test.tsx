@@ -2,7 +2,8 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { UsageChart } from '@/components/UsageSidebar/UsageChart'
-import { TODAY, usage } from '@/__tests__/usage.samples'
+import { usage } from '@/__tests__/usage.samples'
+import { TODAY } from '@/__tests__/testClock'
 import { CHART_DAYS, summarizeUsage } from '@/helpers/summarizeUsage'
 
 const summary = summarizeUsage(usage, TODAY, null)

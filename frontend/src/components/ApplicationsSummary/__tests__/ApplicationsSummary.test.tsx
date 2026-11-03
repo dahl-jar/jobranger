@@ -2,7 +2,8 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { ApplicationsSummary } from '@/components/ApplicationsSummary/ApplicationsSummary'
 import styles from '@/components/ApplicationsSummary/ApplicationsSummary.module.css'
-import { foundApplication, handApplication, pinTimeZone, removedApplication, TODAY } from '@/__tests__/testData'
+import { foundApplication, handApplication, pinTimeZone, removedApplication } from '@/__tests__/testData'
+import { TODAY } from '@/__tests__/testClock'
 import type { ApplicationStatus } from '@/contract/payload.gen'
 
 const withStatus = (status: ApplicationStatus, id: number) => ({ ...foundApplication, id, status })

@@ -5,7 +5,8 @@ import { payloadFixtures } from '@/contract/fixtures.gen'
 import { CV_MAX_BYTES } from '@/contract/messageLimits'
 import type { ContextSnapshot, ErrorMessage } from '@/contract/payload.gen'
 import { ContextDocuments } from '@/components/ContextDocuments/ContextDocuments'
-import { decodeBase64, TODAY } from '@/__tests__/settings.samples'
+import { decodeBase64 } from '@/__tests__/settings.samples'
+import { TODAY } from '@/__tests__/testClock'
 
 const CONTEXT = payloadFixtures['context.snapshot']
 const CONTEXT_UPLOAD = payloadFixtures['context.upload']

@@ -1,7 +1,8 @@
 import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { UsageTable } from '@/components/UsageTable/UsageTable'
-import { TODAY, usage } from '@/__tests__/usage.samples'
+import { usage } from '@/__tests__/usage.samples'
+import { TODAY } from '@/__tests__/testClock'
 
 describe('UsageTable', () => {
   it('should list recent days newest first', () => {

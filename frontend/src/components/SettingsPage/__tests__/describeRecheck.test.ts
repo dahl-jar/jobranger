@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { payloadFixtures } from '@/contract/fixtures.gen'
 import type { Recheck } from '@/contract/payload.gen'
 import { describeRecheck } from '@/components/SettingsPage/describeRecheck'
+import { en } from '@/i18n/en'
 
 describe('describeRecheck', () => {
   it.each<[string, Recheck | undefined, string | undefined]>([
@@ -11,6 +12,6 @@ describe('describeRecheck', () => {
     ['say nothing for zero ads', { ads: 0, cost_usd: 0 }, undefined],
     ['say nothing without a recheck', undefined, undefined],
   ])('should %s', (_, recheck, text) => {
-    expect(describeRecheck(recheck)).toBe(text)
+    expect(describeRecheck(recheck, en)).toBe(text)
   })
 })

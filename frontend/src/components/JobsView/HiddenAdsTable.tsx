@@ -9,7 +9,7 @@ import { SOURCE_NAMES } from '@/constants/sourceNames'
 
 const LOOSENING_KINDS: ReadonlySet<HiddenKind> = new Set(['years', 'senior', 'place'])
 
-interface HiddenTableProps {
+interface HiddenAdsTableProps {
   snapshot: AdsSnapshot
   reason: HiddenKind | undefined
   bands: readonly YearBand[] | undefined
@@ -31,7 +31,7 @@ interface HiddenRowProps {
   ad: HiddenAd
   isMoved: boolean
   disabled: boolean
-  onShowAnyway: HiddenTableProps['onShowAnyway']
+  onShowAnyway: HiddenAdsTableProps['onShowAnyway']
 }
 
 function HiddenRow({ ad, isMoved, disabled, onShowAnyway }: HiddenRowProps) {
@@ -72,7 +72,7 @@ function HiddenRow({ ad, isMoved, disabled, onShowAnyway }: HiddenRowProps) {
   )
 }
 
-export function HiddenAdsTable({ snapshot, reason, bands, movedIds, disabled, onReasonChange, onShowAnyway }: HiddenTableProps) {
+export function HiddenAdsTable({ snapshot, reason, bands, movedIds, disabled, onReasonChange, onShowAnyway }: HiddenAdsTableProps) {
   const text = useText()
   const words = text.jobs.hidden
   const columns = text.jobs.columns

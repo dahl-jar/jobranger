@@ -1,8 +1,8 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { useAppBase } from '@/hooks/useAppBase'
-import { type DeepLink, deepLinkOutcome, parseDeepLink } from '@/helpers/adDeepLink'
-import { detailPath } from '@/helpers/adPaths'
+import { deepLinkOutcome, parseDeepLink } from '@/helpers/adDeepLink'
+import { type DeepLink, detailPath } from '@/helpers/adPaths'
 import type { AdsSnapshot, Mark } from '@/contract/payload.gen'
 
 interface EmailLinkInput {

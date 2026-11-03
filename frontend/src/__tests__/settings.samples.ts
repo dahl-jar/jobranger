@@ -1,6 +1,5 @@
 import { payloadFixtures } from '@/contract/fixtures.gen'
 
-export const TODAY = '2026-10-12'
 export const EVERY_TWO_HOURS = Array.from({ length: 12 }, (_, index) => `${String(index * 2).padStart(2, '0')}:00`)
 
 export function decodeBase64(text: string): Uint8Array<ArrayBuffer> {

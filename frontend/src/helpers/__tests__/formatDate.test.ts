@@ -1,17 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { pinTimeZone, TEST_TIME_ZONE } from '@/__tests__/testData'
 import { formatClock, formatDay, formatDue, shiftDay } from '@/helpers/formatDate'
 
 const TODAY = '2026-10-08'
-const OSLO = 'Europe/Oslo'
 const NEW_YORK = 'America/New_York'
 
-beforeAll(() => {
-  vi.stubEnv('TZ', OSLO)
-})
-
-afterAll(() => {
-  vi.unstubAllEnvs()
-})
+pinTimeZone()
 
 describe('formatDue', () => {
   it.each([
@@ -33,7 +27,7 @@ describe('formatDue', () => {
     })
 
     afterAll(() => {
-      vi.stubEnv('TZ', OSLO)
+      vi.stubEnv('TZ', TEST_TIME_ZONE)
     })
 
     it('should read a plain day as a local day', () => {

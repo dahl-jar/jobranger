@@ -2,8 +2,6 @@ import { afterAll, beforeAll, vi } from 'vitest'
 import { payloadFixtures } from '@/contract/fixtures.gen'
 import type { Application, ApplicationsSnapshot } from '@/contract/payload.gen'
 
-export const TODAY = '2026-10-12'
-
 export const applicationsSnapshot: ApplicationsSnapshot = payloadFixtures['applications.snapshot']
 
 const [found, byHand] = applicationsSnapshot.applications
@@ -15,7 +13,7 @@ export const foundApplication: Application = found
 export const removedApplication: Application = byHand
 export const handApplication: Application = { ...byHand, removed: false }
 
-const TEST_TIME_ZONE = 'Europe/Oslo'
+export const TEST_TIME_ZONE = 'Europe/Oslo'
 
 export function pinTimeZone() {
   beforeAll(() => {

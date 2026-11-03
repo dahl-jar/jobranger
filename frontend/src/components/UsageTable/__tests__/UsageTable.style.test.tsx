@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import styles from '@/components/UsageViewStyles/usageViews.module.css'
-import { TODAY, usage } from '@/__tests__/usage.samples'
+import { usage } from '@/__tests__/usage.samples'
+import { TODAY } from '@/__tests__/testClock'
 import { UsageTable } from '@/components/UsageTable/UsageTable'
 import { attachStylesheet } from '@/__tests__/attachStylesheet'
 

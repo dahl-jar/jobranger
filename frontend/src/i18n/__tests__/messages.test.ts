@@ -5,7 +5,22 @@ import type { Language } from '@/helpers/languageChoice'
 import { GLOSSARY, nb } from '@/i18n/nb'
 import { tableShape, tableTexts } from '@/__tests__/findEnglishText'
 
+interface PayloadSchema {
+  $defs: { Fit: { enum: string[] } }
+}
+
+const [payloadSchema] = Object.values(
+  import.meta.glob<PayloadSchema>('@messages/payload.schema.json', { eager: true, import: 'default' }),
+)
+
 describe('message tables', () => {
+  it.each([
+    ['English', en],
+    ['bokmål', nb],
+  ])('should label exactly the contract fits in %s', (_, table) => {
+    expect(Object.keys(table.ui.fit).toSorted()).toEqual(payloadSchema?.$defs.Fit.enum.toSorted())
+  })
+
   it('should have a table for English and bokmål only', () => {
     expectTypeOf<Language>().toEqualTypeOf<ContractLanguage>()
   })

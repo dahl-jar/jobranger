@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { payloadFixtures } from '@/contract/fixtures.gen'
 import type { Status } from '@/contract/payload.gen'
 import { ConnectionSettings } from '@/components/ConnectionSettings/ConnectionSettings'
-import { TODAY } from '@/__tests__/settings.samples'
+import { TODAY } from '@/__tests__/testClock'
 import { formatClock } from '@/helpers/formatDate'
 
 const STATUS = payloadFixtures.status

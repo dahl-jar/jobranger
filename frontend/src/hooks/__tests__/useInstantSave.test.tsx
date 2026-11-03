@@ -21,7 +21,7 @@ interface Callbacks {
   onSuccess?: (saved: Saved, draft: Draft) => void
 }
 
-function renderWrite(send: SendMock, seeded: ConfigSnapshot | undefined, callbacks: Callbacks = {}) {
+function renderInstantSave(send: SendMock, seeded: ConfigSnapshot | undefined, callbacks: Callbacks = {}) {
   const queryClient = createQueryClient()
   if (seeded !== undefined) queryClient.setQueryData(QUERY_KEYS.config, seeded)
   const store = createConnectionStore()
@@ -46,10 +46,18 @@ function renderWrite(send: SendMock, seeded: ConfigSnapshot | undefined, callbac
   return { ...view, queryClient }
 }
 
+async function startHeldSave(seeded: ConfigSnapshot | undefined, callbacks: Callbacks = {}) {
+  const held = heldSend()
+  const { result, queryClient } = renderInstantSave(held.send, seeded, callbacks)
+  act(() => result.current.mutate(DRAFT))
+  await waitFor(() => expect(held.send).toHaveBeenCalled())
+  return { held, result, queryClient }
+}
+
 describe('useInstantSave', () => {
   it('should write the change to the cache while the command is pending', () => {
     const held = heldSend()
-    const { result, queryClient } = renderWrite(held.send, SNAPSHOTS.config)
+    const { result, queryClient } = renderInstantSave(held.send, SNAPSHOTS.config)
 
     act(() => result.current.mutate(DRAFT))
 
@@ -57,10 +65,7 @@ describe('useInstantSave', () => {
   })
 
   it('should restore the previous data when the command fails', async () => {
-    const held = heldSend()
-    const { result, queryClient } = renderWrite(held.send, SNAPSHOTS.config)
-    act(() => result.current.mutate(DRAFT))
-    await waitFor(() => expect(held.send).toHaveBeenCalled())
+    const { held, result, queryClient } = await startHeldSave(SNAPSHOTS.config)
 
     act(() => held.reject())
 
@@ -69,10 +74,7 @@ describe('useInstantSave', () => {
   })
 
   it('should keep newer cache data when the command fails', async () => {
-    const held = heldSend()
-    const { result, queryClient } = renderWrite(held.send, SNAPSHOTS.config)
-    act(() => result.current.mutate(DRAFT))
-    await waitFor(() => expect(held.send).toHaveBeenCalled())
+    const { held, result, queryClient } = await startHeldSave(SNAPSHOTS.config)
     queryClient.setQueryData(QUERY_KEYS.config, NEWER)
 
     act(() => held.reject())
@@ -82,10 +84,7 @@ describe('useInstantSave', () => {
   })
 
   it('should leave a missing cache entry empty when the command fails', async () => {
-    const held = heldSend()
-    const { result, queryClient } = renderWrite(held.send, undefined)
-    act(() => result.current.mutate(DRAFT))
-    await waitFor(() => expect(held.send).toHaveBeenCalled())
+    const { held, result, queryClient } = await startHeldSave(undefined)
 
     act(() => held.reject())
 
@@ -94,12 +93,9 @@ describe('useInstantSave', () => {
   })
 
   it('should report the error when the cache filled after the command was sent', async () => {
-    const held = heldSend()
     const onError = vi.fn()
     const error = refusal()
-    const { result, queryClient } = renderWrite(held.send, undefined, { onError })
-    act(() => result.current.mutate(DRAFT))
-    await waitFor(() => expect(held.send).toHaveBeenCalled())
+    const { held, queryClient } = await startHeldSave(undefined, { onError })
     queryClient.setQueryData(QUERY_KEYS.config, SNAPSHOTS.config)
 
     act(() => held.reject(error))
@@ -109,12 +105,9 @@ describe('useInstantSave', () => {
   })
 
   it('should leave a cleared cache empty when the command fails', async () => {
-    const held = heldSend()
     const onError = vi.fn()
     const holds = vi.fn(() => true)
-    const { result, queryClient } = renderWrite(held.send, SNAPSHOTS.config, { onError, holds })
-    act(() => result.current.mutate(DRAFT))
-    await waitFor(() => expect(held.send).toHaveBeenCalled())
+    const { held, queryClient } = await startHeldSave(SNAPSHOTS.config, { onError, holds })
     queryClient.clear()
 
     act(() => held.reject())
@@ -124,12 +117,9 @@ describe('useInstantSave', () => {
   })
 
   it('should report the error with its draft when the command fails', async () => {
-    const held = heldSend()
     const onError = vi.fn()
     const error = refusal()
-    const { result } = renderWrite(held.send, SNAPSHOTS.config, { onError })
-    act(() => result.current.mutate(DRAFT))
-    await waitFor(() => expect(held.send).toHaveBeenCalled())
+    const { held } = await startHeldSave(SNAPSHOTS.config, { onError })
 
     act(() => held.reject(error))
 
@@ -137,11 +127,8 @@ describe('useInstantSave', () => {
   })
 
   it('should report the save with its draft when the command succeeds', async () => {
-    const held = heldSend()
     const onSuccess = vi.fn()
-    const { result } = renderWrite(held.send, SNAPSHOTS.config, { onSuccess })
-    act(() => result.current.mutate(DRAFT))
-    await waitFor(() => expect(held.send).toHaveBeenCalled())
+    const { held } = await startHeldSave(SNAPSHOTS.config, { onSuccess })
 
     act(() => held.resolve())
 

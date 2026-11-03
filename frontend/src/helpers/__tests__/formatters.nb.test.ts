@@ -1,4 +1,5 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
+import { pinTimeZone } from '@/__tests__/testData'
 import { formatDate, formatDay, formatDayInSentence, formatDue } from '@/helpers/formatDate'
 import { formatUsd } from '@/helpers/formatUsd'
 import { formatTokens } from '@/helpers/formatTokens'
@@ -8,13 +9,7 @@ import { nb } from '@/i18n/nb'
 const TODAY = '2026-10-08'
 const NO_BREAK_SPACE = '\u00a0'
 
-beforeAll(() => {
-  vi.stubEnv('TZ', 'Europe/Oslo')
-})
-
-afterAll(() => {
-  vi.unstubAllEnvs()
-})
+pinTimeZone()
 
 describe('formatDue in bokmål', () => {
   it.each([

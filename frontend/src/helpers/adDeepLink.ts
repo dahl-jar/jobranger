@@ -1,13 +1,7 @@
-import { AD_PATH, deepLinkPath } from '@/helpers/adPaths'
+import { AD_PATH, type DeepLink, type DeepLinkAction, deepLinkPath } from '@/helpers/adPaths'
 import type { AdsSnapshot } from '@/contract/payload.gen'
 
-type DeepLinkAction = 'applied' | 'not_for_me'
 type DeepLinkOutcome = 'mark' | 'marked' | 'missing'
-
-export interface DeepLink {
-  adId: string
-  action: DeepLinkAction
-}
 
 interface AdLink {
   adId: string

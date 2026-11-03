@@ -3,7 +3,7 @@ import type { CommandDraft, CommandError } from '@/services/relayCommands/comman
 import type { Saved } from '@/contract/payload.gen'
 import { useCommand } from '@/hooks/useCommand'
 
-interface OptimisticWriteOptions<Data, Draft extends CommandDraft> {
+interface InstantSaveOptions<Data, Draft extends CommandDraft> {
   queryKey: QueryKey
   apply: (data: Data, draft: Draft) => Data
   holds: (current: Data, draft: Draft, written: Data) => boolean
@@ -17,7 +17,7 @@ interface WriteContext<Data> {
   written: Data
 }
 
-export function useInstantSave<Data extends object, Draft extends CommandDraft>({ queryKey, apply, holds, restore, onError, onSuccess }: OptimisticWriteOptions<Data, Draft>) {
+export function useInstantSave<Data extends object, Draft extends CommandDraft>({ queryKey, apply, holds, restore, onError, onSuccess }: InstantSaveOptions<Data, Draft>) {
   const queryClient = useQueryClient()
   return useCommand<Draft, WriteContext<Data> | undefined>({
     onMutate: (draft) => {

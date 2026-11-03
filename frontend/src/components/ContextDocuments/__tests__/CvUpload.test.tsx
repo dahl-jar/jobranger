@@ -5,7 +5,8 @@ import { payloadFixtures } from '@/contract/fixtures.gen'
 import { CV_MAX_BYTES } from '@/contract/messageLimits'
 import type { ErrorMessage } from '@/contract/payload.gen'
 import { CvUpload } from '@/components/ContextDocuments/CvUpload'
-import { CV_BYTES, CV_UPLOAD, TODAY } from '@/__tests__/settings.samples'
+import { CV_BYTES, CV_UPLOAD } from '@/__tests__/settings.samples'
+import { TODAY } from '@/__tests__/testClock'
 
 const PROFILE = payloadFixtures['profile.snapshot']
 

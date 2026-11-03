@@ -1,6 +1,12 @@
 import { APP_BASE } from '@/helpers/appPaths'
-import type { DeepLink } from '@/helpers/adDeepLink'
 import type { JobList } from '@/helpers/adSelectors'
+
+export type DeepLinkAction = 'applied' | 'not_for_me'
+
+export interface DeepLink {
+  adId: string
+  action: DeepLinkAction
+}
 
 export const AD_PATH = `${APP_BASE}/ad`
 

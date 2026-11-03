@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { pricedDays, TODAY, today, usage, yesterday } from '@/__tests__/usage.samples'
+import { pricedDays, today, usage, yesterday } from '@/__tests__/usage.samples'
+import { TODAY } from '@/__tests__/testClock'
 import { recentUsage, summarizeUsage, usageTotals } from '@/helpers/summarizeUsage'
 
 const CHART_DAYS = 14

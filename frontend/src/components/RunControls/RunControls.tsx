@@ -40,7 +40,7 @@ function startFailure(error: CommandError | null, resultsBy: string | null, text
   return resultsBy === null ? text.run.alreadyRunning : `${text.run.titles.scheduled(formatClock(resultsBy))}.`
 }
 
-export function RunLineControl() {
+export function RunStatusLineControl() {
   const status = useSnapshot('status')
   const offline = useConnection().kind === 'machineOffline'
   return <RunStatusLine status={status} offline={offline} />

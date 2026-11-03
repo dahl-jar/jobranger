@@ -11,57 +11,107 @@ const CONFIG = 'oxlint.config.ts'
 const LINT_TIMEOUT_MS = 30_000
 const FAILS = 1
 const PASSES = 0
-const LANDING = 'src/components/LandingPage'
-const OTHER_HELPER = "import { nextMenuItem } from '@/components/StatusMenu/nextMenuItem'"
-const REACT = "import { useState } from 'react'"
-const ICON = "import { Icon } from '@/components/Icon/Icon'"
+const RESTRICTED_IMPORTS = 'no-restricted-imports'
+const LANDING_FOLDER = 'src/components/LandingPage'
+const OTHER_HELPER_IMPORT = "import { nextMenuItem } from '@/components/StatusMenu/nextMenuItem'"
+const REACT_IMPORT = "import { useState } from 'react'"
+const ICON_IMPORT = "import { Icon } from '@/components/Icon/Icon'"
 
 interface Probe {
   name: string
   path: string
   source: string
-  exitCode: number
 }
 
-const PROBES: Probe[] = [
-  { name: 'should fail when a helper imports React', path: 'src/helpers/probe.ts', source: REACT, exitCode: FAILS },
-  { name: 'should fail when a constant imports React', path: 'src/constants/probe.ts', source: REACT, exitCode: FAILS },
-  { name: 'should fail when i18n imports a component', path: 'src/i18n/probe.ts', source: ICON, exitCode: FAILS },
-  { name: 'should fail when the contract imports a component', path: 'src/contract/probe.ts', source: ICON, exitCode: FAILS },
-  { name: "should fail when a feature imports another feature's helper", path: `${LANDING}/otherHelper.ts`, source: OTHER_HELPER, exitCode: FAILS },
-  { name: "should allow another feature's component", path: `${LANDING}/otherComponent.ts`, source: ICON, exitCode: PASSES },
+interface FailingProbe extends Probe {
+  expectedRule: string
+}
+
+const FAILING_PROBES: FailingProbe[] = [
+  { name: 'should fail when a helper imports React', path: 'src/helpers/probe.ts', source: REACT_IMPORT, expectedRule: RESTRICTED_IMPORTS },
+  { name: 'should fail when a constant imports React', path: 'src/constants/probe.ts', source: REACT_IMPORT, expectedRule: RESTRICTED_IMPORTS },
+  { name: 'should fail when a service imports React', path: 'src/services/probe.ts', source: REACT_IMPORT, expectedRule: RESTRICTED_IMPORTS },
+  {
+    name: 'should fail when a helper imports a hook',
+    path: 'src/helpers/hookImport.ts',
+    source: "import { useText } from '@/hooks/useLanguage'",
+    expectedRule: RESTRICTED_IMPORTS,
+  },
+  {
+    name: 'should fail when a helper imports the query library',
+    path: 'src/helpers/queryImport.ts',
+    source: "import { useQuery } from '@tanstack/react-query'",
+    expectedRule: RESTRICTED_IMPORTS,
+  },
+  { name: 'should fail when i18n imports a component', path: 'src/i18n/probe.ts', source: ICON_IMPORT, expectedRule: RESTRICTED_IMPORTS },
+  { name: 'should fail when the contract imports a component', path: 'src/contract/probe.ts', source: ICON_IMPORT, expectedRule: RESTRICTED_IMPORTS },
+  { name: 'should fail when a hook imports a component', path: 'src/hooks/componentImport.ts', source: ICON_IMPORT, expectedRule: RESTRICTED_IMPORTS },
+  {
+    name: 'should fail when a hook test imports a component',
+    path: 'src/hooks/__tests__/componentImport.test.ts',
+    source: ICON_IMPORT,
+    expectedRule: RESTRICTED_IMPORTS,
+  },
+  {
+    name: "should fail when a feature imports another feature's helper",
+    path: `${LANDING_FOLDER}/otherHelper.ts`,
+    source: OTHER_HELPER_IMPORT,
+    expectedRule: RESTRICTED_IMPORTS,
+  },
+  {
+    name: "should fail when a feature imports another feature's helper by a relative path",
+    path: `${LANDING_FOLDER}/relativeHelper.ts`,
+    source: "import { nextMenuItem } from '../StatusMenu/nextMenuItem'",
+    expectedRule: RESTRICTED_IMPORTS,
+  },
+  {
+    name: 'should fail when a helper imports a router value',
+    path: 'src/helpers/routerValue.ts',
+    source: "import { Link } from 'react-router'",
+    expectedRule: RESTRICTED_IMPORTS,
+  },
+  { name: 'should fail when a helper test imports React', path: 'src/helpers/__tests__/probe.test.ts', source: REACT_IMPORT, expectedRule: RESTRICTED_IMPORTS },
+]
+
+const PASSING_PROBES: Probe[] = [
+  { name: "should allow another feature's component", path: `${LANDING_FOLDER}/otherComponent.ts`, source: ICON_IMPORT },
   {
     name: "should allow another feature's CSS module",
-    path: `${LANDING}/otherStyles.ts`,
+    path: `${LANDING_FOLDER}/otherStyles.ts`,
     source: "import styles from '@/components/UsageViewStyles/usageViews.module.css'",
-    exitCode: PASSES,
   },
-  { name: "should allow a feature's own helper", path: `${LANDING}/ownHelper.ts`, source: "import { nextTab } from '@/components/LandingPage/nextTab'", exitCode: PASSES },
   {
-    name: "should allow a capitalised non-component file of another feature",
-    path: `${LANDING}/capitalisedTypes.ts`,
-    source: "import type { Foo } from '@/components/StatusMenu/Foo.types'",
-    exitCode: PASSES,
+    name: "should allow another feature's CSS module by a relative path",
+    path: `${LANDING_FOLDER}/relativeStyles.ts`,
+    source: "import styles from '../UsageViewStyles/usageViews.module.css'",
   },
-  { name: 'should allow a router type in a helper', path: 'src/helpers/routerType.ts', source: "import type { Location } from 'react-router'", exitCode: PASSES },
-  { name: 'should fail when a helper imports a router value', path: 'src/helpers/routerValue.ts', source: "import { Link } from 'react-router'", exitCode: FAILS },
-  { name: 'should fail when a helper test imports React', path: 'src/helpers/__tests__/probe.test.ts', source: REACT, exitCode: FAILS },
-  { name: "should allow a feature test to import another feature's helper", path: `${LANDING}/__tests__/probe.test.ts`, source: OTHER_HELPER, exitCode: PASSES },
+  { name: "should allow a feature's own helper", path: `${LANDING_FOLDER}/ownHelper.ts`, source: "import { nextTab } from '@/components/LandingPage/nextTab'" },
+  {
+    name: 'should allow a capitalised non-component file of another feature',
+    path: `${LANDING_FOLDER}/capitalisedTypes.ts`,
+    source: "import type { Foo } from '@/components/StatusMenu/Foo.types'",
+  },
+  { name: 'should allow a router type in a helper', path: 'src/helpers/routerType.ts', source: "import type { Location } from 'react-router'" },
+  { name: "should allow a feature test to import another feature's helper", path: `${LANDING_FOLDER}/__tests__/probe.test.ts`, source: OTHER_HELPER_IMPORT },
   {
     name: 'should allow a hook test to import the query client',
     path: 'src/hooks/__tests__/probe.test.ts',
     source: "import { createQueryClient } from '@/components/App/createQueryClient'",
-    exitCode: PASSES,
   },
 ]
 
 let workspace = ''
 
+function lint(path: string): { status: number | null; output: string } {
+  const result = spawnSync(OXLINT, [path], { cwd: workspace, encoding: 'utf8' })
+  return { status: result.status, output: `${result.stdout}${result.stderr}` }
+}
+
 beforeAll(() => {
   workspace = mkdtempSync(join(tmpdir(), 'import-boundaries-'))
   copyFileSync(join(FRONTEND, CONFIG), join(workspace, CONFIG))
   symlinkSync(join(FRONTEND, 'node_modules'), join(workspace, 'node_modules'), 'dir')
-  for (const probe of PROBES) {
+  for (const probe of [...FAILING_PROBES, ...PASSING_PROBES]) {
     const file = join(workspace, probe.path)
     mkdirSync(dirname(file), { recursive: true })
     writeFileSync(file, `${probe.source}\n`)
@@ -73,13 +123,28 @@ afterAll(() => {
 })
 
 describe('oxlint.config', () => {
-  it.each(PROBES)(
-    '$name',
-    ({ name, path, exitCode }) => {
-      const result = spawnSync(OXLINT, [path], { cwd: workspace, encoding: 'utf8' })
+  for (const { name, path, expectedRule } of FAILING_PROBES) {
+    it(
+      name,
+      () => {
+        const { status, output } = lint(path)
 
-      expect(result.status, `${name}: expected exit ${exitCode}\n${result.stdout}${result.stderr}`).toBe(exitCode)
-    },
-    LINT_TIMEOUT_MS,
-  )
+        expect(status, `expected exit ${FAILS}\n${output}`).toBe(FAILS)
+        expect(output, `expected rule ${expectedRule}`).toContain(expectedRule)
+      },
+      LINT_TIMEOUT_MS,
+    )
+  }
+
+  for (const { name, path } of PASSING_PROBES) {
+    it(
+      name,
+      () => {
+        const { status, output } = lint(path)
+
+        expect(status, `expected exit ${PASSES}\n${output}`).toBe(PASSES)
+      },
+      LINT_TIMEOUT_MS,
+    )
+  }
 })

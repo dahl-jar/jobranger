@@ -7,7 +7,7 @@ import { ThemeSwitch } from '@/components/ThemeSwitch/ThemeSwitch'
 import { useSnapshot } from '@/hooks/useSnapshot'
 import { usePendingLinkHandoff } from '@/components/AppLayout/usePendingLinkHandoff'
 import { RelayProvider } from '@/components/RelayProvider/RelayProvider'
-import { RunLineControl, RunNowControl, RunStatus } from '@/components/RunControls/RunControls'
+import { RunStatusLineControl, RunNowControl, RunStatus } from '@/components/RunControls/RunControls'
 import styles from '@/components/AppLayout/AppLayout.module.css'
 import { ConnectionGate } from '@/components/ConnectionGate/ConnectionGate'
 import { useLanguage, useText } from '@/hooks/useLanguage'
@@ -37,7 +37,7 @@ export function AppShell() {
           <Link to={jobsPath(base)} className={styles.logo}>
             jobranger
           </Link>
-          <RunLineControl />
+          <RunStatusLineControl />
           <RunNowControl />
         </div>
         <div className={styles.tools}>
