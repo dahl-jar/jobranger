@@ -20,7 +20,7 @@ const PLAIN_LAYER_MESSAGE =
   'helpers, constants, i18n, contract and services import no React, hook or component: move code that needs React to src/hooks or a component folder'
 const HOOK_MESSAGE = 'hooks import no component: move the shared code to src/helpers or src/constants'
 const FEATURE_MESSAGE =
-  'in a component folder a capitalised file is a component and a lowercase file is private: import the component file, or move the shared code to src/helpers, src/hooks or src/constants'
+  "Import files outside this component folder through @/ (for example @/helpers/formatDate). Another feature's lowercase file is private: import its component file or move the code to src/helpers."
 const FEATURES = readdirSync(new URL('./src/components', import.meta.url))
 
 interface ImportPattern {

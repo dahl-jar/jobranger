@@ -16,6 +16,8 @@ const LANDING_FOLDER = 'src/components/LandingPage'
 const OTHER_HELPER_IMPORT = "import { nextMenuItem } from '@/components/StatusMenu/nextMenuItem'"
 const REACT_IMPORT = "import { useState } from 'react'"
 const ICON_IMPORT = "import { Icon } from '@/components/Icon/Icon'"
+const RELATIVE_HELPER_PATH = `${LANDING_FOLDER}/relativeHelper.ts`
+const ALIAS_HINT = 'through @/'
 
 interface Probe {
   name: string
@@ -52,7 +54,7 @@ const FAILING_PROBES: Probe[] = [
   },
   {
     name: "should fail when a feature imports another feature's helper by a relative path",
-    path: `${LANDING_FOLDER}/relativeHelper.ts`,
+    path: RELATIVE_HELPER_PATH,
     source: "import { nextMenuItem } from '../StatusMenu/nextMenuItem'",
   },
   {
@@ -152,4 +154,14 @@ describe('oxlint.config', () => {
       LINT_TIMEOUT_MS,
     )
   }
+
+  it(
+    'should suggest @/ when a feature imports by a relative path',
+    () => {
+      const { output } = lint(RELATIVE_HELPER_PATH)
+
+      expect(output).toContain(ALIAS_HINT)
+    },
+    LINT_TIMEOUT_MS,
+  )
 })
