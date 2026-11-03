@@ -63,6 +63,8 @@ Replace `init` with `run`, `pair`, `report` or any other command. The prompts ne
 - Editor: the image has no editor, and `config edit`, `guidance edit` and `about edit` stop with an error. Edit the files in `~/.config/jobranger` on the host.
 - Updates: `docker pull ghcr.io/dahl-jar/jobranger/cli`.
 
+Messages from the CLI name paths inside the container: `/home/app/.config/jobranger` is `~/.config/jobranger` on your Mac, and `/home/app/.local` is the `jobranger` volume.
+
 On macOS, `install.sh` stops with a message that links to this section.
 
 To keep the database of the macOS build, run the command above once, then copy the database into the volume:

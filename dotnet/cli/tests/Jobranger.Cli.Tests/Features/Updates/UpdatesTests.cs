@@ -26,9 +26,10 @@ public sealed class UpdatesTests : IDisposable {
 
     [Theory]
     [InlineData("docker", "Docker")]
-    [InlineData("archive", "Archive")]
+    [InlineData("", "Archive")]
     public async Task ShouldPrintUpgradeCommand_WhenNewerReleaseExists(string method, string expected) {
-        UpdatesEntry updates = Create(new FakeGitHubHandler(GitHubReleases.All()), new() { [methodVariable] = method });
+        Dictionary<string, string> environment = method.Length == 0 ? [] : new() { [methodVariable] = method };
+        UpdatesEntry updates = Create(new FakeGitHubHandler(GitHubReleases.All()), environment);
 
         await updates.MaybeNotifyAsync(scheduled: false, TestContext.Current.CancellationToken);
 
