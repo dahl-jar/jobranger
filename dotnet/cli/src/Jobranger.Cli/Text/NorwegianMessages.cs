@@ -672,8 +672,6 @@ internal sealed class NorwegianMessages : IMessages {
 
     public string InitSecretsStored(string place) => $"✓ Hemmeligheter lagret i {place}, bare på denne maskinen.";
 
-    public string InitStoreKeychain => "macOS-nøkkelringen";
-
     public string InitStoreKeyring => "systemets nøkkelring";
 
     public string InitNext => "Neste: jobranger run";

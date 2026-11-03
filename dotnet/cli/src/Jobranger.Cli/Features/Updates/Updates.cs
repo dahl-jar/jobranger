@@ -13,7 +13,6 @@ internal sealed class Updates(
     IMessages messages,
     IDictionary environment,
     string cachePath,
-    string? processPath,
     string version,
     TimeProvider time,
     Func<HttpMessageHandler> createHandler) {
@@ -33,7 +32,7 @@ internal sealed class Updates(
         if (latest is null || !Version.TryParse(release, out Version? current) || latest <= current) {
             return;
         }
-        InstallMethod method = processPath is null ? InstallMethod.Archive : InstallMethods.Detect(processPath, environment);
+        InstallMethod method = InstallMethods.Detect(environment);
         string notice = messages.UpdateAvailable(latest.ToString(), current.ToString(), InstallMethods.UpgradeCommand(method));
         await errorConsole.Profile.Out.Writer.WriteLineAsync(notice.AsMemory(), cancellationToken).ConfigureAwait(false);
     }

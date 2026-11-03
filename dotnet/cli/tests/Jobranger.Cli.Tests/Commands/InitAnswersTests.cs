@@ -245,8 +245,7 @@ public sealed class InitAnswersTests : IDisposable {
 
         await init.InvokeAsync(init.Seams(init.Prompter(init.SmtpFlow(server)), InitHarness.Listing()));
 
-        string place = OperatingSystem.IsMacOS() ? english.InitStoreKeychain : english.InitStoreKeyring;
-        Assert.Contains(english.InitSecretsStored(place), init.Output, StringComparison.Ordinal);
+        Assert.Contains(english.InitSecretsStored(english.InitStoreKeyring), init.Output, StringComparison.Ordinal);
     }
 
     [Fact]

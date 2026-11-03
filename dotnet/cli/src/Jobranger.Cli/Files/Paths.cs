@@ -13,7 +13,6 @@ internal sealed class Paths(IDictionary environment) {
     private const string xdgDataVariable = "XDG_DATA_HOME";
     private const string xdgStateVariable = "XDG_STATE_HOME";
     private const string dotConfig = ".config";
-    private const string macDataRoot = "Library/Application Support";
     private const string linuxDataRoot = ".local/share";
     private const string linuxStateRoot = ".local/state";
     private const string configFileName = "config.yaml";
@@ -72,9 +71,6 @@ internal sealed class Paths(IDictionary environment) {
         Read(name)?.Trim() is { Length: > 0 } value && Path.IsPathRooted(value) ? Path.Combine(value, appName) : null;
 
     private string PlatformDir(string unixRoot) {
-        if (OperatingSystem.IsMacOS()) {
-            return Path.Combine(Home(), macDataRoot, appName);
-        }
         if (OperatingSystem.IsWindows()) {
             return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), appName);
         }

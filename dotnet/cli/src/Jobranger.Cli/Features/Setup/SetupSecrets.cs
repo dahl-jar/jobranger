@@ -79,7 +79,7 @@ internal sealed class SetupSecrets(SetupContext context) {
 
     private async Task<ISecretStore?> OpenAsync(CancellationToken cancellationToken) {
         if (!isOpen) {
-            store = await context.Seams.OpenSecrets(context.Environment, true, cancellationToken).ConfigureAwait(false);
+            store = await context.Seams.OpenSecrets(context.Environment, cancellationToken).ConfigureAwait(false);
             isOpen = true;
         }
         return store;

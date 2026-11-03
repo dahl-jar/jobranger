@@ -5,7 +5,6 @@ namespace Jobranger.Cli.Tests.Secrets;
 
 internal static class LiveSecretStores {
     public const string LiveVariable = "JOBRANGER_SECRET_STORE_LIVE";
-    public const string LockedVariable = "JOBRANGER_KEYCHAIN_LOCKED";
     public const string OffReason = "live secret store tests are off: set " + LiveVariable + "=1";
     public const string LinuxOffReason = "secret service tests run on Linux only, with " + LiveVariable + "=1";
     public const string Collection = "secret service bus";
@@ -14,32 +13,18 @@ internal static class LiveSecretStores {
 
     private const string liveValue = "1";
     private const string testServicePrefix = "jobranger-tests-";
-    private const string ciVariable = "GITHUB_ACTIONS";
-    private const string ciValue = "true";
 
-    public static bool IsLive =>
-        Environment.GetEnvironmentVariable(LiveVariable) == liveValue
-        && (!OperatingSystem.IsMacOS() || Environment.GetEnvironmentVariable(ciVariable) == ciValue);
+    public static bool IsLive => Environment.GetEnvironmentVariable(LiveVariable) == liveValue;
 
     public static bool IsLiveLinux => IsLive && OperatingSystem.IsLinux();
-
-    public static bool IsLockedKeychain =>
-        IsLive && OperatingSystem.IsMacOS() && Environment.GetEnvironmentVariable(LockedVariable) == liveValue;
-
-    public static string LockedOffReason =>
-        $"locked keychain test is off: live={IsLive} macOS={OperatingSystem.IsMacOS()} "
-        + $"{LockedVariable}={Environment.GetEnvironmentVariable(LockedVariable) ?? "unset"}";
 
     public static string UniqueService() => testServicePrefix + Guid.NewGuid().ToString("N");
 
     public static async Task<ISecretStore> OpenAsync(string service, CancellationToken cancellationToken) {
-        if (OperatingSystem.IsMacOS()) {
-            return new KeychainSecretStore(service, canPrompt: false);
-        }
         if (OperatingSystem.IsLinux()) {
             return await SecretServiceStore.OpenAsync(Environment.GetEnvironmentVariables(), service, cancellationToken)
                 ?? throw new InvalidOperationException("no secret service on the session bus");
         }
-        throw new PlatformNotSupportedException("live secret store tests run on macOS and Linux");
+        throw new PlatformNotSupportedException("live secret store tests run on Linux");
     }
 }

@@ -11,7 +11,7 @@ public sealed class TestIsolation : IDisposable {
     private const string rootPrefix = "jobranger-tests-";
 
     private static readonly string[] allowedSwitches =
-        ["JOBRANGER_EMBEDDINGS_LIVE", "JOBRANGER_EMBEDDINGS_CACHE", LiveSecretStores.LiveVariable, LiveSecretStores.LockedVariable];
+        ["JOBRANGER_EMBEDDINGS_LIVE", "JOBRANGER_EMBEDDINGS_CACHE", LiveSecretStores.LiveVariable];
 
     private static readonly string[] proxyVariables =
         ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"];

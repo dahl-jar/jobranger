@@ -38,7 +38,6 @@ internal sealed class CliServices(
             messages,
             environment,
             paths.VersionCheckPath(),
-            Environment.ProcessPath,
             AppVersion.Text,
             time,
             () => new SocketsHttpHandler());

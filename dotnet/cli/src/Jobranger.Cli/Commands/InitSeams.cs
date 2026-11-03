@@ -13,7 +13,7 @@ namespace Jobranger.Cli.Commands;
 internal sealed record InitSeams(
     Func<IAnsiConsole, IMessages, IPrompter?> CreatePrompter,
     Func<ProviderName?, HttpMessageHandler> CreateModelHandler,
-    Func<IDictionary, bool, CancellationToken, Task<ISecretStore?>> OpenSecrets,
+    Func<IDictionary, CancellationToken, Task<ISecretStore?>> OpenSecrets,
     DeliveryTransport Transport) {
     public static readonly InitSeams Production = new(
         SpectrePrompter.For,

@@ -199,7 +199,7 @@ public sealed class RunCommandTests : IDisposable {
     public async Task ShouldSkipChecks_WhenSecretStoreBreaks(bool breaksOnOpen) {
         RunSeams seams = Seams([], resend) with {
             OpenModel = RunSeams.Production.OpenModel,
-            OpenSecrets = (_, _, _) => breaksOnOpen
+            OpenSecrets = (_, _) => breaksOnOpen
                 ? throw new SecretStoreUnavailableException("store", FakeSecretStore.FailureReason)
                 : Task.FromResult<ISecretStore?>(new FakeSecretStore { IsBroken = true }),
         };
@@ -239,23 +239,6 @@ public sealed class RunCommandTests : IDisposable {
         await ApiClock.RunAsync(clock, InvokeAsync(seams));
 
         Assert.Equal((true, false), (server.Request.IsCompleted, target.Request.IsCompleted));
-    }
-
-    [Theory]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    public async Task ShouldAllowKeychainPrompt_WhenInputIsTerminal(bool inputRedirected, bool expected) {
-        bool? promptAllowed = null;
-        RunSeams seams = Seams([], resend) with {
-            OpenSecrets = (_, canPrompt, _) => {
-                promptAllowed = canPrompt;
-                return Task.FromResult<ISecretStore?>(null);
-            },
-        };
-
-        await InvokeAsync(seams, clock, TestContext.Current.CancellationToken, inputRedirected);
-
-        Assert.Equal(expected, promptAllowed);
     }
 
     [Fact]
@@ -453,6 +436,6 @@ public sealed class RunCommandTests : IDisposable {
     private Task<int> InvokeAsync(RunSeams seams) => InvokeAsync(seams, clock, TestContext.Current.CancellationToken);
 
     private Task<int> InvokeAsync(
-        RunSeams seams, TimeProvider time, CancellationToken cancellationToken, bool inputRedirected = true, IAnsiConsole? output = null) =>
-        RunCommandFixtures.InvokeAsync(environment, console, seams, time, cancellationToken, inputRedirected, output);
+        RunSeams seams, TimeProvider time, CancellationToken cancellationToken, IAnsiConsole? output = null) =>
+        RunCommandFixtures.InvokeAsync(environment, console, seams, time, cancellationToken, output);
 }

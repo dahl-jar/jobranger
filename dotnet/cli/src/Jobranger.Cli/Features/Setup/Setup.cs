@@ -78,10 +78,6 @@ internal sealed class Setup {
         await context.Output.WriteLineAsync(context.Messages.InitNext).ConfigureAwait(false);
     }
 
-    private string Place(SecretLocation location) {
-        if (location == SecretLocation.File) {
-            return context.Paths.SecretsPath();
-        }
-        return OperatingSystem.IsMacOS() ? context.Messages.InitStoreKeychain : context.Messages.InitStoreKeyring;
-    }
+    private string Place(SecretLocation location) =>
+        location == SecretLocation.File ? context.Paths.SecretsPath() : context.Messages.InitStoreKeyring;
 }

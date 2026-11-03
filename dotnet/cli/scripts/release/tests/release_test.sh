@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-expected_tests=47
+expected_tests=49
 fixture_version="0.4.1"
-fixture_rids=(osx-arm64 linux-x64)
 linux_archive="jobranger-$fixture_version-linux-x64.tar.gz"
 release_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+build_image="$release_dir/../../deploy/build_image.sh"
 next_version="$release_dir/next_version.sh"
 assemble="$release_dir/assemble.sh"
 release_prs="$release_dir/release_prs.sh"
@@ -84,10 +84,7 @@ pack_archive() {
 }
 
 build_release() {
-  local rid
-  for rid in "${fixture_rids[@]}"; do
-    pack_archive "$rid"
-  done
+  pack_archive linux-x64
   bash "$assemble" "$fixture_version" archives out
 }
 
@@ -100,11 +97,7 @@ case "$1" in
   -m) echo "$STUB_UNAME_M" ;;
 esac
 EOF
-  cat >stub/sysctl <<'EOF'
-#!/bin/sh
-echo "${STUB_SYSCTL:-0}"
-EOF
-  chmod 0755 stub/uname stub/sysctl
+  chmod 0755 stub/uname
 }
 
 stub_older() {
@@ -571,39 +564,29 @@ should_download_from_release_tag_when_no_url_is_set() {
 should_list_every_asset_in_checksums() {
   build_release
 
-  assert_eq 3 "$(wc -l <out/SHA256SUMS | tr -d ' ')"
+  assert_eq 2 "$(wc -l <out/SHA256SUMS | tr -d ' ')"
   (cd out && sha256_check SHA256SUMS >/dev/null)
 }
 
 should_fail_when_archive_is_missing() {
-  pack_archive linux-x64
+  mkdir -p archives
   local status=0
 
   bash "$assemble" "$fixture_version" archives out 2>stderr.txt || status=$?
 
   assert_eq 1 "$status"
-  assert_contains "$(cat stderr.txt)" "missing archive jobranger-$fixture_version-osx-arm64.tar.gz"
+  assert_contains "$(cat stderr.txt)" "missing archive jobranger-$fixture_version-linux-x64.tar.gz"
 }
 
 should_install_build_for_platform() {
   build_release
+  local output
 
-  local row system machine rid output
-  for row in "Linux x86_64 linux-x64" "Darwin arm64 osx-arm64"; do
-    read -r system machine rid <<<"$row"
-    output="$(run_local_install "$system" "$machine")"
-    [ -x bin-install/jobranger ] || fail "bin-install/jobranger is not executable"
-    assert_eq "$rid" "$(bin-install/jobranger)"
-    assert_contains "$output" "jobranger $fixture_version installed to"
-  done
-}
+  output="$(run_local_install Linux x86_64)"
 
-should_install_arm64_build_under_rosetta() {
-  build_release
-
-  STUB_SYSCTL=1 run_local_install Darwin x86_64 >/dev/null
-
-  assert_eq osx-arm64 "$(bin-install/jobranger)"
+  [ -x bin-install/jobranger ] || fail "bin-install/jobranger is not executable"
+  assert_eq linux-x64 "$(bin-install/jobranger)"
+  assert_contains "$output" "jobranger $fixture_version installed to"
 }
 
 should_warn_when_other_jobranger_runs_first() {
@@ -684,12 +667,56 @@ should_refuse_when_checksums_lack_archive() {
 should_refuse_platform_without_build() {
   build_release
 
-  local platform system machine
-  for platform in "Linux aarch64" "Darwin x86_64"; do
-    read -r system machine <<<"$platform"
-    assert_contains "$(install_failure "$system" "$machine")" "no build for $platform"
+  assert_contains "$(install_failure Linux aarch64)" "no build for Linux aarch64, builds exist for Linux x64"
+  assert_missing bin-install/jobranger
+}
+
+should_point_mac_users_to_docker_image() {
+  build_release
+
+  local machine message
+  for machine in arm64 x86_64; do
+    message="$(install_failure Darwin "$machine")"
+    case "$message" in
+      "jobranger install: no macOS build, run jobranger in Docker with the image ghcr.io/"*"/jobranger/cli, see https://github.com/"*"/jobranger/tree/main/dotnet/cli#docker") ;;
+      *) fail "expected the Docker image message for Darwin $machine" "actual: $message" ;;
+    esac
   done
   assert_missing bin-install/jobranger
+}
+
+stub_docker() {
+  mkdir -p stub
+  cat >stub/docker <<EOF
+#!/bin/sh
+for context; do :; done
+for path in jobranger home/.local/state/jobranger home/.local/state/jobranger/bundle; do
+  ls -ld "\$context/\$path" | cut -c1-10
+done >"$PWD/staged.txt"
+if [ -d "\$context/home/.config" ]; then
+  echo "home/.config is a folder" >>"$PWD/staged.txt"
+fi
+EOF
+  chmod 0755 stub/docker
+}
+
+should_print_usage_when_image_arguments_are_missing() {
+  local status=0
+
+  bash "$build_image" jobranger 2>stderr.txt || status=$?
+
+  assert_eq 2 "$status"
+  assert_eq "usage: build_image.sh <binary> <tag>..." "$(cat stderr.txt)"
+}
+
+should_stage_image_files_with_private_modes() {
+  stub_docker
+  printf 'binary\n' >jobranger
+  chmod 0600 jobranger
+
+  with_stub bash "$build_image" "$PWD/jobranger" jobranger-cli:test
+
+  assert_eq "$(printf '%s\n' -rwxr-xr-x drwx------ drwx------ "home/.config is a folder")" "$(cat staged.txt)"
 }
 
 run_tests "$expected_tests"

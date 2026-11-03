@@ -12,7 +12,6 @@ namespace Jobranger.Cli.Tests.Features.Updates;
 public sealed class UpdatesTests : IDisposable {
     private const string methodVariable = "JOBRANGER_INSTALL_METHOD";
     private const string optOutVariable = "JOBRANGER_NO_UPDATE_CHECK";
-    private const string processPath = "/usr/local/bin/jobranger";
 
     private static readonly string current = AppVersion.Text;
 
@@ -26,7 +25,6 @@ public sealed class UpdatesTests : IDisposable {
     }
 
     [Theory]
-    [InlineData("homebrew", "Homebrew")]
     [InlineData("docker", "Docker")]
     [InlineData("archive", "Archive")]
     public async Task ShouldPrintUpgradeCommand_WhenNewerReleaseExists(string method, string expected) {
@@ -43,24 +41,14 @@ public sealed class UpdatesTests : IDisposable {
     [Fact]
     public async Task ShouldPrintNorwegianNotice_WhenMessagesAreNorwegian() {
         UpdatesEntry updates = Create(
-            new FakeGitHubHandler(GitHubReleases.All()), new() { [methodVariable] = "homebrew" }, new NorwegianMessages());
+            new FakeGitHubHandler(GitHubReleases.All()), new() { [methodVariable] = "docker" }, new NorwegianMessages());
 
         await updates.MaybeNotifyAsync(scheduled: false, TestContext.Current.CancellationToken);
 
         Assert.Equal(
             $"jobranger {GitHubReleases.Highest} er ute (du har {current}). "
-                + $"Oppgrader: {InstallMethods.UpgradeCommand(InstallMethod.Homebrew)}\n",
+                + $"Oppgrader: {InstallMethods.UpgradeCommand(InstallMethod.Docker)}\n",
             errors.ToString());
-    }
-
-    [Fact]
-    public async Task ShouldPrintArchiveCommand_WhenProcessPathIsUnknown() {
-        UpdatesEntry updates = Create(new FakeGitHubHandler(GitHubReleases.All()), [], path: null);
-
-        await updates.MaybeNotifyAsync(scheduled: false, TestContext.Current.CancellationToken);
-
-        Assert.EndsWith(
-            $"Upgrade: {InstallMethods.UpgradeCommand(InstallMethod.Archive)}\n", errors.ToString(), StringComparison.Ordinal);
     }
 
     [Theory]
@@ -92,13 +80,13 @@ public sealed class UpdatesTests : IDisposable {
     public async Task ShouldPrintNotice_WhenCurrentVersionHasSuffix(string version, string latest, string shown) {
         UpdatesEntry updates = Create(
             new FakeGitHubHandler(GitHubReleases.Only($"cli-v{latest}")),
-            new() { [methodVariable] = "homebrew" },
+            new() { [methodVariable] = "docker" },
             version: version);
 
         await updates.MaybeNotifyAsync(scheduled: false, TestContext.Current.CancellationToken);
 
         Assert.Equal(
-            $"jobranger {latest} is out (you have {shown}). Upgrade: {InstallMethods.UpgradeCommand(InstallMethod.Homebrew)}\n",
+            $"jobranger {latest} is out (you have {shown}). Upgrade: {InstallMethods.UpgradeCommand(InstallMethod.Docker)}\n",
             errors.ToString());
     }
 
@@ -132,8 +120,7 @@ public sealed class UpdatesTests : IDisposable {
         Dictionary<string, string> environment,
         IMessages? messages = null,
         bool interactive = true,
-        string? version = null,
-        string? path = processPath) {
+        string? version = null) {
         IAnsiConsole console = AnsiConsole.Create(new AnsiConsoleSettings {
             Ansi = AnsiSupport.No,
             ColorSystem = ColorSystemSupport.NoColors,
@@ -142,7 +129,7 @@ public sealed class UpdatesTests : IDisposable {
             EnvironmentVariables = [],
         });
         return new UpdatesEntry(
-            console, messages ?? new EnglishMessages(), environment, temp.File("version_check.json"), path,
+            console, messages ?? new EnglishMessages(), environment, temp.File("version_check.json"),
             version ?? current, time,
             () => handler);
     }

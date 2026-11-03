@@ -176,7 +176,7 @@ export const nb: Messages = {
       { title: 'Følger opp søknader', body: 'Venter, Intervju, Tilbud, Takket ja eller Avslag, med et notat.' },
     ],
     installHeading: 'Installer og sett opp',
-    platforms: 'macOS eller Linux. Windows via WSL.',
+    platforms: 'Linux. Windows via WSL. macOS via Docker.',
     installTool: 'Installer kommandolinjeverktøyet',
     installSteps: {
       setUp: { title: 'Sett opp', body: 'Modelltilgang, CV, roller, grenser og steder. Avslutter med en prøvekjøring på de siste 7 dagene.' },

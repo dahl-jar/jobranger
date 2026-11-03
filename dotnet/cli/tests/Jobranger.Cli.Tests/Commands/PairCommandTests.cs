@@ -148,27 +148,12 @@ public sealed class PairCommandTests : IDisposable {
     [Fact]
     public async Task ShouldPrintSecretStoreFailed_WhenStoreDoesNotAnswer() {
         int exit = await RunAsync(
-            inputRedirected: true,
-            (_, _, _, _, _, _) => Task.FromException<Link>(new SecretStoreUnavailableException("link-keys", "timeout")));
+            (_, _, _, _, _) => Task.FromException<Link>(new SecretStoreUnavailableException("link-keys", "timeout")));
 
         Assert.Equal(
             (CliExitCodes.Failure, "The secret store did not answer. Unlock it and try again."),
             (exit, console.Output.TrimEnd()));
         Assert.Contains("pairing.failed", LogText(), StringComparison.Ordinal);
-    }
-
-    [Theory]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    public async Task ShouldAllowKeychainPrompt_WhenInputIsTerminal(bool inputRedirected, bool expected) {
-        bool? promptAllowed = null;
-
-        await RunAsync(inputRedirected, (environment, paths, urls, logger, canPrompt, cancellationToken) => {
-            promptAllowed = canPrompt;
-            return Link.OpenAsync(environment, paths, urls, logger, canPrompt, cancellationToken);
-        });
-
-        Assert.Equal(expected, promptAllowed);
     }
 
     [Fact]
@@ -189,7 +174,7 @@ public sealed class PairCommandTests : IDisposable {
         using HttpClient http = relay.Client();
         Link link = RelayLink(db, relay, http);
 
-        int exit = await RunBrokenAsync(failure, (_, _, _, _, _, _) => Task.FromResult(link));
+        int exit = await RunBrokenAsync(failure, (_, _, _, _, _) => Task.FromResult(link));
 
         Assert.Equal(
             (CliExitCodes.Failure, "", "pairing.failed output_failed", 0),
@@ -243,12 +228,12 @@ public sealed class PairCommandTests : IDisposable {
         Assert.Contains("keys_busy", LogText(), StringComparison.Ordinal);
     }
 
-    private Task<int> RunAsync() => RunAsync(inputRedirected: true, Link.OpenAsync);
+    private Task<int> RunAsync() => RunAsync(Link.OpenAsync);
 
-    private Task<int> RunAsync(bool inputRedirected, LinkCommandRun.LinkOpener openLink) {
+    private Task<int> RunAsync(LinkCommandRun.LinkOpener openLink) {
         CliServices services = CliServices.Create(TimeProvider.System, console.Console, console.ErrorConsole, environment);
         System.CommandLine.RootCommand root =
-            [new PairCommand(services, environment, TimeProvider.System, inputRedirected, openLink)];
+            [new PairCommand(services, environment, TimeProvider.System, openLink)];
         return root.Parse([PairCommand.CommandName]).InvokeAsync(null, TestContext.Current.CancellationToken);
     }
 
@@ -256,7 +241,7 @@ public sealed class PairCommandTests : IDisposable {
         CliServices services = CliServices.Create(
             TimeProvider.System, CommandFixtures.BrokenConsole(failure), console.ErrorConsole, environment);
         System.CommandLine.RootCommand root =
-            [new PairCommand(services, environment, TimeProvider.System, inputRedirected: true, openLink)];
+            [new PairCommand(services, environment, TimeProvider.System, openLink)];
         InvocationConfiguration configuration = new() { Error = console.ErrorConsole.Profile.Out.Writer };
         return root.Parse([PairCommand.CommandName])
             .InvokeAsync(configuration, TestContext.Current.CancellationToken)

@@ -13,7 +13,6 @@ internal static class LinkCommandRun {
     public static Task<int> RunAsync(
         CliServices services,
         IDictionary environment,
-        bool canPrompt,
         LinkOpener openLink,
         Action<ILogger, string> logFailure,
         LinkAction action,
@@ -28,7 +27,7 @@ internal static class LinkCommandRun {
             try {
                 ServiceUrls urls = ServiceUrls.From(environment);
                 await using Link link =
-                    await openLink(environment, paths, urls, logger, canPrompt, cancellationToken).ConfigureAwait(false);
+                    await openLink(environment, paths, urls, logger, cancellationToken).ConfigureAwait(false);
                 return await action(new OpenedLink(link, urls, paths, output, logger), cancellationToken)
                     .ConfigureAwait(false);
             } catch (Exception error) when (CommandFailure.Of(error, paths, messages) is ReadFailure failure) {
@@ -50,6 +49,5 @@ internal static class LinkCommandRun {
         Paths paths,
         ServiceUrls urls,
         ILogger logger,
-        bool canPrompt,
         CancellationToken cancellationToken);
 }

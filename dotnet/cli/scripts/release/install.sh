@@ -5,26 +5,20 @@ version="__JOBRANGER_VERSION__"
 release_url="https://github.com/dahl-jar/jobranger/releases/download/cli-v$version"
 download_url="${JOBRANGER_DOWNLOAD_URL:-$release_url}"
 install_dir="${JOBRANGER_INSTALL_DIR:-$HOME/.local/bin}"
+image="ghcr.io/dahl-jar/jobranger/cli"
+docker_docs="https://github.com/dahl-jar/jobranger/tree/main/dotnet/cli#docker"
 
 fail() {
   echo "jobranger install: $1" >&2
   exit 1
 }
 
-native_machine() {
-  if [ "$(sysctl -n sysctl.proc_translated 2>/dev/null)" = 1 ]; then
-    echo arm64
-  else
-    uname -m
-  fi
-}
-
 detect_rid() {
-  platform="$(uname -s) $(native_machine)"
+  platform="$(uname -s) $(uname -m)"
   case "$platform" in
-    "Darwin arm64") echo osx-arm64 ;;
     "Linux x86_64") echo linux-x64 ;;
-    *) fail "no build for $platform, builds exist for macOS arm64 and Linux x64" ;;
+    Darwin\ *) fail "no macOS build, run jobranger in Docker with the image $image, see $docker_docs" ;;
+    *) fail "no build for $platform, builds exist for Linux x64" ;;
   esac
 }
 

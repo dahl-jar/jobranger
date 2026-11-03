@@ -6,7 +6,6 @@ namespace Jobranger.Cli.Files;
 
 [UnsupportedOSPlatform("windows")]
 internal static partial class UnixFiles {
-    private const string macLibc = "libc";
     private const string linuxLibc = "libc.so.6";
     private const string runtimeNative = "libSystem.Native";
     private const int failed = -1;
@@ -18,13 +17,9 @@ internal static partial class UnixFiles {
     private const int directoryFile = 0x4000;
     private const int readWrite = 0x2;
     private const int writeOnly = 0x1;
-    private const int macAppend = 0x8;
     private const int linuxAppend = 0x400;
     private const int lockExclusive = 2;
     private const int lockNonBlocking = 4;
-    private const int macNonBlock = 0x4;
-    private const int macNoFollow = 0x100;
-    private const int macCloseOnExec = 0x1000000;
     private const int linuxNonBlock = 0x800;
     private const int linuxNoFollow = 0x20000;
     private const int linuxArmNoFollow = 0x8000;
@@ -32,9 +27,7 @@ internal static partial class UnixFiles {
     private const int runtimeWriteAccess = 2;
     private const int noEntry = 2;
     private const int alreadyExists = 17;
-    private const int macLinkLoop = 62;
     private const int linuxLinkLoop = 40;
-    private const int macWouldBlock = 35;
     private const int linuxWouldBlock = 11;
     private const int runtimeWriteOnly = 0x1;
     private const int runtimeCloseOnExec = 0x10;
@@ -48,12 +41,9 @@ internal static partial class UnixFiles {
     private const int createNewFlags =
         runtimeWriteOnly | runtimeCreate | runtimeExclusive | runtimeNoFollow | runtimeCloseOnExec;
 
-    private static readonly int readNoFollowFlags = OperatingSystem.IsMacOS()
-        ? macNonBlock | macNoFollow | macCloseOnExec
-        : linuxNonBlock | LinuxNoFollow() | linuxCloseOnExec;
-    private static readonly int appendNoFollowFlags = OperatingSystem.IsMacOS()
-        ? writeOnly | macAppend | macNonBlock | macNoFollow | macCloseOnExec
-        : writeOnly | linuxAppend | linuxNonBlock | LinuxNoFollow() | linuxCloseOnExec;
+    private static readonly int readNoFollowFlags = linuxNonBlock | LinuxNoFollow() | linuxCloseOnExec;
+    private static readonly int appendNoFollowFlags =
+        writeOnly | linuxAppend | linuxNonBlock | LinuxNoFollow() | linuxCloseOnExec;
 
     public static SafeFileHandle? OpenReadNoFollow(string path, out int error) =>
         Open(path, readNoFollowFlags, out error);
@@ -106,27 +96,25 @@ internal static partial class UnixFiles {
     }
 
     public static void Terminate(int processId) =>
-        _ = OperatingSystem.IsMacOS() ? MacKill(processId, terminateSignal) : LinuxKill(processId, terminateSignal);
+        _ = LinuxKill(processId, terminateSignal);
 
     public static byte[]? ReadTerminalSettings(int descriptor) {
         byte[] settings = new byte[terminalSettingsSize];
-        int result = OperatingSystem.IsMacOS() ? MacGetTerminal(descriptor, settings) : LinuxGetTerminal(descriptor, settings);
+        int result = LinuxGetTerminal(descriptor, settings);
         return result == failed ? null : settings;
     }
 
     public static void WriteTerminalSettings(int descriptor, byte[] settings) =>
-        _ = OperatingSystem.IsMacOS()
-            ? MacSetTerminal(descriptor, applyNow, settings)
-            : LinuxSetTerminal(descriptor, applyNow, settings);
+        _ = LinuxSetTerminal(descriptor, applyNow, settings);
 
     public static bool IsBackground(int descriptor) {
-        int foreground = OperatingSystem.IsMacOS() ? MacForegroundGroup(descriptor) : LinuxForegroundGroup(descriptor);
-        return foreground != failed && foreground != (OperatingSystem.IsMacOS() ? MacProcessGroup() : LinuxProcessGroup());
+        int foreground = LinuxForegroundGroup(descriptor);
+        return foreground != failed && foreground != LinuxProcessGroup();
     }
 
     public static bool TryLockExclusive(SafeFileHandle handle, out int error) {
         int operation = lockExclusive | lockNonBlocking;
-        int result = OperatingSystem.IsMacOS() ? MacLock(handle, operation) : LinuxLock(handle, operation);
+        int result = LinuxLock(handle, operation);
         error = result == failed ? Marshal.GetLastPInvokeError() : 0;
         return result != failed;
     }
@@ -135,10 +123,9 @@ internal static partial class UnixFiles {
 
     public static bool IsExisting(int error) => error == alreadyExists;
 
-    public static bool IsLink(int error) => error == (OperatingSystem.IsMacOS() ? macLinkLoop : linuxLinkLoop);
+    public static bool IsLink(int error) => error == linuxLinkLoop;
 
-    public static bool IsWouldBlock(int error) =>
-        error == (OperatingSystem.IsMacOS() ? macWouldBlock : linuxWouldBlock);
+    public static bool IsWouldBlock(int error) => error == linuxWouldBlock;
 
     public static bool IsRegularFile(SafeFileHandle handle) {
         Span<byte> status = stackalloc byte[fileStatusSize];
@@ -149,7 +136,7 @@ internal static partial class UnixFiles {
         (MemoryMarshal.Read<int>(status[modeOffset..]) & fileTypeMask) == regularFile;
 
     private static SafeFileHandle? Open(string path, int flags, out int error) {
-        int descriptor = OperatingSystem.IsMacOS() ? MacOpen(path, flags) : LinuxOpen(path, flags);
+        int descriptor = LinuxOpen(path, flags);
         if (descriptor == failed) {
             error = Marshal.GetLastPInvokeError();
             return null;
@@ -162,9 +149,6 @@ internal static partial class UnixFiles {
         RuntimeInformation.ProcessArchitecture is Architecture.Arm64 or Architecture.Arm
             ? linuxArmNoFollow
             : linuxNoFollow;
-
-    [LibraryImport(macLibc, EntryPoint = "open", StringMarshalling = StringMarshalling.Utf8, SetLastError = true)]
-    private static partial int MacOpen(string path, int flags);
 
     [LibraryImport(linuxLibc, EntryPoint = "open", StringMarshalling = StringMarshalling.Utf8, SetLastError = true)]
     private static partial int LinuxOpen(string path, int flags);
@@ -187,38 +171,20 @@ internal static partial class UnixFiles {
     [LibraryImport(runtimeNative, EntryPoint = "SystemNative_FStat")]
     private static partial int FileStatus(SafeFileHandle handle, Span<byte> status);
 
-    [LibraryImport(macLibc, EntryPoint = "flock", SetLastError = true)]
-    private static partial int MacLock(SafeFileHandle handle, int operation);
-
     [LibraryImport(linuxLibc, EntryPoint = "flock", SetLastError = true)]
     private static partial int LinuxLock(SafeFileHandle handle, int operation);
-
-    [LibraryImport(macLibc, EntryPoint = "kill")]
-    private static partial int MacKill(int processId, int signal);
 
     [LibraryImport(linuxLibc, EntryPoint = "kill")]
     private static partial int LinuxKill(int processId, int signal);
 
-    [LibraryImport(macLibc, EntryPoint = "tcgetpgrp")]
-    private static partial int MacForegroundGroup(int descriptor);
-
     [LibraryImport(linuxLibc, EntryPoint = "tcgetpgrp")]
     private static partial int LinuxForegroundGroup(int descriptor);
-
-    [LibraryImport(macLibc, EntryPoint = "getpgrp")]
-    private static partial int MacProcessGroup();
 
     [LibraryImport(linuxLibc, EntryPoint = "getpgrp")]
     private static partial int LinuxProcessGroup();
 
-    [LibraryImport(macLibc, EntryPoint = "tcgetattr")]
-    private static partial int MacGetTerminal(int descriptor, [Out] byte[] settings);
-
     [LibraryImport(linuxLibc, EntryPoint = "tcgetattr")]
     private static partial int LinuxGetTerminal(int descriptor, [Out] byte[] settings);
-
-    [LibraryImport(macLibc, EntryPoint = "tcsetattr")]
-    private static partial int MacSetTerminal(int descriptor, int action, [In] byte[] settings);
 
     [LibraryImport(linuxLibc, EntryPoint = "tcsetattr")]
     private static partial int LinuxSetTerminal(int descriptor, int action, [In] byte[] settings);

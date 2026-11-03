@@ -7,11 +7,9 @@ namespace Jobranger.Cli.Tests.Mocks;
 
 [UnsupportedOSPlatform("windows")]
 internal sealed partial class Pseudoterminal : IDisposable {
-    private const string libc = "libc";
-    private const string linuxLibc = "libc.so.6";
+    private const string libc = "libc.so.6";
     private const int readWrite = 0x2;
-    private const int macNoControllingTerminal = 0x20000;
-    private const int linuxNoControllingTerminal = 0x100;
+    private const int noControllingTerminal = 0x100;
     private const string shell = "/bin/sh";
     private const string runScript = "-c";
     private const string echoFlag = "echo";
@@ -19,14 +17,7 @@ internal sealed partial class Pseudoterminal : IDisposable {
     private readonly SafeFileHandle controller;
     private readonly SafeFileHandle terminal;
 
-    static Pseudoterminal() {
-        NativeLibrary.SetDllImportResolver(
-            typeof(Pseudoterminal).Assembly,
-            (_, _, _) => NativeLibrary.Load(OperatingSystem.IsMacOS() ? libc : linuxLibc));
-    }
-
     public Pseudoterminal() {
-        int noControllingTerminal = OperatingSystem.IsMacOS() ? macNoControllingTerminal : linuxNoControllingTerminal;
         controller = new SafeFileHandle(OpenController(readWrite | noControllingTerminal), ownsHandle: true);
         if (Grant(controller) != 0 || Unlock(controller) != 0) {
             throw new InvalidOperationException("pseudoterminal not unlocked");

@@ -21,7 +21,6 @@ internal sealed class DevicesListCommand : Command {
         SetAction((_, cancellationToken) => LinkCommandRun.RunAsync(
             services,
             environment,
-            canPrompt: false,
             openLink,
             LogEvents.DevicesFailed,
             (opened, _) => ListAsync(opened.Link, opened.Output, services.Messages, time),

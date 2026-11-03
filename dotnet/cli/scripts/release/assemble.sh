@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-rids=(osx-arm64 linux-x64)
+rids=(linux-x64)
 placeholder="__JOBRANGER_VERSION__"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
