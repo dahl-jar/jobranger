@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { bundleInitScript } from './initScriptPlugin.ts'
 
 const ROOT = resolve(import.meta.dirname, '..')
-const ENTRY = resolve(ROOT, 'src/shared/i18n/languageInit.ts')
+const ENTRY = resolve(ROOT, 'src/helpers/setLanguageOnLoad.ts')
 const SCRIPT_FILE = 'language-init.js'
 
 function langAfterScript(script: string, stored: string | null, browser: string): string | undefined {

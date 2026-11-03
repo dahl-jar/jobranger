@@ -1,0 +1,70 @@
+import { useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
+import type { Status } from '@/contract/payload.gen'
+import { SettingsGroup } from '@/components/SettingsGroup/SettingsGroup'
+import { InlineConfirm } from '@/components/InlineConfirm/InlineConfirm'
+import { dayInSentence } from '@/helpers/dayInSentence'
+import styles from '@/components/SettingsFormStyles/settingsForm.module.css'
+import { formatClock } from '@/helpers/formatDate'
+import type { Messages } from '@/i18n/en'
+import { useText } from '@/hooks/useLanguage'
+import { Button } from '@/components/Button/Button'
+import { Icon } from '@/components/Icon/Icon'
+
+const MACHINE_ICON_SIZE = 20
+
+const FACT_SEPARATOR = ' · '
+
+function machineFacts(status: Status, today: string, text: Messages): string {
+  const words = text.settings.connection
+  const lastRun = status.last_run === null ? [] : [words.lastRun(formatClock(status.last_run.finished_at))]
+  return [words.version(status.cli_version), words.paired(dayInSentence(status.paired_at, today, text)), ...lastRun].join(FACT_SEPARATOR)
+}
+
+interface ConnectionSettingsProps {
+  status: Status
+  isOnline: boolean
+  isPersisted: boolean
+  today: string
+  onUnpair: () => void
+}
+
+export function ConnectionSettings({ status, isOnline, isPersisted, today, onUnpair }: ConnectionSettingsProps) {
+  const [isConfirming, setConfirming] = useState(false)
+  const unpairRef = useRef<HTMLButtonElement>(null)
+  const text = useText()
+  const words = text.settings.connection
+
+  function cancel() {
+    flushSync(() => setConfirming(false))
+    unpairRef.current?.focus()
+  }
+
+  return (
+    <SettingsGroup title={words.machine}>
+      <div className={styles.toggleRow}>
+        <div className={styles.actions}>
+          <Icon name="monitor" size={MACHINE_ICON_SIZE} />
+          <div>
+            <div className={styles.strong}>{status.machine}</div>
+            <div className={isOnline ? styles.online : styles.offline}>
+              <Icon name={isOnline ? 'check' : 'close'} />
+              {isOnline ? words.online : words.offline}
+            </div>
+            <div className={styles.grow}>{machineFacts(status, today, text)}</div>
+          </div>
+        </div>
+        {!isConfirming && (
+          <Button ref={unpairRef} variant="quiet" size={40} className={styles.danger} onClick={() => setConfirming(true)}>
+            {words.unpair}
+          </Button>
+        )}
+      </div>
+      {isConfirming && (
+        <InlineConfirm question={words.confirm} confirmLabel={words.confirmYes} isDanger onConfirm={onUnpair} onCancel={cancel} />
+      )}
+      {!isPersisted && <p className={styles.note}>{words.notPersisted}</p>}
+      <p className={styles.note}>{words.dataStays}</p>
+    </SettingsGroup>
+  )
+}

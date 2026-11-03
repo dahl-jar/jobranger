@@ -3,7 +3,7 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 python_out="$root/cli-python/src/jobranger/contract"
-typescript_out="$root/frontend/src/features/relay/contract"
+typescript_out="$root/frontend/src/contract"
 uv_run=(uv run --project "$root/cli-python" --locked)
 codegen=("${uv_run[@]}" datamodel-codegen
   --input-file-type jsonschema

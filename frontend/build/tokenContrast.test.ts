@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const TOKENS = readFileSync(resolve(import.meta.dirname, '../src/app/styles/tokens.css'), 'utf8')
+const TOKENS = readFileSync(resolve(import.meta.dirname, '../src/styles/tokens.css'), 'utf8')
 const AA_TEXT_CONTRAST = 4.5
 const TEXT_TOKENS = ['ink', 'ink2', 'muted', 'faint']
 

@@ -1,5 +1,5 @@
-import { en, type Messages } from '@/shared/i18n/en'
-import { nb } from '@/shared/i18n/nb'
+import { en, type Messages } from '@/i18n/en'
+import { nb } from '@/i18n/nb'
 import { expect, test } from './consoleErrors'
 
 interface Screen {

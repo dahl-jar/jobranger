@@ -8,7 +8,7 @@ on:
       - dotnet/messages/**
       - cli-python/src/jobranger/contract/**
       - cli-python/tests/contract/**
-      - frontend/src/features/relay/contract/**
+      - frontend/src/contract/**
       - dotnet/Jobranger.slnx
       - dotnet/Directory.*.props
       - dotnet/global.json
@@ -66,14 +66,14 @@ jobs:
 
       - run: uv --directory cli-python sync --locked
       - run: pnpm --dir frontend install --frozen-lockfile
-      - run: touch frontend/src/features/relay/contract/old.gen.ts
+      - run: touch frontend/src/contract/old.gen.ts
       - run: bash messages/generate.sh
       - run: uv run --project cli-python --locked python messages/scripts/url_parity.py
       - run: git diff --exit-code
       - run: test -z "$(git status --porcelain)" || { git status --porcelain; exit 1; }
       - run: uv --directory cli-python run --locked pytest tests/contract
       - run: pnpm --dir frontend exec tsc -b
-      - run: pnpm --dir frontend exec vitest run src/features/relay/contract tests --passWithNoTests=false
+      - run: pnpm --dir frontend exec vitest run src/contract tests/ --passWithNoTests=false
       - run: dotnet restore Jobranger.slnx --locked-mode
         working-directory: dotnet
       - name: Check payload records cover the schema

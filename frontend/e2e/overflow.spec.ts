@@ -1,4 +1,4 @@
-import { en } from '@/shared/i18n/en'
+import { en } from '@/i18n/en'
 import { expect, test } from '@playwright/test'
 
 const SETUP_PATH = '/setup'

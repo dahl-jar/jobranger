@@ -1,0 +1,42 @@
+import { useEffect, useRef } from 'react'
+import { Link, useHref, useLocation, useRouteError } from 'react-router'
+import styles from '@/components/Notice/Notice.module.css'
+import { reloadOnce, RouteImportError } from '@/helpers/routeImport'
+import { useText } from '@/hooks/useLanguage'
+import { usePageTitle } from '@/hooks/usePageTitle'
+
+export function RouteError() {
+  const error = useRouteError()
+  const notLoaded = error instanceof RouteImportError
+  const location = useLocation()
+  const href = useHref(location)
+  const heading = useRef<HTMLHeadingElement>(null)
+  const text = useText()
+  const words = text.app.routeError
+  usePageTitle(notLoaded ? words.notLoadedTitle : words.brokenTitle)
+
+  useEffect(() => {
+    heading.current?.focus()
+  }, [])
+
+  useEffect(() => {
+    if (notLoaded) reloadOnce(href, error.cause, location.key)
+  }, [notLoaded, error, href, location.key])
+
+  return (
+    <main className={`${styles.notice} ${styles.standalone}`}>
+      <h1 ref={heading} tabIndex={-1} className={styles.title}>
+        {notLoaded ? words.notLoadedHeading : words.brokenHeading}
+      </h1>
+      {notLoaded && <p className={styles.detail}>{words.checkConnection}</p>}
+      <div className={styles.actions}>
+        <button type="button" className={styles.reload} onClick={() => window.location.reload()}>
+          {words.reload}
+        </button>
+        <Link to="/" className={styles.home}>
+          {text.common.home}
+        </Link>
+      </div>
+    </main>
+  )
+}

@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - messages/**
-      - frontend/src/features/relay/contract/**
+      - frontend/src/contract/**
       - cli-python/**
       - .github/workflows/**
   workflow_dispatch:
