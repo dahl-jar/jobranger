@@ -25,7 +25,7 @@ dotnet test --solution Jobranger.slnx -c Release --no-build
 dotnet tool restore
 ```
 
-The CLI tests need Linux. On macOS, run them with `dotnet/cli/scripts/container/test_in_container.sh`.
+The CLI tests need Linux. On macOS, run them from `dotnet/` with `bash cli/scripts/container/test_in_container.sh`.
 
 Each .NET project has a committed `packages.lock.json`. After a package change in `Directory.Packages.props`, run `dotnet restore Jobranger.slnx --force-evaluate` and commit the updated lock files with it.
 
