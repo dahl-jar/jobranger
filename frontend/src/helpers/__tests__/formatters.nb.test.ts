@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { pinTimeZone } from '@/__tests__/testData'
+import { pinTimeZone } from '@/__tests__/testClock'
 import { formatDate, formatDay, formatDayInSentence, formatDue } from '@/helpers/formatDate'
 import { formatUsd } from '@/helpers/formatUsd'
 import { formatTokens } from '@/helpers/formatTokens'

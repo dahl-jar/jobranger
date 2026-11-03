@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { pinTimeZone, TEST_TIME_ZONE } from '@/__tests__/testData'
+import { pinTimeZone, TEST_TIME_ZONE } from '@/__tests__/testClock'
 import { formatClock, formatDay, formatDue, shiftDay } from '@/helpers/formatDate'
 
 const TODAY = '2026-10-08'

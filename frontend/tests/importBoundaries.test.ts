@@ -23,54 +23,44 @@ interface Probe {
   source: string
 }
 
-interface FailingProbe extends Probe {
-  expectedRule: string
-}
-
-const FAILING_PROBES: FailingProbe[] = [
-  { name: 'should fail when a helper imports React', path: 'src/helpers/probe.ts', source: REACT_IMPORT, expectedRule: RESTRICTED_IMPORTS },
-  { name: 'should fail when a constant imports React', path: 'src/constants/probe.ts', source: REACT_IMPORT, expectedRule: RESTRICTED_IMPORTS },
-  { name: 'should fail when a service imports React', path: 'src/services/probe.ts', source: REACT_IMPORT, expectedRule: RESTRICTED_IMPORTS },
+const FAILING_PROBES: Probe[] = [
+  { name: 'should fail when a helper imports React', path: 'src/helpers/probe.ts', source: REACT_IMPORT },
+  { name: 'should fail when a constant imports React', path: 'src/constants/probe.ts', source: REACT_IMPORT },
+  { name: 'should fail when a service imports React', path: 'src/services/probe.ts', source: REACT_IMPORT },
   {
     name: 'should fail when a helper imports a hook',
     path: 'src/helpers/hookImport.ts',
     source: "import { useText } from '@/hooks/useLanguage'",
-    expectedRule: RESTRICTED_IMPORTS,
   },
   {
     name: 'should fail when a helper imports the query library',
     path: 'src/helpers/queryImport.ts',
     source: "import { useQuery } from '@tanstack/react-query'",
-    expectedRule: RESTRICTED_IMPORTS,
   },
-  { name: 'should fail when i18n imports a component', path: 'src/i18n/probe.ts', source: ICON_IMPORT, expectedRule: RESTRICTED_IMPORTS },
-  { name: 'should fail when the contract imports a component', path: 'src/contract/probe.ts', source: ICON_IMPORT, expectedRule: RESTRICTED_IMPORTS },
-  { name: 'should fail when a hook imports a component', path: 'src/hooks/componentImport.ts', source: ICON_IMPORT, expectedRule: RESTRICTED_IMPORTS },
+  { name: 'should fail when i18n imports a component', path: 'src/i18n/probe.ts', source: ICON_IMPORT },
+  { name: 'should fail when the contract imports a component', path: 'src/contract/probe.ts', source: ICON_IMPORT },
+  { name: 'should fail when a hook imports a component', path: 'src/hooks/componentImport.ts', source: ICON_IMPORT },
   {
     name: 'should fail when a hook test imports a component',
     path: 'src/hooks/__tests__/componentImport.test.ts',
     source: ICON_IMPORT,
-    expectedRule: RESTRICTED_IMPORTS,
   },
   {
     name: "should fail when a feature imports another feature's helper",
     path: `${LANDING_FOLDER}/otherHelper.ts`,
     source: OTHER_HELPER_IMPORT,
-    expectedRule: RESTRICTED_IMPORTS,
   },
   {
     name: "should fail when a feature imports another feature's helper by a relative path",
     path: `${LANDING_FOLDER}/relativeHelper.ts`,
     source: "import { nextMenuItem } from '../StatusMenu/nextMenuItem'",
-    expectedRule: RESTRICTED_IMPORTS,
   },
   {
     name: 'should fail when a helper imports a router value',
     path: 'src/helpers/routerValue.ts',
     source: "import { Link } from 'react-router'",
-    expectedRule: RESTRICTED_IMPORTS,
   },
-  { name: 'should fail when a helper test imports React', path: 'src/helpers/__tests__/probe.test.ts', source: REACT_IMPORT, expectedRule: RESTRICTED_IMPORTS },
+  { name: 'should fail when a helper test imports React', path: 'src/helpers/__tests__/probe.test.ts', source: REACT_IMPORT },
 ]
 
 const PASSING_PROBES: Probe[] = [
@@ -123,14 +113,14 @@ afterAll(() => {
 })
 
 describe('oxlint.config', () => {
-  for (const { name, path, expectedRule } of FAILING_PROBES) {
+  for (const { name, path } of FAILING_PROBES) {
     it(
       name,
       () => {
         const { status, output } = lint(path)
 
         expect(status, `expected exit ${FAILS}\n${output}`).toBe(FAILS)
-        expect(output, `expected rule ${expectedRule}`).toContain(expectedRule)
+        expect(output, `expected rule ${RESTRICTED_IMPORTS}`).toContain(RESTRICTED_IMPORTS)
       },
       LINT_TIMEOUT_MS,
     )

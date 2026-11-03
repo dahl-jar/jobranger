@@ -1,4 +1,3 @@
-import { afterAll, beforeAll, vi } from 'vitest'
 import { payloadFixtures } from '@/contract/fixtures.gen'
 import type { Application, ApplicationsSnapshot } from '@/contract/payload.gen'
 
@@ -12,14 +11,3 @@ if (!found || !byHand) {
 export const foundApplication: Application = found
 export const removedApplication: Application = byHand
 export const handApplication: Application = { ...byHand, removed: false }
-
-export const TEST_TIME_ZONE = 'Europe/Oslo'
-
-export function pinTimeZone() {
-  beforeAll(() => {
-    vi.stubEnv('TZ', TEST_TIME_ZONE)
-  })
-  afterAll(() => {
-    vi.unstubAllEnvs()
-  })
-}

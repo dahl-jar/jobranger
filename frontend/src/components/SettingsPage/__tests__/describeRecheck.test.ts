@@ -11,7 +11,7 @@ describe('describeRecheck', () => {
     ['say ad for one ad', { ads: 1, cost_usd: null }, 'Rechecks 1 ad on the next run'],
     ['say nothing for zero ads', { ads: 0, cost_usd: 0 }, undefined],
     ['say nothing without a recheck', undefined, undefined],
-  ])('should %s', (_, recheck, text) => {
-    expect(describeRecheck(recheck, en)).toBe(text)
+  ])('should %s', (_, recheck, expected) => {
+    expect(describeRecheck(recheck, en)).toBe(expected)
   })
 })
