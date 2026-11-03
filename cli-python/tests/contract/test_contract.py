@@ -35,7 +35,7 @@ from jobranger.matching.rules import DisplayFit
 
 ROOT = MESSAGES.parent
 FIXTURES = MESSAGES / "fixtures"
-FRONTEND_CONTRACT = ROOT / "frontend" / "src" / "features" / "relay" / "contract"
+FRONTEND_CONTRACT = ROOT / "frontend" / "src" / "contract"
 CLI_CONTRACT = ROOT / "cli-python" / "src" / "jobranger" / "contract"
 WORKFLOWS = ROOT / ".github" / "workflows"
 RELEASE_WORKFLOW = "release-cli.yml"
@@ -91,10 +91,10 @@ HAND_WRITTEN = [
     CLI_CONTRACT / "codec.py",
     CLI_CONTRACT / "fields.py",
     CLI_CONTRACT / "limits.py",
-    FRONTEND_CONTRACT / "limits.ts",
-    FRONTEND_CONTRACT / "validate.ts",
-    FRONTEND_CONTRACT / "scan.ts",
-    FRONTEND_CONTRACT / "contract.test.ts",
+    FRONTEND_CONTRACT / "messageLimits.ts",
+    FRONTEND_CONTRACT / "parseMessage.ts",
+    FRONTEND_CONTRACT / "scanJson.ts",
+    FRONTEND_CONTRACT / "__tests__" / "contract.test.ts",
 ]
 SIGNALR_INVOCATION = (
     '{{"type":1,"invocationId":"1","target":"Send","arguments":[{}]}}\x1e'
@@ -923,7 +923,7 @@ def test_should_offer_every_display_fit_in_schema() -> None:
 
 
 def test_should_match_frontend_limits_with_cli_limits() -> None:
-    text = (FRONTEND_CONTRACT / "limits.ts").read_text(encoding="utf-8")
+    text = (FRONTEND_CONTRACT / "messageLimits.ts").read_text(encoding="utf-8")
     cli = {
         name: value
         for name, value in vars(limits).items()
@@ -1220,7 +1220,7 @@ def test_should_not_mark_hand_written_code_as_generated(path: Path) -> None:
     ("workflow", "path"),
     [
         ("cli-python.yml", "messages/**"),
-        ("cli-python.yml", "frontend/src/features/relay/contract/**"),
+        ("cli-python.yml", "frontend/src/contract/**"),
         ("frontend.yml", "messages/**"),
         ("messages.yml", "frontend/scripts/**"),
         ("messages.yml", "messages/**"),

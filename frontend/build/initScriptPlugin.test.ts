@@ -7,7 +7,7 @@ import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { bundleInitScript, initScriptPlugin } from './initScriptPlugin.ts'
 
 const ROOT = resolve(import.meta.dirname, '..')
-const ENTRY = resolve(ROOT, 'src/app/theme/themeInit.ts')
+const ENTRY = resolve(ROOT, 'src/helpers/paintThemeOnLoad.ts')
 const SCRIPT_FILE = 'theme-init.js'
 
 function paintWithStoredTheme(script: string, stored: string): string | undefined {

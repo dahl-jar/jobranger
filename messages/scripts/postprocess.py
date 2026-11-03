@@ -9,7 +9,7 @@ from pathlib import Path
 
 SCHEMAS = ("payload", "envelope")
 PYTHON_OUT = Path("cli-python/src/jobranger/contract")
-TYPESCRIPT_OUT = Path("frontend/src/features/relay/contract")
+TYPESCRIPT_OUT = Path("frontend/src/contract")
 FIXTURE_SETS = (
     ("envelopeFixtures", "envelope", "Envelope"),
     ("payloadFixtures", "payload", "Payload"),

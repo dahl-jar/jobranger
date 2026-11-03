@@ -5,7 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { build } from 'vite'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { findMessages } from '../build/findMessages.ts'
-import { ENVELOPE_INVALID_COUNT, GOLDEN_COUNT, PAYLOAD_INVALID_COUNT } from '../src/test/fixtureCounts.ts'
+import { ENVELOPE_INVALID_COUNT, GOLDEN_COUNT, PAYLOAD_INVALID_COUNT } from '../src/__tests__/fixtureCounts.ts'
 
 interface ValidateBundle {
   parsePayload(text: string): unknown
@@ -14,7 +14,7 @@ interface ValidateBundle {
 
 const FRONTEND = fileURLToPath(new URL('..', import.meta.url))
 const FIXTURES = join(findMessages(FRONTEND), 'fixtures')
-const ENTRY = join(FRONTEND, 'src', 'features', 'relay', 'contract', 'validate.ts')
+const ENTRY = join(FRONTEND, 'src', 'contract', 'parseMessage.ts')
 const RUNTIME_CODEGEN = ['new Function', 'eval(']
 const BUILD_TIMEOUT_MS = 120_000
 const BUNDLE_NAME = 'validate'
