@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 const FRONTEND = fileURLToPath(new URL('..', import.meta.url))
 const OXLINT = join(FRONTEND, 'node_modules', '.bin', 'oxlint')
 const CONFIG = 'oxlint.config.ts'
+const DEFAULT_FORMAT = '--format=default'
 const LINT_TIMEOUT_MS = 30_000
 const FAILS = 1
 const PASSES = 0
@@ -110,7 +111,7 @@ const PASSING_PROBES: Probe[] = [
 let workspace = ''
 
 function lint(path: string): { status: number | null; output: string } {
-  const result = spawnSync(OXLINT, [path], { cwd: workspace, encoding: 'utf8' })
+  const result = spawnSync(OXLINT, [DEFAULT_FORMAT, path], { cwd: workspace, encoding: 'utf8' })
   return { status: result.status, output: `${result.stdout}${result.stderr}` }
 }
 
