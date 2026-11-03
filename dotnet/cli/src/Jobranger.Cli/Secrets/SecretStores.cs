@@ -8,6 +8,8 @@ internal static class SecretStores {
     public const string SelectVariable = "JOBRANGER_SECRET_STORE";
     public const string FileOnly = "file";
 
+    public delegate Task<ISecretStore?> Opener(IDictionary environment, CancellationToken cancellationToken);
+
     public static Task<ISecretStore?> OpenAsync(IDictionary environment, CancellationToken cancellationToken) =>
         OpenAsync(environment, token => ForPlatformAsync(environment, token), cancellationToken);
 

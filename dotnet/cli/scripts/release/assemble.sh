@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-rids=(linux-x64)
 placeholder="__JOBRANGER_VERSION__"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -12,6 +11,7 @@ fi
 version="$1"
 archives_dir="$2"
 out_dir="$3"
+archive="jobranger-$version-linux-x64.tar.gz"
 
 sha256() {
   if command -v sha256sum >/dev/null 2>&1; then
@@ -21,21 +21,16 @@ sha256() {
   fi | awk '{ print $1 }'
 }
 
+if [ ! -f "$archives_dir/$archive" ]; then
+  echo "missing archive $archive" >&2
+  exit 1
+fi
 mkdir -p "$out_dir"
-assets=()
-for rid in "${rids[@]}"; do
-  archive="jobranger-$version-$rid.tar.gz"
-  if [ ! -f "$archives_dir/$archive" ]; then
-    echo "missing archive $archive" >&2
-    exit 1
-  fi
-  cp "$archives_dir/$archive" "$out_dir/$archive"
-  assets+=("$archive")
-done
+cp "$archives_dir/$archive" "$out_dir/$archive"
 
 sed "s/$placeholder/$version/g" "$script_dir/install.sh" >"$out_dir/install.sh"
 chmod 0755 "$out_dir/install.sh"
-assets+=(install.sh)
+assets=("$archive" install.sh)
 
 : >"$out_dir/SHA256SUMS"
 for asset in "${assets[@]}"; do

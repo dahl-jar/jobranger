@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-expected_tests=49
+expected_tests=50
 fixture_version="0.4.1"
 linux_archive="jobranger-$fixture_version-linux-x64.tar.gz"
 release_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-build_image="$release_dir/../../deploy/build_image.sh"
+deploy_dir="$(cd "$release_dir/../../deploy" && pwd)"
+build_image="$deploy_dir/build_image.sh"
 next_version="$release_dir/next_version.sh"
 assemble="$release_dir/assemble.sh"
 release_prs="$release_dir/release_prs.sh"
@@ -667,7 +668,7 @@ should_refuse_when_checksums_lack_archive() {
 should_refuse_platform_without_build() {
   build_release
 
-  assert_contains "$(install_failure Linux aarch64)" "no build for Linux aarch64, builds exist for Linux x64"
+  assert_contains "$(install_failure Linux aarch64)" "no build for Linux aarch64, the only build is Linux x64"
   assert_missing bin-install/jobranger
 }
 
@@ -688,8 +689,9 @@ should_point_mac_users_to_docker_image() {
 stub_docker() {
   mkdir -p stub
   cat >stub/docker <<EOF
-#!/bin/sh
-for context; do :; done
+#!/usr/bin/env bash
+context="\${!#}"
+printf '%s\\n' "\${*:1:\$#-1}" >"$PWD/docker_arguments.txt"
 for path in jobranger home/.local/state/jobranger home/.local/state/jobranger/bundle; do
   ls -ld "\$context/\$path" | cut -c1-10
 done >"$PWD/staged.txt"
@@ -717,6 +719,15 @@ should_stage_image_files_with_private_modes() {
   with_stub bash "$build_image" "$PWD/jobranger" jobranger-cli:test
 
   assert_eq "$(printf '%s\n' -rwxr-xr-x drwx------ drwx------ "home/.config is a folder")" "$(cat staged.txt)"
+}
+
+should_build_image_for_amd64_with_every_tag() {
+  stub_docker
+  printf 'binary\n' >jobranger
+
+  with_stub bash "$build_image" "$PWD/jobranger" jobranger-cli:test jobranger-cli:latest
+
+  assert_eq "build --platform linux/amd64 -f $deploy_dir/Dockerfile -t jobranger-cli:test -t jobranger-cli:latest" "$(cat docker_arguments.txt)"
 }
 
 run_tests "$expected_tests"

@@ -1,4 +1,3 @@
-using System.Collections;
 using Jobranger.Cli.Config;
 using Jobranger.Cli.Secrets;
 
@@ -6,5 +5,5 @@ namespace Jobranger.Cli.Features.Setup;
 
 internal sealed record SetupSeams(
     Func<ProviderName?, HttpMessageHandler> CreateModelHandler,
-    Func<IDictionary, CancellationToken, Task<ISecretStore?>> OpenSecrets,
+    SecretStores.Opener OpenSecrets,
     Func<EmailConfig, string?, CancellationToken, Task<string?>> SendTestEmail);

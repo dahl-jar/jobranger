@@ -18,7 +18,7 @@ detect_rid() {
   case "$platform" in
     "Linux x86_64") echo linux-x64 ;;
     Darwin\ *) fail "no macOS build, run jobranger in Docker with the image $image, see $docker_docs" ;;
-    *) fail "no build for $platform, builds exist for Linux x64" ;;
+    *) fail "no build for $platform, the only build is Linux x64" ;;
   esac
 }
 

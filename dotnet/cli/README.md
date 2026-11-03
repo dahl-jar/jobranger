@@ -3,9 +3,10 @@
 C# CLI. Needs the .NET 10 SDK. Like the relay commands, these run from `dotnet/`. Restore, format and build are in [CONTRIBUTING](../../CONTRIBUTING.md#net).
 
 ```bash
+# Linux only
 dotnet test --project cli/tests/Jobranger.Cli.Tests -c Release --no-build
 
-# the same tests in a Linux container
+# the same tests in a Linux container, for macOS
 bash cli/scripts/container/test_in_container.sh
 
 # one self-contained file for linux-x64
@@ -23,7 +24,7 @@ The published file unpacks its native libraries on first run into `DOTNET_BUNDLE
 
 The test project points `HOME`, the `XDG_*` dirs and the `JOBRANGER_*` dirs at a temp folder and clears proxy variables and every other `JOBRANGER_*` variable. The opt-in switches `JOBRANGER_EMBEDDINGS_LIVE` and `JOBRANGER_EMBEDDINGS_CACHE` pass through. Test HTTP goes through `Mocks/LoopbackOnlyHandler`, which connects to loopback addresses only and follows no redirects.
 
-The `Files/` tests and `ConfigFileTests` need Linux, because they use real files. On macOS, run them with `cli/scripts/container/test_in_container.sh`. `FileLock` takes a `flock` on the lock file, and `PrivateFile.OpenRead` reads the file type through the runtime's `SystemNative_FStat`.
+The test suite needs Linux, because `UnixFiles` calls `libc.so.6` with Linux flag values. On macOS, run it with `cli/scripts/container/test_in_container.sh`. `FileLock` takes a `flock` on the lock file, and `PrivateFile.OpenRead` reads the file type through the runtime's `SystemNative_FStat`.
 
 `ArchitectureTests` checks the folder rules on the built assembly. Infrastructure folders use no feature, leaf features use infrastructure only, orchestration features and `Commands/` reach another feature through its entry type, and orchestration features call each other along the allowed edges only. Each rule also runs over the seed types in `ArchitectureSeeds/Broken`, which break it once, and `ArchitectureSeeds/Sound`, which pass every rule.
 
@@ -62,7 +63,7 @@ Replace `init` with `run`, `pair`, `report` or any other command. The prompts ne
 - Editor: the image has no editor, and `config edit`, `guidance edit` and `about edit` stop with an error. Edit the files in `~/.config/jobranger` on the host.
 - Updates: `docker pull ghcr.io/dahl-jar/jobranger/cli`.
 
-An installed macOS build prints the `install.sh` command in its next update notice. That command now stops with a message that points here.
+On macOS, `install.sh` stops with a message that links to this section.
 
 To keep the database of the macOS build, run the command above once, then copy the database into the volume:
 
