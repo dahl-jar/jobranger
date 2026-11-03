@@ -102,3 +102,4 @@ jobs:
 
       - run: bash dotnet/cli/deploy/build_image.sh "$RUNNER_TEMP/publish/jobranger" jobranger-cli:ci
       - run: docker run --rm jobranger-cli:ci --version | grep -Ex "jobranger [0-9]+\.[0-9]+\.[0-9]+"
+      - run: strings -e l "$RUNNER_TEMP/publish/jobranger" | grep -Fx "docker pull ghcr.io/dahl-jar/jobranger/cli"

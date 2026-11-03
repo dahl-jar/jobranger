@@ -59,9 +59,10 @@ Replace `init` with `run`, `pair`, `report` or any other command. The prompts ne
 
 - Config: `config.yaml`, `profile.yaml`, `context.yaml` and `guidance.md` are in `~/.config/jobranger` on the host.
 - Secrets: the image has no keyring, and `init` saves the API keys to `secrets.json` in the same folder. Keys in environment variables, such as `-e ANTHROPIC_API_KEY`, also work.
-- Data and state: the database, logs, locks and the folder where the CLI unpacks its native libraries are in the `jobranger` volume.
+- Data and state: the database, logs, the run and pair locks and the folder where the CLI unpacks its native libraries are in the `jobranger` volume. The lock files of `secrets.json` and `link.json` stay next to those files in `~/.config/jobranger`.
 - Editor: the image has no editor, and `config edit`, `guidance edit` and `about edit` stop with an error. Edit the files in `~/.config/jobranger` on the host.
 - Updates: `docker pull ghcr.io/dahl-jar/jobranger/cli`.
+- Ollama: from the container, Ollama on the Mac is at `http://host.docker.internal:11434`. Enter that URL when `init` asks for the Ollama URL.
 
 Messages from the CLI name paths inside the container: `/home/app/.config/jobranger` is `~/.config/jobranger` on the host, and `/home/app/.local` is the `jobranger` volume.
 
@@ -76,4 +77,4 @@ docker run --rm \
   alpine sh -c 'mkdir -p /data/share/jobranger && cp /old/jobranger.db* /data/share/jobranger/ && chown -R 1654:1654 /data/share'
 ```
 
-The container cannot read the macOS Keychain. Run `init` again to enter the keys.
+The container cannot read the macOS Keychain. Run `init` again to enter the keys. If you paired the website on the macOS build, run `unpair`, then `pair`.
