@@ -17,16 +17,14 @@ internal sealed class UnpairCommand : Command {
     private const string lockFailure = "lock_unreadable";
 
     public UnpairCommand(CliServices services)
-        : this(services, Environment.GetEnvironmentVariables(), Console.IsInputRedirected, Link.OpenAsync) {
+        : this(services, Environment.GetEnvironmentVariables(), Link.OpenAsync) {
     }
 
-    public UnpairCommand(
-        CliServices services, IDictionary environment, bool inputRedirected, LinkCommandRun.LinkOpener openLink)
+    public UnpairCommand(CliServices services, IDictionary environment, LinkCommandRun.LinkOpener openLink)
         : base(CommandName, services.Messages.UnpairDescription) {
         SetAction((_, cancellationToken) => LinkCommandRun.RunAsync(
             services,
             environment,
-            !inputRedirected,
             openLink,
             LogEvents.DevicesFailed,
             (opened, token) => UnpairAsync(opened, services.Messages, token),

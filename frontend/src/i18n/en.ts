@@ -142,7 +142,7 @@ export const en = {
       { title: 'Tracks applications', body: 'Waiting, Interview, Offer, Accepted or Rejected, with a note.' },
     ],
     installHeading: 'Install and set up',
-    platforms: 'macOS or Linux. Windows through WSL.',
+    platforms: 'Linux. Windows through WSL. macOS through Docker.',
     installTool: 'Install the command line tool',
     installSteps: {
       setUp: { title: 'Set up', body: 'Model access, CV, roles, limits and places. Ends with a dry run on the last 7 days.' },

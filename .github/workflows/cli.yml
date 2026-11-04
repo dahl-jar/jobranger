@@ -15,7 +15,6 @@ on:
       - .github/actions/dotnet-setup/**
       - .github/actions/cli-publish/**
       - .github/actions/test-ratchet/**
-      - .github/scripts/cli_macos_jobs.sh
       - .github/scripts/missing_tests.sh
       - .github/workflows/cli.yml
   workflow_dispatch:
@@ -60,60 +59,6 @@ jobs:
           pull-request: ${{ github.event.pull_request.number }}
           token: ${{ github.token }}
 
-  changes:
-    name: Find macOS inputs
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      publish: ${{ steps.inputs.outputs.publish }}
-      secrets: ${{ steps.inputs.outputs.secrets }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          fetch-depth: 2
-
-      - id: inputs
-        shell: bash
-        env:
-          EVENT: ${{ github.event_name }}
-        run: |
-          if [ "$EVENT" = pull_request ]; then
-            git diff --name-only --no-renames HEAD^1 HEAD | bash .github/scripts/cli_macos_jobs.sh >>"$GITHUB_OUTPUT"
-          else
-            printf 'publish=true\nsecrets=true\n' >>"$GITHUB_OUTPUT"
-          fi
-
-  secrets-macos:
-    name: Secret store on macOS
-    needs: changes
-    if: needs.changes.outputs.secrets == 'true'
-    runs-on: macos-15
-    timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: dotnet
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-
-      - uses: ./.github/actions/dotnet-setup
-      - run: |
-          keychain="$RUNNER_TEMP/ci.keychain-db"
-          password="$(uuidgen)"
-          security create-keychain -p "$password" "$keychain"
-          security set-keychain-settings "$keychain"
-          security unlock-keychain -p "$password" "$keychain"
-          security list-keychains -d user -s "$keychain"
-          security default-keychain -d user -s "$keychain"
-          security add-generic-password -A -s jobranger-ci-python -a anthropic_api_key -w sk-fake-python-1234 "$keychain"
-      - run: dotnet test --project cli/tests/Jobranger.Cli.Tests -c Release --no-build --filter-namespace Jobranger.Cli.Tests.Secrets --long-running 30 --timeout 5m
-        env:
-          JOBRANGER_SECRET_STORE_LIVE: "1"
-      - run: security lock-keychain "$RUNNER_TEMP/ci.keychain-db"
-      - run: dotnet test --project cli/tests/Jobranger.Cli.Tests -c Release --no-build --filter-method "*.ShouldRefuseWithoutPrompt_WhenKeychainIsLocked" --minimum-expected-tests 1 --fail-skips on --timeout 2m
-        env:
-          JOBRANGER_SECRET_STORE_LIVE: "1"
-          JOBRANGER_KEYCHAIN_LOCKED: "1"
-
   secrets-linux:
     name: Secret store on Linux
     runs-on: ubuntu-latest
@@ -139,8 +84,8 @@ jobs:
         env:
           JOBRANGER_SECRET_STORE_LIVE: "1"
 
-  publish-linux:
-    name: Publish linux-x64
+  image:
+    name: Build image
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -155,30 +100,6 @@ jobs:
           rid: linux-x64
           output: ${{ runner.temp }}/publish
 
-  publish-macos:
-    name: Publish osx-arm64
-    needs: changes
-    if: needs.changes.outputs.publish == 'true'
-    runs-on: macos-15
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-
-      - uses: ./.github/actions/dotnet-setup
-        with:
-          build: "false"
-
-      - uses: ./.github/actions/cli-publish
-        with:
-          rid: osx-arm64
-          output: ${{ runner.temp }}/publish
-
-  image:
-    name: Build image
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-
-      - run: docker build -f dotnet/cli/deploy/Dockerfile -t jobranger-cli:ci .
+      - run: bash dotnet/cli/deploy/build_image.sh "$RUNNER_TEMP/publish/jobranger" jobranger-cli:ci
       - run: docker run --rm jobranger-cli:ci --version | grep -Ex "jobranger [0-9]+\.[0-9]+\.[0-9]+"
+      - run: strings -e l "$RUNNER_TEMP/publish/jobranger" | grep -Fx "docker pull ghcr.io/dahl-jar/jobranger/cli"

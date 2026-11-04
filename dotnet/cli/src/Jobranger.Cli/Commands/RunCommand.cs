@@ -39,14 +39,13 @@ internal sealed class RunCommand : Command {
             services,
             Environment.GetEnvironmentVariables(),
             TimeProvider.System,
-            Console.IsInputRedirected,
             RunSeams.Production) {
     }
 
-    public RunCommand(CliServices services, IDictionary environment, TimeProvider time, bool inputRedirected, RunSeams seams)
+    public RunCommand(CliServices services, IDictionary environment, TimeProvider time, RunSeams seams)
         : base(CommandName, services.Messages.RunDescription) {
         SetAction((_, cancellationToken) =>
-            RunAsync(new RunContext(services, environment, time, !inputRedirected, seams), cancellationToken));
+            RunAsync(new RunContext(services, environment, time, seams), cancellationToken));
     }
 
     public static string CountsLine(RunResult result, IMessages messages) =>
@@ -161,7 +160,7 @@ internal sealed class RunCommand : Command {
 
     private static async Task<ISecretStore?> OpenSecretsAsync(RunContext context, ILogger logger, CancellationToken cancellationToken) {
         try {
-            return await context.Seams.OpenSecrets(context.Environment, context.CanPrompt, cancellationToken).ConfigureAwait(false);
+            return await context.Seams.OpenSecrets(context.Environment, cancellationToken).ConfigureAwait(false);
         } catch (SecretStoreUnavailableException error) {
             LogEvents.RunSecretStoreFailed(logger, error);
             return null;
@@ -192,7 +191,7 @@ internal sealed class RunCommand : Command {
         return CliExitCodes.Failure;
     }
 
-    private sealed record RunContext(CliServices Services, IDictionary Environment, TimeProvider Time, bool CanPrompt, RunSeams Seams) {
+    private sealed record RunContext(CliServices Services, IDictionary Environment, TimeProvider Time, RunSeams Seams) {
         public TextWriter Output => Services.Console.Profile.Out.Writer;
 
         public IMessages Messages => Services.Messages;

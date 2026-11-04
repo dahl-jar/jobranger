@@ -21,7 +21,6 @@ internal sealed class DevicesRevokeCommand : Command {
         SetAction((parseResult, cancellationToken) => LinkCommandRun.RunAsync(
             services,
             environment,
-            canPrompt: false,
             openLink,
             LogEvents.DevicesFailed,
             (opened, _) => RevokeAsync(

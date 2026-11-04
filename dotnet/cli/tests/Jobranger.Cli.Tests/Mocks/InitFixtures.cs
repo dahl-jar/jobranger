@@ -61,7 +61,7 @@ internal static class InitFixtures {
         return new InitSeams(
             (_, _) => prompter,
             _ => queue.Dequeue(),
-            (_, _, _) => Task.FromResult(store),
+            (_, _) => Task.FromResult(store),
             transport ?? SmtpCertificates.Trusting);
     }
 }

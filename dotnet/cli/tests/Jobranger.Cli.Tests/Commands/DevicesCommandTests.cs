@@ -55,8 +55,6 @@ public sealed class DevicesCommandTests : IDisposable {
     private readonly Hashtable environment;
     private readonly FakeTimeProvider time = new(DeviceFixtures.PairedAt);
     private LinkCommandRun.LinkOpener openLink = Link.OpenAsync;
-    private bool inputRedirected = true;
-    private bool? promptAllowed;
 
     public DevicesCommandTests() {
         time.SetLocalTimeZone(TimeZoneInfo.Utc);
@@ -399,30 +397,6 @@ public sealed class DevicesCommandTests : IDisposable {
         Assert.DoesNotContain("devices.unpaired", LoggedEvents());
     }
 
-    [Theory]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    public async Task ShouldAllowKeychainPrompt_WhenUnpairingFromTerminal(bool redirected, bool expected) {
-        inputRedirected = redirected;
-        RecordPromptAllowed();
-
-        await RunAsync("unpair");
-
-        Assert.Equal(expected, promptAllowed);
-    }
-
-    [Theory]
-    [InlineData("devices", "list")]
-    [InlineData("devices", "revoke", "AQEB")]
-    public async Task ShouldRefuseKeychainPrompt_WhenListingOrRevoking(params string[] args) {
-        inputRedirected = false;
-        RecordPromptAllowed();
-
-        await RunAsync(args);
-
-        Assert.False(promptAllowed);
-    }
-
     [Fact]
     public async Task ShouldPrintDatabaseTooNew_WhenSchemaIsNewer() {
         CommandFixtures.MarkSchemaTooNew(DatabasePath());
@@ -462,7 +436,7 @@ public sealed class DevicesCommandTests : IDisposable {
     [InlineData(typeof(UnauthorizedAccessException), Locales.Norwegian, accessFailedNorwegian)]
     public async Task ShouldPrintFileAccessFailed_WhenLinkHitsRawFileError(Type failure, string lang, string line) {
         environment["LANG"] = lang;
-        openLink = (_, _, _, _, _, _) => Task.FromException<Link>((Exception)Activator.CreateInstance(failure)!);
+        openLink = (_, _, _, _, _) => Task.FromException<Link>((Exception)Activator.CreateInstance(failure)!);
 
         int exit = await RunAsync("devices", "list");
 
@@ -579,7 +553,7 @@ public sealed class DevicesCommandTests : IDisposable {
     [InlineData(Locales.Norwegian, "Hemmelighetslageret svarte ikke. Lås det opp og prøv igjen.")]
     public async Task ShouldPrintSecretStoreFailed_WhenStoreDoesNotAnswer(string lang, string line) {
         environment["LANG"] = lang;
-        openLink = (_, _, _, _, _, _) =>
+        openLink = (_, _, _, _, _) =>
             Task.FromException<Link>(new SecretStoreUnavailableException("link-keys", "timeout"));
 
         int exit = await RunAsync("devices", "list");
@@ -699,7 +673,7 @@ public sealed class DevicesCommandTests : IDisposable {
         CliServices services = Services();
         System.CommandLine.RootCommand root = [
             new DevicesCommand(services, environment, time, openLink),
-            new UnpairCommand(services, environment, inputRedirected, openLink),
+            new UnpairCommand(services, environment, openLink),
         ];
         return root.Parse(args).InvokeAsync(null, TestContext.Current.CancellationToken);
     }
@@ -709,7 +683,7 @@ public sealed class DevicesCommandTests : IDisposable {
             time, CommandFixtures.BrokenConsole(failure), console.ErrorConsole, environment);
         System.CommandLine.RootCommand root = [
             new DevicesCommand(services, environment, time, openLink),
-            new UnpairCommand(services, environment, inputRedirected, openLink),
+            new UnpairCommand(services, environment, openLink),
         ];
         InvocationConfiguration configuration = new() { Error = console.ErrorConsole.Profile.Out.Writer };
         return root.Parse(args)
@@ -748,12 +722,6 @@ public sealed class DevicesCommandTests : IDisposable {
 
     private string SecretsPath() => new Paths(environment).SecretsPath();
 
-    private void RecordPromptAllowed() =>
-        openLink = (environment, paths, urls, logger, canPrompt, cancellationToken) => {
-            promptAllowed = canPrompt;
-            return Link.OpenAsync(environment, paths, urls, logger, canPrompt, cancellationToken);
-        };
-
     private SqliteConnection OpenDatabase() => Database.Open(DatabasePath(), NullLogger.Instance);
 
     private void SeedBrowser() => Seed(DeviceFixtures.BrowserKey, DeviceFixtures.BrowserName, DeviceFixtures.PairedAt);
@@ -774,7 +742,6 @@ public sealed class DevicesCommandTests : IDisposable {
             new Paths(environment),
             ServiceUrls.From(environment),
             NullLogger.Instance,
-            canPrompt: false,
             TestContext.Current.CancellationToken);
         using LinkKeyPair keys = await link.LoadOrCreateKeysAsync(TestContext.Current.CancellationToken);
         return keys.Channel.Value;

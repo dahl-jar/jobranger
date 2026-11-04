@@ -74,21 +74,6 @@ public sealed class PathsTests(TestIsolation isolation) {
     }
 
     [Fact]
-    public void ShouldUseApplicationSupport_WhenOnMacOS() {
-        Assert.SkipUnless(OperatingSystem.IsMacOS(), "macOS layout");
-
-        string[] dirs = PlatformDirs();
-
-        Assert.Equal(
-            [
-                "/home/user/.config/jobranger",
-                "/home/user/Library/Application Support/jobranger",
-                "/home/user/Library/Application Support/jobranger",
-            ],
-            dirs);
-    }
-
-    [Fact]
     public void ShouldUseLocalShareAndState_WhenOnLinux() {
         Assert.SkipUnless(OperatingSystem.IsLinux(), "Linux layout");
 

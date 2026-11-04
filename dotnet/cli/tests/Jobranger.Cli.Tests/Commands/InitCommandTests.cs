@@ -273,18 +273,16 @@ public sealed class InitCommandTests : IDisposable {
         await using FakeSmtpServer server = InitHarness.AcceptingServer();
         ProbeStore probe = new(init.Store);
         int opens = 0;
-        bool? canPrompt = null;
         InitSeams seams = init.Seams(init.Prompter(init.SmtpFlow(server)), InitHarness.Listing()) with {
-            OpenSecrets = (_, prompts, _) => {
+            OpenSecrets = (_, _) => {
                 opens++;
-                canPrompt = prompts;
                 return Task.FromResult<ISecretStore?>(probe);
             },
         };
 
         int exit = await init.InvokeAsync(seams);
 
-        Assert.Equal((CliExitCodes.Ok, 1, 1, true), (exit, opens, probe.Reads, canPrompt));
+        Assert.Equal((CliExitCodes.Ok, 1, 1), (exit, opens, probe.Reads));
     }
 
     [Fact]
@@ -323,7 +321,7 @@ public sealed class InitCommandTests : IDisposable {
     public async Task ShouldNotOpenStore_WhenNoSecretIsNeeded() {
         int opens = 0;
         InitSeams seams = init.Seams(init.Prompter(init.OllamaFlow), InitHarness.OllamaListing()) with {
-            OpenSecrets = (_, _, _) => {
+            OpenSecrets = (_, _) => {
                 opens++;
                 return Task.FromResult<ISecretStore?>(new FakeSecretStore { IsBroken = true });
             },

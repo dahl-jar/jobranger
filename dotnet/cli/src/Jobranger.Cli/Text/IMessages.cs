@@ -593,8 +593,6 @@ internal interface IMessages {
 
     string InitSecretsStored(string place);
 
-    string InitStoreKeychain { get; }
-
     string InitStoreKeyring { get; }
 
     string InitNext { get; }

@@ -36,9 +36,8 @@ internal sealed partial class Link : IAsyncDisposable {
         Paths paths,
         ServiceUrls urls,
         ILogger logger,
-        bool canPrompt,
         CancellationToken cancellationToken) {
-        ISecretStore? store = await SecretStores.OpenAsync(environment, canPrompt, cancellationToken).ConfigureAwait(false);
+        ISecretStore? store = await SecretStores.OpenAsync(environment, cancellationToken).ConfigureAwait(false);
         Credentials credentials = new(environment, store, new FileSecretStore(paths.SecretsPath(), logger));
         SqliteConnection database = Database.Open(paths.DbPath(), logger);
         HttpClient http = new(new SocketsHttpHandler { AllowAutoRedirect = false, UseCookies = false }) {

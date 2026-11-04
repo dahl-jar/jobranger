@@ -79,10 +79,7 @@ internal sealed class TerminalEdit(string folder) : IDisposable {
         return start;
     }
 
-    private static string[] SessionArguments(string jobFile) =>
-        OperatingSystem.IsMacOS()
-            ? ["-q", discardedTranscript, shell, jobFile]
-            : ["-qfc", $"{shell} {jobFile}", discardedTranscript];
+    private static string[] SessionArguments(string jobFile) => ["-qfc", $"{shell} {jobFile}", discardedTranscript];
 
     private static string EditCommand() =>
         $"{CvFixtures.Muxer} {CvFixtures.WorkerDll} guidance edit";

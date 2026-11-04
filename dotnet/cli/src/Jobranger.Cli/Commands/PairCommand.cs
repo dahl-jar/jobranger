@@ -16,7 +16,6 @@ internal sealed class PairCommand : Command {
             services,
             Environment.GetEnvironmentVariables(),
             TimeProvider.System,
-            Console.IsInputRedirected,
             Link.OpenAsync) {
     }
 
@@ -24,13 +23,11 @@ internal sealed class PairCommand : Command {
         CliServices services,
         IDictionary environment,
         TimeProvider time,
-        bool inputRedirected,
         LinkCommandRun.LinkOpener openLink)
         : base(CommandName, services.Messages.PairDescription) {
         SetAction((_, cancellationToken) => LinkCommandRun.RunAsync(
             services,
             environment,
-            !inputRedirected,
             openLink,
             LogEvents.PairingFailed,
             (opened, token) => PairAsync(opened, services, time, token),

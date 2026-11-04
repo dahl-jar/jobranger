@@ -659,8 +659,6 @@ internal sealed class EnglishMessages : IMessages {
 
     public string InitSecretsStored(string place) => $"✓ Secrets stored in {place} on this machine only.";
 
-    public string InitStoreKeychain => "the macOS Keychain";
-
     public string InitStoreKeyring => "the system keyring";
 
     public string InitNext => "Next: jobranger run";

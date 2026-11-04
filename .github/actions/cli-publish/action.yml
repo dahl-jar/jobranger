@@ -3,7 +3,7 @@ description: Publishes the self-contained CLI for one runtime and checks the ver
 
 inputs:
   rid:
-    description: Runtime identifier, osx-arm64 or linux-x64
+    description: Runtime identifier, linux-x64
     required: true
   version:
     description: Version stamped into the build and expected from --version. Empty keeps the csproj version

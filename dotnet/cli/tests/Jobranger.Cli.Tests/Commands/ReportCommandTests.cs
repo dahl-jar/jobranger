@@ -488,7 +488,7 @@ public sealed class ReportCommandTests : IDisposable {
         System.CommandLine.RootCommand root = [
             new ReportCommand(services, environment, clock),
             new DevicesCommand(services, environment, clock, LinkEntry.OpenAsync),
-            new PairCommand(services, environment, clock, inputRedirected: true, LinkEntry.OpenAsync),
+            new PairCommand(services, environment, clock, LinkEntry.OpenAsync),
         ];
         return root.Parse(args).InvokeAsync(null, cancellationToken);
     }

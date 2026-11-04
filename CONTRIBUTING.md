@@ -25,6 +25,8 @@ dotnet test --solution Jobranger.slnx -c Release --no-build
 dotnet tool restore
 ```
 
+The CLI tests need Linux. On macOS, run them from `dotnet/` with `bash cli/scripts/container/test_in_container.sh`.
+
 Each .NET project has a committed `packages.lock.json`. After a package change in `Directory.Packages.props`, run `dotnet restore Jobranger.slnx --force-evaluate` and commit the updated lock files with it.
 
 Pull requests that change the CLI or the messaging library run `Compare tests with base`. The job lists the tests of the base branch and of the pull request, and it fails when a base test is gone. To remove or rename a test on purpose, add the `tests-removed` label to the pull request and re-run the job.

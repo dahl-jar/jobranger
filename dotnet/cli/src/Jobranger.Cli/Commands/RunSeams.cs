@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Runtime.Versioning;
 using Jobranger.Cli.Config;
 using Jobranger.Cli.Features.Delivery;
@@ -13,7 +12,7 @@ namespace Jobranger.Cli.Commands;
 
 [UnsupportedOSPlatform("windows")]
 internal sealed record RunSeams(
-    Func<IDictionary, bool, CancellationToken, Task<ISecretStore?>> OpenSecrets,
+    SecretStores.Opener OpenSecrets,
     Func<SourcesConfig, IReadOnlyList<ISource>> EnabledSources,
     Func<TimeProvider, HttpClient> CreateSourceClient,
     RunSeams.ModelOpener OpenModel,

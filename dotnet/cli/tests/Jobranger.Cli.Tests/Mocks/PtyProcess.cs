@@ -6,7 +6,6 @@ namespace Jobranger.Cli.Tests.Mocks;
 
 internal sealed class PtyProcess : IAsyncDisposable {
     private const string scriptProgram = "/usr/bin/script";
-    private const string shellProgram = "/bin/sh";
     private const string nullDevice = "/dev/null";
     private const string terminalVariable = "TERM";
     private const string terminalType = "xterm-256color";
@@ -76,9 +75,7 @@ internal sealed class PtyProcess : IAsyncDisposable {
     private static string Quoted(string value) => $"'{value}'";
 
     private static PtyProcess StartCommand(Hashtable environment, string command) {
-        string[] arguments = OperatingSystem.IsLinux()
-            ? ["-qfec", command, nullDevice]
-            : ["-q", nullDevice, shellProgram, "-c", command];
+        string[] arguments = ["-qfec", command, nullDevice];
         ProcessStartInfo start = new(scriptProgram, arguments) {
             RedirectStandardInput = true,
             RedirectStandardOutput = true,

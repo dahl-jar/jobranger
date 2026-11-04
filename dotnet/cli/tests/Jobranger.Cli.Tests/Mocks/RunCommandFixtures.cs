@@ -37,10 +37,9 @@ internal static class RunCommandFixtures {
         RunSeams seams,
         TimeProvider time,
         CancellationToken cancellationToken,
-        bool inputRedirected = true,
         IAnsiConsole? output = null) {
         CliServices services = CliServices.Create(time, output ?? console.Console, console.ErrorConsole, environment);
-        System.CommandLine.RootCommand root = [new RunCommand(services, environment, time, inputRedirected, seams)];
+        System.CommandLine.RootCommand root = [new RunCommand(services, environment, time, seams)];
         return root.Parse([RunCommand.CommandName]).InvokeAsync(null, cancellationToken)
             .WaitAsync(InvokeLimit, TestContext.Current.CancellationToken);
     }
