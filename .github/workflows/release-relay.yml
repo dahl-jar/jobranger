@@ -83,6 +83,9 @@ jobs:
     needs: publish
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    concurrency:
+      group: homelab-deploy-jobranger
+      cancel-in-progress: false
     permissions:
       contents: read
     steps:
